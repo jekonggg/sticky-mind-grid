@@ -201,18 +201,26 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
             <div className="grid grid-cols-3 gap-2">
               {attachments.map((file, i) => (
                 <div key={i} className="relative aspect-square group rounded-md border overflow-hidden bg-muted flex items-center justify-center">
-                  {file.type.startsWith('image/') ? (
-                    <img src={file.url} className="w-full h-full object-cover" alt={file.name} />
-                  ) : (
-                    <div className="flex flex-col items-center gap-1 p-2 text-center">
-                      {getFileIcon(file.type)}
-                      <span className="text-[8px] font-black tracking-tighter truncate w-full px-1 uppercase">{file.name.split('.').pop()}</span>
-                    </div>
-                  )}
+                  <a 
+                    href={file.url} 
+                    download={file.name} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-full h-full flex flex-col items-center justify-center hover:bg-muted/50 transition-colors"
+                  >
+                    {file.type.startsWith('image/') ? (
+                      <img src={file.url} className="w-full h-full object-cover" alt={file.name} />
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 p-2 text-center">
+                        {getFileIcon(file.type)}
+                        <span className="text-[8px] font-black tracking-tighter truncate w-full px-1 uppercase">{file.name.split('.').pop()}</span>
+                      </div>
+                    )}
+                  </a>
                   <button
                     type="button"
                     onClick={() => removeAttachment(i)}
-                    className="absolute top-1 right-1 p-1 bg-background/80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+                    className="absolute top-1 right-1 p-1 bg-background/80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background z-10"
                   >
                     <X className="h-3 w-3" />
                   </button>

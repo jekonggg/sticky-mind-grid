@@ -60,14 +60,6 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
               <Smile className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-               {task.attachments.length > 0 && !isFirstImage && (
-                  <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
-                     <Paperclip className="h-3 w-3" />
-                     {task.attachments.length > 1 && (
-                        <span className="text-[10px] font-bold">{task.attachments.length}</span>
-                     )}
-                  </div>
-               )}
                <span
                  className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded
                    ${
@@ -102,6 +94,23 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
           </div>
         </div>
       </div>
+      {(task.dueDate || (task.attachments && task.attachments.length > 0)) && (
+        <div className="mt-3 pt-3 border-t border-border/40 flex items-center gap-3">
+          {task.dueDate && (
+             <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-md">
+                <FileText className="h-2.5 w-2.5" />
+                {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+             </div>
+          )}
+          {task.attachments && task.attachments.length > 0 && (
+             <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-md">
+                <Paperclip className="h-2.5 w-2.5" />
+                {task.attachments.length}
+             </div>
+          )}
+          <div className="flex-1" />
+        </div>
+      )}
     </div>
   );
 }

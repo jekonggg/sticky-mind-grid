@@ -85,9 +85,33 @@ def seed_database():
 
         print("Seeding Showcase Tasks...")
         showcase_tasks = [
-            Task(id=generate_id(), board_id="board-showcase", title="Move me to Done!", description="Drag this ticket across columns to see the progress auto-snap (0% ➔ 100%).", status="todo", priority="high", progress=0, due_date=now + timedelta(days=2)),
+            Task(
+              id=generate_id(), 
+              board_id="board-showcase", 
+              title="Move me to Done!", 
+              description="Drag this ticket across columns to see the progress auto-snap (0% ➔ 100%).", 
+              status="todo", 
+              priority="high", 
+              progress=0, 
+              due_date=now + timedelta(days=2),
+              attachments=[
+                {"name": "design_spec.pdf", "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf", "type": "application/pdf"},
+                {"name": "mockup.png", "url": "https://images.unsplash.com/photo-1541462608141-ad4d3f9478a2?q=80&w=400&fit=crop", "type": "image/png"}
+              ]
+            ),
             Task(id=generate_id(), board_id="board-showcase", title="Check my History sidebar", description="I've already been moved once. Click me to see my journey.", status="in_progress", priority="medium", progress=30),
-            Task(id=generate_id(), board_id="board-showcase", title="Dynamic Dashboard Insights", description="Look at the Overview tab!", status="qa", priority="low", progress=60),
+            Task(
+              id=generate_id(), 
+              board_id="board-showcase", 
+              title="Dynamic Dashboard Insights", 
+              description="Look at the Overview tab!", 
+              status="qa", 
+              priority="low", 
+              progress=60,
+              attachments=[
+                {"name": "analytic_report.doc", "url": "https://example.com/mock.docx", "type": "application/msword"}
+              ]
+            ),
             Task(id=generate_id(), board_id="board-showcase", title="Full-Scale Image Support", description="I'm a ticket with detailed content.", status="done", priority="medium", progress=100, due_date=now - timedelta(days=1)),
         ]
 
