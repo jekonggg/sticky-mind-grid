@@ -1,12 +1,14 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Task } from "@/types/task";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Paperclip, FileText } from "lucide-react";
 
 interface TaskCardProps {
   task: Task;
   onClick: (task: Task) => void;
 }
+
+import { getProgressColor } from "@/utils/taskUtils";
 
 export function TaskCard({ task, onClick }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -19,6 +21,9 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
     transition,
   };
 
+  const firstAttachment = task.attachments?.[0];
+  const isFirstImage = firstAttachment?.type.startsWith('image/');
+
   return (
     <div
       ref={setNodeRef}
@@ -28,11 +33,11 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         ${isDragging ? "opacity-50 shadow-lg scale-[1.02]" : ""}`}
       onClick={() => onClick(task)}
     >
-      {task.attachments && task.attachments.length > 0 && (
+      {firstAttachment && isFirstImage && (
         <div className="mb-3 overflow-hidden rounded-md border border-border/50 aspect-video bg-muted">
           <img
-            src={task.attachments[0]}
-            alt="Attachment"
+            src={firstAttachment.url}
+            alt={firstAttachment.name}
             className="w-full h-full object-cover"
           />
         </div>
@@ -49,18 +54,28 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
             <h4 className="font-medium text-sm text-card-foreground leading-snug">{task.title}</h4>
-            <span
-              className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded shrink-0
-                ${
-                  task.priority === "high"
-                    ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                    : task.priority === "medium"
-                    ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                    : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                }`}
-            >
-              {task.priority}
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+               {task.attachments.length > 0 && !isFirstImage && (
+                  <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                     <Paperclip className="h-3 w-3" />
+                     {task.attachments.length > 1 && (
+                        <span className="text-[10px] font-bold">{task.attachments.length}</span>
+                     )}
+                  </div>
+               )}
+               <span
+                 className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded
+                   ${
+                     task.priority === "high"
+                       ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                       : task.priority === "medium"
+                       ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                       : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                   }`}
+               >
+                 {task.priority}
+               </span>
+            </div>
           </div>
           {task.description && (
             <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-1">
@@ -72,7 +87,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
           <div className="mt-3 space-y-1.5 flex flex-col items-end">
             <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden border border-border/10">
               <div
-                className="h-full bg-primary transition-all duration-500 ease-out shadow-[0_0_8px_rgba(var(--primary),0.2)]"
+                className={`h-full transition-all duration-500 ease-out ${getProgressColor(task.progress)}`}
                 style={{ width: `${task.progress}%` }}
               />
             </div>

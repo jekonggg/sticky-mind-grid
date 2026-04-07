@@ -1,4 +1,5 @@
 import { Task } from "@/types/task";
+import { getProgressColor } from "@/utils/taskUtils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -76,7 +77,7 @@ export function TaskListView({ tasks, onTaskClick }: TaskListViewProps) {
                      <div className="flex flex-col gap-1.5 w-24">
                         <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                            <div 
-                              className="h-full bg-primary transition-all duration-500"
+                              className={`h-full transition-all duration-500 ${getProgressColor(task.progress)}`}
                               style={{ width: `${task.progress}%` }}
                            />
                         </div>

@@ -199,7 +199,7 @@ export function KanbanBoard() {
   if (loading || !board) {
     return (
       <div className="flex flex-col h-screen bg-background">
-        <BoardHeader onAddTask={openNewModal} />
+      <BoardHeader />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -276,7 +276,7 @@ export function KanbanBoard() {
 
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden font-sans">
-      <BoardHeader onAddTask={openNewModal} search={searchTerm} onSearchChange={setSearchTerm} />
+      <BoardHeader search={searchTerm} onSearchChange={setSearchTerm} />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Side: Scrollable View Container */}
@@ -392,6 +392,20 @@ export function KanbanBoard() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Floating Action Button (FAB) */}
+      <Button
+        onClick={openNewModal}
+        className="fixed bottom-8 right-8 h-14 w-14 hover:w-40 rounded-full shadow-2xl shadow-primary/20 flex items-center justify-center group/fab hover:scale-105 active:scale-95 transition-all duration-500 ease-out z-50 bg-primary hover:bg-primary/90 overflow-hidden px-0 border-4 border-background"
+        title="Create New Task"
+      >
+        <div className="flex items-center justify-center w-full h-full relative">
+           <Plus className="h-6 w-6 text-primary-foreground absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 group-hover/fab:rotate-90 group-hover/fab:left-6" />
+           <span className="text-primary-foreground font-black uppercase text-[10px] tracking-[0.2em] whitespace-nowrap absolute left-14 opacity-0 group-hover/fab:opacity-100 translate-x-4 group-hover/fab:translate-x-0 transition-all duration-500 ease-out delay-75">
+             Add Task
+           </span>
+        </div>
+      </Button>
 
       <BoardModal
         open={isBoardModalOpen}

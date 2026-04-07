@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Task, UpdateTaskData, Priority, Column } from "@/types/task";
+import { Task, UpdateTaskData, Priority, Column, Attachment } from "@/types/task";
+import { getProgressColor } from "@/utils/taskUtils";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Trash2, ImagePlus, X, Check } from "lucide-react";
+import { Trash2, ImagePlus, X, Check, FileText, File, Film, Music } from "lucide-react";
 
 interface TaskModalProps {
   open: boolean;
@@ -28,7 +29,7 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
   const [priority, setPriority] = useState<Priority>("medium");
   const [dueDate, setDueDate] = useState<string>("");
   const [progress, setProgress] = useState<number>(0);
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!task;
@@ -58,7 +59,12 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
     Array.from(files).forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setAttachments((prev) => [...prev, reader.result as string]);
+        const newAttachment: Attachment = {
+          name: file.name,
+          url: reader.result as string,
+          type: file.type
+        };
+        setAttachments((prev) => [...prev, newAttachment]);
       };
       reader.readAsDataURL(file);
     });
@@ -66,6 +72,14 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
 
   const removeAttachment = (index: number) => {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const getFileIcon = (type: string) => {
+    if (type.startsWith('image/')) return null;
+    if (type.startsWith('video/')) return <Film className="h-6 w-6 text-blue-500" />;
+    if (type.startsWith('audio/')) return <Music className="h-6 w-6 text-purple-500" />;
+    if (type.includes('pdf') || type.includes('word') || type.includes('text')) return <FileText className="h-6 w-6 text-orange-500" />;
+    return <File className="h-6 w-6 text-slate-400" />;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -167,7 +181,7 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
           <div className="space-y-3 pt-2 border-t">
             <div className="flex items-center justify-between">
               <Label>Task Progress</Label>
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+              <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${getProgressColor(progress).replace('bg-', 'text-').replace('shadow-', '').replace('-500', '-600')} bg-muted`}>
                 {progress}% {progress === 100 ? "Completed" : "In Progress"}
               </span>
             </div>
@@ -190,7 +204,7 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
             </div>
             <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                <div 
-                  className="h-full bg-primary transition-all duration-500 ease-out"
+                  className={`h-full transition-all duration-500 ease-out ${getProgressColor(progress)}`}
                   style={{ width: `${progress}%` }}
                />
             </div>
@@ -199,9 +213,18 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
           <div className="space-y-2 pt-2 border-t">
             <Label>Attachments</Label>
             <div className="grid grid-cols-3 gap-2">
-              {attachments.map((src, i) => (
-                <div key={i} className="relative aspect-square group rounded-md border overflow-hidden bg-muted">
-                  <img src={src} className="w-full h-full object-cover" alt="" />
+              {attachments.map((file, i) => (
+                <div key={i} className="relative aspect-square group rounded-md border overflow-hidden bg-muted flex items-center justify-center">
+                  {file.type.startsWith('image/') ? (
+                    <img src={file.url} className="w-full h-full object-cover" alt={file.name} />
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 p-2 text-center">
+                      {getFileIcon(file.type)}
+                      <span className="text-[8px] font-black tracking-tighter truncate w-full px-1 uppercase">
+                        {file.name.split('.').pop()}
+                      </span>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => removeAttachment(i)}
@@ -209,6 +232,9 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
                   >
                     <X className="h-3 w-3" />
                   </button>
+                  <div className="absolute inset-x-0 bottom-0 bg-background/90 py-0.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                     <p className="text-[7px] font-bold truncate text-center">{file.name}</p>
+                  </div>
                 </div>
               ))}
               <button
@@ -224,7 +250,7 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
               type="file"
               ref={fileInputRef}
               className="hidden"
-              accept="image/*"
+              accept="*/*"
               multiple
               onChange={handleFileChange}
             />

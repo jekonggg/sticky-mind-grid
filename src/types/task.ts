@@ -1,6 +1,12 @@
 export type TaskStatus = string;
 export type Priority = "low" | "medium" | "high";
 
+export interface Attachment {
+  name: string;
+  url: string; // Base64 or mock URL
+  type: string; // mime-type
+}
+
 export interface Task {
   id: string;
   boardId: string;
@@ -11,7 +17,7 @@ export interface Task {
   assignedTo?: string;
   dueDate?: Date;
   progress: number;
-  attachments?: string[];
+  attachments: Attachment[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,7 +29,7 @@ export interface CreateTaskData {
   assignedTo?: string;
   dueDate?: Date;
   progress?: number;
-  attachments?: string[];
+  attachments?: Attachment[];
 }
 
 export interface UpdateTaskData {
@@ -34,7 +40,7 @@ export interface UpdateTaskData {
   assignedTo?: string;
   dueDate?: Date;
   progress?: number;
-  attachments?: string[];
+  attachments?: Attachment[];
 }
 
 export type ActivityType = "create" | "move" | "update" | "delete";

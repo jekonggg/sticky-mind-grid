@@ -18,59 +18,58 @@ const mockTasks: Task[] = [
     priority: "high",
     progress: 0,
     attachments: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date(Date.now() - 2 * 86400000),
+    updatedAt: new Date(Date.now() - 3600000),
   },
   {
-    id: "2",
+    id: "task-2",
     boardId: "board-1",
-    title: "Set up CI/CD pipeline",
-    description: "Configure GitHub Actions for automated testing and deployment.",
-    status: "todo",
+    title: "Feature prioritization",
+    description: "Align with stakeholders on Q3 roadmap",
+    status: "in_progress",
     priority: "medium",
     progress: 0,
     attachments: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date(Date.now() - 3 * 86400000),
+    updatedAt: new Date(Date.now() - 7200000),
   },
   {
-    id: "3",
+    id: "task-3",
     boardId: "board-1",
-    title: "Implement auth flow",
-    description: "Build login and signup pages with form validation.",
-    status: "in_progress",
+    title: "Design mocks review",
+    description: "Finalize visual language for the dashboard",
+    status: "todo",
     priority: "high",
     progress: 0,
     attachments: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date(Date.now() - 1 * 86400000),
+    updatedAt: new Date(Date.now() - 43200000),
   },
   {
-    id: "4",
+    id: "task-4",
     boardId: "board-2",
-    title: "Write API documentation",
-    status: "in_progress",
+    title: "Setup CI/CD pipeline",
+    status: "todo",
     priority: "low",
     progress: 0,
     attachments: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date(Date.now() - 5 * 86400000),
+    updatedAt: new Date(Date.now() - 86400000),
   },
   {
-    id: "5",
+    id: "task-5",
     boardId: "board-2",
-    title: "Database schema review",
-    description: "Review and optimize current database schema for performance.",
+    title: "API documentation",
+    description: "Export Swagger definitions for core services",
     status: "done",
     priority: "medium",
-    progress: 0,
+    progress: 100,
     attachments: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date(Date.now() - 10 * 86400000),
+    updatedAt: new Date(Date.now() - 172800000),
   },
 ];
 
-let localTasks = [...mockTasks];
 let nextId = 6;
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -81,8 +80,8 @@ export const taskApi = {
   async getTasks(boardId?: string): Promise<Task[]> {
     if (USE_MOCK) {
       await delay(400);
-      if (boardId) return localTasks.filter((t) => t.boardId === boardId);
-      return [...localTasks];
+      if (boardId) return mockTasks.filter((t) => t.boardId === boardId);
+      return [...mockTasks];
     }
     const url = boardId ? `${API_BASE}/tasks?boardId=${boardId}` : `${API_BASE}/tasks`;
     const res = await fetch(url);
@@ -93,9 +92,9 @@ export const taskApi = {
 
   async createTask(data: CreateTaskData & { boardId: string }): Promise<Task> {
     if (USE_MOCK) {
-      await delay(200);
+      await delay(300);
       const task: Task = {
-        id: String(nextId++),
+        id: `task-${nextId++}`,
         boardId: data.boardId,
         title: data.title,
         description: data.description,
@@ -106,7 +105,7 @@ export const taskApi = {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      localTasks.push(task);
+      mockTasks.push(task);
       return task;
     }
     const res = await fetch(`${API_BASE}/tasks`, {
@@ -121,14 +120,18 @@ export const taskApi = {
 
   async updateTask(id: string, data: UpdateTaskData): Promise<Task> {
     if (USE_MOCK) {
-      await delay(150);
-      const idx = localTasks.findIndex((t) => t.id === id);
-      if (idx === -1) throw new Error("Task not found");
-      localTasks[idx] = { ...localTasks[idx], ...data, updatedAt: new Date() };
-      return { ...localTasks[idx] };
+      await delay(200);
+      const index = mockTasks.findIndex((t) => t.id === id);
+      if (index === -1) throw new Error("Task not found");
+      mockTasks[index] = {
+        ...mockTasks[index],
+        ...data,
+        updatedAt: new Date(),
+      };
+      return mockTasks[index];
     }
     const res = await fetch(`${API_BASE}/tasks/${id}`, {
-      method: "PUT",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
@@ -139,8 +142,9 @@ export const taskApi = {
 
   async deleteTask(id: string): Promise<void> {
     if (USE_MOCK) {
-      await delay(150);
-      localTasks = localTasks.filter((t) => t.id !== id);
+      await delay(200);
+      const index = mockTasks.findIndex((t) => t.id === id);
+      if (index !== -1) mockTasks.splice(index, 1);
       return;
     }
     const res = await fetch(`${API_BASE}/tasks/${id}`, { method: "DELETE" });

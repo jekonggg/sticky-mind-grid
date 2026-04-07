@@ -3,11 +3,7 @@ import { Plus, Search, Home, PanelRightClose, PanelRightOpen } from "lucide-reac
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 
-interface BoardHeaderProps {
-  onAddTask: () => void;
-}
-
-interface AppHeaderProps extends BoardHeaderProps {
+interface AppHeaderProps {
   search?: string;
   onSearchChange?: (val: string) => void;
   isActivityOpen?: boolean;
@@ -15,7 +11,6 @@ interface AppHeaderProps extends BoardHeaderProps {
 }
 
 export function BoardHeader({ 
-  onAddTask, 
   search = "",
   onSearchChange,
 }: AppHeaderProps) {
@@ -51,19 +46,14 @@ export function BoardHeader({
           <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center">
              <div className="w-2.5 h-2.5 border-2 border-white rounded-sm" />
           </div>
-          <h1 className="text-base font-black text-foreground tracking-tight leading-none uppercase italic">
+          <h1 className="text-base font-black text-foreground tracking-tight leading-none uppercase italic text-center">
             Sticky Mind <span className="text-primary not-italic">Grid</span>
           </h1>
         </div>
       </div>
 
-      {/* Right: Actions */}
+      {/* Right: Actions (Empty for now to balance) */}
       <div className="flex items-center justify-end gap-3 w-1/3">
-        <Button size="sm" onClick={onAddTask} className="h-9 gap-1.5 font-bold shadow-lg shadow-primary/10 rounded-full px-5 transition-all hover:scale-[1.02] active:scale-100">
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Add Task</span>
-          <span className="sm:hidden text-xs">New</span>
-        </Button>
       </div>
     </header>
   );
