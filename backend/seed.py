@@ -1,56 +1,125 @@
 from app import create_app, db
 from app.models.board import Board
 from app.models.task import Task
-from datetime import datetime
-import time
+from app.models.activity import Activity
+from datetime import datetime, timedelta
+import uuid
 
 app = create_app()
+
+def generate_id():
+    return str(uuid.uuid4())
 
 def seed_database():
     with app.app_context():
         # Clear existing data
+        print("Clearing database...")
         db.drop_all()
         db.create_all()
 
-        print("Seeding Boards...")
-        default_columns = [
-            {"id": "todo", "title": "To Do"},
-            {"id": "in_progress", "title": "In Progress"},
-            {"id": "done", "title": "Done"},
-            {"id": "archive", "title": "Archive"}
-        ]
+        print("Seeding Strategic Showcase Board...")
         
+        # CURRENT TIME as base
+        now = datetime(2026, 4, 8, 10, 0, 0)
+        
+        # Board 0: PRIMARY SHOWCASE (To fulfill requirement & show off)
+        # We use a later timestamp to ensure it's first
+        board0 = Board(
+            id="board-showcase",
+            name="🚀 Showcase: Sticky Mind Grid Core",
+            description="Demonstrating the full Trello-style cycle: ticket creation, stage transitions (To Do ➔ Done), and persistent audit trails.",
+            color="bg-primary",
+            hero_image_url="https://images.unsplash.com/photo-1484417894907-623942c8ee29?q=80&w=1200&auto=format&fit=crop",
+            columns=[
+                {"id": "todo", "title": "📝 To Do"},
+                {"id": "in_progress", "title": "⏳ In Progress"},
+                {"id": "qa", "title": "🔍 Quality Assurance"},
+                {"id": "done", "title": "✅ Done"},
+                {"id": "archive", "title": "📦 Archive"}
+            ],
+            created_at=now + timedelta(minutes=10),
+            updated_at=now + timedelta(minutes=10)
+        )
+
+        print("Seeding Support Boards...")
+        
+        # Board 1: Product Roadmap
         board1 = Board(
             id="board-1",
-            name="Product Launch",
-            description="Q3 product launch planning and execution",
-            color="bg-blue-500",
-            hero_image_url="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=800&auto=format&fit=crop",
-            columns=default_columns
+            name="🏗️ Platform Engine - Road Map",
+            description="Engineering roadmap for foundational platform services.",
+            color="bg-indigo-600",
+            hero_image_url="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1200&auto=format&fit=crop",
+            columns=[
+                {"id": "backlog", "title": "📂 Backlog"},
+                {"id": "design", "title": "📐 Architecture"},
+                {"id": "implementation", "title": "👨‍💻 Implementation"},
+                {"id": "testing", "title": "🧪 QA/Testing"},
+                {"id": "done", "title": "🚀 Released"}
+            ],
+            created_at=now,
+            updated_at=now
         )
+
+        # Board 2: Growth Strategy
         board2 = Board(
             id="board-2",
-            name="Engineering Sprint",
-            description="Current sprint tasks and bugs",
-            color="bg-purple-500",
-            hero_image_url="https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?q=80&w=800&auto=format&fit=crop",
-            columns=default_columns
+            name="📈 Q4 Marketing Strategy",
+            description="Growth campaign to increase user acquisition by 30%.",
+            color="bg-rose-500",
+            hero_image_url="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1200&auto=format&fit=crop",
+            columns=[
+                {"id": "todo", "title": "📋 To Do"},
+                {"id": "content", "title": "🎨 Content Creation"},
+                {"id": "review", "title": "⚖️ Legal Review"},
+                {"id": "active", "title": "🔥 Running Ads"}
+            ],
+            created_at=now - timedelta(minutes=5),
+            updated_at=now - timedelta(minutes=5)
         )
-        
-        db.session.add_all([board1, board2])
+
+        db.session.add_all([board0, board1, board2])
         db.session.commit()
 
-        print("Seeding Tasks...")
-        task1 = Task(id="1", board_id="board-1", title="Design landing page", description="Create wireframes and high-fidelity mockups for the new landing page.", status="todo", priority="high", progress=0)
-        task2 = Task(id="task-2", board_id="board-1", title="Feature prioritization", description="Align with stakeholders on Q3 roadmap", status="in_progress", priority="medium", progress=0)
-        task3 = Task(id="task-3", board_id="board-1", title="Design mocks review", description="Finalize visual language for the dashboard", status="todo", priority="high", progress=0)
-        task4 = Task(id="task-4", board_id="board-2", title="Setup CI/CD pipeline", status="todo", priority="low", progress=0)
-        task5 = Task(id="task-5", board_id="board-2", title="API documentation", description="Export Swagger definitions for core services", status="done", priority="medium", progress=100)
+        print("Seeding Showcase Tasks...")
+        showcase_tasks = [
+            Task(id=generate_id(), board_id="board-showcase", title="Move me to 'Done'!", description="Drag this ticket across columns to see the progress auto-snap (0% ➔ 30% ➔ 100%).", status="todo", priority="high", progress=0, due_date=now + timedelta(days=2)),
+            Task(id=generate_id(), board_id="board-showcase", title="Check my History sidebar", description="I've already been moved once. Click me to see my journey in the Recent Activity feed.", status="in_progress", priority="medium", progress=30),
+            Task(id=generate_id(), board_id="board-showcase", title="Dynamic Dashboard Insights", description="Look at the 'Overview' tab! It has already adapted to include 'Quality Assurance' as a state.", status="qa", priority="low", progress=60),
+            Task(id=generate_id(), board_id="board-showcase", title="Full-Scale Image Support", description="I'm a ticket with detailed content. My parent board uses LONGTEXT for that 4K hero image above.", status="done", priority="medium", progress=100, due_date=now - timedelta(days=1)),
+        ]
 
-        db.session.add_all([task1, task2, task3, task4, task5])
+        print("Seeding Engineering Tasks...")
+        tasks1 = [
+            Task(id=generate_id(), board_id="board-1", title="Define GraphQL Mesh Schema", status="design", priority="high", progress=30, due_date=now + timedelta(days=5)),
+            Task(id=generate_id(), board_id="board-1", title="OAuth2.0 Flow Integration", status="implementation", priority="high", progress=60, due_date=now + timedelta(days=12)),
+            Task(id=generate_id(), board_id="board-1", title="Audit logging middleware", status="implementation", priority="medium", progress=45),
+            Task(id=generate_id(), board_id="board-1", title="Dockerize legacy services", status="backlog", priority="low", progress=0),
+        ]
+
+        print("Seeding Marketing Tasks...")
+        tasks2 = [
+            Task(id=generate_id(), board_id="board-2", title="Influencer Outreach List", status="content", priority="high", progress=40, due_date=now + timedelta(days=4)),
+            Task(id=generate_id(), board_id="board-2", title="A/B Test Landing Page Hero", status="todo", priority="low", progress=0, due_date=now + timedelta(days=1)),
+        ]
+
+        db.session.add_all(showcase_tasks + tasks1 + tasks2)
+        db.session.commit()
+
+        # Seed initial showcase activities
+        print("Seeding Audit Trail...")
+        activities = [
+            Activity(id=generate_id(), board_id="board-showcase", type="create", task_title="Move me to 'Done'!", message="Created task StickyMind Requirement", timestamp=now),
+            Activity(id=generate_id(), board_id="board-showcase", type="move", task_title="Check my History sidebar", message="Moved from To Do ➔ In Progress", timestamp=now + timedelta(minutes=1)),
+            Activity(id=generate_id(), board_id="board-showcase", type="update", task_title="Full-Scale Image Support", message="Set due date to April 7, 2026", timestamp=now + timedelta(minutes=2)),
+        ]
+        db.session.add_all(activities)
         db.session.commit()
         
-        print("Database seeding completed.")
+        print("Final reseeding completed. Showcase is LIVE and FIRST.")
+
+if __name__ == "__main__":
+    seed_database()
 
 if __name__ == "__main__":
     seed_database()
