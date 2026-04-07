@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -21,8 +21,22 @@ import { BoardHeader } from "./BoardHeader";
 import { Loader2, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useParams, useNavigate } from "react-router-dom";
+import { boardApi } from "@/services/boardApi";
 
 export function KanbanBoard() {
+  const { boardId } = useParams<{ boardId: string }>();
+  const navigate = useNavigate();
+  const [boardName, setBoardName] = useState("");
+
+  useEffect(() => {
+    if (!boardId) { navigate("/"); return; }
+    boardApi.getBoard(boardId).then((b) => {
+      if (!b) { navigate("/"); return; }
+      setBoardName(b.name);
+    });
+  }, [boardId, navigate]);
+
   const {
     loading,
     tasks,
@@ -33,7 +47,7 @@ export function KanbanBoard() {
     deleteTask,
     addColumn,
     getTasksByStatus,
-  } = useTasks();
+  } = useTasks(boardId || "");
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
