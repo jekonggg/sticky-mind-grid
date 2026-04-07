@@ -1,18 +1,17 @@
-import { Task, CreateTaskData, UpdateTaskData, TaskStatus } from "@/types/task";
+import { Task, CreateTaskData, UpdateTaskData } from "@/types/task";
 
 const API_BASE = "/api";
 
-// Helper to convert JSON task to Task with Date objects
 const mapTask = (task: any): Task => ({
   ...task,
   createdAt: new Date(task.createdAt),
   updatedAt: new Date(task.updatedAt),
 });
 
-// Mock data for development
 const mockTasks: Task[] = [
   {
     id: "1",
+    boardId: "board-1",
     title: "Design landing page",
     description: "Create wireframes and high-fidelity mockups for the new landing page.",
     status: "todo",
@@ -23,6 +22,7 @@ const mockTasks: Task[] = [
   },
   {
     id: "2",
+    boardId: "board-1",
     title: "Set up CI/CD pipeline",
     description: "Configure GitHub Actions for automated testing and deployment.",
     status: "todo",
@@ -33,6 +33,7 @@ const mockTasks: Task[] = [
   },
   {
     id: "3",
+    boardId: "board-1",
     title: "Implement auth flow",
     description: "Build login and signup pages with form validation.",
     status: "in_progress",
@@ -43,6 +44,7 @@ const mockTasks: Task[] = [
   },
   {
     id: "4",
+    boardId: "board-2",
     title: "Write API documentation",
     status: "in_progress",
     priority: "low",
@@ -52,6 +54,7 @@ const mockTasks: Task[] = [
   },
   {
     id: "5",
+    boardId: "board-2",
     title: "Database schema review",
     description: "Review and optimize current database schema for performance.",
     status: "done",
@@ -67,26 +70,28 @@ let nextId = 6;
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// Set USE_MOCK to false when backend is available
 const USE_MOCK = true;
 
 export const taskApi = {
-  async getTasks(): Promise<Task[]> {
+  async getTasks(boardId?: string): Promise<Task[]> {
     if (USE_MOCK) {
       await delay(400);
+      if (boardId) return localTasks.filter((t) => t.boardId === boardId);
       return [...localTasks];
     }
-    const res = await fetch(`${API_BASE}/tasks`);
+    const url = boardId ? `${API_BASE}/tasks?boardId=${boardId}` : `${API_BASE}/tasks`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to fetch tasks");
     const data = await res.json();
     return data.map(mapTask);
   },
 
-  async createTask(data: CreateTaskData): Promise<Task> {
+  async createTask(data: CreateTaskData & { boardId: string }): Promise<Task> {
     if (USE_MOCK) {
       await delay(200);
       const task: Task = {
         id: String(nextId++),
+        boardId: data.boardId,
         title: data.title,
         description: data.description,
         status: "todo",
@@ -113,11 +118,7 @@ export const taskApi = {
       await delay(150);
       const idx = localTasks.findIndex((t) => t.id === id);
       if (idx === -1) throw new Error("Task not found");
-      localTasks[idx] = {
-        ...localTasks[idx],
-        ...data,
-        updatedAt: new Date(),
-      };
+      localTasks[idx] = { ...localTasks[idx], ...data, updatedAt: new Date() };
       return { ...localTasks[idx] };
     }
     const res = await fetch(`${API_BASE}/tasks/${id}`, {

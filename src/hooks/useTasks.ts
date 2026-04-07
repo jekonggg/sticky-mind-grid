@@ -10,7 +10,7 @@ const DEFAULT_COLUMNS: Column[] = [
   { id: "archive", title: "Archive" },
 ];
 
-export function useTasks() {
+export function useTasks(boardId: string) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [columns, setColumns] = useState<Column[]>(DEFAULT_COLUMNS);
   const [loading, setLoading] = useState(true);
@@ -19,25 +19,25 @@ export function useTasks() {
   const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await taskApi.getTasks();
+      const data = await taskApi.getTasks(boardId);
       setTasks(data);
     } catch (err) {
       console.error("Failed to fetch tasks:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [boardId]);
 
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
 
   const addTask = useCallback(async (data: CreateTaskData) => {
-    const task = await taskApi.createTask(data);
+    const task = await taskApi.createTask({ ...data, boardId });
     setTasks((prev) => [...prev, task]);
     addActivity("create", task.title, `Created task "${task.title}"`);
     return task;
-  }, [addActivity]);
+  }, [addActivity, boardId]);
 
   const updateTask = useCallback(async (id: string, data: UpdateTaskData) => {
     const task = tasks.find((t) => t.id === id);
@@ -59,7 +59,6 @@ export function useTasks() {
   const moveTask = useCallback(async (id: string, status: TaskStatus) => {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
-
     if (task.status === status) return;
 
     setTasks((prev) =>

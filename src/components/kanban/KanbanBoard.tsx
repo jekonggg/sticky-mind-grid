@@ -145,7 +145,7 @@ export function KanbanBoard() {
 
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden font-sans">
-      <BoardHeader onAddTask={openNewModal} onOpenActivity={() => setIsActivityOpen(true)} />
+      <BoardHeader onAddTask={openNewModal} onOpenActivity={() => setIsActivityOpen(true)} boardName={boardName} />
 
       <div className="flex flex-1 overflow-hidden min-h-0 relative group/board">
         {/* Scroll Buttons */}

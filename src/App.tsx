@@ -3,12 +3,12 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import BoardsOverview from "./pages/BoardsOverview";
+import NotFound from "./pages/NotFound";
+import { ActivityProvider } from "./hooks/useActivity";
+import { KanbanBoard } from "./components/kanban/KanbanBoard";
 
 const queryClient = new QueryClient();
-
-import { ActivityProvider } from "./hooks/useActivity";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -18,7 +18,8 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<BoardsOverview />} />
+            <Route path="/boards/:boardId" element={<KanbanBoard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
