@@ -38,9 +38,23 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
           <GripVertical className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-sm text-card-foreground leading-snug">{task.title}</h4>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <h4 className="font-medium text-sm text-card-foreground leading-snug">{task.title}</h4>
+            <span
+              className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded shrink-0
+                ${
+                  task.priority === "high"
+                    ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                    : task.priority === "medium"
+                    ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                    : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                }`}
+            >
+              {task.priority}
+            </span>
+          </div>
           {task.description && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
               {task.description}
             </p>
           )}

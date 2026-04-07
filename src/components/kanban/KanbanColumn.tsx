@@ -12,7 +12,7 @@ interface KanbanColumnProps {
 
 const columnConfig: Record<TaskStatus, { dot: string }> = {
   todo: { dot: "bg-muted-foreground" },
-  "in-progress": { dot: "bg-primary" },
+  in_progress: { dot: "bg-primary" },
   done: { dot: "bg-green-500" },
 };
 

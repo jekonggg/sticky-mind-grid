@@ -20,7 +20,7 @@ import { Loader2 } from "lucide-react";
 
 const columns: { id: TaskStatus; title: string }[] = [
   { id: "todo", title: "To Do" },
-  { id: "in-progress", title: "In Progress" },
+  { id: "in_progress", title: "In Progress" },
   { id: "done", title: "Done" },
 ];
 

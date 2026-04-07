@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Task, CreateTaskData } from "@/types/task";
+import { Task, CreateTaskData, Priority } from "@/types/task";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ interface TaskModalProps {
 export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<Priority>("medium");
 
   const isEditing = !!task;
 
@@ -31,16 +32,22 @@ export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModal
     if (task) {
       setTitle(task.title);
       setDescription(task.description || "");
+      setPriority(task.priority);
     } else {
       setTitle("");
       setDescription("");
+      setPriority("medium");
     }
   }, [task, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    onSubmit({ title: title.trim(), description: description.trim() || undefined });
+    onSubmit({
+      title: title.trim(),
+      description: description.trim() || undefined,
+      priority,
+    });
     onClose();
   };
 
@@ -72,7 +79,27 @@ export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModal
               rows={3}
             />
           </div>
-          <DialogFooter className="flex items-center !justify-between">
+          <div className="space-y-2">
+            <Label>Priority</Label>
+            <div className="flex gap-2">
+              {(["low", "medium", "high"] as Priority[]).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPriority(p)}
+                  className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-md border transition-all
+                    ${
+                      priority === p
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-input hover:border-primary/50"
+                    }`}
+                >
+                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter className="flex items-center !justify-between pt-2">
             {isEditing && onDelete ? (
               <Button
                 type="button"

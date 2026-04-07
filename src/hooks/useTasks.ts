@@ -31,7 +31,7 @@ export function useTasks() {
   const updateTask = useCallback(async (id: string, data: UpdateTaskData) => {
     // Optimistic update
     setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...data, updatedAt: new Date().toISOString() } : t))
+      prev.map((t) => (t.id === id ? { ...t, ...data, updatedAt: new Date() } : t))
     );
     try {
       await taskApi.updateTask(id, data);
@@ -42,7 +42,7 @@ export function useTasks() {
 
   const moveTask = useCallback(async (id: string, status: TaskStatus) => {
     setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status, updatedAt: new Date().toISOString() } : t))
+      prev.map((t) => (t.id === id ? { ...t, status, updatedAt: new Date() } : t))
     );
     try {
       await taskApi.updateTask(id, { status });
