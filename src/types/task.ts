@@ -8,6 +8,8 @@ export interface Task {
   description?: string;
   status: TaskStatus;
   priority: Priority;
+  assignedTo?: string;
+  dueDate?: Date;
   attachments?: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -17,6 +19,8 @@ export interface CreateTaskData {
   title: string;
   description?: string;
   priority: Priority;
+  assignedTo?: string;
+  dueDate?: Date;
   attachments?: string[];
 }
 
@@ -25,6 +29,8 @@ export interface UpdateTaskData {
   description?: string;
   status?: TaskStatus;
   priority?: Priority;
+  assignedTo?: string;
+  dueDate?: Date;
   attachments?: string[];
 }
 

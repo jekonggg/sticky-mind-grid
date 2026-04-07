@@ -25,6 +25,7 @@ export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModal
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
+  const [dueDate, setDueDate] = useState<string>("");
   const [attachments, setAttachments] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -35,11 +36,13 @@ export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModal
       setTitle(task.title);
       setDescription(task.description || "");
       setPriority(task.priority);
+      setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "");
       setAttachments(task.attachments || []);
     } else {
       setTitle("");
       setDescription("");
       setPriority("medium");
+      setDueDate("");
       setAttachments([]);
     }
   }, [task, open]);
@@ -68,6 +71,7 @@ export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModal
       title: title.trim(),
       description: description.trim() || undefined,
       priority,
+      dueDate: dueDate ? new Date(dueDate) : undefined,
       attachments,
     });
     onClose();
@@ -75,18 +79,18 @@ export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModal
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit Task" : "New Task"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Task title…"
+              placeholder="Task name…"
               autoFocus
               required
             />
@@ -97,32 +101,45 @@ export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModal
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional description…"
+              placeholder="What needs to be done?"
               rows={3}
             />
           </div>
-          <div className="space-y-2">
-            <Label>Priority</Label>
-            <div className="flex gap-2">
-              {(["low", "medium", "high"] as Priority[]).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPriority(p)}
-                  className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-md border transition-all
-                    ${
-                      priority === p
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background text-muted-foreground border-input hover:border-primary/50"
-                    }`}
-                >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
-                </button>
-              ))}
-            </div>
+
+          <div className="grid grid-cols-2 gap-4">
+             <div className="space-y-2">
+                <Label>Priority</Label>
+                <div className="flex gap-1.5 p-1 bg-muted rounded-lg">
+                  {(["low", "medium", "high"] as Priority[]).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPriority(p)}
+                      className={`flex-1 py-1 px-2 text-[10px] font-black uppercase tracking-tighter rounded-md transition-all
+                        ${
+                          priority === p
+                            ? "bg-background text-foreground shadow-sm ring-1 ring-border/50"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+             </div>
+             <div className="space-y-2">
+                <Label htmlFor="due-date">Due Date</Label>
+                <Input
+                   id="due-date"
+                   type="date"
+                   value={dueDate}
+                   onChange={(e) => setDueDate(e.target.value)}
+                   className="h-9 py-1 px-3 text-xs font-bold"
+                />
+             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 pt-2 border-t">
             <Label>Attachments</Label>
             <div className="grid grid-cols-3 gap-2">
               {attachments.map((src, i) => (
@@ -140,10 +157,10 @@ export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModal
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="aspect-square flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-muted-foreground/50 hover:border-primary hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary"
+                className="aspect-square flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-muted-foreground/30 hover:border-primary hover:bg-primary/5 transition-all text-muted-foreground/60 hover:text-primary"
               >
-                <ImagePlus className="h-5 w-5" />
-                <span className="text-[10px]">Add Image</span>
+                <ImagePlus className="h-4 w-4" />
+                <span className="text-[9px] font-bold">Upload</span>
               </button>
             </div>
             <input
@@ -156,30 +173,30 @@ export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModal
             />
           </div>
 
-          <DialogFooter className="flex items-center !justify-between pt-4 border-t">
+          <DialogFooter className="flex items-center !justify-between pt-5 border-t">
             {isEditing && onDelete ? (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                className="h-9 px-3 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs font-bold"
                 onClick={() => {
                   onDelete(task.id);
                   onClose();
                 }}
               >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Delete
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                Delete Task
               </Button>
             ) : (
               <div />
             )}
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>
+              <Button type="button" variant="outline" size="sm" className="h-9 px-4 font-bold text-xs" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={!title.trim()}>
-                {isEditing ? "Save" : "Add Task"}
+              <Button type="submit" size="sm" className="h-9 px-4 font-bold text-xs" disabled={!title.trim()}>
+                {isEditing ? "Update Task" : "Create Task"}
               </Button>
             </div>
           </DialogFooter>

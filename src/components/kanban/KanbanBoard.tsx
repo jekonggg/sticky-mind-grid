@@ -28,6 +28,11 @@ import { BoardHeroImage } from "../boards/BoardHeroImage";
 import { BoardModal } from "../boards/BoardModal";
 import { toast } from "sonner";
 
+import { BoardOverview } from "./BoardOverview";
+import { TaskListView } from "./TaskListView";
+import { CalendarView } from "./CalendarView";
+import { DocumentsView } from "./DocumentsView";
+
 export function KanbanBoard() {
   const { boardId } = useParams<{ boardId: string }>();
   const navigate = useNavigate();
@@ -65,6 +70,7 @@ export function KanbanBoard() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isActivityOpen, setIsActivityOpen] = useState(true); // Default open
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeView, setActiveView] = useState<"overview" | "list" | "board" | "calendar" | "documents">("board");
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -161,6 +167,13 @@ export function KanbanBoard() {
     );
   }, [getTasksByStatus, searchTerm]);
 
+  // All tasks matching search (for non-kanban views)
+  const filteredAllTasks = tasks.filter(t => 
+    !searchTerm.trim() || 
+    t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   if (loading || !board) {
     return (
       <div className="flex flex-col h-screen bg-background">
@@ -172,101 +185,107 @@ export function KanbanBoard() {
     );
   }
 
+  const views = [
+    { id: "overview", label: "Overview" },
+    { id: "board", label: "Board" },
+    { id: "list", label: "List" },
+    { id: "calendar", label: "Calendar" },
+    { id: "documents", label: "Documents" },
+  ] as const;
+
+  const renderActiveView = () => {
+    switch (activeView) {
+      case "overview":
+        return <BoardOverview board={board} tasks={tasks} />;
+      case "list":
+        return <TaskListView tasks={filteredAllTasks} onTaskClick={handleTaskClick} />;
+      case "calendar":
+        return <CalendarView tasks={filteredAllTasks} onTaskClick={handleTaskClick} />;
+      case "documents":
+        return <DocumentsView tasks={filteredAllTasks} onTaskClick={handleTaskClick} />;
+      case "board":
+      default:
+        return (
+          <main ref={scrollRef} className="p-6 md:p-8 overflow-x-auto h-full">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCorners}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="flex gap-6 md:gap-8 h-full min-w-max pb-4">
+                {columns
+                  .filter((col) => col.id !== "archive")
+                  .map((col) => (
+                    <KanbanColumn
+                      key={col.id}
+                      id={col.id}
+                      title={col.title}
+                      tasks={filteredTasksByStatus(col.id)}
+                      onTaskClick={handleTaskClick}
+                      onRename={handleRenameColumn}
+                    />
+                  ))}
+
+                <div className="w-80 shrink-0">
+                  <button
+                    onClick={handleAddNewState}
+                    className="w-full flex items-center justify-center gap-2 p-4 text-muted-foreground hover:text-foreground hover:bg-background rounded-xl border border-dashed border-border/60 transition-all group bg-white/40"
+                  >
+                    <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
+                    <span className="text-sm font-bold">New State</span>
+                  </button>
+                </div>
+              </div>
+
+              <DragOverlay>
+                {activeTask ? (
+                  <div className="drag-overlay">
+                    <TaskCard task={activeTask} onClick={() => {}} />
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          </main>
+        );
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden font-sans">
-      <BoardHeader
-        onAddTask={openNewModal}
-        search={searchTerm}
-        onSearchChange={setSearchTerm}
-      />
+      <BoardHeader onAddTask={openNewModal} search={searchTerm} onSearchChange={setSearchTerm} />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Side: Scrollable (Hero + Task Grid) */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 custom-scrollbar flex flex-col">
-          {/* Expanded Hero Image */}
-          <div className="relative h-48 md:h-64 shrink-0 overflow-hidden">
-            <BoardHeroImage
-              src={board.heroImageUrl}
-              alt={board.name}
-              color={board.color}
-              className="h-full w-full"
-              aspectRatio="auto"
-            />
+          <div className="relative h-48 md:h-56 shrink-0 overflow-hidden">
+            <BoardHeroImage src={board.heroImageUrl} alt={board.name} color={board.color} className="h-full w-full" aspectRatio="auto" />
           </div>
 
-          {/* Board Title & Description Section (Below Image) */}
-          <div className="px-6 py-8 md:px-10 bg-background border-b border-border/50 shrink-0">
-            <div className="flex flex-col gap-1.5 max-w-4xl">
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
-                  {board.name}
-                </h1>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-9 w-9 rounded-full hover:bg-muted transition-colors shrink-0"
-                  onClick={() => setIsBoardModalOpen(true)}
-                  title="Board Settings"
-                >
-                  <Settings className="h-5 w-5 text-muted-foreground" />
-                </Button>
+          <div className="bg-background border-b border-border/50 shrink-0">
+            <div className="px-6 py-6 md:px-10 flex flex-col gap-6 max-w-6xl">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">{board.name}</h1>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-muted transition-colors shrink-0" onClick={() => setIsBoardModalOpen(true)} title="Board Settings">
+                    <Settings className="h-5 w-5 text-muted-foreground" />
+                  </Button>
+                </div>
+                {board.description && <p className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-2xl text-pretty">{board.description}</p>}
               </div>
-              {board.description && (
-                <p className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-2xl text-pretty">
-                  {board.description}
-                </p>
-              )}
+
+              <div className="flex items-center gap-1 border-b border-border w-fit -mb-6">
+                {views.map((view) => (
+                  <button key={view.id} onClick={() => setActiveView(view.id)} className={`px-4 py-2 text-sm font-bold transition-all relative ${activeView === view.id ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                    {view.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Kanban Workspace Grid */}
           <div className="flex-1 bg-muted/20 min-h-[500px]">
-            <main
-              ref={scrollRef}
-              className="p-6 md:p-8 overflow-x-auto h-full"
-            >
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCorners}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDragEnd={handleDragEnd}
-              >
-                <div className="flex gap-6 md:gap-8 h-full min-w-max pb-4">
-                  {columns
-                    .filter(col => col.id !== "archive")
-                    .map((col) => (
-                      <KanbanColumn
-                        key={col.id}
-                        id={col.id}
-                        title={col.title}
-                        tasks={filteredTasksByStatus(col.id)}
-                        onTaskClick={handleTaskClick}
-                        onRename={handleRenameColumn}
-                      />
-                  ))}
-
-                  {/* Add Column Button */}
-                  <div className="w-80 shrink-0">
-                    <button
-                      onClick={handleAddNewState}
-                      className="w-full flex items-center justify-center gap-2 p-4 text-muted-foreground hover:text-foreground hover:bg-background rounded-xl border border-dashed border-border/60 transition-all group bg-white/40"
-                    >
-                      <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
-                      <span className="text-sm font-bold">New State</span>
-                    </button>
-                  </div>
-                </div>
-
-                <DragOverlay>
-                  {activeTask ? (
-                    <div className="drag-overlay">
-                      <TaskCard task={activeTask} onClick={() => {}} />
-                    </div>
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
-            </main>
+            {renderActiveView()}
           </div>
         </div>
 
