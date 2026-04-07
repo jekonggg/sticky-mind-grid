@@ -23,3 +23,13 @@ export interface UpdateTaskData {
   status?: TaskStatus;
   priority?: Priority;
 }
+
+export type ActivityType = "create" | "move" | "update" | "delete";
+
+export interface Activity {
+  id: string;
+  type: ActivityType;
+  taskTitle: string;
+  message: string;
+  timestamp: Date;
+}
