@@ -1,12 +1,11 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { Activity, ActivityType } from "@/types/task";
-import { useParams } from "react-router-dom";
 
 interface ActivityContextType {
   activities: Activity[];
   addActivity: (type: ActivityType, taskTitle: string, message: string, boardId?: string) => void;
   clearActivities: () => void;
-  refreshActivities: () => void;
+  setBoardId: (boardId: string | null) => void;
 }
 
 const ActivityContext = createContext<ActivityContextType | undefined>(undefined);
@@ -15,9 +14,9 @@ const API_BASE = "http://127.0.0.1:5000/api";
 
 export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activities, setActivities] = useState<Activity[]>([]);
-  const { boardId: paramBoardId } = useParams<{ boardId: string }>();
+  const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
 
-  const fetchActivities = useCallback(async (boardId?: string) => {
+  const fetchActivities = useCallback(async (boardId: string | null) => {
     try {
       const url = boardId ? `${API_BASE}/activities?boardId=${boardId}` : `${API_BASE}/activities`;
       const res = await fetch(url);
@@ -34,11 +33,15 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   useEffect(() => {
-    fetchActivities(paramBoardId);
-  }, [paramBoardId, fetchActivities]);
+    fetchActivities(currentBoardId);
+  }, [currentBoardId, fetchActivities]);
+
+  const setBoardId = useCallback((id: string | null) => {
+    setCurrentBoardId(id);
+  }, []);
 
   const addActivity = useCallback(async (type: ActivityType, taskTitle: string, message: string, boardId?: string) => {
-    const finalBoardId = boardId || paramBoardId;
+    const finalBoardId = boardId || currentBoardId;
     
     // Optimistic update
     const tempActivity: Activity = {
@@ -48,7 +51,11 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       message,
       timestamp: new Date(),
     };
-    setActivities((prev) => [tempActivity, ...prev].slice(0, 50));
+    
+    // Only show in local state if it belongs to current filter
+    if (!currentBoardId || currentBoardId === finalBoardId) {
+      setActivities((prev) => [tempActivity, ...prev].slice(0, 50));
+    }
 
     try {
       await fetch(`${API_BASE}/activities`, {
@@ -61,24 +68,24 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           boardId: finalBoardId
         }),
       });
-      fetchActivities(finalBoardId); // Refresh with actual server data
+      fetchActivities(currentBoardId); // Refresh with actual server data
     } catch (err) {
       console.error("Failed to post activity:", err);
     }
-  }, [paramBoardId, fetchActivities]);
+  }, [currentBoardId, fetchActivities]);
 
   const clearActivities = useCallback(async () => {
     try {
-      const url = paramBoardId ? `${API_BASE}/activities?boardId=${paramBoardId}` : `${API_BASE}/activities`;
+      const url = currentBoardId ? `${API_BASE}/activities?boardId=${currentBoardId}` : `${API_BASE}/activities`;
       await fetch(url, { method: "DELETE" });
       setActivities([]);
     } catch (err) {
       console.error("Failed to clear activities:", err);
     }
-  }, [paramBoardId]);
+  }, [currentBoardId]);
 
   return (
-    <ActivityContext.Provider value={{ activities, addActivity, clearActivities, refreshActivities: () => fetchActivities(paramBoardId) }}>
+    <ActivityContext.Provider value={{ activities, addActivity, clearActivities, setBoardId }}>
       {children}
     </ActivityContext.Provider>
   );

@@ -50,21 +50,43 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
 
-    // Check what specifically changed for better messaging
-    let message = `Updated task "${task.title}"`;
-    if (data.progress !== undefined && data.progress !== task.progress) {
-      message = `Updated progress of "${task.title}" to ${data.progress}%`;
-    } else if (data.status && data.status !== task.status) {
+    // Comprehensive field change tracking
+    const messages: string[] = [];
+    
+    if (data.title && data.title !== task.title) {
+      messages.push(`Renamed from "${task.title}" to "${data.title}"`);
+    }
+    if (data.status && data.status !== task.status) {
       const oldTitle = columns.find(c => c.id === task.status)?.title || task.status;
       const newTitle = columns.find(c => c.id === data.status)?.title || data.status;
-      message = `Moved "${task.title}" from ${oldTitle} ➔ ${newTitle}`;
+      messages.push(`Moved from ${oldTitle} ➔ ${newTitle}`);
     }
+    if (data.priority && data.priority !== task.priority) {
+      messages.push(`Priority ➔ ${data.priority.toUpperCase()}`);
+    }
+    if (data.progress !== undefined && data.progress !== task.progress) {
+      messages.push(`Progress ➔ ${data.progress}%`);
+    }
+    if (data.dueDate !== undefined) {
+      const newDate = data.dueDate ? new Date(data.dueDate).toLocaleDateString() : 'None';
+      messages.push(`Due Date ➔ ${newDate}`);
+    }
+    if (data.description !== undefined && data.description !== task.description) {
+      messages.push(`Edited description`);
+    }
+    if (data.attachments && data.attachments.length !== task.attachments.length) {
+      const diff = data.attachments.length - task.attachments.length;
+      if (diff > 0) messages.push(`Added ${diff} attachment${diff > 1 ? 's' : ''}`);
+      else messages.push(`Removed ${Math.abs(diff)} attachment${Math.abs(diff) > 1 ? 's' : ''}`);
+    }
+
+    const finalMessage = messages.length > 0 ? messages.join(" | ") : `Updated task details`;
 
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...data, updatedAt: new Date() } : t))
     );
 
-    addActivity("update", task.title, message, boardId);
+    addActivity("update", data.title || task.title, finalMessage, boardId);
 
     try {
       await taskApi.updateTask(id, data);
@@ -85,7 +107,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
       prev.map((t) => (t.id === id ? { ...t, status, updatedAt: new Date() } : t))
     );
 
-    addActivity("move", task.title, `Moved "${task.title}" from ${oldTitle} ➔ ${newTitle}`, boardId);
+    addActivity("move", task.title, `Moved from ${oldTitle} ➔ ${newTitle}`, boardId);
 
     try {
       await taskApi.updateTask(id, { status });

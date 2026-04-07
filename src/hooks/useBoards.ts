@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Board, CreateBoardData, UpdateBoardData } from "@/types/board";
 import { boardApi } from "@/services/boardApi";
 import { toast } from "sonner";
+import { useActivity } from "./useActivity";
 
 export type SortOption = "updated" | "name" | "created";
 
@@ -10,6 +11,7 @@ export function useBoards() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("updated");
+  const { addActivity } = useActivity();
 
   const fetchBoards = useCallback(async () => {
     try {
@@ -31,34 +33,40 @@ export function useBoards() {
     try {
       const board = await boardApi.createBoard(data);
       setBoards((prev) => [...prev, board]);
+      addActivity("create", board.name, `New board "${board.name}" created`);
       toast.success(`Board "${board.name}" created`);
       return board;
     } catch {
       toast.error("Failed to create board");
     }
-  }, []);
+  }, [addActivity]);
 
   const updateBoard = useCallback(async (id: string, data: UpdateBoardData) => {
     try {
       const board = await boardApi.updateBoard(id, data);
       setBoards((prev) => prev.map((b) => (b.id === id ? board : b)));
+      addActivity("update", board.name, `Board settings updated for "${board.name}"`);
       toast.success(`Board "${board.name}" updated`);
       return board;
     } catch {
       toast.error("Failed to update board");
     }
-  }, []);
+  }, [addActivity]);
 
   const deleteBoard = useCallback(async (id: string) => {
     const board = boards.find((b) => b.id === id);
+    if (!board) return;
+    
     setBoards((prev) => prev.filter((b) => b.id !== id));
-    toast.success(`Board "${board?.name}" deleted`);
+    addActivity("delete", board.name, `Board "${board.name}" permanently deleted`);
+    toast.success(`Board "${board.name}" deleted`);
+    
     try {
       await boardApi.deleteBoard(id);
     } catch {
       fetchBoards();
     }
-  }, [boards, fetchBoards]);
+  }, [boards, fetchBoards, addActivity]);
 
   const filteredBoards = useMemo(() => {
     let result = boards;

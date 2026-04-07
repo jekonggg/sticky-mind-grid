@@ -18,9 +18,8 @@ import { TaskModal } from "./TaskModal";
 import { LatestChangesPanel } from "./LatestChangesPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BoardHeader } from "./BoardHeader";
-import { Loader2, Plus, Home, PanelRightClose, PanelRightOpen, Settings } from "lucide-react";
+import { Loader2, Plus, PanelRightClose, PanelRightOpen, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useParams, useNavigate } from "react-router-dom";
 import { boardApi } from "@/services/boardApi";
 import { Board } from "@/types/board";
@@ -32,6 +31,8 @@ import { BoardOverview } from "./BoardOverview";
 import { TaskListView } from "./TaskListView";
 import { CalendarView } from "./CalendarView";
 import { DocumentsView } from "./DocumentsView";
+
+import { useActivity } from "@/hooks/useActivity";
 
 export function KanbanBoard() {
   const { boardId } = useParams<{ boardId: string }>();
@@ -61,6 +62,7 @@ export function KanbanBoard() {
     updateTask,
     moveTask,
     deleteTask,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     addColumn,
     getTasksByStatus,
   } = useTasks(boardId || "", board?.columns);
@@ -68,11 +70,19 @@ export function KanbanBoard() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [isActivityOpen, setIsActivityOpen] = useState(true); // Default open
+  const [isActivityOpen, setIsActivityOpen] = useState(true); 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeView, setActiveView] = useState<"overview" | "list" | "board" | "calendar" | "documents">("board");
-
+  
+  const { addActivity, setBoardId } = useActivity();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (boardId) {
+      setBoardId(boardId);
+    }
+    return () => setBoardId(null);
+  }, [boardId, setBoardId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -91,7 +101,11 @@ export function KanbanBoard() {
 
   const handleRenameColumn = async (id: string, newTitle: string) => {
     if (!board) return;
+    const oldTitle = board.columns.find(c => c.id === id)?.title || "Unknown";
+    if (oldTitle === newTitle) return;
+
     const updatedColumns = board.columns.map(c => c.id === id ? { ...c, title: newTitle } : c);
+    addActivity("update", board.name, `Renamed state from "${oldTitle}" ➔ "${newTitle}"`, boardId);
     handleBoardUpdate({ columns: updatedColumns });
   };
 
@@ -102,6 +116,8 @@ export function KanbanBoard() {
     const baseCols = board.columns.filter(c => c.id !== 'archive');
     const updatedColumns = [...baseCols, { id: newId, title: "New State" }];
     if (archiveCol) updatedColumns.push(archiveCol);
+    
+    addActivity("update", board.name, `Added a new workflow state: "New State"`, boardId);
     handleBoardUpdate({ columns: updatedColumns });
   };
 
@@ -193,7 +209,6 @@ export function KanbanBoard() {
     );
   }, [getTasksByStatus, searchTerm]);
 
-  // All tasks matching search (for non-kanban views)
   const filteredAllTasks = tasks.filter(t => 
     !searchTerm.trim() || 
     t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -203,7 +218,7 @@ export function KanbanBoard() {
   if (loading || !board) {
     return (
       <div className="flex flex-col h-screen bg-background">
-      <BoardHeader />
+      <BoardHeader search={searchTerm} onSearchChange={setSearchTerm} />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -283,17 +298,13 @@ export function KanbanBoard() {
       <BoardHeader search={searchTerm} onSearchChange={setSearchTerm} />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Side: Scrollable View Container */}
         <div className="flex-1 overflow-y-scroll overflow-x-hidden min-h-0 custom-scrollbar flex flex-col [scrollbar-gutter:stable]">
           <div className="relative h-48 md:h-56 shrink-0 overflow-hidden">
             <BoardHeroImage src={board.heroImageUrl} alt={board.name} color={board.color} className="h-full w-full" aspectRatio="auto" />
           </div>
 
-          {/* Board Identity & Navigation Section */}
           <div className="bg-background border-b border-border/50 shrink-0">
             <div className="px-6 py-5 md:px-10 flex flex-col md:flex-row items-center justify-between gap-6 max-w-[1600px] mx-auto w-full">
-              
-              {/* Left: Title & Description */}
               <div className="flex flex-col gap-0.5 flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl md:text-3xl font-black text-foreground tracking-tight truncate">
@@ -316,7 +327,6 @@ export function KanbanBoard() {
                 )}
               </div>
 
-              {/* Right: Pill-style Tab Switcher */}
               <div className="flex items-center p-1 bg-muted/40 backdrop-blur-sm rounded-full border border-border/40 shadow-inner group/tabs shrink-0">
                 {views.map((view) => (
                   <button 
@@ -338,19 +348,16 @@ export function KanbanBoard() {
             </div>
           </div>
 
-          {/* Active View Content Container */}
           <div className="flex-1 bg-muted/20 min-h-[500px]">
             {renderActiveView()}
           </div>
         </div>
 
-        {/* Right Side: Fixed Sidebar (Activity) */}
         <aside 
           className={`hidden lg:flex flex-col h-full shrink-0 border-l border-border bg-card shadow-xl transition-all duration-300 ease-in-out relative ${
             isActivityOpen ? "w-[340px]" : "w-6"
           }`}
         >
-          {/* Local Toggle Button (Bar Style) */}
           <button
             onClick={() => setIsActivityOpen(!isActivityOpen)}
             className="absolute -left-3 top-8 w-6 h-6 bg-background border border-border rounded-full flex items-center justify-center z-20 shadow-md hover:bg-muted transition-all active:scale-95"
@@ -385,7 +392,6 @@ export function KanbanBoard() {
         </aside>
       </div>
 
-      {/* Mobile Activity Drawer (Hidden on Desktop Sidebar view) */}
       <Sheet open={isActivityOpen && !window.matchMedia("(min-width: 1024px)").matches} onOpenChange={setIsActivityOpen}>
         <SheetContent side="right" className="p-0 w-[85%] sm:w-[400px]">
           <SheetHeader className="p-4 border-b">
@@ -397,7 +403,6 @@ export function KanbanBoard() {
         </SheetContent>
       </Sheet>
 
-      {/* Floating Action Button (FAB) */}
       <Button
         onClick={openNewModal}
         className="fixed bottom-8 right-8 h-14 w-14 hover:w-40 rounded-full shadow-2xl shadow-primary/20 flex items-center justify-center group/fab hover:scale-105 active:scale-95 transition-all duration-500 ease-out z-50 bg-primary hover:bg-primary/90 overflow-hidden px-0 border-4 border-background"
