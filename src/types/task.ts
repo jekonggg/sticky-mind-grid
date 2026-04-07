@@ -3,6 +3,7 @@ export type Priority = "low" | "medium" | "high";
 
 export interface Task {
   id: string;
+  boardId: string;
   title: string;
   description?: string;
   status: TaskStatus;
