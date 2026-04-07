@@ -18,7 +18,15 @@ import { TaskModal } from "./TaskModal";
 import { LatestChangesPanel } from "./LatestChangesPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BoardHeader } from "./BoardHeader";
-import { Loader2, Plus, PanelRightClose, PanelRightOpen, Settings, Smile, Pencil } from "lucide-react";
+import { 
+  Loader2, 
+  Plus, 
+  PanelRightClose, 
+  PanelRightOpen, 
+  Settings, 
+  Smile, 
+  Pencil 
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useParams, useNavigate } from "react-router-dom";
 import { boardApi } from "@/services/boardApi";

@@ -8,11 +8,15 @@ interface AppHeaderProps {
   onSearchChange?: (val: string) => void;
   isActivityOpen?: boolean;
   onToggleActivity?: () => void;
+  placeholder?: string;
+  showSearch?: boolean;
 }
 
 export function BoardHeader({ 
   search = "",
   onSearchChange,
+  placeholder = "Search tasks...",
+  showSearch = true,
 }: AppHeaderProps) {
   const navigate = useNavigate();
 
@@ -29,15 +33,17 @@ export function BoardHeader({
         >
           <Home className="h-5 w-5" />
         </Button>
-        <div className="relative group max-w-[240px] w-full hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
-          <Input
-            placeholder="Search tasks..."
-            value={search}
-            onChange={(e) => onSearchChange?.(e.target.value)}
-            className="pl-9 h-9 bg-background/50 border-border/50 focus-visible:ring-primary/20 transition-all rounded-full"
-          />
-        </div>
+        {showSearch && (
+          <div className="relative group max-w-[240px] w-full hidden md:block">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
+            <Input
+              placeholder={placeholder}
+              value={search}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              className="pl-9 h-9 bg-background/50 border-border/50 focus-visible:ring-primary/20 transition-all rounded-full"
+            />
+          </div>
+        )}
       </div>
 
       {/* Center: Branding */}

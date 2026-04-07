@@ -23,15 +23,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, LayoutDashboard } from "lucide-react";
+import { Plus, Search, LayoutGrid } from "lucide-react";
 import { BoardsHeroBanner } from "@/components/boards/BoardsHeroBanner";
-
-// Mock task counts per board – in a real app this would come from the API
-const MOCK_TASK_COUNTS: Record<string, number> = {
-  "board-1": 3,
-  "board-2": 2,
-  "board-3": 0,
-};
+import { BoardHeader } from "@/components/kanban/BoardHeader";
 
 export default function BoardsOverview() {
   const { boards, loading, search, setSearch, sort, setSort, createBoard, updateBoard, deleteBoard } = useBoards();
@@ -51,6 +45,7 @@ export default function BoardsOverview() {
 
   return (
     <div className="min-h-screen bg-background">
+      <BoardHeader showSearch={false} />
       <BoardsHeroBanner />
 
       {/* Toolbox */}
@@ -58,8 +53,10 @@ export default function BoardsOverview() {
         <div className="bg-card/80 backdrop-blur-md border border-border/50 rounded-xl shadow-xl p-4 md:p-6 mb-8">
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <LayoutDashboard className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold text-foreground tracking-tight">My Boards</h2>
+              <LayoutGrid className="h-5 w-5 text-primary" />
+              <h2 className="text-xl md:text-2xl font-black text-foreground tracking-tight uppercase italic underline-offset-4 decoration-primary/30">
+                My <span className="text-primary not-italic">Boards</span>
+              </h2>
             </div>
             
             <div className="flex w-full md:w-auto gap-3 items-center">
@@ -104,7 +101,7 @@ export default function BoardsOverview() {
           /* Empty state */
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-              <LayoutDashboard className="h-8 w-8 text-primary" />
+              <LayoutGrid className="h-8 w-8 text-primary" />
             </div>
             <h2 className="text-lg font-semibold text-foreground mb-1">No boards yet</h2>
             <p className="text-sm text-muted-foreground mb-6 max-w-xs">
@@ -125,7 +122,7 @@ export default function BoardsOverview() {
               <BoardCard
                 key={board.id}
                 board={board}
-                taskCount={MOCK_TASK_COUNTS[board.id] || 0}
+                taskCount={board.taskCount || 0}
                 onEdit={handleEdit}
                 onDelete={setDeletingBoard}
               />

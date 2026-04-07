@@ -31,9 +31,14 @@ class TaskService:
             try:
                 new_task.due_date = datetime.fromisoformat(data['dueDate'].replace('Z', '+00:00'))
             except ValueError:
-                pass # Handle date parsing appropriately if needed
+                pass 
 
         db.session.add(new_task)
+        
+        # Update board timestamp
+        if new_task.board:
+            new_task.board.touch()
+
         db.session.commit()
         return new_task
 
@@ -61,6 +66,10 @@ class TaskService:
             else:
                 task.due_date = None
 
+        # Update board timestamp
+        if task.board:
+            task.board.touch()
+
         db.session.commit()
         return task
 
@@ -69,6 +78,13 @@ class TaskService:
         task = Task.query.get(task_id)
         if not task:
             return False
+        
+        board = task.board
         db.session.delete(task)
+        
+        # Update board timestamp
+        if board:
+            board.touch()
+            
         db.session.commit()
         return True

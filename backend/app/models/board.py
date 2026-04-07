@@ -22,6 +22,9 @@ class Board(db.Model):
 
     tasks = db.relationship('Task', backref='board', lazy=True, cascade="all, delete-orphan")
 
+    def touch(self):
+        self.updated_at = datetime.utcnow()
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -31,6 +34,7 @@ class Board(db.Model):
             'color': self.color,
             'heroImageUrl': self.hero_image_url,
             'columns': self.columns,
-            'createdAt': self.created_at.isoformat(),
-            'updatedAt': self.updated_at.isoformat()
+            'taskCount': len(self.tasks),
+            'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None,
+            'updatedAt': self.updated_at.isoformat() + 'Z' if self.updated_at else None
         }

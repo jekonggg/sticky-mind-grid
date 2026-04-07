@@ -2,13 +2,13 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Task } from "@/types/task";
 import { GripVertical, Paperclip, FileText, Smile } from "lucide-react";
+import { format } from "date-fns";
+import { getProgressColor } from "@/utils/taskUtils";
 
 interface TaskCardProps {
   task: Task;
   onClick: (task: Task) => void;
 }
-
-import { getProgressColor } from "@/utils/taskUtils";
 
 export function TaskCard({ task, onClick }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -80,26 +80,29 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             </p>
           )}
 
-          {/* Progress Bar */}
-          <div className="mt-3 space-y-1.5 flex flex-col items-end">
+          {/* Progress Bar Area */}
+          <div className="mt-3 space-y-1 flex flex-col">
             <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden border border-border/10">
               <div
                 className={`h-full transition-all duration-500 ease-out ${getProgressColor(task.progress)}`}
                 style={{ width: `${task.progress}%` }}
               />
             </div>
-            <span className="text-[9px] font-black tracking-tighter text-muted-foreground/60 leading-none">
-              {task.progress}%
-            </span>
+            <div className="flex justify-end">
+               <span className="text-[9px] font-black tracking-tighter text-muted-foreground/60 leading-none">
+                 {task.progress}%
+               </span>
+            </div>
           </div>
         </div>
       </div>
+
       {(task.dueDate || (task.attachments && task.attachments.length > 0)) && (
-        <div className="mt-3 pt-3 border-t border-border/40 flex items-center gap-3">
+        <div className="mt-4 pt-3 border-t border-border/40 flex items-center gap-3">
           {task.dueDate && (
              <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-md">
                 <FileText className="h-2.5 w-2.5" />
-                {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                {format(new Date(task.dueDate), "MMM d")}
              </div>
           )}
           {task.attachments && task.attachments.length > 0 && (

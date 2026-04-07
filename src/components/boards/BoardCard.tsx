@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Trash2, LayoutDashboard } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, LayoutGrid } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { BoardHeroImage } from "./BoardHeroImage";
 
@@ -48,7 +48,7 @@ export function BoardCard({ board, taskCount = 0, onEdit, onDelete }: BoardCardP
               {board.emoji ? (
                 <span className="text-xl leading-none">{board.emoji}</span>
               ) : (
-                <LayoutDashboard className="h-5 w-5" style={{ color: board.color }} />
+                <LayoutGrid className="h-5 w-5" style={{ color: board.color }} />
               )}
             </div>
             <div className="min-w-0">

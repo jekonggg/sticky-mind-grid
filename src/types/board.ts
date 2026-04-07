@@ -8,6 +8,7 @@ export interface Board {
   color: string;
   heroImageUrl?: string;
   columns: Column[];
+  taskCount?: number;
   createdAt: Date;
   updatedAt: Date;
 }
