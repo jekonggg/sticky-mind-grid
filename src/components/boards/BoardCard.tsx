@@ -41,13 +41,18 @@ export function BoardCard({ board, taskCount = 0, onEdit, onDelete }: BoardCardP
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div
-              className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
-              style={{ backgroundColor: board.color + "22" }}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-border/50 shadow-sm
+                ${board.emoji ? "bg-primary/5" : "bg-muted/50"}`}
+              style={{ borderColor: board.emoji ? "transparent" : board.color + "44" }}
             >
-              <LayoutDashboard className="h-4 w-4" style={{ color: board.color }} />
+              {board.emoji ? (
+                <span className="text-xl leading-none">{board.emoji}</span>
+              ) : (
+                <LayoutDashboard className="h-5 w-5" style={{ color: board.color }} />
+              )}
             </div>
             <div className="min-w-0">
-              <h3 className="font-semibold text-sm text-foreground truncate">{board.name}</h3>
+              <h3 className="font-bold text-sm text-foreground truncate">{board.name}</h3>
               {board.description && (
                 <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
                   {board.description}

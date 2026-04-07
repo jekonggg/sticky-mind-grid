@@ -18,7 +18,7 @@ import { TaskModal } from "./TaskModal";
 import { LatestChangesPanel } from "./LatestChangesPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BoardHeader } from "./BoardHeader";
-import { Loader2, Plus, PanelRightClose, PanelRightOpen, Settings } from "lucide-react";
+import { Loader2, Plus, PanelRightClose, PanelRightOpen, Settings, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useParams, useNavigate } from "react-router-dom";
 import { boardApi } from "@/services/boardApi";
@@ -263,6 +263,7 @@ export function KanbanBoard() {
                       key={col.id}
                       id={col.id}
                       title={col.title}
+                      emoji={col.emoji}
                       tasks={filteredTasksByStatus(col.id)}
                       onTaskClick={handleTaskClick}
                       onRename={handleRenameColumn}
@@ -306,25 +307,34 @@ export function KanbanBoard() {
           <div className="bg-background border-b border-border/50 shrink-0">
             <div className="px-6 py-5 md:px-10 flex flex-col md:flex-row items-center justify-between gap-6 max-w-[1600px] mx-auto w-full">
               <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl md:text-3xl font-black text-foreground tracking-tight truncate">
-                    {board.name}
-                  </h1>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 rounded-full hover:bg-muted transition-colors shrink-0" 
-                    onClick={() => setIsBoardModalOpen(true)} 
-                    title="Board Settings"
-                  >
-                    <Settings className="h-4 w-4 text-muted-foreground" />
-                  </Button>
+                <div className="flex items-center gap-3">
+                  {board.emoji && (
+                    <div className="h-10 w-10 md:h-12 md:w-12 bg-primary/10 flex items-center justify-center rounded-2xl border border-primary/20 shadow-sm shrink-0">
+                      <span className="text-xl md:text-2xl">{board.emoji}</span>
+                    </div>
+                  )}
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 group/title">
+                      <h1 className="text-xl md:text-3xl font-black text-foreground tracking-tight truncate">
+                        {board.name}
+                      </h1>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 rounded-full hover:bg-muted transition-colors shrink-0 text-primary bg-primary/5" 
+                        onClick={() => setIsBoardModalOpen(true)} 
+                        title="Edit Board & Icon"
+                      >
+                        <Smile className="h-5 w-5" />
+                      </Button>
+                    </div>
+                    {board.description && (
+                      <p className="text-xs md:text-sm text-muted-foreground font-medium line-clamp-1 opacity-80">
+                        {board.description}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                {board.description && (
-                  <p className="text-[11px] md:text-xs font-medium text-muted-foreground leading-tight max-w-2xl text-pretty opacity-70">
-                    {board.description}
-                  </p>
-                )}
               </div>
 
               <div className="flex items-center p-1 bg-muted/40 backdrop-blur-sm rounded-full border border-border/40 shadow-inner group/tabs shrink-0">

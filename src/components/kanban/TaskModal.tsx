@@ -13,18 +13,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Trash2, ImagePlus, X, Check, FileText, File, Film, Music } from "lucide-react";
+import { EmojiSelector } from "../common/EmojiSelector";
 
 interface TaskModalProps {
   open: boolean;
   onClose: () => void;
   task?: Task | null;
-  columns?: Column[]; // Added for auto-mapping
+  columns?: Column[];
   onSubmit: (data: UpdateTaskData) => void;
   onDelete?: (id: string) => void;
 }
 
 export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: TaskModalProps) {
   const [title, setTitle] = useState("");
+  const [emoji, setEmoji] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
   const [dueDate, setDueDate] = useState<string>("");
@@ -37,6 +39,7 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
   useEffect(() => {
     if (task) {
       setTitle(task.title);
+      setEmoji(task.emoji || "");
       setDescription(task.description || "");
       setPriority(task.priority);
       setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "");
@@ -44,6 +47,7 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
       setAttachments(task.attachments || []);
     } else {
       setTitle("");
+      setEmoji("");
       setDescription("");
       setPriority("medium");
       setDueDate("");
@@ -55,7 +59,6 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-
     Array.from(files).forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -87,21 +90,15 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
     if (!title.trim()) return;
 
     let finalStatus = task?.status;
-    
-    // Auto-map status if columns are provided
     if (columns && columns.length >= 3) {
-      const visibleCols = columns.filter(c => c.id !== 'archive');
-      if (progress === 100) {
-        finalStatus = 'done';
-      } else if (progress === 30) {
-        finalStatus = 'in_progress';
-      } else if (progress === 0) {
-        finalStatus = 'todo';
-      }
+      if (progress === 100) finalStatus = 'done';
+      else if (progress === 30) finalStatus = 'in_progress';
+      else if (progress === 0) finalStatus = 'todo';
     }
 
     onSubmit({
       title: title.trim(),
+      emoji: emoji || undefined,
       description: description.trim() || undefined,
       priority,
       status: finalStatus,
@@ -120,15 +117,22 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Task name…"
-              autoFocus
-              required
-            />
+            <Label htmlFor="title">Task Icon & Title</Label>
+            <div className="flex gap-2">
+              <EmojiSelector 
+                currentEmoji={emoji}
+                onSelect={setEmoji}
+              />
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Task name…"
+                autoFocus
+                required
+                className="flex-1"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
@@ -145,17 +149,13 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
              <div className="space-y-2">
                 <Label>Priority</Label>
                 <div className="flex gap-1.5 p-1 bg-muted rounded-lg">
-                  {(["low", "medium", "high"] as Priority[]).map((p) => (
+                   {(["low", "medium", "high"] as Priority[]).map((p) => (
                     <button
                       key={p}
                       type="button"
                       onClick={() => setPriority(p)}
                       className={`flex-1 py-1 px-2 text-[10px] font-black uppercase tracking-tighter rounded-md transition-all
-                        ${
-                          priority === p
-                            ? "bg-background text-foreground shadow-sm ring-1 ring-border/50"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
+                        ${priority === p ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       {p}
                     </button>
@@ -188,11 +188,7 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
                   type="button"
                   onClick={() => setProgress(val)}
                   className={`h-7 w-7 flex items-center justify-center rounded-md text-[9px] font-black transition-all border
-                    ${
-                      progress === val
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-primary"
-                    }`}
+                    ${progress === val ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-primary"}`}
                 >
                   {val === 100 ? <Check className="h-3 w-3" /> : val}
                 </button>
@@ -216,9 +212,7 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
                   ) : (
                     <div className="flex flex-col items-center gap-1 p-2 text-center">
                       {getFileIcon(file.type)}
-                      <span className="text-[8px] font-black tracking-tighter truncate w-full px-1 uppercase">
-                        {file.name.split('.').pop()}
-                      </span>
+                      <span className="text-[8px] font-black tracking-tighter truncate w-full px-1 uppercase">{file.name.split('.').pop()}</span>
                     </div>
                   )}
                   <button
@@ -228,28 +222,18 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
                   >
                     <X className="h-3 w-3" />
                   </button>
-                  <div className="absolute inset-x-0 bottom-0 bg-background/90 py-0.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                     <p className="text-[7px] font-bold truncate text-center">{file.name}</p>
-                  </div>
                 </div>
               ))}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="aspect-square flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-muted-foreground/30 hover:border-primary hover:bg-primary/5 transition-all text-muted-foreground/60 hover:text-primary"
+                className="aspect-square flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-muted-foreground/30 hover:border-primary hover:bg-primary/5 transition-all text-muted-foreground/60 hover:text-primary text-[9px] font-bold"
               >
                 <ImagePlus className="h-4 w-4" />
-                <span className="text-[9px] font-bold">Upload</span>
+                Upload
               </button>
             </div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept="*/*"
-              multiple
-              onChange={handleFileChange}
-            />
+            <input type="file" ref={fileInputRef} className="hidden" accept="*/*" multiple onChange={handleFileChange} />
           </div>
 
           <DialogFooter className="flex items-center !justify-between pt-5 border-t">
@@ -259,24 +243,15 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
                 variant="ghost"
                 size="sm"
                 className="h-9 px-3 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs font-bold"
-                onClick={() => {
-                  onDelete(task.id);
-                  onClose();
-                }}
+                onClick={() => { onDelete(task.id); onClose(); }}
               >
                 <Trash2 className="h-4 w-4 mr-1.5" />
                 Delete Task
               </Button>
-            ) : (
-              <div />
-            )}
+            ) : <div />}
             <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" className="h-9 px-4 font-bold text-xs" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" size="sm" className="h-9 px-4 font-bold text-xs" disabled={!title.trim()}>
-                {isEditing ? "Update Task" : "Create Task"}
-              </Button>
+              <Button type="button" variant="outline" size="sm" className="h-9 px-4 font-bold text-xs" onClick={onClose}>Cancel</Button>
+              <Button type="submit" size="sm" className="h-9 px-4 font-bold text-xs" disabled={!title.trim()}>{isEditing ? "Update Task" : "Create Task"}</Button>
             </div>
           </DialogFooter>
         </form>

@@ -22,20 +22,20 @@ def seed_database():
         # CURRENT TIME as base
         now = datetime(2026, 4, 8, 10, 0, 0)
         
-        # Board 0: PRIMARY SHOWCASE (To fulfill requirement & show off)
-        # We use a later timestamp to ensure it's first
+        # Board 0: PRIMARY SHOWCASE
         board0 = Board(
             id="board-showcase",
-            name="🚀 Showcase: Sticky Mind Grid Core",
+            name="Showcase: Sticky Mind Grid Core",
+            emoji="🚀",
             description="Demonstrating the full Trello-style cycle: ticket creation, stage transitions (To Do ➔ Done), and persistent audit trails.",
             color="bg-primary",
             hero_image_url="https://images.unsplash.com/photo-1484417894907-623942c8ee29?q=80&w=1200&auto=format&fit=crop",
             columns=[
-                {"id": "todo", "title": "📝 To Do"},
-                {"id": "in_progress", "title": "⏳ In Progress"},
-                {"id": "qa", "title": "🔍 Quality Assurance"},
-                {"id": "done", "title": "✅ Done"},
-                {"id": "archive", "title": "📦 Archive"}
+                {"id": "todo", "title": "To Do", "emoji": "📝"},
+                {"id": "in_progress", "title": "In Progress", "emoji": "⏳"},
+                {"id": "qa", "title": "Quality Assurance", "emoji": "🔍"},
+                {"id": "done", "title": "Done", "emoji": "✅"},
+                {"id": "archive", "title": "Archive", "emoji": "📦"}
             ],
             created_at=now + timedelta(minutes=10),
             updated_at=now + timedelta(minutes=10)
@@ -46,16 +46,17 @@ def seed_database():
         # Board 1: Product Roadmap
         board1 = Board(
             id="board-1",
-            name="🏗️ Platform Engine - Road Map",
+            name="Platform Engine - Road Map",
+            emoji="🏗️",
             description="Engineering roadmap for foundational platform services.",
             color="bg-indigo-600",
             hero_image_url="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1200&auto=format&fit=crop",
             columns=[
-                {"id": "backlog", "title": "📂 Backlog"},
-                {"id": "design", "title": "📐 Architecture"},
-                {"id": "implementation", "title": "👨‍💻 Implementation"},
-                {"id": "testing", "title": "🧪 QA/Testing"},
-                {"id": "done", "title": "🚀 Released"}
+                {"id": "backlog", "title": "Backlog", "emoji": "📂"},
+                {"id": "design", "title": "Architecture", "emoji": "📐"},
+                {"id": "implementation", "title": "Implementation", "emoji": "👨‍💻"},
+                {"id": "testing", "title": "QA/Testing", "emoji": "🧪"},
+                {"id": "done", "title": "Released", "emoji": "🚀"}
             ],
             created_at=now,
             updated_at=now
@@ -64,15 +65,16 @@ def seed_database():
         # Board 2: Growth Strategy
         board2 = Board(
             id="board-2",
-            name="📈 Q4 Marketing Strategy",
+            name="Q4 Marketing Strategy",
+            emoji="📈",
             description="Growth campaign to increase user acquisition by 30%.",
             color="bg-rose-500",
             hero_image_url="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1200&auto=format&fit=crop",
             columns=[
-                {"id": "todo", "title": "📋 To Do"},
-                {"id": "content", "title": "🎨 Content Creation"},
-                {"id": "review", "title": "⚖️ Legal Review"},
-                {"id": "active", "title": "🔥 Running Ads"}
+                {"id": "todo", "title": "To Do", "emoji": "📋"},
+                {"id": "content", "title": "Content Creation", "emoji": "🎨"},
+                {"id": "review", "title": "Legal Review", "emoji": "⚖️"},
+                {"id": "active", "title": "Running Ads", "emoji": "🔥"}
             ],
             created_at=now - timedelta(minutes=5),
             updated_at=now - timedelta(minutes=5)
@@ -83,10 +85,10 @@ def seed_database():
 
         print("Seeding Showcase Tasks...")
         showcase_tasks = [
-            Task(id=generate_id(), board_id="board-showcase", title="Move me to 'Done'!", description="Drag this ticket across columns to see the progress auto-snap (0% ➔ 30% ➔ 100%).", status="todo", priority="high", progress=0, due_date=now + timedelta(days=2)),
-            Task(id=generate_id(), board_id="board-showcase", title="Check my History sidebar", description="I've already been moved once. Click me to see my journey in the Recent Activity feed.", status="in_progress", priority="medium", progress=30),
-            Task(id=generate_id(), board_id="board-showcase", title="Dynamic Dashboard Insights", description="Look at the 'Overview' tab! It has already adapted to include 'Quality Assurance' as a state.", status="qa", priority="low", progress=60),
-            Task(id=generate_id(), board_id="board-showcase", title="Full-Scale Image Support", description="I'm a ticket with detailed content. My parent board uses LONGTEXT for that 4K hero image above.", status="done", priority="medium", progress=100, due_date=now - timedelta(days=1)),
+            Task(id=generate_id(), board_id="board-showcase", title="Move me to Done!", emoji="🎯", description="Drag this ticket across columns to see the progress auto-snap (0% ➔ 100%).", status="todo", priority="high", progress=0, due_date=now + timedelta(days=2)),
+            Task(id=generate_id(), board_id="board-showcase", title="Check my History sidebar", emoji="📜", description="I've already been moved once. Click me to see my journey.", status="in_progress", priority="medium", progress=30),
+            Task(id=generate_id(), board_id="board-showcase", title="Dynamic Dashboard Insights", emoji="💡", description="Look at the Overview tab!", status="qa", priority="low", progress=60),
+            Task(id=generate_id(), board_id="board-showcase", title="Full-Scale Image Support", emoji="🖼️", description="I'm a ticket with detailed content.", status="done", priority="medium", progress=100, due_date=now - timedelta(days=1)),
         ]
 
         print("Seeding Engineering Tasks...")

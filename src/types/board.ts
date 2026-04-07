@@ -3,6 +3,7 @@ import { Column } from "./task";
 export interface Board {
   id: string;
   name: string;
+  emoji?: string;
   description?: string;
   color: string;
   heroImageUrl?: string;
@@ -13,6 +14,7 @@ export interface Board {
 
 export interface CreateBoardData {
   name: string;
+  emoji?: string;
   description?: string;
   color?: string;
   heroImageUrl?: string;
@@ -21,6 +23,7 @@ export interface CreateBoardData {
 
 export interface UpdateBoardData {
   name?: string;
+  emoji?: string;
   description?: string;
   color?: string;
   heroImageUrl?: string;

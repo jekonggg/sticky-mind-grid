@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Check, ImagePlus, X, Plus } from "lucide-react";
+import { EmojiSelector } from "../common/EmojiSelector";
 
 interface BoardModalProps {
   open: boolean;
@@ -23,6 +24,7 @@ interface BoardModalProps {
 
 export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) {
   const [name, setName] = useState("");
+  const [emoji, setEmoji] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState<string>(BOARD_COLORS[0]);
   const [heroImageUrl, setHeroImageUrl] = useState("");
@@ -34,26 +36,28 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
   useEffect(() => {
     if (board) {
       setName(board.name);
+      setEmoji(board.emoji || "");
       setDescription(board.description || "");
       setColor(board.color);
       setHeroImageUrl(board.heroImageUrl || "");
       setColumns(board.columns || []);
     } else {
       setName("");
+      setEmoji("");
       setDescription("");
       setColor(BOARD_COLORS[0]);
       setHeroImageUrl("");
       setColumns([
-        { id: "todo", title: "To Do" },
-        { id: "in_progress", title: "In Progress" },
-        { id: "done", title: "Done" },
+        { id: "todo", title: "To Do", emoji: "📝" },
+        { id: "in_progress", title: "In Progress", emoji: "⏳" },
+        { id: "done", title: "Done", emoji: "✅" },
       ]);
     }
   }, [board, open]);
 
   const handleAddColumn = () => {
     const id = `col_${Date.now()}`;
-    setColumns([...columns, { id, title: "New State" }]);
+    setColumns([...columns, { id, title: "New State", emoji: "📌" }]);
   };
 
   const handleRemoveColumn = (id: string) => {
@@ -61,35 +65,28 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
     setColumns(columns.filter((c) => c.id !== id));
   };
 
-  const handleColumnRename = (id: string, title: string) => {
-    setColumns(columns.map((c) => (c.id === id ? { ...c, title } : c)));
+  const handleColumnRename = (id: string, title: string, emoji?: string) => {
+    setColumns(columns.map((c) => (c.id === id ? { ...c, title, emoji } : c)));
   };
 
   const sanitizeImageUrl = (url: string) => {
     const trimmed = url.trim();
     if (!trimmed) return "";
-
-    // Don't sanitize local base64 images
     if (trimmed.startsWith("data:image")) return trimmed;
-
-    // Handle Unsplash photo page URLs (e.g., https://unsplash.com/photos/XYZ)
     const unsplashMatch = trimmed.match(/unsplash\.com\/photos\/(?:.*-)?([a-zA-Z0-9_-]+)/);
     if (unsplashMatch && unsplashMatch[1]) {
       return `https://images.unsplash.com/photo-${unsplashMatch[1]}?auto=format&fit=crop&q=80&w=1000`;
     }
-
     return trimmed;
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (file.size > 2 * 1024 * 1024) {
       alert("Image is too large. Please choose a file under 2MB.");
       return;
     }
-
     const reader = new FileReader();
     reader.onloadend = () => {
       setHeroImageUrl(reader.result as string);
@@ -102,15 +99,14 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
     if (!name.trim()) return;
     
     const finalUrl = sanitizeImageUrl(heroImageUrl);
-    
-    // Ensure Archive is always present for the system if not in columns
     let finalColumns = [...columns];
     if (!finalColumns.some(c => c.id === 'archive')) {
-       finalColumns.push({ id: 'archive', title: 'Archive' });
+       finalColumns.push({ id: 'archive', title: 'Archive', emoji: "📦" });
     }
 
     onSubmit({
       name: name.trim(),
+      emoji: emoji || undefined,
       description: description.trim() || undefined,
       color,
       heroImageUrl: finalUrl || undefined,
@@ -127,15 +123,22 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="board-name">Name</Label>
-            <Input
-              id="board-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Board name…"
-              autoFocus
-              required
-            />
+            <Label htmlFor="board-name">Board Icon & Name</Label>
+            <div className="flex gap-2">
+              <EmojiSelector 
+                currentEmoji={emoji}
+                onSelect={setEmoji}
+              />
+              <Input
+                id="board-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Board name…"
+                autoFocus
+                required
+                className="flex-1"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="board-desc">Description</Label>
@@ -157,12 +160,17 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
              </div>
              <div className="space-y-2">
                 {columns.filter(c => c.id !== 'archive').map((col, idx) => (
-                   <div key={col.id} className="flex gap-2 group">
+                   <div key={col.id} className="flex gap-2 group/col">
+                      <EmojiSelector 
+                        currentEmoji={col.emoji}
+                        onSelect={(e) => handleColumnRename(col.id, col.title, e)}
+                        className="h-9 w-9"
+                      />
                       <Input 
                          value={col.title}
-                         onChange={(e) => handleColumnRename(col.id, e.target.value)}
+                         onChange={(e) => handleColumnRename(col.id, e.target.value, col.emoji)}
                          placeholder={`State ${idx + 1}`}
-                         className="h-9"
+                         className="h-9 flex-1"
                       />
                       <Button 
                          type="button" 
@@ -178,7 +186,7 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
                 ))}
              </div>
              <p className="text-[10px] text-muted-foreground font-medium italic">
-                Minimum 3 states required. Rename them to suit your project workflow.
+                Minimum 3 states required. Each state can have a unique icon.
              </p>
           </div>
           

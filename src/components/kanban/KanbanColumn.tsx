@@ -8,25 +8,17 @@ import { Input } from "@/components/ui/input";
 interface KanbanColumnProps {
   id: TaskStatus;
   title: string;
+  emoji?: string;
   tasks: Task[];
   onTaskClick: (task: Task) => void;
-  onRename?: (id: string, newTitle: string) => void;
+  onRename?: (id: string, newTitle: string, emoji?: string) => void;
 }
 
-const columnConfig: Record<string, { dot: string }> = {
-  todo: { dot: "bg-slate-400" },
-  in_progress: { dot: "bg-blue-500" },
-  done: { dot: "bg-green-500" },
-  archive: { dot: "bg-gray-600" },
-};
-
-export function KanbanColumn({ id, title, tasks, onTaskClick, onRename }: KanbanColumnProps) {
+export function KanbanColumn({ id, title, emoji, tasks, onTaskClick, onRename }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const config = columnConfig[id] || { dot: "bg-primary" };
 
   useEffect(() => {
     if (isEditing) {
@@ -55,8 +47,12 @@ export function KanbanColumn({ id, title, tasks, onTaskClick, onRename }: Kanban
 
   return (
     <div className="flex flex-col min-w-[280px] w-full max-w-sm group/column">
-      <div className="flex items-center gap-2 px-1 mb-3 h-8">
-        <span className={`w-2 h-2 rounded-full shrink-0 ${config.dot}`} />
+      <div className="flex items-center gap-2.5 px-1 mb-3 h-10">
+        {emoji && (
+           <div className="h-8 w-8 bg-primary/5 border border-border/40 rounded-xl flex items-center justify-center shadow-sm shrink-0">
+              <span className="text-base leading-none">{emoji}</span>
+           </div>
+        )}
         
         {isEditing ? (
           <Input

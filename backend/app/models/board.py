@@ -12,6 +12,7 @@ class Board(db.Model):
 
     id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
     name = db.Column(db.String(255), nullable=False)
+    emoji = db.Column(db.String(50), nullable=True)
     description = db.Column(db.Text, nullable=True)
     color = db.Column(db.String(50), nullable=True)
     hero_image_url = db.Column(db.Text().with_variant(LONGTEXT, "mysql"), nullable=True)
@@ -25,6 +26,7 @@ class Board(db.Model):
         return {
             'id': self.id,
             'name': self.name,
+            'emoji': self.emoji,
             'description': self.description,
             'color': self.color,
             'heroImageUrl': self.hero_image_url,

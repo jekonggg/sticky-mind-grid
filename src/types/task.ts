@@ -11,6 +11,7 @@ export interface Task {
   id: string;
   boardId: string;
   title: string;
+  emoji?: string;
   description?: string;
   status: TaskStatus;
   priority: Priority;
@@ -24,6 +25,7 @@ export interface Task {
 
 export interface CreateTaskData {
   title: string;
+  emoji?: string;
   description?: string;
   priority: Priority;
   assignedTo?: string;
@@ -34,6 +36,7 @@ export interface CreateTaskData {
 
 export interface UpdateTaskData {
   title?: string;
+  emoji?: string;
   description?: string;
   status?: TaskStatus;
   priority?: Priority;
@@ -56,4 +59,5 @@ export interface Activity {
 export interface Column {
   id: string;
   title: string;
+  emoji?: string;
 }
