@@ -12,21 +12,25 @@ export function BoardHeader({ onAddTask, onOpenActivity, boardName }: BoardHeade
   const navigate = useNavigate();
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
+    <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-20">
       <div className="flex items-center gap-2.5">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-8 w-8 hover:bg-muted"
           onClick={() => navigate("/")}
           title="Back to boards"
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <LayoutDashboard className="h-5 w-5 text-primary" />
-        <h1 className="text-lg font-bold text-foreground tracking-tight">
-          {boardName || "Task Board"}
-        </h1>
+        {boardName && (
+          <>
+            <LayoutDashboard className="h-5 w-5 text-primary" />
+            <h1 className="text-lg font-bold text-foreground tracking-tight truncate max-w-[120px] sm:max-w-none">
+              {boardName}
+            </h1>
+          </>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <Button

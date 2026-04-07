@@ -23,17 +23,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useParams, useNavigate } from "react-router-dom";
 import { boardApi } from "@/services/boardApi";
+import { Board } from "@/types/board";
+import { BoardHeroImage } from "../boards/BoardHeroImage";
 
 export function KanbanBoard() {
   const { boardId } = useParams<{ boardId: string }>();
   const navigate = useNavigate();
-  const [boardName, setBoardName] = useState("");
+  const [board, setBoard] = useState<Board | null>(null);
 
   useEffect(() => {
-    if (!boardId) { navigate("/"); return; }
+    if (!boardId) {
+      navigate("/");
+      return;
+    }
     boardApi.getBoard(boardId).then((b) => {
-      if (!b) { navigate("/"); return; }
-      setBoardName(b.name);
+      if (!b) {
+        navigate("/");
+        return;
+      }
+      setBoard(b);
     });
   }, [boardId, navigate]);
 
@@ -132,7 +140,7 @@ export function KanbanBoard() {
     setModalOpen(true);
   }, []);
 
-  if (loading) {
+  if (loading || !board) {
     return (
       <div className="flex flex-col h-screen bg-background">
         <BoardHeader onAddTask={openNewModal} />
@@ -145,7 +153,33 @@ export function KanbanBoard() {
 
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden font-sans">
-      <BoardHeader onAddTask={openNewModal} onOpenActivity={() => setIsActivityOpen(true)} boardName={boardName} />
+      <div className="relative h-32 md:h-48 shrink-0 overflow-hidden">
+        <BoardHeroImage
+          src={board.heroImageUrl}
+          alt={board.name}
+          color={board.color}
+          className="h-full"
+          aspectRatio="auto"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 flex items-end">
+          <div className="flex flex-col">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight drop-shadow-sm">
+              {board.name}
+            </h1>
+            {board.description && (
+              <p className="text-sm text-muted-foreground mt-1 line-clamp-1 max-w-2xl">
+                {board.description}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <BoardHeader
+        onAddTask={openNewModal}
+        onOpenActivity={() => setIsActivityOpen(true)}
+      />
 
       <div className="flex flex-1 overflow-hidden min-h-0 relative group/board">
         {/* Scroll Buttons */}

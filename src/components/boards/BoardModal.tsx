@@ -24,6 +24,7 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState<string>(BOARD_COLORS[0]);
+  const [heroImageUrl, setHeroImageUrl] = useState("");
 
   const isEditing = !!board;
 
@@ -32,17 +33,40 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
       setName(board.name);
       setDescription(board.description || "");
       setColor(board.color);
+      setHeroImageUrl(board.heroImageUrl || "");
     } else {
       setName("");
       setDescription("");
       setColor(BOARD_COLORS[0]);
+      setHeroImageUrl("");
     }
   }, [board, open]);
+
+  const sanitizeImageUrl = (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed) return "";
+
+    // Handle Unsplash photo page URLs (e.g., https://unsplash.com/photos/XYZ)
+    const unsplashMatch = trimmed.match(/unsplash\.com\/photos\/(?:.*-)?([a-zA-Z0-9_-]+)/);
+    if (unsplashMatch && unsplashMatch[1]) {
+      return `https://images.unsplash.com/photo-${unsplashMatch[1]}?auto=format&fit=crop&q=80&w=1000`;
+    }
+
+    return trimmed;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onSubmit({ name: name.trim(), description: description.trim() || undefined, color });
+    
+    const finalUrl = sanitizeImageUrl(heroImageUrl);
+    
+    onSubmit({
+      name: name.trim(),
+      description: description.trim() || undefined,
+      color,
+      heroImageUrl: finalUrl || undefined,
+    });
     onClose();
   };
 
@@ -75,14 +99,23 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
             />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="hero-url">Hero Image URL</Label>
+            <Input
+              id="hero-url"
+              value={heroImageUrl}
+              onChange={(e) => setHeroImageUrl(e.target.value)}
+              placeholder="https://images.unsplash.com/photo-..."
+            />
+          </div>
+          <div className="space-y-2">
             <Label>Color</Label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {BOARD_COLORS.map((c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setColor(c)}
-                  className="w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center"
+                  className="w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center shrink-0"
                   style={{
                     backgroundColor: c,
                     borderColor: color === c ? "hsl(var(--foreground))" : "transparent",

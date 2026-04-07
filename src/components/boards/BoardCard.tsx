@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Pencil, Trash2, LayoutDashboard } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { BoardHeroImage } from "./BoardHeroImage";
 
 interface BoardCardProps {
   board: Board;
@@ -23,13 +24,21 @@ export function BoardCard({ board, taskCount = 0, onEdit, onDelete }: BoardCardP
 
   return (
     <Card
-      className="group cursor-pointer hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 overflow-hidden"
+      className="group cursor-pointer hover:shadow-md transition-all duration-200 hover:-translate-y-1 overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm"
       onClick={() => navigate(`/boards/${board.id}`)}
     >
+      <BoardHeroImage
+        src={board.heroImageUrl}
+        alt={board.name}
+        color={board.color}
+        aspectRatio="video"
+        className="group-hover:brightness-110 transition-all duration-500"
+      />
+      
       {/* Color bar */}
-      <div className="h-1.5 w-full" style={{ backgroundColor: board.color }} />
+      <div className="h-1 w-full" style={{ backgroundColor: board.color }} />
 
-      <CardContent className="p-4 pt-3">
+      <CardContent className="p-4 pt-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div

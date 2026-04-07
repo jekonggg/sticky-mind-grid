@@ -3,6 +3,7 @@ export interface Board {
   name: string;
   description?: string;
   color: string;
+  heroImageUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -11,12 +12,14 @@ export interface CreateBoardData {
   name: string;
   description?: string;
   color?: string;
+  heroImageUrl?: string;
 }
 
 export interface UpdateBoardData {
   name?: string;
   description?: string;
   color?: string;
+  heroImageUrl?: string;
 }
 
 export const BOARD_COLORS = [

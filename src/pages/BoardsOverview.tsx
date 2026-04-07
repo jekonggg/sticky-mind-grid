@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, LayoutDashboard } from "lucide-react";
+import { BoardsHeroBanner } from "@/components/boards/BoardsHeroBanner";
 
 // Mock task counts per board – in a real app this would come from the API
 const MOCK_TASK_COUNTS: Record<string, number> = {
@@ -50,45 +51,46 @@ export default function BoardsOverview() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex items-center justify-between mb-6">
+      <BoardsHeroBanner />
+
+      {/* Toolbox */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 -mt-8 md:-mt-12 relative z-10">
+        <div className="bg-card/80 backdrop-blur-md border border-border/50 rounded-xl shadow-xl p-4 md:p-6 mb-8">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="flex items-center gap-2.5">
               <LayoutDashboard className="h-5 w-5 text-primary" />
-              <h1 className="text-xl font-bold text-foreground tracking-tight">My Boards</h1>
+              <h2 className="text-xl font-bold text-foreground tracking-tight">My Boards</h2>
             </div>
-            <Button onClick={handleNew} className="gap-1.5 font-semibold">
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Create Board</span>
-              <span className="sm:hidden">New</span>
-            </Button>
-          </div>
-
-          {/* Search + Sort */}
-          <div className="flex gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search boards…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
+            
+            <div className="flex w-full md:w-auto gap-3 items-center">
+              <div className="relative flex-1 md:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search boards…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 bg-background/50 border-border/50"
+                />
+              </div>
+              <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
+                <SelectTrigger className="w-[140px] md:w-[160px] bg-background/50 border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="updated">Last Updated</SelectItem>
+                  <SelectItem value="name">Name (A–Z)</SelectItem>
+                  <SelectItem value="created">Created Date</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={handleNew} className="gap-1.5 font-semibold shrink-0">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Create Board</span>
+                <span className="sm:hidden">New</span>
+              </Button>
             </div>
-            <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="updated">Last Updated</SelectItem>
-                <SelectItem value="name">Name (A–Z)</SelectItem>
-                <SelectItem value="created">Created Date</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
