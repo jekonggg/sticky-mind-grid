@@ -28,6 +28,15 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         ${isDragging ? "opacity-50 shadow-lg scale-[1.02]" : ""}`}
       onClick={() => onClick(task)}
     >
+      {task.attachments && task.attachments.length > 0 && (
+        <div className="mb-3 overflow-hidden rounded-md border border-border/50 aspect-video bg-muted">
+          <img
+            src={task.attachments[0]}
+            alt="Attachment"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
       <div className="flex items-start gap-2">
         <button
           className="mt-0.5 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0 text-muted-foreground"

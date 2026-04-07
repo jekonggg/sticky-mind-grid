@@ -1,11 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
-import { Task, CreateTaskData, UpdateTaskData, TaskStatus } from "@/types/task";
+import { Task, CreateTaskData, UpdateTaskData, TaskStatus, Column } from "@/types/task";
 import { taskApi } from "@/services/api";
-
 import { useActivity } from "./useActivity";
+
+const DEFAULT_COLUMNS: Column[] = [
+  { id: "todo", title: "To Do" },
+  { id: "in_progress", title: "In Progress" },
+  { id: "done", title: "Done" },
+  { id: "archive", title: "Archive" },
+];
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [columns, setColumns] = useState<Column[]>(DEFAULT_COLUMNS);
   const [loading, setLoading] = useState(true);
   const { addActivity } = useActivity();
 
@@ -36,7 +43,6 @@ export function useTasks() {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
 
-    // Optimistic update
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...data, updatedAt: new Date() } : t))
     );
@@ -46,7 +52,7 @@ export function useTasks() {
     try {
       await taskApi.updateTask(id, data);
     } catch {
-      fetchTasks(); // Rollback on error
+      fetchTasks();
     }
   }, [fetchTasks, tasks, addActivity]);
 
@@ -54,27 +60,21 @@ export function useTasks() {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
 
-    const oldStatus = task.status;
-    if (oldStatus === status) return;
+    if (task.status === status) return;
 
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status, updatedAt: new Date() } : t))
     );
 
-    const statusMap: Record<TaskStatus, string> = {
-      todo: "To Do",
-      in_progress: "In Progress",
-      done: "Done",
-    };
-
-    addActivity("move", task.title, `Moved "${task.title}" to ${statusMap[status]}`);
+    const columnTitle = columns.find((c) => c.id === status)?.title || status;
+    addActivity("move", task.title, `Moved "${task.title}" to ${columnTitle}`);
 
     try {
       await taskApi.updateTask(id, { status });
     } catch {
       fetchTasks();
     }
-  }, [fetchTasks, tasks, addActivity]);
+  }, [fetchTasks, tasks, columns, addActivity]);
 
   const deleteTask = useCallback(async (id: string) => {
     const task = tasks.find((t) => t.id === id);
@@ -90,10 +90,35 @@ export function useTasks() {
     }
   }, [fetchTasks, tasks, addActivity]);
 
+  const addColumn = useCallback((title: string) => {
+    const newColumn: Column = {
+      id: title.toLowerCase().replace(/\s+/g, "_") + "_" + Date.now(),
+      title,
+    };
+    setColumns((prev) => {
+      const archiveIndex = prev.findIndex((c) => c.id === "archive");
+      if (archiveIndex === -1) return [...prev, newColumn];
+      const nextColumns = [...prev];
+      nextColumns.splice(archiveIndex, 0, newColumn);
+      return nextColumns;
+    });
+    return newColumn;
+  }, []);
+
   const getTasksByStatus = useCallback(
     (status: TaskStatus) => tasks.filter((t) => t.status === status),
     [tasks]
   );
 
-  return { tasks, loading, addTask, updateTask, moveTask, deleteTask, getTasksByStatus };
+  return {
+    tasks,
+    columns,
+    loading,
+    addTask,
+    updateTask,
+    moveTask,
+    deleteTask,
+    addColumn,
+    getTasksByStatus,
+  };
 }

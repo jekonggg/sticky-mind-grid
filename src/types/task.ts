@@ -1,4 +1,4 @@
-export type TaskStatus = "todo" | "in_progress" | "done";
+export type TaskStatus = string;
 export type Priority = "low" | "medium" | "high";
 
 export interface Task {
@@ -7,6 +7,7 @@ export interface Task {
   description?: string;
   status: TaskStatus;
   priority: Priority;
+  attachments?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,6 +16,7 @@ export interface CreateTaskData {
   title: string;
   description?: string;
   priority: Priority;
+  attachments?: string[];
 }
 
 export interface UpdateTaskData {
@@ -22,6 +24,7 @@ export interface UpdateTaskData {
   description?: string;
   status?: TaskStatus;
   priority?: Priority;
+  attachments?: string[];
 }
 
 export type ActivityType = "create" | "move" | "update" | "delete";
@@ -32,4 +35,9 @@ export interface Activity {
   taskTitle: string;
   message: string;
   timestamp: Date;
+}
+
+export interface Column {
+  id: string;
+  title: string;
 }

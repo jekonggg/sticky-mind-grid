@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -18,24 +18,53 @@ import { TaskModal } from "./TaskModal";
 import { LatestChangesPanel } from "./LatestChangesPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BoardHeader } from "./BoardHeader";
-import { Loader2 } from "lucide-react";
-
-const columns: { id: TaskStatus; title: string }[] = [
-  { id: "todo", title: "To Do" },
-  { id: "in_progress", title: "In Progress" },
-  { id: "done", title: "Done" },
-];
+import { Loader2, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export function KanbanBoard() {
-  const { loading, addTask, updateTask, moveTask, deleteTask, getTasksByStatus } = useTasks();
+  const {
+    loading,
+    tasks,
+    columns,
+    addTask,
+    updateTask,
+    moveTask,
+    deleteTask,
+    addColumn,
+    getTasksByStatus,
+  } = useTasks();
+
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isActivityOpen, setIsActivityOpen] = useState(false);
+  const [newColumnTitle, setNewColumnTitle] = useState("");
+  const [isAddingColumn, setIsAddingColumn] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollRef.current) {
+      const scrollAmount = 350;
+      scrollRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  const handleAddColumn = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newColumnTitle.trim()) return;
+    addColumn(newColumnTitle.trim());
+    setNewColumnTitle("");
+    setIsAddingColumn(false);
+  };
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const task = event.active.data.current?.task as Task | undefined;
@@ -57,7 +86,7 @@ export function KanbanBoard() {
         moveTask(activeData.id, overStatus);
       }
     },
-    [moveTask]
+    [moveTask, columns]
   );
 
   const handleDragEnd = useCallback(
@@ -76,7 +105,7 @@ export function KanbanBoard() {
         moveTask(activeData.id, overStatus);
       }
     },
-    [moveTask]
+    [moveTask, columns]
   );
 
   const handleTaskClick = useCallback((task: Task) => {
@@ -104,8 +133,33 @@ export function KanbanBoard() {
     <div className="flex flex-col h-screen bg-background overflow-hidden font-sans">
       <BoardHeader onAddTask={openNewModal} onOpenActivity={() => setIsActivityOpen(true)} />
 
-      <div className="flex flex-1 overflow-hidden min-h-0">
-        <main className="flex-1 overflow-x-auto p-4 md:p-6 min-w-0">
+      <div className="flex flex-1 overflow-hidden min-h-0 relative group/board">
+        {/* Scroll Buttons */}
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/board:opacity-100 transition-opacity">
+          <Button
+            variant="secondary"
+            size="icon"
+            className="rounded-full shadow-lg border h-10 w-10 bg-background/80 backdrop-blur-sm"
+            onClick={() => scroll("left")}
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </Button>
+        </div>
+        <div className="absolute right-[330px] top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/board:opacity-100 transition-opacity hidden lg:block">
+          <Button
+            variant="secondary"
+            size="icon"
+            className="rounded-full shadow-lg border h-10 w-10 bg-background/80 backdrop-blur-sm"
+            onClick={() => scroll("right")}
+          >
+            <ChevronRight className="h-6 w-6" />
+          </Button>
+        </div>
+
+        <main
+          ref={scrollRef}
+          className="flex-1 overflow-x-auto p-4 md:p-6 min-w-0 scrollbar-hide"
+        >
           <DndContext
             sensors={sensors}
             collisionDetection={closestCorners}
@@ -113,7 +167,7 @@ export function KanbanBoard() {
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex gap-4 md:gap-5 h-full min-w-max">
+            <div className="flex gap-4 md:gap-6 h-full min-w-max pb-4">
               {columns.map((col) => (
                 <KanbanColumn
                   key={col.id}
@@ -123,6 +177,46 @@ export function KanbanBoard() {
                   onTaskClick={handleTaskClick}
                 />
               ))}
+
+              {/* Add Column Button/Form */}
+              <div className="w-80 shrink-0">
+                {isAddingColumn ? (
+                  <form
+                    onSubmit={handleAddColumn}
+                    className="bg-muted/40 rounded-lg p-3 border border-border/50 animate-in fade-in zoom-in duration-200"
+                  >
+                    <Input
+                      autoFocus
+                      placeholder="Column title..."
+                      value={newColumnTitle}
+                      onChange={(e) => setNewColumnTitle(e.target.value)}
+                      className="bg-background mb-2"
+                      onBlur={() => !newColumnTitle && setIsAddingColumn(false)}
+                    />
+                    <div className="flex gap-2">
+                      <Button type="submit" size="sm">
+                        Add Column
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsAddingColumn(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                ) : (
+                  <button
+                    onClick={() => setIsAddingColumn(true)}
+                    className="w-full flex items-center justify-center gap-2 p-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg border border-dashed border-border transition-all group"
+                  >
+                    <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
+                    <span className="text-sm font-medium">Add Column</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <DragOverlay>
@@ -137,7 +231,7 @@ export function KanbanBoard() {
 
         {/* Desktop Latest Changes Sidebar */}
         <aside className="hidden lg:block h-full shrink-0 border-l border-border bg-card shadow-lg overflow-hidden">
-           <LatestChangesPanel />
+          <LatestChangesPanel />
         </aside>
       </div>
 

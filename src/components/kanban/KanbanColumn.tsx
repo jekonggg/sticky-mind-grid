@@ -10,15 +10,16 @@ interface KanbanColumnProps {
   onTaskClick: (task: Task) => void;
 }
 
-const columnConfig: Record<TaskStatus, { dot: string }> = {
-  todo: { dot: "bg-muted-foreground" },
-  in_progress: { dot: "bg-primary" },
+const columnConfig: Record<string, { dot: string }> = {
+  todo: { dot: "bg-slate-400" },
+  in_progress: { dot: "bg-blue-500" },
   done: { dot: "bg-green-500" },
+  archive: { dot: "bg-gray-600" },
 };
 
 export function KanbanColumn({ id, title, tasks, onTaskClick }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
-  const config = columnConfig[id];
+  const config = columnConfig[id] || { dot: "bg-primary" };
 
   return (
     <div className="flex flex-col min-w-[280px] w-full max-w-sm">
