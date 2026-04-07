@@ -42,7 +42,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
   const addTask = useCallback(async (data: CreateTaskData) => {
     const task = await taskApi.createTask({ ...data, boardId });
     setTasks((prev) => [...prev, task]);
-    addActivity("create", task.title, `Created task "${task.title}"`);
+    addActivity("create", task.title, `Created task "${task.title}"`, boardId);
     return task;
   }, [addActivity, boardId]);
 
@@ -50,51 +50,63 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
 
+    // Check what specifically changed for better messaging
+    let message = `Updated task "${task.title}"`;
+    if (data.progress !== undefined && data.progress !== task.progress) {
+      message = `Updated progress of "${task.title}" to ${data.progress}%`;
+    } else if (data.status && data.status !== task.status) {
+      const oldTitle = columns.find(c => c.id === task.status)?.title || task.status;
+      const newTitle = columns.find(c => c.id === data.status)?.title || data.status;
+      message = `Moved "${task.title}" from ${oldTitle} ➔ ${newTitle}`;
+    }
+
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...data, updatedAt: new Date() } : t))
     );
 
-    addActivity("update", task.title, `Updated task "${task.title}"`);
+    addActivity("update", task.title, message, boardId);
 
     try {
       await taskApi.updateTask(id, data);
     } catch {
       fetchTasks();
     }
-  }, [fetchTasks, tasks, addActivity]);
+  }, [fetchTasks, tasks, columns, addActivity, boardId]);
 
   const moveTask = useCallback(async (id: string, status: TaskStatus) => {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
     if (task.status === status) return;
 
+    const oldTitle = columns.find(c => c.id === task.status)?.title || task.status;
+    const newTitle = columns.find(c => c.id === status)?.title || status;
+
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status, updatedAt: new Date() } : t))
     );
 
-    const columnTitle = columns.find((c) => c.id === status)?.title || status;
-    addActivity("move", task.title, `Moved "${task.title}" to ${columnTitle}`);
+    addActivity("move", task.title, `Moved "${task.title}" from ${oldTitle} ➔ ${newTitle}`, boardId);
 
     try {
       await taskApi.updateTask(id, { status });
     } catch {
       fetchTasks();
     }
-  }, [fetchTasks, tasks, columns, addActivity]);
+  }, [fetchTasks, tasks, columns, addActivity, boardId]);
 
   const deleteTask = useCallback(async (id: string) => {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
 
     setTasks((prev) => prev.filter((t) => t.id !== id));
-    addActivity("delete", task.title, `Deleted task "${task.title}"`);
+    addActivity("delete", task.title, `Permanently deleted task "${task.title}"`, boardId);
 
     try {
       await taskApi.deleteTask(id);
     } catch {
       fetchTasks();
     }
-  }, [fetchTasks, tasks, addActivity]);
+  }, [fetchTasks, tasks, addActivity, boardId]);
 
   const addColumn = useCallback((title: string) => {
     const newColumn: Column = {

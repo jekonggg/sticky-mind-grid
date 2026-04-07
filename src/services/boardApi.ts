@@ -1,85 +1,52 @@
 import { Board, CreateBoardData, UpdateBoardData, BOARD_COLORS } from "@/types/board";
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const API_BASE = "http://127.0.0.1:5000/api";
 
-const DEFAULT_COLUMNS = [
-  { id: "todo", title: "To Do" },
-  { id: "in_progress", title: "In Progress" },
-  { id: "done", title: "Done" },
-  { id: "archive", title: "Archive" },
-];
-
-let mockBoards: Board[] = [
-  {
-    id: "board-1",
-    name: "Product Launch",
-    description: "Q3 product launch planning and execution",
-    color: BOARD_COLORS[0],
-    heroImageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=800&auto=format&fit=crop",
-    columns: [...DEFAULT_COLUMNS],
-    createdAt: new Date(Date.now() - 7 * 86400000),
-    updatedAt: new Date(Date.now() - 3600000),
-  },
-  {
-    id: "board-2",
-    name: "Engineering Sprint",
-    description: "Current sprint tasks and bugs",
-    color: BOARD_COLORS[2],
-    heroImageUrl: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?q=80&w=800&auto=format&fit=crop",
-    columns: [...DEFAULT_COLUMNS],
-    createdAt: new Date(Date.now() - 14 * 86400000),
-    updatedAt: new Date(Date.now() - 7200000),
-  },
-  {
-    id: "board-3",
-    name: "Design System",
-    color: BOARD_COLORS[4],
-    heroImageUrl: "https://images.unsplash.com/photo-1558655146-d09347e92766?q=80&w=800&auto=format&fit=crop",
-    columns: [...DEFAULT_COLUMNS],
-    createdAt: new Date(Date.now() - 30 * 86400000),
-    updatedAt: new Date(Date.now() - 86400000),
-  },
-];
-
-let nextId = 4;
+const mapBoard = (board: any): Board => ({
+  ...board,
+  createdAt: new Date(board.createdAt),
+  updatedAt: new Date(board.updatedAt),
+});
 
 export const boardApi = {
   async getBoards(): Promise<Board[]> {
-    await delay(300);
-    return [...mockBoards];
+    const res = await fetch(`${API_BASE}/boards`);
+    if (!res.ok) throw new Error("Failed to fetch boards");
+    const data = await res.json();
+    return data.map(mapBoard);
   },
 
   async getBoard(id: string): Promise<Board | undefined> {
-    await delay(150);
-    return mockBoards.find((b) => b.id === id);
+    const res = await fetch(`${API_BASE}/boards/${id}`);
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    return mapBoard(data);
   },
 
   async createBoard(data: CreateBoardData): Promise<Board> {
-    await delay(200);
-    const board: Board = {
-      id: `board-${nextId++}`,
-      name: data.name,
-      description: data.description,
-      color: data.color || BOARD_COLORS[0],
-      heroImageUrl: data.heroImageUrl,
-      columns: data.columns || [...DEFAULT_COLUMNS],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    mockBoards.push(board);
-    return board;
+    const res = await fetch(`${API_BASE}/boards`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to create board");
+    const board = await res.json();
+    return mapBoard(board);
   },
 
   async updateBoard(id: string, data: UpdateBoardData): Promise<Board> {
-    await delay(150);
-    const idx = mockBoards.findIndex((b) => b.id === id);
-    if (idx === -1) throw new Error("Board not found");
-    mockBoards[idx] = { ...mockBoards[idx], ...data, updatedAt: new Date() };
-    return { ...mockBoards[idx] };
+    const res = await fetch(`${API_BASE}/boards/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to update board");
+    const board = await res.json();
+    return mapBoard(board);
   },
 
   async deleteBoard(id: string): Promise<void> {
-    await delay(150);
-    mockBoards = mockBoards.filter((b) => b.id !== id);
+    const res = await fetch(`${API_BASE}/boards/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Failed to delete board");
   },
 };

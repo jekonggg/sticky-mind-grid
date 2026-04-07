@@ -125,12 +125,14 @@ export function KanbanBoard() {
         const visibleCols = columns.filter((c) => c.id !== "archive");
         let newProgress = activeData.progress;
         
-        if (overStatus === visibleCols[visibleCols.length - 1].id) {
+        if (overStatus === 'done' || overStatus === visibleCols[visibleCols.length - 1].id) {
           newProgress = 100;
-        } else if (overStatus === visibleCols[0].id) {
+        } else if (overStatus === 'todo' || overStatus === visibleCols[0].id) {
           newProgress = 0;
+        } else if (overStatus === 'in_progress') {
+          newProgress = 30;
         } else if (activeData.progress === 100 || activeData.progress <= 10) {
-          newProgress = 50; // Middle ground if coming from edges
+          newProgress = 50; 
         }
 
         updateTask(activeData.id, { status: overStatus, progress: newProgress });
@@ -155,10 +157,12 @@ export function KanbanBoard() {
         const visibleCols = columns.filter((c) => c.id !== "archive");
         let newProgress = activeData.progress;
         
-        if (overStatus === visibleCols[visibleCols.length - 1].id) {
+        if (overStatus === 'done' || overStatus === visibleCols[visibleCols.length - 1].id) {
           newProgress = 100;
-        } else if (overStatus === visibleCols[0].id) {
+        } else if (overStatus === 'todo' || overStatus === visibleCols[0].id) {
           newProgress = 0;
+        } else if (overStatus === 'in_progress') {
+          newProgress = 30;
         } else if (activeData.progress === 100 || activeData.progress <= 10) {
           newProgress = 50;
         }

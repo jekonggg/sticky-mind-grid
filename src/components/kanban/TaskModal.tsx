@@ -92,15 +92,11 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
     if (columns && columns.length >= 3) {
       const visibleCols = columns.filter(c => c.id !== 'archive');
       if (progress === 100) {
-        finalStatus = visibleCols[visibleCols.length - 1].id;
-      } else if (progress <= 10) {
-        finalStatus = visibleCols[0].id;
-      } else if (progress >= 20 && progress <= 90) {
-        // Find the "middle" column or stay in current if already in middle
-        const currentIdx = visibleCols.findIndex(c => c.id === task?.status);
-        if (currentIdx === 0 || currentIdx === visibleCols.length - 1 || currentIdx === -1) {
-           finalStatus = visibleCols[1].id; // Default to first middle state
-        }
+        finalStatus = 'done';
+      } else if (progress === 30) {
+        finalStatus = 'in_progress';
+      } else if (progress === 0) {
+        finalStatus = 'todo';
       }
     }
 

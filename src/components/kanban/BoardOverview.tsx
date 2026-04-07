@@ -10,44 +10,55 @@ interface BoardOverviewProps {
 
 export function BoardOverview({ board, tasks }: BoardOverviewProps) {
   const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((t) => t.status === "done").length;
-  const inProgressTasks = tasks.filter((t) => t.status === "in_progress").length;
-  const todoTasks = tasks.filter((t) => t.status === "todo").length;
   
   // Calculate average progress across all tasks
   const averageProgress = totalTasks > 0 
     ? Math.round(tasks.reduce((sum, t) => sum + (t.progress || 0), 0) / totalTasks) 
     : 0;
 
+  // Generate dynamic stats based on board columns
+  const columnStats = board.columns.map(col => {
+    const value = tasks.filter(t => t.status === col.id).length;
+    
+    // Assign icons/colors based on standard IDs, or defaults for custom ones
+    let Icon = Circle;
+    let color = "text-blue-500";
+    let bg = "bg-blue-500/10";
+    
+    if (col.id === 'todo') {
+      Icon = Clock;
+      color = "text-slate-400";
+      bg = "bg-slate-400/10";
+    } else if (col.id === 'in_progress') {
+      Icon = AlertCircle;
+    } else if (col.id === 'done') {
+      Icon = CheckCircle2;
+      color = "text-green-500";
+      bg = "bg-green-500/10";
+    } else if (col.id === 'archive') {
+      Icon = Circle;
+      color = "text-orange-500";
+      bg = "bg-orange-500/10";
+    }
+    
+    return {
+      label: col.title,
+      value,
+      icon: Icon,
+      color,
+      bg
+    };
+  });
+
   const stats = [
     {
       label: "Total Tasks",
       value: totalTasks,
       icon: Circle,
-      color: "text-blue-500",
-      bg: "bg-blue-500/10",
+      color: "text-primary",
+      bg: "bg-primary/10",
     },
-    {
-      label: "To Do",
-      value: todoTasks,
-      icon: Clock,
-      color: "text-slate-400",
-      bg: "bg-slate-400/10",
-    },
-    {
-      label: "In Progress",
-      value: inProgressTasks,
-      icon: AlertCircle,
-      color: "text-blue-500",
-      bg: "bg-blue-500/10",
-    },
-    {
-      label: "Completed",
-      value: completedTasks,
-      icon: CheckCircle2,
-      color: "text-green-500",
-      bg: "bg-green-500/10",
-    },
+    ...columnStats
   ];
 
   return (
