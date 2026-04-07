@@ -19,6 +19,7 @@ class TaskService:
         new_task = Task(
             board_id=data.get('boardId'),
             title=data.get('title'),
+            emoji=data.get('emoji'),
             description=data.get('description'),
             status=data.get('status', 'todo'),
             priority=data.get('priority', 'medium'),
@@ -44,6 +45,7 @@ class TaskService:
 
         if 'boardId' in data: task.board_id = data['boardId']
         if 'title' in data: task.title = data['title']
+        if 'emoji' in data: task.emoji = data['emoji']
         if 'description' in data: task.description = data['description']
         if 'status' in data: task.status = data['status']
         if 'priority' in data: task.priority = data['priority']

@@ -117,22 +117,16 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="title">Task Icon & Title</Label>
-            <div className="flex gap-2">
-              <EmojiSelector 
-                currentEmoji={emoji}
-                onSelect={setEmoji}
-              />
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Task name…"
-                autoFocus
-                required
-                className="flex-1"
-              />
-            </div>
+            <Label htmlFor="title">Task Title</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Task name…"
+              autoFocus
+              required
+              className="flex-1"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>

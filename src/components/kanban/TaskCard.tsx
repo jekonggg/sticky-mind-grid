@@ -53,13 +53,8 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              {task.emoji && (
-                <div className="h-7 w-7 bg-primary/5 border border-primary/10 rounded-lg flex items-center justify-center shrink-0">
-                   <span className="text-sm">{task.emoji}</span>
-                </div>
-              )}
-              <h4 className="font-medium text-xs text-card-foreground leading-snug truncate">
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <h4 className="font-bold text-sm text-card-foreground leading-tight truncate">
                 {task.title}
               </h4>
               <Smile className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />

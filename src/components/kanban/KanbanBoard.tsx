@@ -18,7 +18,7 @@ import { TaskModal } from "./TaskModal";
 import { LatestChangesPanel } from "./LatestChangesPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BoardHeader } from "./BoardHeader";
-import { Loader2, Plus, PanelRightClose, PanelRightOpen, Settings, Smile } from "lucide-react";
+import { Loader2, Plus, PanelRightClose, PanelRightOpen, Settings, Smile, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useParams, useNavigate } from "react-router-dom";
 import { boardApi } from "@/services/boardApi";
@@ -99,13 +99,20 @@ export function KanbanBoard() {
     }
   };
 
-  const handleRenameColumn = async (id: string, newTitle: string) => {
+  const handleRenameColumn = async (id: string, newTitle: string, emoji?: string) => {
     if (!board) return;
-    const oldTitle = board.columns.find(c => c.id === id)?.title || "Unknown";
-    if (oldTitle === newTitle) return;
+    const oldCol = board.columns.find(c => c.id === id);
+    if (!oldCol) return;
+    
+    if (oldCol.title === newTitle && oldCol.emoji === emoji) return;
 
-    const updatedColumns = board.columns.map(c => c.id === id ? { ...c, title: newTitle } : c);
-    addActivity("update", board.name, `Renamed state from "${oldTitle}" ➔ "${newTitle}"`, boardId);
+    const updatedColumns = board.columns.map(c => c.id === id ? { ...c, title: newTitle, emoji } : c);
+    
+    // Only log if title changed
+    if (oldCol.title !== newTitle) {
+      addActivity("update", board.name, `Renamed state from "${oldCol.title}" ➔ "${newTitle}"`, boardId);
+    }
+    
     handleBoardUpdate({ columns: updatedColumns });
   };
 
@@ -325,7 +332,7 @@ export function KanbanBoard() {
                         onClick={() => setIsBoardModalOpen(true)} 
                         title="Edit Board & Icon"
                       >
-                        <Smile className="h-5 w-5" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
                     </div>
                     {board.description && (

@@ -85,10 +85,10 @@ def seed_database():
 
         print("Seeding Showcase Tasks...")
         showcase_tasks = [
-            Task(id=generate_id(), board_id="board-showcase", title="Move me to Done!", emoji="🎯", description="Drag this ticket across columns to see the progress auto-snap (0% ➔ 100%).", status="todo", priority="high", progress=0, due_date=now + timedelta(days=2)),
-            Task(id=generate_id(), board_id="board-showcase", title="Check my History sidebar", emoji="📜", description="I've already been moved once. Click me to see my journey.", status="in_progress", priority="medium", progress=30),
-            Task(id=generate_id(), board_id="board-showcase", title="Dynamic Dashboard Insights", emoji="💡", description="Look at the Overview tab!", status="qa", priority="low", progress=60),
-            Task(id=generate_id(), board_id="board-showcase", title="Full-Scale Image Support", emoji="🖼️", description="I'm a ticket with detailed content.", status="done", priority="medium", progress=100, due_date=now - timedelta(days=1)),
+            Task(id=generate_id(), board_id="board-showcase", title="Move me to Done!", description="Drag this ticket across columns to see the progress auto-snap (0% ➔ 100%).", status="todo", priority="high", progress=0, due_date=now + timedelta(days=2)),
+            Task(id=generate_id(), board_id="board-showcase", title="Check my History sidebar", description="I've already been moved once. Click me to see my journey.", status="in_progress", priority="medium", progress=30),
+            Task(id=generate_id(), board_id="board-showcase", title="Dynamic Dashboard Insights", description="Look at the Overview tab!", status="qa", priority="low", progress=60),
+            Task(id=generate_id(), board_id="board-showcase", title="Full-Scale Image Support", description="I'm a ticket with detailed content.", status="done", priority="medium", progress=100, due_date=now - timedelta(days=1)),
         ]
 
         print("Seeding Engineering Tasks...")
