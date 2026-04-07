@@ -2,6 +2,13 @@ import { Board, CreateBoardData, UpdateBoardData, BOARD_COLORS } from "@/types/b
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const DEFAULT_COLUMNS = [
+  { id: "todo", title: "To Do" },
+  { id: "in_progress", title: "In Progress" },
+  { id: "done", title: "Done" },
+  { id: "archive", title: "Archive" },
+];
+
 let mockBoards: Board[] = [
   {
     id: "board-1",
@@ -9,6 +16,7 @@ let mockBoards: Board[] = [
     description: "Q3 product launch planning and execution",
     color: BOARD_COLORS[0],
     heroImageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=800&auto=format&fit=crop",
+    columns: [...DEFAULT_COLUMNS],
     createdAt: new Date(Date.now() - 7 * 86400000),
     updatedAt: new Date(Date.now() - 3600000),
   },
@@ -18,6 +26,7 @@ let mockBoards: Board[] = [
     description: "Current sprint tasks and bugs",
     color: BOARD_COLORS[2],
     heroImageUrl: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?q=80&w=800&auto=format&fit=crop",
+    columns: [...DEFAULT_COLUMNS],
     createdAt: new Date(Date.now() - 14 * 86400000),
     updatedAt: new Date(Date.now() - 7200000),
   },
@@ -26,6 +35,7 @@ let mockBoards: Board[] = [
     name: "Design System",
     color: BOARD_COLORS[4],
     heroImageUrl: "https://images.unsplash.com/photo-1558655146-d09347e92766?q=80&w=800&auto=format&fit=crop",
+    columns: [...DEFAULT_COLUMNS],
     createdAt: new Date(Date.now() - 30 * 86400000),
     updatedAt: new Date(Date.now() - 86400000),
   },
@@ -52,6 +62,7 @@ export const boardApi = {
       description: data.description,
       color: data.color || BOARD_COLORS[0],
       heroImageUrl: data.heroImageUrl,
+      columns: data.columns || [...DEFAULT_COLUMNS],
       createdAt: new Date(),
       updatedAt: new Date(),
     };

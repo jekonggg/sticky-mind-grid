@@ -10,11 +10,18 @@ const DEFAULT_COLUMNS: Column[] = [
   { id: "archive", title: "Archive" },
 ];
 
-export function useTasks(boardId: string) {
+export function useTasks(boardId: string, initialColumns: Column[] = []) {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [columns, setColumns] = useState<Column[]>(DEFAULT_COLUMNS);
+  const [columns, setColumns] = useState<Column[]>(initialColumns);
   const [loading, setLoading] = useState(true);
   const { addActivity } = useActivity();
+
+  // Sync columns when board updates
+  useEffect(() => {
+    if (initialColumns && initialColumns.length > 0) {
+      setColumns(initialColumns);
+    }
+  }, [initialColumns]);
 
   const fetchTasks = useCallback(async () => {
     try {

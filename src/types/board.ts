@@ -1,9 +1,12 @@
+import { Column } from "./task";
+
 export interface Board {
   id: string;
   name: string;
   description?: string;
   color: string;
   heroImageUrl?: string;
+  columns: Column[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -13,6 +16,7 @@ export interface CreateBoardData {
   description?: string;
   color?: string;
   heroImageUrl?: string;
+  columns?: Column[];
 }
 
 export interface UpdateBoardData {
@@ -20,6 +24,7 @@ export interface UpdateBoardData {
   description?: string;
   color?: string;
   heroImageUrl?: string;
+  columns?: Column[];
 }
 
 export const BOARD_COLORS = [

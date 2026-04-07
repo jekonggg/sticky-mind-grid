@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Board, CreateBoardData, BOARD_COLORS } from "@/types/board";
+import { Column } from "@/types/task";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Check, ImagePlus, X } from "lucide-react";
+import { Check, ImagePlus, X, Plus } from "lucide-react";
 
 interface BoardModalProps {
   open: boolean;
@@ -25,6 +26,7 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
   const [description, setDescription] = useState("");
   const [color, setColor] = useState<string>(BOARD_COLORS[0]);
   const [heroImageUrl, setHeroImageUrl] = useState("");
+  const [columns, setColumns] = useState<Column[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!board;
@@ -35,13 +37,33 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
       setDescription(board.description || "");
       setColor(board.color);
       setHeroImageUrl(board.heroImageUrl || "");
+      setColumns(board.columns || []);
     } else {
       setName("");
       setDescription("");
       setColor(BOARD_COLORS[0]);
       setHeroImageUrl("");
+      setColumns([
+        { id: "todo", title: "To Do" },
+        { id: "in_progress", title: "In Progress" },
+        { id: "done", title: "Done" },
+      ]);
     }
   }, [board, open]);
+
+  const handleAddColumn = () => {
+    const id = `col_${Date.now()}`;
+    setColumns([...columns, { id, title: "New State" }]);
+  };
+
+  const handleRemoveColumn = (id: string) => {
+    if (columns.length <= 3) return;
+    setColumns(columns.filter((c) => c.id !== id));
+  };
+
+  const handleColumnRename = (id: string, title: string) => {
+    setColumns(columns.map((c) => (c.id === id ? { ...c, title } : c)));
+  };
 
   const sanitizeImageUrl = (url: string) => {
     const trimmed = url.trim();
@@ -81,22 +103,29 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
     
     const finalUrl = sanitizeImageUrl(heroImageUrl);
     
+    // Ensure Archive is always present for the system if not in columns
+    let finalColumns = [...columns];
+    if (!finalColumns.some(c => c.id === 'archive')) {
+       finalColumns.push({ id: 'archive', title: 'Archive' });
+    }
+
     onSubmit({
       name: name.trim(),
       description: description.trim() || undefined,
       color,
       heroImageUrl: finalUrl || undefined,
+      columns: finalColumns,
     });
     onClose();
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit Board" : "Create Board"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="board-name">Name</Label>
             <Input
@@ -118,8 +147,42 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
               rows={2}
             />
           </div>
+
+          <div className="space-y-3">
+             <div className="flex items-center justify-between">
+                <Label>Board States (Workflow)</Label>
+                <Button type="button" variant="ghost" size="sm" onClick={handleAddColumn} className="h-7 text-xs gap-1">
+                   <Plus className="h-3 w-3" /> Add State
+                </Button>
+             </div>
+             <div className="space-y-2">
+                {columns.filter(c => c.id !== 'archive').map((col, idx) => (
+                   <div key={col.id} className="flex gap-2 group">
+                      <Input 
+                         value={col.title}
+                         onChange={(e) => handleColumnRename(col.id, e.target.value)}
+                         placeholder={`State ${idx + 1}`}
+                         className="h-9"
+                      />
+                      <Button 
+                         type="button" 
+                         variant="ghost" 
+                         size="icon" 
+                         className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
+                         disabled={columns.length <= 3}
+                         onClick={() => handleRemoveColumn(col.id)}
+                      >
+                         <X className="h-4 w-4" />
+                      </Button>
+                   </div>
+                ))}
+             </div>
+             <p className="text-[10px] text-muted-foreground font-medium italic">
+                Minimum 3 states required. Rename them to suit your project workflow.
+             </p>
+          </div>
           
-          <div className="space-y-2">
+          <div className="space-y-2 pt-2 border-t">
             <Label>Board Header Image</Label>
             <div className="space-y-3">
               {heroImageUrl && (
@@ -154,9 +217,6 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
                   <ImagePlus className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">
-                Tip: Paste a direct image link/Unsplash page URL, or upload a local file (max 2MB).
-              </p>
               <input 
                 type="file" 
                 ref={fileInputRef} 
@@ -167,7 +227,7 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 pt-2 border-t">
             <Label>Theme Color</Label>
             <div className="flex gap-2 flex-wrap">
               {BOARD_COLORS.map((c) => (

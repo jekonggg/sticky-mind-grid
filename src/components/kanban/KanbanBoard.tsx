@@ -58,15 +58,13 @@ export function KanbanBoard() {
     deleteTask,
     addColumn,
     getTasksByStatus,
-  } = useTasks(boardId || "");
+  } = useTasks(boardId || "", board?.columns);
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isActivityOpen, setIsActivityOpen] = useState(true); // Default open
   const [searchTerm, setSearchTerm] = useState("");
-  const [newColumnTitle, setNewColumnTitle] = useState("");
-  const [isAddingColumn, setIsAddingColumn] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -74,23 +72,31 @@ export function KanbanBoard() {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  const handleAddColumn = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newColumnTitle.trim()) return;
-    addColumn(newColumnTitle.trim());
-    setNewColumnTitle("");
-    setIsAddingColumn(false);
-  };
-
   const handleBoardUpdate = async (data: any) => {
     if (!boardId) return;
     try {
       const updated = await boardApi.updateBoard(boardId, data);
       setBoard(updated);
-      toast.success("Board details updated");
+      toast.success("Board updated");
     } catch (error) {
       toast.error("Failed to update board");
     }
+  };
+
+  const handleRenameColumn = async (id: string, newTitle: string) => {
+    if (!board) return;
+    const updatedColumns = board.columns.map(c => c.id === id ? { ...c, title: newTitle } : c);
+    handleBoardUpdate({ columns: updatedColumns });
+  };
+
+  const handleAddNewState = async () => {
+    if (!board) return;
+    const newId = `col_${Date.now()}`;
+    const archiveCol = board.columns.find(c => c.id === 'archive');
+    const baseCols = board.columns.filter(c => c.id !== 'archive');
+    const updatedColumns = [...baseCols, { id: newId, title: "New State" }];
+    if (archiveCol) updatedColumns.push(archiveCol);
+    handleBoardUpdate({ columns: updatedColumns });
   };
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -236,47 +242,19 @@ export function KanbanBoard() {
                         title={col.title}
                         tasks={filteredTasksByStatus(col.id)}
                         onTaskClick={handleTaskClick}
+                        onRename={handleRenameColumn}
                       />
                   ))}
 
-                  {/* Add Column Button/Form */}
+                  {/* Add Column Button */}
                   <div className="w-80 shrink-0">
-                    {isAddingColumn ? (
-                      <form
-                        onSubmit={handleAddColumn}
-                        className="bg-background rounded-xl p-4 border border-border shadow-sm animate-in fade-in zoom-in duration-200"
-                      >
-                        <Input
-                          autoFocus
-                          placeholder="Column title..."
-                          value={newColumnTitle}
-                          onChange={(e) => setNewColumnTitle(e.target.value)}
-                          className="mb-3"
-                          onBlur={() => !newColumnTitle && setIsAddingColumn(false)}
-                        />
-                        <div className="flex gap-2">
-                          <Button type="submit" size="sm">
-                            Add Column
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsAddingColumn(false)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </form>
-                    ) : (
-                      <button
-                        onClick={() => setIsAddingColumn(true)}
-                        className="w-full flex items-center justify-center gap-2 p-4 text-muted-foreground hover:text-foreground hover:bg-background rounded-xl border border-dashed border-border/60 transition-all group bg-white/40"
-                      >
-                        <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
-                        <span className="text-sm font-bold">New State</span>
-                      </button>
-                    )}
+                    <button
+                      onClick={handleAddNewState}
+                      className="w-full flex items-center justify-center gap-2 p-4 text-muted-foreground hover:text-foreground hover:bg-background rounded-xl border border-dashed border-border/60 transition-all group bg-white/40"
+                    >
+                      <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
+                      <span className="text-sm font-bold">New State</span>
+                    </button>
                   </div>
                 </div>
 
