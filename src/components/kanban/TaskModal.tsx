@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Task, CreateTaskData, Priority } from "@/types/task";
+import { Task, UpdateTaskData, Priority, Column } from "@/types/task";
 import {
   Dialog,
   DialogContent,
@@ -11,21 +11,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Trash2, ImagePlus, X } from "lucide-react";
+import { Trash2, ImagePlus, X, Check } from "lucide-react";
 
 interface TaskModalProps {
   open: boolean;
   onClose: () => void;
   task?: Task | null;
-  onSubmit: (data: CreateTaskData) => void;
+  columns?: Column[]; // Added for auto-mapping
+  onSubmit: (data: UpdateTaskData) => void;
   onDelete?: (id: string) => void;
 }
 
-export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModalProps) {
+export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: TaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
   const [dueDate, setDueDate] = useState<string>("");
+  const [progress, setProgress] = useState<number>(0);
   const [attachments, setAttachments] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -37,12 +39,14 @@ export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModal
       setDescription(task.description || "");
       setPriority(task.priority);
       setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "");
+      setProgress(task.progress || 0);
       setAttachments(task.attachments || []);
     } else {
       setTitle("");
       setDescription("");
       setPriority("medium");
       setDueDate("");
+      setProgress(0);
       setAttachments([]);
     }
   }, [task, open]);
@@ -67,11 +71,32 @@ export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModal
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+
+    let finalStatus = task?.status;
+    
+    // Auto-map status if columns are provided
+    if (columns && columns.length >= 3) {
+      const visibleCols = columns.filter(c => c.id !== 'archive');
+      if (progress === 100) {
+        finalStatus = visibleCols[visibleCols.length - 1].id;
+      } else if (progress <= 10) {
+        finalStatus = visibleCols[0].id;
+      } else if (progress >= 20 && progress <= 90) {
+        // Find the "middle" column or stay in current if already in middle
+        const currentIdx = visibleCols.findIndex(c => c.id === task?.status);
+        if (currentIdx === 0 || currentIdx === visibleCols.length - 1 || currentIdx === -1) {
+           finalStatus = visibleCols[1].id; // Default to first middle state
+        }
+      }
+    }
+
     onSubmit({
       title: title.trim(),
       description: description.trim() || undefined,
       priority,
+      status: finalStatus,
       dueDate: dueDate ? new Date(dueDate) : undefined,
+      progress,
       attachments,
     });
     onClose();
@@ -137,6 +162,38 @@ export function TaskModal({ open, onClose, task, onSubmit, onDelete }: TaskModal
                    className="h-9 py-1 px-3 text-xs font-bold"
                 />
              </div>
+          </div>
+
+          <div className="space-y-3 pt-2 border-t">
+            <div className="flex items-center justify-between">
+              <Label>Task Progress</Label>
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                {progress}% {progress === 100 ? "Completed" : "In Progress"}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 justify-between">
+              {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((val) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setProgress(val)}
+                  className={`h-7 w-7 flex items-center justify-center rounded-md text-[9px] font-black transition-all border
+                    ${
+                      progress === val
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-primary"
+                    }`}
+                >
+                  {val === 100 ? <Check className="h-3 w-3" /> : val}
+                </button>
+              ))}
+            </div>
+            <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+               <div 
+                  className="h-full bg-primary transition-all duration-500 ease-out"
+                  style={{ width: `${progress}%` }}
+               />
+            </div>
           </div>
 
           <div className="space-y-2 pt-2 border-t">

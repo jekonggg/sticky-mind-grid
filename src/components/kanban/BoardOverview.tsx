@@ -1,4 +1,4 @@
-import { Task } from "@/types/task";
+import { Task, TaskStatus, CreateTaskData } from "@/types/task";
 import { Board } from "@/types/board";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Circle, Clock, AlertCircle } from "lucide-react";
@@ -14,7 +14,10 @@ export function BoardOverview({ board, tasks }: BoardOverviewProps) {
   const inProgressTasks = tasks.filter((t) => t.status === "in_progress").length;
   const todoTasks = tasks.filter((t) => t.status === "todo").length;
   
-  const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  // Calculate average progress across all tasks
+  const averageProgress = totalTasks > 0 
+    ? Math.round(tasks.reduce((sum, t) => sum + (t.progress || 0), 0) / totalTasks) 
+    : 0;
 
   const stats = [
     {
@@ -77,15 +80,15 @@ export function BoardOverview({ board, tasks }: BoardOverviewProps) {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-black text-foreground">Overall Progress</h3>
-                <p className="text-sm text-muted-foreground mt-1">Completion rate based on task status</p>
+                <p className="text-sm text-muted-foreground mt-1">Weighted completion across all tasks</p>
               </div>
-              <span className="text-4xl font-black text-primary">{completionPercentage}%</span>
+              <span className="text-4xl font-black text-primary">{averageProgress}%</span>
             </div>
             
             <div className="h-4 w-full bg-muted rounded-full overflow-hidden">
               <div 
                 className="h-full bg-primary transition-all duration-1000 ease-out rounded-full shadow-[0_0_12px_rgba(var(--primary),0.3)]"
-                style={{ width: `${completionPercentage}%` }}
+                style={{ width: `${averageProgress}%` }}
               />
             </div>
 

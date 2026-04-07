@@ -63,10 +63,23 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             </span>
           </div>
           {task.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-1">
               {task.description}
             </p>
           )}
+
+          {/* Progress Bar */}
+          <div className="mt-3 space-y-1.5 flex flex-col items-end">
+            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden border border-border/10">
+              <div
+                className="h-full bg-primary transition-all duration-500 ease-out shadow-[0_0_8px_rgba(var(--primary),0.2)]"
+                style={{ width: `${task.progress}%` }}
+              />
+            </div>
+            <span className="text-[9px] font-black tracking-tighter text-muted-foreground/60 leading-none">
+              {task.progress}%
+            </span>
+          </div>
         </div>
       </div>
     </div>

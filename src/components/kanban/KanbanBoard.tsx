@@ -10,7 +10,7 @@ import {
   useSensors,
   closestCorners,
 } from "@dnd-kit/core";
-import { Task, TaskStatus } from "@/types/task";
+import { Task, TaskStatus, CreateTaskData } from "@/types/task";
 import { useTasks } from "@/hooks/useTasks";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
@@ -122,10 +122,21 @@ export function KanbanBoard() {
       const overStatus = columns.find((c) => c.id === overId)?.id;
 
       if (overStatus && activeData.status !== overStatus) {
-        moveTask(activeData.id, overStatus);
+        const visibleCols = columns.filter((c) => c.id !== "archive");
+        let newProgress = activeData.progress;
+        
+        if (overStatus === visibleCols[visibleCols.length - 1].id) {
+          newProgress = 100;
+        } else if (overStatus === visibleCols[0].id) {
+          newProgress = 0;
+        } else if (activeData.progress === 100 || activeData.progress <= 10) {
+          newProgress = 50; // Middle ground if coming from edges
+        }
+
+        updateTask(activeData.id, { status: overStatus, progress: newProgress });
       }
     },
-    [moveTask, columns]
+    [updateTask, columns]
   );
 
   const handleDragEnd = useCallback(
@@ -141,10 +152,21 @@ export function KanbanBoard() {
       const overStatus = columns.find((c) => c.id === overId)?.id;
 
       if (overStatus && activeData.status !== overStatus) {
-        moveTask(activeData.id, overStatus);
+        const visibleCols = columns.filter((c) => c.id !== "archive");
+        let newProgress = activeData.progress;
+        
+        if (overStatus === visibleCols[visibleCols.length - 1].id) {
+          newProgress = 100;
+        } else if (overStatus === visibleCols[0].id) {
+          newProgress = 0;
+        } else if (activeData.progress === 100 || activeData.progress <= 10) {
+          newProgress = 50;
+        }
+
+        updateTask(activeData.id, { status: overStatus, progress: newProgress });
       }
     },
-    [moveTask, columns]
+    [updateTask, columns]
   );
 
   const handleTaskClick = useCallback((task: Task) => {
@@ -257,26 +279,54 @@ export function KanbanBoard() {
       <BoardHeader onAddTask={openNewModal} search={searchTerm} onSearchChange={setSearchTerm} />
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 custom-scrollbar flex flex-col">
+        {/* Left Side: Scrollable View Container */}
+        <div className="flex-1 overflow-y-scroll overflow-x-hidden min-h-0 custom-scrollbar flex flex-col [scrollbar-gutter:stable]">
           <div className="relative h-48 md:h-56 shrink-0 overflow-hidden">
             <BoardHeroImage src={board.heroImageUrl} alt={board.name} color={board.color} className="h-full w-full" aspectRatio="auto" />
           </div>
 
+          {/* Board Identity & Navigation Section */}
           <div className="bg-background border-b border-border/50 shrink-0">
-            <div className="px-6 py-6 md:px-10 flex flex-col gap-6 max-w-6xl">
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">{board.name}</h1>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-muted transition-colors shrink-0" onClick={() => setIsBoardModalOpen(true)} title="Board Settings">
-                    <Settings className="h-5 w-5 text-muted-foreground" />
+            <div className="px-6 py-5 md:px-10 flex flex-col md:flex-row items-center justify-between gap-6 max-w-[1600px] mx-auto w-full">
+              
+              {/* Left: Title & Description */}
+              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl md:text-3xl font-black text-foreground tracking-tight truncate">
+                    {board.name}
+                  </h1>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 rounded-full hover:bg-muted transition-colors shrink-0" 
+                    onClick={() => setIsBoardModalOpen(true)} 
+                    title="Board Settings"
+                  >
+                    <Settings className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </div>
-                {board.description && <p className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-2xl text-pretty">{board.description}</p>}
+                {board.description && (
+                  <p className="text-[11px] md:text-xs font-medium text-muted-foreground leading-tight max-w-2xl text-pretty opacity-70">
+                    {board.description}
+                  </p>
+                )}
               </div>
 
-              <div className="flex items-center gap-1 border-b border-border w-fit -mb-6">
+              {/* Right: Pill-style Tab Switcher */}
+              <div className="flex items-center p-1 bg-muted/40 backdrop-blur-sm rounded-full border border-border/40 shadow-inner group/tabs shrink-0">
                 {views.map((view) => (
-                  <button key={view.id} onClick={() => setActiveView(view.id)} className={`px-4 py-2 text-sm font-bold transition-all relative ${activeView === view.id ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                  <button 
+                    key={view.id} 
+                    onClick={() => setActiveView(view.id)} 
+                    className={`px-5 py-2 text-xs font-black uppercase tracking-widest transition-all rounded-full relative z-10 
+                      ${activeView === view.id 
+                        ? "text-primary-foreground shadow-lg scale-105" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    {activeView === view.id && (
+                      <div className="absolute inset-0 bg-primary rounded-full -z-10 shadow-[0_0_15px_rgba(var(--primary),0.3)] animate-in zoom-in-95 duration-200" />
+                    )}
                     {view.label}
                   </button>
                 ))}
@@ -284,6 +334,7 @@ export function KanbanBoard() {
             </div>
           </div>
 
+          {/* Active View Content Container */}
           <div className="flex-1 bg-muted/20 min-h-[500px]">
             {renderActiveView()}
           </div>
@@ -353,11 +404,12 @@ export function KanbanBoard() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         task={editingTask}
+        columns={board.columns}
         onSubmit={(data) => {
           if (editingTask) {
             updateTask(editingTask.id, data);
           } else {
-            addTask(data);
+            addTask(data as CreateTaskData);
           }
         }}
         onDelete={deleteTask}

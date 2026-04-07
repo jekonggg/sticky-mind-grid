@@ -32,8 +32,9 @@ export function TaskListView({ tasks, onTaskClick }: TaskListViewProps) {
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow className="border-border/50">
-              <TableHead className="w-[40%] font-black uppercase text-[10px] tracking-widest py-4">Task Name</TableHead>
+              <TableHead className="w-[30%] font-black uppercase text-[10px] tracking-widest py-4">Task Name</TableHead>
               <TableHead className="font-black uppercase text-[10px] tracking-widest py-4">Status</TableHead>
+              <TableHead className="font-black uppercase text-[10px] tracking-widest py-4">Progress</TableHead>
               <TableHead className="font-black uppercase text-[10px] tracking-widest py-4">Priority</TableHead>
               <TableHead className="font-black uppercase text-[10px] tracking-widest py-4">Due Date</TableHead>
               <TableHead className="text-right py-4"></TableHead>
@@ -42,7 +43,7 @@ export function TaskListView({ tasks, onTaskClick }: TaskListViewProps) {
           <TableBody>
             {tasks.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">
+                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">
                   No tasks found matching your criteria
                 </TableCell>
               </TableRow>
@@ -70,6 +71,19 @@ export function TaskListView({ tasks, onTaskClick }: TaskListViewProps) {
                        {statusIcons[task.status] || <Clock className="h-3 w-3 mr-1.5" />}
                        {task.status.replace("_", " ")}
                     </div>
+                  </TableCell>
+                  <TableCell className="py-4">
+                     <div className="flex flex-col gap-1.5 w-24">
+                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                           <div 
+                              className="h-full bg-primary transition-all duration-500"
+                              style={{ width: `${task.progress}%` }}
+                           />
+                        </div>
+                        <span className="text-[9px] font-black tracking-tighter text-muted-foreground/80 leading-none">
+                           {task.progress}%
+                        </span>
+                     </div>
                   </TableCell>
                   <TableCell className="py-4">
                     <Badge variant="outline" className={`font-black uppercase text-[9px] tracking-tighter ${getPriorityColor(task.priority)}`}>
