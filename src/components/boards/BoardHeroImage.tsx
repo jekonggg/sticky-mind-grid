@@ -55,7 +55,7 @@ export const BoardHeroImage: React.FC<BoardHeroImageProps> = ({
       <img
         src={src}
         alt={alt}
-        className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+        className="w-full h-full object-cover"
         onError={() => setError(true)}
       />
     </div>

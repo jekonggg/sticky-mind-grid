@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Board, CreateBoardData, BOARD_COLORS } from "@/types/board";
 import {
   Dialog,
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Check } from "lucide-react";
+import { Check, ImagePlus, X } from "lucide-react";
 
 interface BoardModalProps {
   open: boolean;
@@ -25,6 +25,7 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
   const [description, setDescription] = useState("");
   const [color, setColor] = useState<string>(BOARD_COLORS[0]);
   const [heroImageUrl, setHeroImageUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!board;
 
@@ -46,6 +47,9 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
     const trimmed = url.trim();
     if (!trimmed) return "";
 
+    // Don't sanitize local base64 images
+    if (trimmed.startsWith("data:image")) return trimmed;
+
     // Handle Unsplash photo page URLs (e.g., https://unsplash.com/photos/XYZ)
     const unsplashMatch = trimmed.match(/unsplash\.com\/photos\/(?:.*-)?([a-zA-Z0-9_-]+)/);
     if (unsplashMatch && unsplashMatch[1]) {
@@ -53,6 +57,22 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
     }
 
     return trimmed;
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image is too large. Please choose a file under 2MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setHeroImageUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -72,7 +92,7 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit Board" : "Create Board"}</DialogTitle>
         </DialogHeader>
@@ -98,17 +118,57 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
               rows={2}
             />
           </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="hero-url">Hero Image URL</Label>
-            <Input
-              id="hero-url"
-              value={heroImageUrl}
-              onChange={(e) => setHeroImageUrl(e.target.value)}
-              placeholder="https://images.unsplash.com/photo-..."
-            />
+            <Label>Board Header Image</Label>
+            <div className="space-y-3">
+              {heroImageUrl && (
+                <div className="relative aspect-video rounded-lg border overflow-hidden bg-muted group">
+                  <img src={sanitizeImageUrl(heroImageUrl)} className="w-full h-full object-cover" alt="Preview" />
+                  <button 
+                    type="button" 
+                    onClick={() => setHeroImageUrl("")}
+                    className="absolute top-2 right-2 p-1.5 bg-background/80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background shadow-sm"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <Input
+                  value={heroImageUrl.startsWith("data:") ? "Local Image Uploaded" : heroImageUrl}
+                  onChange={(e) => setHeroImageUrl(e.target.value)}
+                  placeholder="Paste Unsplash or Image URL..."
+                  className="flex-1"
+                  readOnly={heroImageUrl.startsWith("data:")}
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="icon" 
+                  className="shrink-0"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Upload image"
+                >
+                  <ImagePlus className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Tip: Paste a direct image link/Unsplash page URL, or upload a local file (max 2MB).
+              </p>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/*" 
+                onChange={handleFileChange} 
+              />
+            </div>
           </div>
+
           <div className="space-y-2">
-            <Label>Color</Label>
+            <Label>Theme Color</Label>
             <div className="flex gap-2 flex-wrap">
               {BOARD_COLORS.map((c) => (
                 <button
@@ -131,7 +191,7 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
               Cancel
             </Button>
             <Button type="submit" disabled={!name.trim()}>
-              {isEditing ? "Save" : "Create"}
+              {isEditing ? "Save" : "Create Board"}
             </Button>
           </DialogFooter>
         </form>

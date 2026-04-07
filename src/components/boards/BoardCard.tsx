@@ -32,7 +32,6 @@ export function BoardCard({ board, taskCount = 0, onEdit, onDelete }: BoardCardP
         alt={board.name}
         color={board.color}
         aspectRatio="video"
-        className="group-hover:brightness-110 transition-all duration-500"
       />
       
       {/* Color bar */}
