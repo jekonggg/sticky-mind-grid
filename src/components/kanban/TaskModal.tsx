@@ -42,7 +42,7 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
       setEmoji(task.emoji || "");
       setDescription(task.description || "");
       setPriority(task.priority);
-      setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "");
+      setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : "");
       setProgress(task.progress || 0);
       setAttachments(task.attachments || []);
     } else {
@@ -157,10 +157,10 @@ export function TaskModal({ open, onClose, task, columns, onSubmit, onDelete }: 
                 </div>
              </div>
              <div className="space-y-2">
-                <Label htmlFor="due-date">Due Date</Label>
+                <Label htmlFor="due-date">Due Date & Time</Label>
                 <Input
                    id="due-date"
-                   type="date"
+                   type="datetime-local"
                    value={dueDate}
                    onChange={(e) => setDueDate(e.target.value)}
                    className="h-9 py-1 px-3 text-xs font-bold"
