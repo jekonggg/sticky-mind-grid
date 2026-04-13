@@ -1,6 +1,5 @@
 import { Task, CreateTaskData, UpdateTaskData } from "@/types/task";
-
-const API_BASE = "http://127.0.0.1:5000/api";
+import { authenticatedFetch } from "./apiUtils";
 
 const mapTask = (task: any): Task => ({
   ...task,
@@ -16,8 +15,8 @@ export const taskApi = {
       return [];
     }
 
-    const url = boardId ? `${API_BASE}/tasks?boardId=${boardId}` : `${API_BASE}/tasks`;
-    const res = await fetch(url);
+    const endpoint = boardId ? `/tasks?boardId=${boardId}` : "/tasks";
+    const res = await authenticatedFetch(endpoint);
     if (!res.ok) throw new Error("Failed to fetch tasks");
     const data = await res.json();
     return data.map(mapTask);
@@ -28,9 +27,8 @@ export const taskApi = {
        return {} as Task;
     }
 
-    const res = await fetch(`${API_BASE}/tasks`, {
+    const res = await authenticatedFetch("/tasks", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Failed to create task");
@@ -43,9 +41,8 @@ export const taskApi = {
        return {} as Task;
     }
 
-    const res = await fetch(`${API_BASE}/tasks/${id}`, {
+    const res = await authenticatedFetch(`/tasks/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Failed to update task");
@@ -58,7 +55,7 @@ export const taskApi = {
        return;
     }
 
-    const res = await fetch(`${API_BASE}/tasks/${id}`, { method: "DELETE" });
+    const res = await authenticatedFetch(`/tasks/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to delete task");
   },
 };

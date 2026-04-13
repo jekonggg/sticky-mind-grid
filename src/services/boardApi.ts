@@ -1,6 +1,5 @@
-import { Board, CreateBoardData, UpdateBoardData, BOARD_COLORS } from "@/types/board";
-
-const API_BASE = "http://127.0.0.1:5000/api";
+import { Board, CreateBoardData, UpdateBoardData } from "@/types/board";
+import { authenticatedFetch } from "./apiUtils";
 
 const mapBoard = (board: any): Board => ({
   ...board,
@@ -10,23 +9,22 @@ const mapBoard = (board: any): Board => ({
 
 export const boardApi = {
   async getBoards(): Promise<Board[]> {
-    const res = await fetch(`${API_BASE}/boards`);
+    const res = await authenticatedFetch("/boards");
     if (!res.ok) throw new Error("Failed to fetch boards");
     const data = await res.json();
     return data.map(mapBoard);
   },
 
   async getBoard(id: string): Promise<Board | undefined> {
-    const res = await fetch(`${API_BASE}/boards/${id}`);
+    const res = await authenticatedFetch(`/boards/${id}`);
     if (!res.ok) return undefined;
     const data = await res.json();
     return mapBoard(data);
   },
 
   async createBoard(data: CreateBoardData): Promise<Board> {
-    const res = await fetch(`${API_BASE}/boards`, {
+    const res = await authenticatedFetch("/boards", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Failed to create board");
@@ -35,9 +33,8 @@ export const boardApi = {
   },
 
   async updateBoard(id: string, data: UpdateBoardData): Promise<Board> {
-    const res = await fetch(`${API_BASE}/boards/${id}`, {
+    const res = await authenticatedFetch(`/boards/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Failed to update board");
@@ -46,7 +43,7 @@ export const boardApi = {
   },
 
   async deleteBoard(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/boards/${id}`, { method: "DELETE" });
+    const res = await authenticatedFetch(`/boards/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to delete board");
   },
 };

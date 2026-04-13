@@ -19,7 +19,8 @@ class Task(db.Model):
     priority = db.Column(db.String(50), default='medium')
     progress = db.Column(db.Integer, default=0)
     due_date = db.Column(db.DateTime, nullable=True)
-    assigned_to = db.Column(db.String(255), nullable=True)
+    assigned_to = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
+    created_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
     attachments = db.Column(db.JSON, default=list)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -36,6 +37,7 @@ class Task(db.Model):
             'progress': self.progress,
             'dueDate': self.due_date.isoformat() if self.due_date else None,
             'assignedTo': self.assigned_to,
+            'createdBy': self.created_by,
             'attachments': self.attachments,
             'createdAt': self.created_at.isoformat(),
             'updatedAt': self.updated_at.isoformat()

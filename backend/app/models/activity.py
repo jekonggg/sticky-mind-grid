@@ -13,6 +13,7 @@ class Activity(db.Model):
     type = db.Column(db.String(50), nullable=False) # create, move, update, delete
     task_title = db.Column(db.String(255), nullable=False)
     message = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
@@ -22,5 +23,6 @@ class Activity(db.Model):
             'type': self.type,
             'taskTitle': self.task_title,
             'message': self.message,
+            'userId': self.user_id,
             'timestamp': self.timestamp.isoformat()
         }

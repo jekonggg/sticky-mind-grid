@@ -17,6 +17,7 @@ class Board(db.Model):
     color = db.Column(db.String(50), nullable=True)
     hero_image_url = db.Column(db.Text().with_variant(LONGTEXT, "mysql"), nullable=True)
     columns = db.Column(db.JSON, default=list)
+    owner_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True) # Temporarily nullable for migration
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -34,6 +35,7 @@ class Board(db.Model):
             'color': self.color,
             'heroImageUrl': self.hero_image_url,
             'columns': self.columns,
+            'ownerId': self.owner_id,
             'taskCount': len(self.tasks),
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None,
             'updatedAt': self.updated_at.isoformat() + 'Z' if self.updated_at else None
