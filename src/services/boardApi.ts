@@ -1,4 +1,4 @@
-import { Board, CreateBoardData, UpdateBoardData } from "@/types/board";
+import { Board, CreateBoardData, UpdateBoardData, BoardMember } from "@/types/board";
 import { authenticatedFetch } from "./apiUtils";
 
 const mapBoard = (board: any): Board => ({
@@ -45,5 +45,33 @@ export const boardApi = {
   async deleteBoard(id: string): Promise<void> {
     const res = await authenticatedFetch(`/boards/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to delete board");
+  },
+
+  async getMembers(boardId: string): Promise<BoardMember[]> {
+    const res = await authenticatedFetch(`/boards/${boardId}/members`);
+    if (!res.ok) throw new Error("Failed to fetch members");
+    return res.json();
+  },
+
+  async inviteMember(boardId: string, email: string, role: string): Promise<BoardMember> {
+    const res = await authenticatedFetch(`/boards/${boardId}/members`, {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || "Failed to invite member");
+    }
+    return res.json();
+  },
+
+  async removeMember(boardId: string, userId: string): Promise<void> {
+    const res = await authenticatedFetch(`/boards/${boardId}/members/${userId}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || "Failed to remove member");
+    }
   },
 };

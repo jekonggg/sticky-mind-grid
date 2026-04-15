@@ -54,6 +54,12 @@ export interface Activity {
   taskTitle: string;
   message: string;
   timestamp: Date;
+  userId?: string;
+  user?: {
+    id: string;
+    email: string;
+    fullName?: string;
+  };
 }
 
 export interface Column {

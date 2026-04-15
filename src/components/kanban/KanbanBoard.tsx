@@ -39,6 +39,8 @@ import { BoardOverview } from "./BoardOverview";
 import { TaskListView } from "./TaskListView";
 import { CalendarView } from "./CalendarView";
 import { DocumentsView } from "./DocumentsView";
+import { BoardMembers } from "../board/BoardMembers";
+import { InviteMemberDialog } from "../board/InviteMemberDialog";
 
 import { useActivity } from "@/hooks/useActivity";
 
@@ -80,7 +82,7 @@ export function KanbanBoard() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isActivityOpen, setIsActivityOpen] = useState(true); 
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeView, setActiveView] = useState<"overview" | "list" | "board" | "calendar" | "documents">("board");
+  const [activeView, setActiveView] = useState<"overview" | "list" | "board" | "calendar" | "documents" | "members">("board");
   
   const { addActivity, setBoardId } = useActivity();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -247,6 +249,7 @@ export function KanbanBoard() {
     { id: "list", label: "List" },
     { id: "calendar", label: "Calendar" },
     { id: "documents", label: "Documents" },
+    { id: "members", label: "Members" },
   ] as const;
 
   const renderActiveView = () => {
@@ -259,6 +262,21 @@ export function KanbanBoard() {
         return <CalendarView tasks={filteredAllTasks} onTaskClick={handleTaskClick} />;
       case "documents":
         return <DocumentsView tasks={filteredAllTasks} onTaskClick={handleTaskClick} />;
+      case "members":
+        return (
+          <div className="p-6 md:p-8 max-w-4xl mx-auto w-full">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-3xl font-black tracking-tight text-foreground">Board Members</h2>
+                <p className="text-sm text-muted-foreground mt-1">Manage who has access to this board</p>
+              </div>
+              <InviteMemberDialog boardId={board.id} />
+            </div>
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 max-h-[70vh] overflow-y-auto">
+              <BoardMembers boardId={board.id} />
+            </div>
+          </div>
+        );
       case "board":
       default:
         return (

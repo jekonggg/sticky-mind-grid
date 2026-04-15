@@ -16,6 +16,8 @@ class Activity(db.Model):
     user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
+    user = db.relationship('User', back_populates='activities')
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -24,5 +26,6 @@ class Activity(db.Model):
             'taskTitle': self.task_title,
             'message': self.message,
             'userId': self.user_id,
+            'user': self.user.to_dict() if self.user else None,
             'timestamp': self.timestamp.isoformat()
         }

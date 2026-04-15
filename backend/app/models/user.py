@@ -15,10 +15,11 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
-    owned_boards = db.relationship('Board', backref='owner', lazy=True)
-    created_tasks = db.relationship('Task', foreign_keys='Task.created_by', backref='creator', lazy=True)
-    assigned_tasks = db.relationship('Task', foreign_keys='Task.assigned_to', backref='assignee', lazy=True)
-    activities = db.relationship('Activity', backref='user', lazy=True)
+    owned_boards = db.relationship('Board', back_populates='owner', lazy=True)
+    created_tasks = db.relationship('Task', foreign_keys='Task.created_by', back_populates='creator', lazy=True)
+    assigned_tasks = db.relationship('Task', foreign_keys='Task.assigned_to', back_populates='assignee', lazy=True)
+    activities = db.relationship('Activity', back_populates='user', lazy=True)
+    board_memberships = db.relationship('BoardMember', back_populates='user', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')

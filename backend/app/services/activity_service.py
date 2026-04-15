@@ -16,7 +16,8 @@ class ActivityService:
             board_id=data.get('boardId'),
             type=data.get('type'),
             task_title=data.get('taskTitle'),
-            message=data.get('message')
+            message=data.get('message'),
+            user_id=data.get('userId')
         )
         db.session.add(new_activity)
         db.session.commit()

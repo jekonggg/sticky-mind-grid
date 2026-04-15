@@ -7,6 +7,6 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT Settings
-    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'jwt-dev-secret-key'
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'super-secret-jwt-key-for-development-32-chars-long'
     from datetime import timedelta
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24) # Dev friendly expiry

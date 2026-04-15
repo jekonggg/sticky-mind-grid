@@ -21,7 +21,9 @@ class Board(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    tasks = db.relationship('Task', backref='board', lazy=True, cascade="all, delete-orphan")
+    owner = db.relationship('User', back_populates='owned_boards')
+    tasks = db.relationship('Task', back_populates='board', lazy=True, cascade="all, delete-orphan")
+    memberships = db.relationship('BoardMember', back_populates='board', lazy=True, cascade="all, delete-orphan")
 
     def touch(self):
         self.updated_at = datetime.utcnow()

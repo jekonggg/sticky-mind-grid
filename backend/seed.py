@@ -6,10 +6,12 @@ import uuid
 # Add the parent directory to sys.path so we can import from 'app'
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app import create_app, db
+from app import create_app, db, bcrypt
 from app.models.board import Board
 from app.models.task import Task
-from app.models.audit import AuditTrail
+from app.models.user import User
+from app.models.activity import Activity
+from app.models.board_member import BoardMember
 
 def generate_id():
     return str(uuid.uuid4())
@@ -23,13 +25,31 @@ def seed_database():
 
         now = datetime.now()
 
+        print("Seeding Test User...")
+        test_user = User(
+            id=generate_id(),
+            email="test@example.com",
+            full_name="Test User"
+        )
+        test_user.set_password("password123")
+        db.session.add(test_user)
+        db.session.commit()
+
         print("Seeding Strategic Boards from DB...")
         boards = [
-            Board(id="board-1", name="Platform Engine - Road Map", emoji="🏗️", description="Engineering roadmap for foundational platform services.", color="bg-indigo-600", hero_image_url="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1200&auto=format&fit=crop", columns=[{'id': 'backlog', 'title': 'Backlog', 'emoji': '📂'}, {'id': 'design', 'title': 'Architecture', 'emoji': '📐'}, {'id': 'implementation', 'title': 'Implementation', 'emoji': '👨\u200d💻'}, {'id': 'testing', 'title': 'QA/Testing', 'emoji': '🧪'}, {'id': 'done', 'title': 'Released', 'emoji': '🚀'}]),
-            Board(id="board-2", name="Q4 Marketing Strategy", emoji="📈", description="Growth campaign to increase user acquisition by 30%.", color="bg-rose-500", hero_image_url="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1200&auto=format&fit=crop", columns=[{'id': 'todo', 'title': 'To Do', 'emoji': '📋'}, {'id': 'content', 'title': 'Content Creation', 'emoji': '🎨'}, {'id': 'review', 'title': 'Legal Review', 'emoji': '⚖️'}, {'id': 'active', 'title': 'Running Ads', 'emoji': '🔥'}]),
-            Board(id="board-showcase", name="Showcase: Sticky Mind Grid Core", emoji="🏗️", description="Demonstrating the full Trello-style cycle: ticket creation, stage transitions (To Do ➔ Done), and persistent audit trails.", color="bg-primary", hero_image_url="https://images.unsplash.com/photo-1484417894907-623942c8ee29?q=80&w=1200&auto=format&fit=crop", columns=[{'id': 'todo', 'title': 'To Do', 'emoji': '📝'}, {'id': 'in_progress', 'title': 'In Progress', 'emoji': '⏳'}, {'id': 'qa', 'title': 'Quality Assurance', 'emoji': '🔍'}, {'id': 'done', 'title': 'Done', 'emoji': '✅'}, {'id': 'archive', 'title': 'Archive', 'emoji': '📦'}]),
+            Board(id="board-1", name="Platform Engine - Road Map", emoji="🏗️", description="Engineering roadmap for foundational platform services.", color="bg-indigo-600", hero_image_url="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1200&auto=format&fit=crop", columns=[{'id': 'backlog', 'title': 'Backlog', 'emoji': '📂'}, {'id': 'design', 'title': 'Architecture', 'emoji': '📐'}, {'id': 'implementation', 'title': 'Implementation', 'emoji': '👨\u200d💻'}, {'id': 'testing', 'title': 'QA/Testing', 'emoji': '🧪'}, {'id': 'done', 'title': 'Released', 'emoji': '🚀'}], owner_id=test_user.id),
+            Board(id="board-2", name="Q4 Marketing Strategy", emoji="📈", description="Growth campaign to increase user acquisition by 30%.", color="bg-rose-500", hero_image_url="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1200&auto=format&fit=crop", columns=[{'id': 'todo', 'title': 'To Do', 'emoji': '📋'}, {'id': 'content', 'title': 'Content Creation', 'emoji': '🎨'}, {'id': 'review', 'title': 'Legal Review', 'emoji': '⚖️'}, {'id': 'active', 'title': 'Running Ads', 'emoji': '🔥'}], owner_id=test_user.id),
+            Board(id="board-showcase", name="Showcase: Sticky Mind Grid Core", emoji="🏗️", description="Demonstrating the full Trello-style cycle: ticket creation, stage transitions (To Do ➔ Done), and persistent audit trails.", color="bg-primary", hero_image_url="https://images.unsplash.com/photo-1484417894907-623942c8ee29?q=80&w=1200&auto=format&fit=crop", columns=[{'id': 'todo', 'title': 'To Do', 'emoji': '📝'}, {'id': 'in_progress', 'title': 'In Progress', 'emoji': '⏳'}, {'id': 'qa', 'title': 'Quality Assurance', 'emoji': '🔍'}, {'id': 'done', 'title': 'Done', 'emoji': '✅'}, {'id': 'archive', 'title': 'Archive', 'emoji': '📦'}], owner_id=test_user.id),
         ]
         db.session.add_all(boards)
+        db.session.commit()
+
+        print("Seeding Board Memberships...")
+        memberships = [
+            BoardMember(board_id=b.id, user_id=test_user.id, role='owner')
+            for b in boards
+        ]
+        db.session.add_all(memberships)
         db.session.commit()
 
         print("Seeding Strategic Tasks from DB...")
@@ -49,17 +69,17 @@ def seed_database():
         db.session.add_all(tasks)
         db.session.commit()
 
-        print("Seeding Strategic Audit Trail...")
-        # (Keeping a generic audit for now or we could dump that too)
-        audit = AuditTrail(
+        print("Seeding Strategic Activity Log...")
+        activity = Activity(
             id=generate_id(),
             board_id="board-showcase",
-            action="create",
-            target_name="Showcase",
-            details="Database synchronized and re-seeded with live production data.",
+            type="create",
+            task_title="Showcase",
+            message="Database synchronized and re-seeded with live production data.",
+            user_id=test_user.id,
             timestamp=now
         )
-        db.session.add(audit)
+        db.session.add(activity)
         db.session.commit()
 
         print("Final synchronization completed. Live DB content is now persistent in seed.py.")

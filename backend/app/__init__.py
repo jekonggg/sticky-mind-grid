@@ -17,7 +17,7 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     migrate.init_app(app, db)
-    CORS(app)
+    CORS(app, resources={r"/api/*": {"origins": ["http://localhost:8080", "http://localhost:8081"]}}, supports_credentials=True)
     jwt.init_app(app)
     bcrypt.init_app(app)
 

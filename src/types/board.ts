@@ -39,3 +39,14 @@ export const BOARD_COLORS = [
   "hsl(350, 70%, 55%)",   // red
   "hsl(190, 70%, 45%)",   // teal
 ] as const;
+
+import { User } from "./user";
+
+export interface BoardMember {
+  id: string;
+  boardId: string;
+  userId: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  user?: User;
+  createdAt: string;
+}
