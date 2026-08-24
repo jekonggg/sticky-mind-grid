@@ -8,11 +8,10 @@ interface ActivityContextType {
   addActivity: (type: ActivityType, taskTitle: string, message: string, boardId?: string) => void;
   clearActivities: () => void;
   setBoardId: (boardId: string | null) => void;
+  refreshActivities: () => Promise<void>;
 }
 
 const ActivityContext = createContext<ActivityContextType | undefined>(undefined);
-
-const API_BASE = "http://127.0.0.1:5000/api";
 
 export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -20,15 +19,21 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
 
   const fetchActivities = useCallback(async (boardId: string | null) => {
+    if (!boardId) {
+      setActivities([]);
+      return;
+    }
     try {
-      const url = boardId ? `/activities?boardId=${boardId}` : "/activities";
+      const url = `/activities?boardId=${boardId}`;
       const res = await authenticatedFetch(url);
       if (res.ok) {
         const data = await res.json();
-        setActivities(data.map((a: any) => ({
-          ...a,
-          timestamp: new Date(a.timestamp)
-        })));
+        setActivities(
+          data.map((a: any) => ({
+            ...a,
+            timestamp: new Date(a.timestamp),
+          }))
+        );
       }
     } catch (err) {
       console.error("Failed to fetch activities:", err);
@@ -36,8 +41,14 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (user && currentBoardId) {
       fetchActivities(currentBoardId);
+      const interval = setInterval(() => {
+        if (document.visibilityState === "visible") {
+          fetchActivities(currentBoardId);
+        }
+      }, 5000);
+      return () => clearInterval(interval);
     }
   }, [currentBoardId, fetchActivities, user]);
 
@@ -45,52 +56,66 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCurrentBoardId(id);
   }, []);
 
-  const addActivity = useCallback(async (type: ActivityType, taskTitle: string, message: string, boardId?: string) => {
-    const finalBoardId = boardId || currentBoardId;
-    
-    // Optimistic update
-    const tempActivity: Activity = {
-      id: Math.random().toString(36).substr(2, 9),
-      type,
-      taskTitle,
-      message,
-      timestamp: new Date(),
-      user: user ? { ...user } : undefined
-    };
-    
-    // Only show in local state if it belongs to current filter
-    if (!currentBoardId || currentBoardId === finalBoardId) {
-      setActivities((prev) => [tempActivity, ...prev].slice(0, 50));
+  const refreshActivities = useCallback(async () => {
+    if (currentBoardId) {
+      await fetchActivities(currentBoardId);
     }
+  }, [currentBoardId, fetchActivities]);
 
-    try {
-      await authenticatedFetch("/activities", {
-        method: "POST",
-        body: JSON.stringify({
-          type,
-          taskTitle,
-          message,
-          boardId: finalBoardId
-        }),
-      });
-      fetchActivities(currentBoardId); // Refresh with actual server data
-    } catch (err) {
-      console.error("Failed to post activity:", err);
-    }
-  }, [currentBoardId, fetchActivities, user]);
+  const addActivity = useCallback(
+    async (type: ActivityType, taskTitle: string, message: string, boardId?: string) => {
+      const finalBoardId = boardId || currentBoardId;
+      if (!finalBoardId) return;
+
+      // Optimistic update
+      const tempActivity: Activity = {
+        id: Math.random().toString(36).substring(2, 9),
+        type,
+        taskTitle,
+        message,
+        timestamp: new Date(),
+        user: user ? { ...user } : undefined,
+      };
+
+      if (currentBoardId === finalBoardId) {
+        setActivities((prev) => [tempActivity, ...prev].slice(0, 50));
+      }
+
+      try {
+        await authenticatedFetch("/activities", {
+          method: "POST",
+          body: JSON.stringify({
+            type,
+            taskTitle,
+            message,
+            boardId: finalBoardId,
+          }),
+        });
+        fetchActivities(currentBoardId);
+      } catch (err) {
+        console.error("Failed to post activity:", err);
+      }
+    },
+    [currentBoardId, fetchActivities, user]
+  );
 
   const clearActivities = useCallback(async () => {
+    if (!currentBoardId) return;
     try {
-      const url = currentBoardId ? `/activities?boardId=${currentBoardId}` : "/activities";
-      await authenticatedFetch(url, { method: "DELETE" });
-      setActivities([]);
+      const url = `/activities?boardId=${currentBoardId}`;
+      const res = await authenticatedFetch(url, { method: "DELETE" });
+      if (res.ok) {
+        setActivities([]);
+      }
     } catch (err) {
       console.error("Failed to clear activities:", err);
     }
   }, [currentBoardId]);
 
   return (
-    <ActivityContext.Provider value={{ activities, addActivity, clearActivities, setBoardId }}>
+    <ActivityContext.Provider
+      value={{ activities, addActivity, clearActivities, setBoardId, refreshActivities }}
+    >
       {children}
     </ActivityContext.Provider>
   );

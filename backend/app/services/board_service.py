@@ -2,6 +2,7 @@ from app import db
 from app.models.board import Board
 from app.models.board_member import BoardMember
 from app.models.user import User
+from app.models.activity import Activity
 
 class BoardService:
     @staticmethod
@@ -39,11 +40,22 @@ class BoardService:
             role='owner'
         )
         db.session.add(membership)
+
+        # Audit log
+        activity = Activity(
+            type='create',
+            task_title=new_board.name,
+            message=f'Created board "{new_board.name}"',
+            board_id=new_board.id,
+            user_id=owner_id
+        )
+        db.session.add(activity)
+
         db.session.commit()
         return new_board
 
     @staticmethod
-    def update_board(board_id, data):
+    def update_board(board_id, data, user_id=None):
         board = Board.query.get(board_id)
         if not board:
             return None
@@ -55,6 +67,16 @@ class BoardService:
         if 'heroImageUrl' in data: board.hero_image_url = data['heroImageUrl']
         if 'columns' in data: board.columns = data['columns']
         
+        # Audit log for board update
+        activity = Activity(
+            type='update',
+            task_title=board.name,
+            message=f'Updated board settings for "{board.name}"',
+            board_id=board.id,
+            user_id=user_id
+        )
+        db.session.add(activity)
+
         try:
             db.session.commit()
             return board
@@ -72,7 +94,7 @@ class BoardService:
         return True
 
     @staticmethod
-    def add_member(board_id, email, role='member'):
+    def add_member(board_id, email, role='member', actor_id=None):
         user = User.query.filter_by(email=email).first()
         if not user:
             return None, "User not found"
@@ -87,11 +109,23 @@ class BoardService:
             role=role
         )
         db.session.add(membership)
+
+        # Audit log
+        user_name = user.full_name or user.email
+        activity = Activity(
+            type='update',
+            task_title=user_name,
+            message=f'Invited {user_name} as {role}',
+            board_id=board_id,
+            user_id=actor_id
+        )
+        db.session.add(activity)
+
         db.session.commit()
         return membership, None
 
     @staticmethod
-    def remove_member(board_id, user_id):
+    def remove_member(board_id, user_id, actor_id=None):
         membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
         if not membership:
             return False
@@ -101,12 +135,24 @@ class BoardService:
             if owner_count <= 1:
                 return False # Cannot remove the last owner
                 
+        user_name = membership.user.full_name or membership.user.email if membership.user else "Member"
+
+        # Audit log
+        activity = Activity(
+            type='update',
+            task_title=user_name,
+            message=f'Removed member {user_name}',
+            board_id=board_id,
+            user_id=actor_id
+        )
+        db.session.add(activity)
+
         db.session.delete(membership)
         db.session.commit()
         return True
 
     @staticmethod
-    def update_member_role(board_id, user_id, new_role):
+    def update_member_role(board_id, user_id, new_role, actor_id=None):
         if new_role not in ['admin', 'member', 'viewer']:
             return None, "Invalid role specified"
             
@@ -118,6 +164,18 @@ class BoardService:
             return None, "Cannot change the role of the board owner"
             
         membership.role = new_role
+        user_name = membership.user.full_name or membership.user.email if membership.user else "Member"
+
+        # Audit log
+        activity = Activity(
+            type='update',
+            task_title=user_name,
+            message=f'Updated role for {user_name} to {new_role}',
+            board_id=board_id,
+            user_id=actor_id
+        )
+        db.session.add(activity)
+
         try:
             db.session.commit()
             return membership, None
@@ -128,4 +186,3 @@ class BoardService:
     @staticmethod
     def get_board_members(board_id):
         return BoardMember.query.filter_by(board_id=board_id).all()
-

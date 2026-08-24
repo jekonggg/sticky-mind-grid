@@ -18,6 +18,14 @@ class Activity(db.Model):
 
     user = db.relationship('User', back_populates='activities')
 
+    def __init__(self, type: str, task_title: str, message: str, board_id: str = None, user_id: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.board_id = board_id
+        self.type = type
+        self.task_title = task_title
+        self.message = message
+        self.user_id = user_id
+
     def to_dict(self):
         return {
             'id': self.id,

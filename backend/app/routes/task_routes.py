@@ -12,10 +12,12 @@ def get_tasks():
     board_id = request.args.get('boardId')
     user_id = get_jwt_identity()
     
-    if board_id:
-        membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-        if not membership:
-            return jsonify({'error': 'Unauthorized to view tasks for this board'}), 403
+    if not board_id:
+        return jsonify({'error': 'boardId query parameter is required'}), 400
+
+    membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
+    if not membership:
+        return jsonify({'error': 'Unauthorized to view tasks for this board'}), 403
             
     tasks = TaskService.get_tasks(board_id)
     return jsonify([task.to_dict() for task in tasks]), 200
@@ -34,7 +36,7 @@ def get_task(task_id):
 def create_task():
     data = request.json
     user_id = get_jwt_identity()
-    board_id = data.get('boardId')
+    board_id = data.get('boardId') if data else None
     
     if not data or not board_id or not data.get('title'):
         return jsonify({'error': 'boardId and title are required'}), 400
@@ -44,9 +46,7 @@ def create_task():
     if not membership or membership.role in ['viewer']:
         return jsonify({'error': 'You do not have permission to create tasks on this board'}), 403
     
-    # Optionally inject created_by
-    data['createdBy'] = user_id
-    task = TaskService.create_task(data)
+    task = TaskService.create_task(data, user_id=user_id)
     return jsonify(task.to_dict()), 201
 
 @bp.route('/<task_id>', methods=['PATCH', 'PUT'])
@@ -54,7 +54,8 @@ def create_task():
 @require_task_access('member')
 def update_task(task_id):
     data = request.json
-    task = TaskService.update_task(task_id, data)
+    user_id = get_jwt_identity()
+    task = TaskService.update_task(task_id, data, user_id=user_id)
     if not task:
         return jsonify({'error': 'Task not found'}), 404
     return jsonify(task.to_dict()), 200
@@ -63,7 +64,8 @@ def update_task(task_id):
 @jwt_required()
 @require_task_access('member') # Only members or above can delete tasks
 def delete_task(task_id):
-    success = TaskService.delete_task(task_id)
+    user_id = get_jwt_identity()
+    success = TaskService.delete_task(task_id, user_id=user_id)
     if not success:
         return jsonify({'error': 'Task not found'}), 404
     return jsonify({'message': 'Task deleted successfully'}), 200

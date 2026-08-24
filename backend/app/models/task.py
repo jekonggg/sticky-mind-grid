@@ -29,6 +29,20 @@ class Task(db.Model):
     creator = db.relationship('User', foreign_keys=[created_by], back_populates='created_tasks')
     assignee = db.relationship('User', foreign_keys=[assigned_to], back_populates='assigned_tasks')
 
+    def __init__(self, board_id: str, title: str, emoji: str = None, description: str = None, status: str = 'todo', priority: str = 'medium', progress: int = 0, due_date: datetime = None, assigned_to: str = None, created_by: str = None, attachments: list = None, **kwargs):
+        super().__init__(**kwargs)
+        self.board_id = board_id
+        self.title = title
+        self.emoji = emoji
+        self.description = description
+        self.status = status
+        self.priority = priority
+        self.progress = progress
+        self.due_date = due_date
+        self.assigned_to = assigned_to
+        self.created_by = created_by
+        self.attachments = attachments if attachments is not None else []
+
     def to_dict(self):
         assignee_data = self.assignee.to_dict() if self.assignee else None
         return {

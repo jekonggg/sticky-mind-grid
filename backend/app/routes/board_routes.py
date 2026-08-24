@@ -37,7 +37,8 @@ def create_board():
 @require_board_access('admin')
 def update_board(board_id):
     data = request.json
-    board = BoardService.update_board(board_id, data)
+    user_id = get_jwt_identity()
+    board = BoardService.update_board(board_id, data, user_id=user_id)
     if not board:
         return jsonify({'error': 'Board not found'}), 404
     return jsonify(board.to_dict()), 200
@@ -63,13 +64,14 @@ def get_members(board_id):
 @require_board_access('admin')
 def add_member(board_id):
     data = request.json
-    email = data.get('email')
-    role = data.get('role', 'member')
+    user_id = get_jwt_identity()
+    email = data.get('email') if data else None
+    role = data.get('role', 'member') if data else 'member'
     
     if not email:
         return jsonify({'error': 'Email is required'}), 400
         
-    member, error = BoardService.add_member(board_id, email, role)
+    member, error = BoardService.add_member(board_id, email, role, actor_id=user_id)
     if error:
         return jsonify({'error': error}), 400
         
@@ -79,7 +81,8 @@ def add_member(board_id):
 @jwt_required()
 @require_board_access('admin')
 def remove_member(board_id, user_id):
-    success = BoardService.remove_member(board_id, user_id)
+    actor_id = get_jwt_identity()
+    success = BoardService.remove_member(board_id, user_id, actor_id=actor_id)
     if not success:
         return jsonify({'error': 'Could not remove member. Cannot remove sole owner.'}), 400
     return jsonify({'message': 'Member removed'}), 200
@@ -89,13 +92,13 @@ def remove_member(board_id, user_id):
 @require_board_access('admin')
 def update_member_role(board_id, user_id):
     data = request.json
+    actor_id = get_jwt_identity()
     if not data or 'role' not in data:
         return jsonify({'error': 'Role is required'}), 400
         
     role = data.get('role')
-    member, error = BoardService.update_member_role(board_id, user_id, role)
+    member, error = BoardService.update_member_role(board_id, user_id, role, actor_id=actor_id)
     if error:
         return jsonify({'error': error}), 400
         
     return jsonify(member.to_dict()), 200
-
