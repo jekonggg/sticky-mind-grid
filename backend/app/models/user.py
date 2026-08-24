@@ -20,6 +20,8 @@ class User(db.Model):
     assigned_tasks = db.relationship('Task', foreign_keys='Task.assigned_to', back_populates='assignee', lazy=True)
     activities = db.relationship('Activity', back_populates='user', lazy=True)
     board_memberships = db.relationship('BoardMember', back_populates='user', lazy=True, cascade="all, delete-orphan")
+    comments = db.relationship('Comment', back_populates='user', lazy=True, cascade="all, delete-orphan")
+    notifications = db.relationship('Notification', back_populates='user', lazy=True, cascade="all, delete-orphan")
 
     def __init__(self, email: str, full_name: str = "", **kwargs):
         super().__init__(**kwargs)

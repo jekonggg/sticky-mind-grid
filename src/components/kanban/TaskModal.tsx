@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Trash2, ImagePlus, X, Check, FileText, File, Film, Music, User, Users, Eye } from "lucide-react";
 import { EmojiSelector } from "../common/EmojiSelector";
+import { TaskComments } from "./TaskComments";
 
 import { boardApi } from "@/services/boardApi";
 
@@ -167,6 +169,9 @@ export function TaskModal({
               "New Task"
             )}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Task details, assignments, attachments and comments discussion
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-1">
@@ -328,7 +333,7 @@ export function TaskModal({
             <div className="grid grid-cols-4 gap-2">
               {attachments.map((file, i) => (
                 <div
-                  key={file.id}
+                  key={file.id || file.url || `attachment-${i}`}
                   className="relative group aspect-square rounded-lg border border-border bg-muted/40 flex flex-col items-center justify-center p-2 text-center overflow-hidden hover:border-primary/50 transition-colors"
                 >
                   {file.url ? (
@@ -379,6 +384,13 @@ export function TaskModal({
               />
             )}
           </div>
+
+          {/* Task Comments & Mentions Discussion Thread */}
+          {isEditing && task && (
+            <div className="pt-2 border-t border-border/40">
+              <TaskComments taskId={task.id} boardMembers={boardMembers} readOnly={readOnly} />
+            </div>
+          )}
 
           <DialogFooter className="flex items-center !justify-between pt-4 border-t border-border/50">
             {readOnly ? (

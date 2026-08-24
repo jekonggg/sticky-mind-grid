@@ -78,3 +78,29 @@ export interface Column {
   title: string;
   emoji?: string;
 }
+
+export interface Comment {
+  id: string;
+  taskId: string;
+  userId: string;
+  user?: {
+    id: string;
+    email: string;
+    fullName?: string;
+  };
+  content: string;
+  mentions: string[];
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: "mention" | "assignment" | "task_comment" | "invite" | "system";
+  title: string;
+  message: string;
+  link?: string;
+  isRead: boolean;
+  createdAt: Date;
+}

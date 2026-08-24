@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ProfileModal } from "@/components/auth/ProfileModal";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import {
   Home,
   Search,
@@ -175,7 +176,10 @@ export function BoardHeader({
         </div>
 
         {/* Right: Actions & User Avatar Menu */}
-        <div className="flex items-center justify-end gap-3 w-1/3">
+        <div className="flex items-center justify-end gap-2.5 w-1/3">
+          {/* Notification Center */}
+          <NotificationBell />
+
           {/* User Account Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
