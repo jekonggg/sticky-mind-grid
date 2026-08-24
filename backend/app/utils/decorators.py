@@ -2,6 +2,7 @@ from functools import wraps
 from flask_jwt_extended import get_jwt_identity
 from flask import jsonify
 from app.models.board_member import BoardMember
+from app.models.board import Board
 from app.models.task import Task
 
 ROLE_HIERARCHY = {
@@ -15,11 +16,19 @@ def require_board_access(minimum_role='viewer'):
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            current_user_id = get_jwt_identity()
+            current_user_id = str(get_jwt_identity())
             board_id = kwargs.get('board_id') or kwargs.get('id')
             
             if not board_id:
                 return jsonify({'error': 'Board ID is required in the path variables'}), 400
+                
+            board = Board.query.get(board_id)
+            if not board:
+                return jsonify({'error': 'Board not found'}), 404
+
+            # If user is the board owner, grant access
+            if board.owner_id and str(board.owner_id) == current_user_id:
+                return fn(*args, **kwargs)
                 
             membership = BoardMember.query.filter_by(board_id=board_id, user_id=current_user_id).first()
             
@@ -40,7 +49,7 @@ def require_task_access(minimum_role='viewer'):
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            current_user_id = get_jwt_identity()
+            current_user_id = str(get_jwt_identity())
             task_id = kwargs.get('task_id')
             
             if not task_id:
@@ -50,6 +59,10 @@ def require_task_access(minimum_role='viewer'):
             if not task:
                 return jsonify({'error': 'Task not found'}), 404
                 
+            # If user is the board owner, grant access
+            if task.board and task.board.owner_id and str(task.board.owner_id) == current_user_id:
+                return fn(*args, **kwargs)
+
             membership = BoardMember.query.filter_by(board_id=task.board_id, user_id=current_user_id).first()
             if not membership:
                 return jsonify({'error': 'You do not have access to this task'}), 403
@@ -63,3 +76,4 @@ def require_task_access(minimum_role='viewer'):
             return fn(*args, **kwargs)
         return wrapper
     return decorator
+

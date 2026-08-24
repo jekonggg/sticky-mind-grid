@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
@@ -17,9 +17,40 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     migrate.init_app(app, db)
-    CORS(app, resources={r"/api/*": {"origins": ["http://localhost:8080", "http://localhost:8081"]}}, supports_credentials=True)
+    
+    # Initialize Flask-CORS with origin reflection
+    CORS(
+        app,
+        resources={r"/*": {"origins": ["http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"]}},
+        supports_credentials=True,
+        allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials", "X-Requested-With", "Accept", "Origin"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    )
+    
     jwt.init_app(app)
     bcrypt.init_app(app)
+
+    # Universal CORS handler to guarantee headers on all responses and preflights
+    @app.before_request
+    def handle_preflight():
+        if request.method == "OPTIONS":
+            origin = request.headers.get("Origin", "*")
+            response = make_response("", 204)
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+            return response
+
+    @app.after_request
+    def add_cors_headers(response):
+        origin = request.headers.get("Origin")
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+        return response
 
     from app.routes import board_routes
     from app.routes import task_routes

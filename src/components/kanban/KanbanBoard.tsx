@@ -25,15 +25,21 @@ import {
   PanelRightOpen, 
   Settings, 
   Smile, 
-  Pencil 
+  Pencil,
+  Filter,
+  User,
+  Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useParams, useNavigate } from "react-router-dom";
 import { boardApi } from "@/services/boardApi";
-import { Board } from "@/types/board";
+import { Board, BoardMember } from "@/types/board";
 import { BoardHeroImage } from "../boards/BoardHeroImage";
 import { BoardModal } from "../boards/BoardModal";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { BoardOverview } from "./BoardOverview";
 import { TaskListView } from "./TaskListView";
@@ -47,6 +53,7 @@ import { useActivity } from "@/hooks/useActivity";
 export function KanbanBoard() {
   const { boardId } = useParams<{ boardId: string }>();
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [board, setBoard] = useState<Board | null>(null);
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
 
@@ -63,6 +70,13 @@ export function KanbanBoard() {
       setBoard(b);
     });
   }, [boardId, navigate]);
+
+  // Fetch Board Members for Assignee & Filters
+  const { data: members = [] } = useQuery<BoardMember[]>({
+    queryKey: ["boardMembers", boardId],
+    queryFn: () => (boardId ? boardApi.getMembers(boardId) : Promise.resolve([])),
+    enabled: !!boardId,
+  });
 
   const {
     loading,
@@ -82,6 +96,7 @@ export function KanbanBoard() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isActivityOpen, setIsActivityOpen] = useState(true); 
   const [searchTerm, setSearchTerm] = useState("");
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("all"); // 'all' | 'me' | userId
   const [activeView, setActiveView] = useState<"overview" | "list" | "board" | "calendar" | "documents" | "members">("board");
   
   const { addActivity, setBoardId } = useActivity();
@@ -128,19 +143,29 @@ export function KanbanBoard() {
 
   const handleAddNewState = async () => {
     if (!board) return;
-    const newId = `col_${Date.now()}`;
+    const title = prompt("Enter state name:");
+    if (!title || !title.trim()) return;
+
+    const id = title.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
+    const newCol = { id, title: title.trim(), emoji: "📌" };
+
+    const visibleCols = board.columns.filter(c => c.id !== 'archive');
     const archiveCol = board.columns.find(c => c.id === 'archive');
-    const baseCols = board.columns.filter(c => c.id !== 'archive');
-    const updatedColumns = [...baseCols, { id: newId, title: "New State" }];
-    if (archiveCol) updatedColumns.push(archiveCol);
     
-    addActivity("update", board.name, `Added a new workflow state: "New State"`, boardId);
+    const updatedColumns = [...visibleCols, newCol];
+    if (archiveCol) {
+      updatedColumns.push(archiveCol);
+    }
+
+    addActivity("create", board.name, `Added new state "${title}"`, boardId);
     handleBoardUpdate({ columns: updatedColumns });
   };
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const task = event.active.data.current?.task as Task | undefined;
-    if (task) setActiveTask(task);
+    if (task) {
+      setActiveTask(task);
+    }
   }, []);
 
   const handleDragOver = useCallback(
@@ -165,7 +190,7 @@ export function KanbanBoard() {
         } else if (overStatus === 'in_progress') {
           newProgress = 30;
         } else if (activeData.progress === 100 || activeData.progress <= 10) {
-          newProgress = 50; 
+          newProgress = 50;
         }
 
         updateTask(activeData.id, { status: overStatus, progress: newProgress });
@@ -216,26 +241,52 @@ export function KanbanBoard() {
     setModalOpen(true);
   }, []);
 
-  const filteredTasksByStatus = useCallback((status: string) => {
-    const statusTasks = getTasksByStatus(status);
-    if (!searchTerm.trim()) return statusTasks;
-    
-    return statusTasks.filter(t => 
-      t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [getTasksByStatus, searchTerm]);
+  // Filter task matching both search query and assignee filter
+  const isTaskMatchingFilters = useCallback(
+    (t: Task) => {
+      // Search matching
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase();
+        const matchTitle = t.title.toLowerCase().includes(q);
+        const matchDesc = t.description?.toLowerCase().includes(q);
+        const matchAssignee = (
+          t.assignee?.fullName ||
+          t.assignee?.email ||
+          ""
+        )
+          .toLowerCase()
+          .includes(q);
+        if (!matchTitle && !matchDesc && !matchAssignee) return false;
+      }
 
-  const filteredAllTasks = tasks.filter(t => 
-    !searchTerm.trim() || 
-    t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      // Assignee matching
+      if (assigneeFilter === "me") {
+        if (t.assignedTo !== currentUser?.id) return false;
+      } else if (assigneeFilter === "unassigned") {
+        if (t.assignedTo) return false;
+      } else if (assigneeFilter !== "all") {
+        if (t.assignedTo !== assigneeFilter) return false;
+      }
+
+      return true;
+    },
+    [searchTerm, assigneeFilter, currentUser]
   );
+
+  const filteredTasksByStatus = useCallback(
+    (status: string) => {
+      const statusTasks = getTasksByStatus(status);
+      return statusTasks.filter(isTaskMatchingFilters);
+    },
+    [getTasksByStatus, isTaskMatchingFilters]
+  );
+
+  const filteredAllTasks = tasks.filter(isTaskMatchingFilters);
 
   if (loading || !board) {
     return (
       <div className="flex flex-col h-screen bg-background">
-      <BoardHeader search={searchTerm} onSearchChange={setSearchTerm} />
+        <BoardHeader search={searchTerm} onSearchChange={setSearchTerm} />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -370,6 +421,7 @@ export function KanbanBoard() {
                 </div>
               </div>
 
+              {/* View Switcher Tabs */}
               <div className="flex items-center p-1 bg-muted/40 backdrop-blur-sm rounded-full border border-border/40 shadow-inner group/tabs shrink-0">
                 {views.map((view) => (
                   <button 
@@ -379,7 +431,7 @@ export function KanbanBoard() {
                       ${activeView === view.id 
                         ? "text-primary-foreground shadow-lg scale-105" 
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
-                    }`}
+                      }`}
                   >
                     {activeView === view.id && (
                       <div className="absolute inset-0 bg-primary rounded-full -z-10 shadow-[0_0_15px_rgba(var(--primary),0.3)] animate-in zoom-in-95 duration-200" />
@@ -389,6 +441,79 @@ export function KanbanBoard() {
                 ))}
               </div>
             </div>
+
+            {/* Quick Member Filter Bar (Visible in Board and List views) */}
+            {(activeView === "board" || activeView === "list" || activeView === "calendar") && (
+              <div className="px-6 pb-3 md:px-10 max-w-[1600px] mx-auto w-full flex items-center gap-2 overflow-x-auto">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-bold shrink-0 mr-1">
+                  <Filter className="h-3.5 w-3.5" />
+                  <span className="text-[10px] uppercase tracking-wider">Filter:</span>
+                </div>
+
+                <button
+                  onClick={() => setAssigneeFilter("all")}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 ${
+                    assigneeFilter === "all"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  All Tasks ({tasks.length})
+                </button>
+
+                <button
+                  onClick={() => setAssigneeFilter("me")}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+                    assigneeFilter === "me"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <User className="h-3 w-3" />
+                  <span>Assigned to Me ({tasks.filter((t) => t.assignedTo === currentUser?.id).length})</span>
+                </button>
+
+                <button
+                  onClick={() => setAssigneeFilter("unassigned")}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 ${
+                    assigneeFilter === "unassigned"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  Unassigned ({tasks.filter((t) => !t.assignedTo).length})
+                </button>
+
+                {members.length > 0 && (
+                  <div className="flex items-center gap-1 pl-2 border-l border-border/60 shrink-0">
+                    {members.map((m) => {
+                      const isSelected = assigneeFilter === m.userId;
+                      const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
+                      const name = m.user?.fullName?.split(" ")[0] || m.user?.email?.split("@")[0] || "Member";
+                      return (
+                        <button
+                          key={m.userId}
+                          onClick={() => setAssigneeFilter(isSelected ? "all" : m.userId)}
+                          title={`Filter by ${m.user?.fullName || m.user?.email}`}
+                          className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold transition-all border ${
+                            isSelected
+                              ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                              : "bg-background text-muted-foreground border-border/60 hover:border-primary/40 hover:text-foreground"
+                          }`}
+                        >
+                          <Avatar className="h-4.5 w-4.5">
+                            <AvatarFallback className="text-[9px] font-black bg-primary/10 text-primary">
+                              {initial}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-[11px]">{name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex-1 bg-muted/20 min-h-[500px]">
@@ -471,6 +596,7 @@ export function KanbanBoard() {
         onClose={() => setModalOpen(false)}
         task={editingTask}
         columns={board.columns}
+        members={members}
         onSubmit={(data) => {
           if (editingTask) {
             updateTask(editingTask.id, data);

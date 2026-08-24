@@ -30,6 +30,7 @@ class Task(db.Model):
     assignee = db.relationship('User', foreign_keys=[assigned_to], back_populates='assigned_tasks')
 
     def to_dict(self):
+        assignee_data = self.assignee.to_dict() if self.assignee else None
         return {
             'id': self.id,
             'boardId': self.board_id,
@@ -41,6 +42,7 @@ class Task(db.Model):
             'progress': self.progress,
             'dueDate': self.due_date.isoformat() if self.due_date else None,
             'assignedTo': self.assigned_to,
+            'assignee': assignee_data,
             'createdBy': self.created_by,
             'attachments': self.attachments,
             'createdAt': self.created_at.isoformat(),

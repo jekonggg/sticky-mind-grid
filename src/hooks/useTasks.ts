@@ -37,7 +37,13 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
 
   useEffect(() => {
     fetchTasks();
-  }, [fetchTasks]);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        taskApi.getTasks(boardId).then((data) => setTasks(data)).catch(() => {});
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [fetchTasks, boardId]);
 
   const addTask = useCallback(async (data: CreateTaskData) => {
     const task = await taskApi.createTask({ ...data, boardId });
@@ -74,10 +80,12 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     if (data.description !== undefined && data.description !== task.description) {
       messages.push(`Edited description`);
     }
-    if (data.attachments && data.attachments.length !== task.attachments.length) {
-      const diff = data.attachments.length - task.attachments.length;
-      if (diff > 0) messages.push(`Added ${diff} attachment${diff > 1 ? 's' : ''}`);
-      else messages.push(`Removed ${Math.abs(diff)} attachment${Math.abs(diff) > 1 ? 's' : ''}`);
+    if (data.assignedTo !== undefined && data.assignedTo !== task.assignedTo) {
+      if (data.assignedTo) {
+        messages.push(`Reassigned task`);
+      } else {
+        messages.push(`Unassigned task`);
+      }
     }
 
     const finalMessage = messages.length > 0 ? messages.join(" | ") : `Updated task details`;
@@ -89,7 +97,8 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     addActivity("update", data.title || task.title, finalMessage, boardId);
 
     try {
-      await taskApi.updateTask(id, data);
+      const updated = await taskApi.updateTask(id, data);
+      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
     } catch {
       fetchTasks();
     }

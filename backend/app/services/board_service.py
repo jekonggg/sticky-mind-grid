@@ -55,8 +55,12 @@ class BoardService:
         if 'heroImageUrl' in data: board.hero_image_url = data['heroImageUrl']
         if 'columns' in data: board.columns = data['columns']
         
-        db.session.commit()
-        return board
+        try:
+            db.session.commit()
+            return board
+        except Exception as e:
+            db.session.rollback()
+            raise e
 
     @staticmethod
     def delete_board(board_id):

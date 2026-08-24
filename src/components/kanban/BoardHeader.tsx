@@ -147,13 +147,13 @@ export function BoardHeader({
 
           {/* Search Box */}
           {showSearch && (
-            <div className="relative group max-w-[220px] w-full hidden xl:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground transition-colors group-focus-within:text-primary" />
+            <div className="relative group max-w-[240px] w-full hidden xl:block">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none transition-colors group-focus-within:text-primary" />
               <Input
                 placeholder={placeholder}
                 value={search}
                 onChange={(e) => onSearchChange?.(e.target.value)}
-                className="pl-8.5 h-8.5 text-xs bg-background/50 border-border/50 focus-visible:ring-primary/20 transition-all rounded-full"
+                className="pl-9 h-9 text-xs bg-background/50 border-border/50 focus-visible:ring-primary/20 transition-all rounded-full"
               />
             </div>
           )}

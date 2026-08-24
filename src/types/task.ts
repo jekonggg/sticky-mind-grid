@@ -15,7 +15,13 @@ export interface Task {
   description?: string;
   status: TaskStatus;
   priority: Priority;
-  assignedTo?: string;
+  assignedTo?: string | null;
+  assignee?: {
+    id: string;
+    email: string;
+    fullName?: string;
+    avatarUrl?: string;
+  } | null;
   dueDate?: Date;
   progress: number;
   attachments: Attachment[];
