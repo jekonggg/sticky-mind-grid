@@ -129,8 +129,13 @@ class BoardService:
         db.session.commit()
         return True
 
+    ALLOWED_INVITE_ROLES = ('admin', 'member', 'viewer')
+
     @staticmethod
     def add_member(board_id, email, role='member', actor_id=None):
+        if role not in BoardService.ALLOWED_INVITE_ROLES:
+            return None, f"Invalid role '{role}'. Must be one of: {', '.join(BoardService.ALLOWED_INVITE_ROLES)}"
+
         user = User.query.filter_by(email=email).first()
         if not user:
             return None, "User not found"

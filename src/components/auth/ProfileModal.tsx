@@ -26,6 +26,7 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
       setFullName(user.fullName || "");
       setPassword("");
       setConfirmPassword("");
+      setCurrentPassword("");
     }
   }, [user, open]);
 
@@ -53,11 +55,17 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
       return;
     }
 
+    if (password && !currentPassword) {
+      toast.error("Enter your current password to change it");
+      return;
+    }
+
     try {
       setLoading(true);
-      const payload: { fullName: string; password?: string } = { fullName: fullName.trim() };
+      const payload: { fullName: string; password?: string; currentPassword?: string } = { fullName: fullName.trim() };
       if (password) {
         payload.password = password;
+        payload.currentPassword = currentPassword;
       }
 
       const updatedUser = await authApi.updateMe(payload);
@@ -147,6 +155,19 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
                 className="h-9 text-xs"
               />
             </div>
+
+            {password && (
+              <div className="space-y-1.5">
+                <Input
+                  type="password"
+                  placeholder="Current Password (required)"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="h-9 text-xs"
+                  required
+                />
+              </div>
+            )}
 
             {password && (
               <div className="space-y-1.5">

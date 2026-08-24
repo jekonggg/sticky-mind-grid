@@ -90,6 +90,16 @@ def reorder_tasks():
 def update_task(task_id):
     data = request.json
     user_id = get_jwt_identity()
+
+    # Guard against cross-board hijack: moving a task into another board
+    # requires write access on the target board as well.
+    target_board_id = data.get('boardId') if data else None
+    if target_board_id:
+        task = TaskService.get_task_by_id(task_id)
+        if task and str(target_board_id) != str(task.board_id):
+            if get_effective_role(target_board_id, user_id) < ROLE_HIERARCHY['member']:
+                return jsonify({'error': 'You do not have permission to move tasks to the target board'}), 403
+
     task = TaskService.update_task(task_id, data, user_id=user_id)
     if not task:
         return jsonify({'error': 'Task not found'}), 404

@@ -102,3 +102,32 @@ def test_voluntary_leave_and_owner_guard(client, create_test_user, create_test_b
     # Owner received member_left notification
     owner_notif = Notification.query.filter_by(user_id=owner.id, type="member_left").first()
     assert owner_notif is not None
+
+def test_invite_rejects_escalated_roles(client, create_test_user, create_test_board, auth_headers):
+    """Admins must not be able to mint owners (or garbage roles) via invites."""
+    board, owner = create_test_board(name="Role Guard Board")
+
+    for role in ["owner", "superadmin", ""]:
+        invitee = create_test_user(email=f"roleprobe_{role or 'blank'}@example.com")
+        res = client.post(
+            f"/api/boards/{board.id}/members",
+            headers=auth_headers(owner.id),
+            data=json.dumps({"email": invitee.email, "role": role}),
+            content_type="application/json"
+        )
+        assert res.status_code == 400
+        assert "Invalid role" in res.get_json()["error"]
+
+def test_invite_accepts_valid_roles(client, create_test_user, create_test_board, auth_headers):
+    board, owner = create_test_board(name="Valid Role Board")
+
+    for role in ["admin", "member", "viewer"]:
+        invitee = create_test_user(email=f"validrole_{role}@example.com")
+        res = client.post(
+            f"/api/boards/{board.id}/members",
+            headers=auth_headers(owner.id),
+            data=json.dumps({"email": invitee.email, "role": role}),
+            content_type="application/json"
+        )
+        assert res.status_code == 201
+        assert res.get_json()["role"] == role
