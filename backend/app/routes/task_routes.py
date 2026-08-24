@@ -76,15 +76,21 @@ def create_task():
 @jwt_required()
 def reorder_tasks():
     data = request.json
-    user_id = get_jwt_identity()
+    user_id = str(get_jwt_identity())
     board_id = data.get('boardId') if data else None
     items = data.get('items') if data else None
     
     if not data or not board_id or not isinstance(items, list):
         return jsonify({'error': 'boardId and items array are required'}), 400
         
-    membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-    if not membership or membership.role in ['viewer']:
+    from app.models.board import Board
+    board = Board.query.get(board_id)
+    if not board:
+        return jsonify({'error': 'Board not found'}), 404
+
+    is_owner = board.owner_id and str(board.owner_id) == user_id
+    membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id, status='accepted').first()
+    if not is_owner and (not membership or membership.role in ['viewer']):
         return jsonify({'error': 'You do not have permission to reorder tasks on this board'}), 403
 
     updated_tasks = TaskService.reorder_tasks(board_id, items, user_id=user_id)

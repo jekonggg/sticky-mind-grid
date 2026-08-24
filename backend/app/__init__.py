@@ -52,6 +52,18 @@ def create_app(config_class=Config):
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
         return response
 
+    @app.errorhandler(Exception)
+    def handle_global_exception(e):
+        import traceback
+        traceback.print_exc()
+        from flask import jsonify
+        response = make_response(jsonify({'error': str(e)}), 500)
+        origin = request.headers.get("Origin")
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
+
     from app.routes import board_routes
     from app.routes import task_routes
     from app.routes import activity_routes

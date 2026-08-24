@@ -201,22 +201,29 @@ class TaskService:
                 continue
             task = Task.query.filter_by(id=t_id, board_id=board_id).first()
             if task:
-                if 'status' in item:
+                if 'status' in item and item['status']:
                     task.status = item['status']
                 if 'position' in item and item['position'] is not None:
-                    task.position = float(item['position'])
+                    try:
+                        task.position = float(item['position'])
+                    except (ValueError, TypeError):
+                        pass
                 updated_tasks.append(task)
 
         if updated_tasks:
-            # Update board timestamp
-            if updated_tasks[0].board:
-                updated_tasks[0].board.touch()
-            db.session.commit()
+            try:
+                # Update board timestamp
+                if updated_tasks[0].board:
+                    updated_tasks[0].board.touch()
+                db.session.commit()
 
-            # Broadcast batch reorder event
-            broadcaster.broadcast(board_id, "tasks:reordered", {
-                "tasks": [t.to_dict() for t in updated_tasks]
-            })
+                # Broadcast batch reorder event
+                broadcaster.broadcast(board_id, "tasks:reordered", {
+                    "tasks": [t.to_dict() for t in updated_tasks]
+                })
+            except Exception as e:
+                db.session.rollback()
+                raise e
 
         return updated_tasks
 

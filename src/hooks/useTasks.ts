@@ -93,7 +93,10 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     try {
       const updatedList = await taskApi.reorderTasks(boardId, items);
       if (updatedList && updatedList.length > 0) {
-        setTasks(updatedList);
+        setTasks((prev) => {
+          const updatedMap = new Map(updatedList.map((t) => [t.id, t]));
+          return prev.map((t) => updatedMap.get(t.id) || t);
+        });
       }
     } catch {
       fetchTasks();
