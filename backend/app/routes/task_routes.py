@@ -4,6 +4,8 @@ from app.services.task_service import TaskService
 from app.utils.decorators import require_task_access, get_effective_role, ROLE_HIERARCHY
 from app.models.task import Task
 
+from app import db
+
 bp = Blueprint('task_routes', __name__, url_prefix='/api')
 
 @bp.route('/tasks', methods=['GET'])
@@ -119,7 +121,7 @@ def delete_task(task_id):
 @jwt_required()
 def restore_task(task_id):
     user_id = get_jwt_identity()
-    task = Task.query.get(task_id)
+    task = db.session.get(Task, task_id)
     if not task:
         return jsonify({'error': 'Task not found'}), 404
 
@@ -137,7 +139,7 @@ def restore_task(task_id):
 @jwt_required()
 def permanent_delete_task(task_id):
     user_id = get_jwt_identity()
-    task = Task.query.get(task_id)
+    task = db.session.get(Task, task_id)
     if not task:
         return jsonify({'error': 'Task not found'}), 404
 

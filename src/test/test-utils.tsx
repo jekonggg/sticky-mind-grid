@@ -3,14 +3,13 @@ import { render, RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import { AuthContext, AuthContextType } from "@/contexts/AuthContext";
-import { User } from "@/types/auth";
+import { User } from "@/types/user";
 
 export const mockUser: User = {
   id: "user-123",
   email: "testuser@example.com",
   fullName: "Test User",
   createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
 };
 
 interface CustomRenderOptions extends Omit<RenderOptions, "wrapper"> {
@@ -37,9 +36,7 @@ export function renderWithProviders(
     user,
     token: user ? "mock-jwt-token" : null,
     loading: false,
-    isAuthenticated: !!user,
     login: vi.fn(),
-    register: vi.fn(),
     logout: vi.fn(),
     updateUser: vi.fn(),
     ...authOverrides,

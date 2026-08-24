@@ -20,7 +20,7 @@ class NoteService:
         content = data.get('content', '')
         color = data.get('color', '#fef3c7')
 
-        author = User.query.get(user_id)
+        author = db.session.get(User, user_id)
         author_name = author.full_name or author.email if author else "User"
 
         note = Note(
@@ -42,7 +42,7 @@ class NoteService:
         )
         db.session.add(activity)
 
-        board = Board.query.get(board_id)
+        board = db.session.get(Board, board_id)
         if board:
             board.touch()
 
@@ -55,14 +55,14 @@ class NoteService:
 
     @staticmethod
     def update_note(note_id, user_id, data):
-        note = Note.query.get(note_id)
+        note = db.session.get(Note, note_id)
         if not note:
             return None, "Note not found"
 
         # Check permissions (member, admin, or owner with accepted membership)
         board_id = note.board_id
         level = get_effective_role(board_id, user_id)
-        board = Board.query.get(board_id)
+        board = db.session.get(Board, board_id)
 
         if level < ROLE_HIERARCHY['viewer']:
             return None, "Unauthorized to edit notes on this board"
@@ -70,7 +70,7 @@ class NoteService:
         if level < ROLE_HIERARCHY['member']:
             return None, "Viewers cannot edit notes"
 
-        author = User.query.get(user_id)
+        author = db.session.get(User, user_id)
         author_name = author.full_name or author.email if author else "User"
 
         if 'title' in data and data['title'].strip():
@@ -101,21 +101,21 @@ class NoteService:
 
     @staticmethod
     def delete_note(note_id, user_id):
-        note = Note.query.get(note_id)
+        note = db.session.get(Note, note_id)
         if not note:
             return False, "Note not found"
 
         board_id = note.board_id
         is_author = note.user_id == user_id
         is_admin_or_owner = get_effective_role(board_id, user_id) >= ROLE_HIERARCHY['admin']
-        board = Board.query.get(board_id)
+        board = db.session.get(Board, board_id)
         if board and board.owner_id == user_id:
             is_admin_or_owner = True
 
         if not is_author and not is_admin_or_owner:
             return False, "You do not have permission to delete this note"
 
-        author = User.query.get(user_id)
+        author = db.session.get(User, user_id)
         author_name = author.full_name or author.email if author else "User"
         title = note.title
 

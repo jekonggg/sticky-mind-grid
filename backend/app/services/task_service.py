@@ -21,7 +21,7 @@ class TaskService:
 
     @staticmethod
     def get_task_by_id(task_id):
-        return Task.query.get(task_id)
+        return db.session.get(Task, task_id)
 
     @staticmethod
     def create_task(data, user_id=None):
@@ -71,7 +71,7 @@ class TaskService:
 
         # Dispatch notification if assigned to another user
         if new_task.assigned_to and str(new_task.assigned_to) != str(creator_id):
-            creator = User.query.get(creator_id) if creator_id else None
+            creator = db.session.get(User, creator_id) if creator_id else None
             creator_name = (creator.full_name or creator.email) if creator else "A team member"
             notif = Notification(
                 user_id=new_task.assigned_to,
@@ -96,7 +96,7 @@ class TaskService:
 
     @staticmethod
     def update_task(task_id, data, user_id=None):
-        task = Task.query.get(task_id)
+        task = db.session.get(Task, task_id)
         if not task:
             return None
 
@@ -139,13 +139,13 @@ class TaskService:
             db.session.add(activity)
         elif 'assignedTo' in data and task.assigned_to != old_assigned_to:
             if task.assigned_to:
-                assignee = User.query.get(task.assigned_to)
+                assignee = db.session.get(User, task.assigned_to)
                 assignee_name = assignee.full_name or assignee.email if assignee else "user"
                 msg = f'Assigned task "{task.title}" to {assignee_name}'
                 
                 # Notify assignee if not the actor
                 if str(task.assigned_to) != str(user_id):
-                    actor = User.query.get(user_id) if user_id else None
+                    actor = db.session.get(User, user_id) if user_id else None
                     actor_name = (actor.full_name or actor.email) if actor else "A team member"
                     assign_notif = Notification(
                         user_id=task.assigned_to,
@@ -230,7 +230,7 @@ class TaskService:
     @staticmethod
     def delete_task(task_id, user_id=None):
         """Soft delete task to trash bin."""
-        task = Task.query.get(task_id)
+        task = db.session.get(Task, task_id)
         if not task:
             return False
         
@@ -265,7 +265,7 @@ class TaskService:
     @staticmethod
     def restore_task(task_id, user_id=None):
         """Restore soft-deleted task back to board."""
-        task = Task.query.get(task_id)
+        task = db.session.get(Task, task_id)
         if not task or not task.is_deleted:
             return None, "Task not found in trash"
 
@@ -294,7 +294,7 @@ class TaskService:
     @staticmethod
     def permanent_delete_task(task_id, user_id=None):
         """Hard delete task permanently from database."""
-        task = Task.query.get(task_id)
+        task = db.session.get(Task, task_id)
         if not task:
             return False, "Task not found"
 
