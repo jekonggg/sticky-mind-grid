@@ -276,24 +276,64 @@ class BoardService:
     def remove_member(board_id, user_id, actor_id=None):
         membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
         if not membership:
-            return False
-        
-        if membership.role == 'owner':
+            return False, "Member not found on this board"
+
+        board = Board.query.get(board_id)
+        if not board:
+            return False, "Board not found"
+
+        is_self = str(user_id) == str(actor_id)
+
+        # Sole owner protection
+        if membership.role == 'owner' or (board.owner_id and str(board.owner_id) == str(user_id)):
             owner_count = BoardMember.query.filter_by(board_id=board_id, role='owner').count()
             if owner_count <= 1:
-                return False # Cannot remove the last owner
-                
-        user_name = membership.user.full_name or membership.user.email if membership.user else "Member"
+                return False, "The board owner cannot leave the board. You must transfer ownership or delete the board."
 
-        # Audit log
-        activity = Activity(
-            type='update',
-            task_title=user_name,
-            message=f'Removed member {user_name}',
-            board_id=board_id,
-            user_id=actor_id
-        )
-        db.session.add(activity)
+        user_name = membership.user.full_name or membership.user.email if membership.user else "Member"
+        actor = User.query.get(actor_id) if actor_id else None
+        actor_name = (actor.full_name or actor.email) if actor else "Board Admin"
+
+        if is_self:
+            # Voluntary leave
+            activity = Activity(
+                type='update',
+                task_title=user_name,
+                message=f'{user_name} left the board',
+                board_id=board_id,
+                user_id=actor_id
+            )
+            db.session.add(activity)
+
+            # Notify board owner
+            if board.owner_id and str(board.owner_id) != str(user_id):
+                owner_notif = Notification(
+                    user_id=board.owner_id,
+                    type='member_left',
+                    title='Member Left Board',
+                    message=f'{user_name} has left "{board.name}".',
+                    link=f'/boards/{board_id}'
+                )
+                db.session.add(owner_notif)
+        else:
+            # Admin removed member
+            activity = Activity(
+                type='update',
+                task_title=user_name,
+                message=f'{actor_name} removed member {user_name}',
+                board_id=board_id,
+                user_id=actor_id
+            )
+            db.session.add(activity)
+
+            # Notify the removed user
+            removed_notif = Notification(
+                user_id=user_id,
+                type='member_removed',
+                title='Removed from Board',
+                message=f'{actor_name} removed you from "{board.name}".'
+            )
+            db.session.add(removed_notif)
 
         db.session.delete(membership)
         db.session.commit()
@@ -301,7 +341,7 @@ class BoardService:
         broadcaster.broadcast(board_id, "member:removed", {"userId": user_id})
         broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
 
-        return True
+        return True, None
 
     @staticmethod
     def update_member_role(board_id, user_id, new_role, actor_id=None):

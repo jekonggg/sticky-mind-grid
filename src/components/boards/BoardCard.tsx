@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Trash2, LayoutGrid } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, LayoutGrid, LogOut } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { BoardHeroImage } from "./BoardHeroImage";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,9 +18,10 @@ interface BoardCardProps {
   taskCount?: number;
   onEdit: (board: Board) => void;
   onDelete: (board: Board) => void;
+  onLeave?: (board: Board) => void;
 }
 
-export function BoardCard({ board, taskCount = 0, onEdit, onDelete }: BoardCardProps) {
+export function BoardCard({ board, taskCount = 0, onEdit, onDelete, onLeave }: BoardCardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const boardColor = board.color && board.color.startsWith("hsl") ? board.color : "hsl(220, 80%, 56%)";
@@ -79,14 +80,24 @@ export function BoardCard({ board, taskCount = 0, onEdit, onDelete }: BoardCardP
                 <Pencil className="h-3.5 w-3.5 mr-2" />
                 Edit
               </DropdownMenuItem>
-              {(!board.ownerId || board.ownerId === user?.id) && (
+              {(!board.ownerId || board.ownerId === user?.id) ? (
                 <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
+                  className="text-destructive focus:text-destructive cursor-pointer"
                   onClick={() => onDelete(board)}
                 >
                   <Trash2 className="h-3.5 w-3.5 mr-2" />
                   Delete
                 </DropdownMenuItem>
+              ) : (
+                onLeave && (
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive cursor-pointer"
+                    onClick={() => onLeave(board)}
+                  >
+                    <LogOut className="h-3.5 w-3.5 mr-2" />
+                    Leave Board
+                  </DropdownMenuItem>
+                )
               )}
             </DropdownMenuContent>
           </DropdownMenu>

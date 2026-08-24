@@ -75,6 +75,10 @@ export const boardApi = {
     }
   },
 
+  async leaveBoard(boardId: string, userId: string): Promise<void> {
+    return this.removeMember(boardId, userId);
+  },
+
   async updateMemberRole(boardId: string, userId: string, role: string): Promise<BoardMember> {
     const res = await authenticatedFetch(`/boards/${boardId}/members/${userId}`, {
       method: "PATCH",

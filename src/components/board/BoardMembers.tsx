@@ -10,18 +10,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserMinus, ShieldAlert, Crown, Shield, User, Eye } from "lucide-react";
+import { UserMinus, ShieldAlert, Crown, Shield, User, Eye, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { BoardMember } from "@/types/board";
 import { useActivity } from "@/hooks/useActivity";
 import { useBoards } from "@/hooks/useBoards";
+import { useNavigate } from "react-router-dom";
 
 interface BoardMembersProps {
   boardId: string;
 }
 
 export function BoardMembers({ boardId }: BoardMembersProps) {
+  const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const { addActivity } = useActivity();
   const { boards } = useBoards();
@@ -37,10 +39,17 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
     mutationFn: (userId: string) => boardApi.removeMember(boardId, userId),
     onSuccess: (_, userId) => {
       queryClient.invalidateQueries({ queryKey: ["boardMembers", boardId] });
-      const removedUser = members?.find((m) => m.userId === userId);
-      const userName = removedUser?.user?.fullName || removedUser?.user?.email || "User";
-      addActivity("update", currentBoard?.name || "Board", `Removed member ${userName}`, boardId);
-      toast.success("Member removed");
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
+      const isLeaving = userId === currentUser?.id;
+      if (isLeaving) {
+        toast.success(`You have left "${currentBoard?.name || "the board"}"`);
+        navigate("/");
+      } else {
+        const removedUser = members?.find((m) => m.userId === userId);
+        const userName = removedUser?.user?.fullName || removedUser?.user?.email || "User";
+        addActivity("update", currentBoard?.name || "Board", `Removed member ${userName}`, boardId);
+        toast.success("Member removed");
+      }
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to remove member");
@@ -207,6 +216,24 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                     disabled={removeMutation.isPending}
                   >
                     <UserMinus className="h-4 w-4" />
+                  </Button>
+                )}
+
+                {isSelf && !isMemberOwner && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 rounded-lg font-bold gap-1 cursor-pointer"
+                    title="Leave this board"
+                    onClick={() => {
+                      if (confirm(`Are you sure you want to leave "${currentBoard?.name || "this board"}"?`)) {
+                        removeMutation.mutate(member.userId);
+                      }
+                    }}
+                    disabled={removeMutation.isPending}
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Leave</span>
                   </Button>
                 )}
               </div>

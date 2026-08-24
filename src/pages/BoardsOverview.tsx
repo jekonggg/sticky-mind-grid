@@ -32,9 +32,12 @@ import { boardApi } from "@/services/boardApi";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
+import { useAuth } from "@/contexts/AuthContext";
+
 export default function BoardsOverview() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { boards, loading, search, setSearch, sort, setSort, createBoard, updateBoard, deleteBoard } = useBoards();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBoard, setEditingBoard] = useState<Board | null>(null);
@@ -72,6 +75,26 @@ export default function BoardsOverview() {
       toast.error(err.message || "Failed to decline invitation");
     },
   });
+
+  const leaveMutation = useMutation({
+    mutationFn: (board: Board) => {
+      if (!user) throw new Error("User required");
+      return boardApi.leaveBoard(board.id, user.id);
+    },
+    onSuccess: (_, board) => {
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
+      toast.success(`You left "${board.name}"`);
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to leave board");
+    },
+  });
+
+  const handleLeave = (board: Board) => {
+    if (confirm(`Are you sure you want to leave "${board.name}"?`)) {
+      leaveMutation.mutate(board);
+    }
+  };
 
   const handleEdit = (board: Board) => {
     setEditingBoard(board);
@@ -250,6 +273,7 @@ export default function BoardsOverview() {
                 taskCount={board.taskCount || 0}
                 onEdit={handleEdit}
                 onDelete={setDeletingBoard}
+                onLeave={handleLeave}
               />
             ))}
           </div>

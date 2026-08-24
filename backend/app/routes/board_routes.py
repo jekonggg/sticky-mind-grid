@@ -151,13 +151,25 @@ def add_member(board_id):
 
 @bp.route('/<board_id>/members/<user_id>', methods=['DELETE'])
 @jwt_required()
-@require_board_access('admin')
 def remove_member(board_id, user_id):
-    actor_id = get_jwt_identity()
-    success = BoardService.remove_member(board_id, user_id, actor_id=actor_id)
+    actor_id = str(get_jwt_identity())
+    board = BoardService.get_board_by_id(board_id)
+    if not board:
+        return jsonify({'error': 'Board not found'}), 404
+
+    is_self = actor_id == str(user_id)
+    if not is_self:
+        # Require admin or owner privileges to remove other members
+        actor_mem = BoardMember.query.filter_by(board_id=board_id, user_id=actor_id, status='accepted').first()
+        is_board_owner = board.owner_id and str(board.owner_id) == actor_id
+        is_admin = is_board_owner or (actor_mem and actor_mem.role in ['admin', 'owner'])
+        if not is_admin:
+            return jsonify({'error': 'Requires admin privileges to remove other members'}), 403
+
+    success, error = BoardService.remove_member(board_id, user_id, actor_id=actor_id)
     if not success:
-        return jsonify({'error': 'Could not remove member. Cannot remove sole owner.'}), 400
-    return jsonify({'message': 'Member removed'}), 200
+        return jsonify({'error': error or 'Could not remove member'}), 400
+    return jsonify({'message': 'Left board successfully' if is_self else 'Member removed'}), 200
 
 @bp.route('/<board_id>/members/<user_id>', methods=['PATCH', 'PUT'])
 @jwt_required()
