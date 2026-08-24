@@ -102,6 +102,19 @@ export function TaskListView({ tasks, onTaskClick }: TaskListViewProps) {
                               {task.description}
                             </span>
                           )}
+                          {task.tags && task.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {task.tags.map((t) => (
+                                <span
+                                  key={t.id}
+                                  style={{ backgroundColor: `${t.color}20`, color: t.color, borderColor: `${t.color}40` }}
+                                  className="text-[9px] font-bold px-1.5 py-0.2 rounded-full border shadow-2xs"
+                                >
+                                  {t.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </TableCell>
@@ -139,9 +152,14 @@ export function TaskListView({ tasks, onTaskClick }: TaskListViewProps) {
                             style={{ width: `${task.progress}%` }}
                           />
                         </div>
-                        <span className="text-[9px] font-black tracking-tighter text-muted-foreground/80 leading-none">
-                          {task.progress}%
-                        </span>
+                        <div className="flex items-center justify-between text-[9px] text-muted-foreground/80 font-bold">
+                          <span>{task.progress}%</span>
+                          {task.checklist && task.checklist.length > 0 && (
+                            <span>
+                              {task.checklist.filter((i) => i.completed).length}/{task.checklist.length}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="py-4">

@@ -72,4 +72,34 @@ export const taskApi = {
     const data = await res.json();
     return data.map(mapTask);
   },
+
+  async getTrash(boardId: string): Promise<Task[]> {
+    const res = await authenticatedFetch(`/boards/${boardId}/trash`);
+    if (!res.ok) throw new Error("Failed to fetch trash");
+    const data = await res.json();
+    return data.map(mapTask);
+  },
+
+  async restoreTask(taskId: string): Promise<Task> {
+    const res = await authenticatedFetch(`/tasks/${taskId}/restore`, {
+      method: "PATCH",
+    });
+    if (!res.ok) throw new Error("Failed to restore task");
+    const data = await res.json();
+    return mapTask(data);
+  },
+
+  async permanentlyDeleteTask(taskId: string): Promise<void> {
+    const res = await authenticatedFetch(`/tasks/${taskId}/permanent`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to permanently delete task");
+  },
+
+  async emptyTrash(boardId: string): Promise<void> {
+    const res = await authenticatedFetch(`/boards/${boardId}/trash`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to empty trash");
+  },
 };

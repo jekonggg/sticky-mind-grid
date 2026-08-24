@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Task, UpdateTaskData, Priority, Column, Attachment } from "@/types/task";
+import { Task, UpdateTaskData, Priority, Column, Attachment, ChecklistItem, Tag } from "@/types/task";
 import { BoardMember } from "@/types/board";
-import { getProgressColor } from "@/utils/taskUtils";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -22,12 +22,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, ImagePlus, X, Check, FileText, File, Film, Music, User, Users, Eye } from "lucide-react";
+import {
+  Trash2,
+  ImagePlus,
+  X,
+  Check,
+  FileText,
+  User,
+  Users,
+  Eye,
+  CheckSquare,
+  Square,
+  Tag as TagIcon,
+  Plus,
+} from "lucide-react";
 import { EmojiSelector } from "../common/EmojiSelector";
 import { TaskComments } from "./TaskComments";
 import { fileApi } from "@/services/fileApi";
 import { toast } from "sonner";
-
 import { boardApi } from "@/services/boardApi";
 
 interface TaskModalProps {
@@ -42,11 +54,22 @@ interface TaskModalProps {
   onDelete?: (id: string) => void;
 }
 
+const TAG_COLORS = [
+  "#ef4444", // Red
+  "#f97316", // Orange
+  "#eab308", // Yellow
+  "#22c55e", // Green
+  "#06b6d4", // Cyan
+  "#3b82f6", // Blue
+  "#a855f7", // Purple
+  "#ec4899", // Pink
+];
+
 export function TaskModal({
   open,
   onClose,
   task,
-  columns,
+  columns = [],
   boardId,
   members = [],
   readOnly = false,
@@ -62,11 +85,16 @@ export function TaskModal({
   const [progress, setProgress] = useState<number>(0);
   const [assignedTo, setAssignedTo] = useState<string>("unassigned");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [newChecklistText, setNewChecklistText] = useState("");
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [newTagName, setNewTagName] = useState("");
+  const [selectedTagColor, setSelectedTagColor] = useState(TAG_COLORS[0]);
+  const [isAddingTag, setIsAddingTag] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!task;
 
-  // Sync passed members or fetch if boardId is provided
   useEffect(() => {
     if (members && members.length > 0) {
       setBoardMembers(members);
@@ -90,6 +118,8 @@ export function TaskModal({
       setProgress(task.progress || 0);
       setAssignedTo(task.assignedTo || "unassigned");
       setAttachments(task.attachments || []);
+      setChecklist(task.checklist || []);
+      setTags(task.tags || []);
     } else {
       setTitle("");
       setEmoji("");
@@ -99,7 +129,11 @@ export function TaskModal({
       setProgress(0);
       setAssignedTo("unassigned");
       setAttachments([]);
+      setChecklist([]);
+      setTags([]);
     }
+    setNewChecklistText("");
+    setIsAddingTag(false);
   }, [task, open]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,7 +157,6 @@ export function TaskModal({
         toast.success(`Uploaded ${file.name}`);
       } catch (err: any) {
         toast.error(err.message || `Failed to upload ${file.name}`);
-        // Fallback to local DataURL
         const reader = new FileReader();
         reader.onloadend = () => {
           setAttachments((prev) => [
@@ -147,6 +180,55 @@ export function TaskModal({
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Checklist Actions
+  const handleAddChecklistItem = () => {
+    if (!newChecklistText.trim() || readOnly) return;
+    const newItem: ChecklistItem = {
+      id: `chk_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      title: newChecklistText.trim(),
+      completed: false,
+    };
+    const updated = [...checklist, newItem];
+    setChecklist(updated);
+    setNewChecklistText("");
+  };
+
+  const handleToggleChecklistItem = (id: string) => {
+    if (readOnly) return;
+    const updated = checklist.map((item) =>
+      item.id === id ? { ...item, completed: !item.completed } : item
+    );
+    setChecklist(updated);
+    // Auto calculate progress from checklist if present
+    const completedCount = updated.filter((i) => i.completed).length;
+    if (updated.length > 0) {
+      setProgress(Math.round((completedCount / updated.length) * 100));
+    }
+  };
+
+  const handleDeleteChecklistItem = (id: string) => {
+    if (readOnly) return;
+    setChecklist((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  // Tag Actions
+  const handleAddTag = () => {
+    if (!newTagName.trim() || readOnly) return;
+    const newTag: Tag = {
+      id: `tag_${Date.now()}`,
+      name: newTagName.trim(),
+      color: selectedTagColor,
+    };
+    setTags((prev) => [...prev, newTag]);
+    setNewTagName("");
+    setIsAddingTag(false);
+  };
+
+  const handleDeleteTag = (id: string) => {
+    if (readOnly) return;
+    setTags((prev) => prev.filter((t) => t.id !== id));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (readOnly || !title.trim()) return;
@@ -167,6 +249,8 @@ export function TaskModal({
       assignedTo: assignedTo === "unassigned" ? null : assignedTo,
       dueDate: dueDate ? new Date(dueDate) : undefined,
       progress,
+      checklist,
+      tags,
       attachments,
     });
     onClose();
@@ -174,7 +258,7 @@ export function TaskModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg max-h-[95vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
             {readOnly ? (
@@ -191,7 +275,7 @@ export function TaskModal({
             )}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Task details, assignments, attachments and comments discussion
+            Task details, assignments, attachments, checklists, and discussions
           </DialogDescription>
         </DialogHeader>
 
@@ -199,25 +283,114 @@ export function TaskModal({
           {/* Title & Emoji */}
           <div className="space-y-1.5">
             <Label htmlFor="title" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Task Title
+              Task Title <span className="text-destructive">*</span>
             </Label>
             <div className="flex gap-2">
-              {!readOnly && <EmojiSelector value={emoji} onChange={setEmoji} />}
-              {readOnly && emoji && (
-                <div className="h-9 w-9 rounded-xl shrink-0 border border-border/50 bg-primary/5 flex items-center justify-center text-lg">
+              {!readOnly ? (
+                <EmojiSelector value={emoji} onChange={setEmoji} />
+              ) : emoji ? (
+                <div className="h-10 w-10 flex items-center justify-center text-xl bg-muted rounded-md shrink-0">
                   {emoji}
                 </div>
-              )}
+              ) : null}
               <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="What needs to be done?…"
-                autoFocus={!readOnly}
+                placeholder="What needs to be done?"
                 disabled={readOnly}
-                required
-                className="flex-1 font-semibold"
+                className="h-10 text-sm font-semibold flex-1"
+                autoFocus
               />
+            </div>
+          </div>
+
+          {/* Labels & Tags Section */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                <TagIcon className="h-3.5 w-3.5 text-primary" /> Labels / Tags ({tags.length})
+              </Label>
+              {!readOnly && !isAddingTag && (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingTag(true)}
+                  className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1"
+                >
+                  <Plus className="h-3 w-3" /> Add Tag
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 items-center min-h-[30px] p-1.5 rounded-lg bg-muted/30 border border-border/40">
+              {tags.length === 0 && !isAddingTag && (
+                <span className="text-[11px] text-muted-foreground italic px-1">
+                  No tags added
+                </span>
+              )}
+              {tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  style={{ backgroundColor: `${tag.color}20`, borderColor: `${tag.color}60`, color: tag.color }}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border shadow-xs"
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                  {tag.name}
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTag(tag.id)}
+                      className="hover:opacity-70 ml-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </span>
+              ))}
+
+              {/* Inline Tag Creator */}
+              {isAddingTag && (
+                <div className="flex items-center gap-1.5 w-full pt-1">
+                  <Input
+                    placeholder="Tag name..."
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                    }}
+                    className="h-7 text-xs flex-1"
+                    autoFocus
+                  />
+                  <div className="flex items-center gap-1">
+                    {TAG_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setSelectedTagColor(c)}
+                        style={{ backgroundColor: c }}
+                        className={`h-4 w-4 rounded-full transition-transform ${
+                          selectedTagColor === c ? "ring-2 ring-primary scale-110" : "opacity-80"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <Button type="button" size="sm" onClick={handleAddTag} className="h-7 px-2 text-xs font-bold">
+                    Add
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsAddingTag(false)}
+                    className="h-7 px-1.5 text-xs text-muted-foreground"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -319,6 +492,84 @@ export function TaskModal({
             </Select>
           </div>
 
+          {/* Subtasks / Checklist Section */}
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <CheckSquare className="h-3.5 w-3.5 text-primary" />
+                Checklist ({checklist.filter((i) => i.completed).length}/{checklist.length})
+              </Label>
+              {checklist.length > 0 && (
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  {Math.round((checklist.filter((i) => i.completed).length / checklist.length) * 100)}% done
+                </span>
+              )}
+            </div>
+
+            {/* Checklist Items List */}
+            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+              {checklist.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleToggleChecklistItem(item.id)}
+                  className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                    item.completed
+                      ? "bg-muted/30 text-muted-foreground border-border/30 line-through"
+                      : "bg-background/80 text-foreground border-border/60 hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    {item.completed ? (
+                      <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" />
+                    ) : (
+                      <Square className="h-4 w-4 text-muted-foreground shrink-0" />
+                    )}
+                    <span className="truncate">{item.title}</span>
+                  </div>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteChecklistItem(item.id);
+                      }}
+                      className="text-muted-foreground hover:text-destructive p-0.5"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Add Checklist Item Input */}
+            {!readOnly && (
+              <div className="flex gap-2 pt-1">
+                <Input
+                  placeholder="Add a subtask..."
+                  value={newChecklistText}
+                  onChange={(e) => setNewChecklistText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddChecklistItem();
+                    }
+                  }}
+                  className="h-8 text-xs bg-background/50 border-border/60"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddChecklistItem}
+                  disabled={!newChecklistText.trim()}
+                  className="h-8 px-3 text-xs font-bold gap-1 shrink-0"
+                >
+                  <Plus className="h-3 w-3" /> Add
+                </Button>
+              </div>
+            )}
+          </div>
+
           {/* Progress / Status Slider */}
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between text-xs">
@@ -387,7 +638,7 @@ export function TaskModal({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="aspect-square flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-muted-foreground/30 hover:border-primary hover:bg-primary/5 transition-all text-muted-foreground/60 hover:text-primary text-[9px] font-bold"
+                  className="aspect-square flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-muted-foreground/30 hover:border-primary hover:bg-primary/5 transition-all text-muted-foreground/60 hover:text-primary text-[9px] font-bold cursor-pointer"
                 >
                   <ImagePlus className="h-4 w-4" />
                   Upload

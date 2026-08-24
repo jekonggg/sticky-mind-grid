@@ -22,7 +22,11 @@ class Task(db.Model):
     assigned_to = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
     position = db.Column(db.Float, default=0.0, nullable=False)
+    checklist = db.Column(db.JSON, default=list) # [{id, title, completed}]
+    tags = db.Column(db.JSON, default=list) # [{id, name, color}]
     attachments = db.Column(db.JSON, default=list)
+    is_deleted = db.Column(db.Boolean, default=False, nullable=False)
+    deleted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -30,7 +34,7 @@ class Task(db.Model):
     creator = db.relationship('User', foreign_keys=[created_by], back_populates='created_tasks')
     assignee = db.relationship('User', foreign_keys=[assigned_to], back_populates='assigned_tasks')
 
-    def __init__(self, board_id: str, title: str, emoji: str = None, description: str = None, status: str = 'todo', priority: str = 'medium', progress: int = 0, due_date: datetime = None, assigned_to: str = None, created_by: str = None, position: float = 0.0, attachments: list = None, **kwargs):
+    def __init__(self, board_id: str, title: str, emoji: str = None, description: str = None, status: str = 'todo', priority: str = 'medium', progress: int = 0, due_date: datetime = None, assigned_to: str = None, created_by: str = None, position: float = 0.0, checklist: list = None, tags: list = None, attachments: list = None, is_deleted: bool = False, deleted_at: datetime = None, **kwargs):
         super().__init__(**kwargs)
         self.board_id = board_id
         self.title = title
@@ -43,7 +47,11 @@ class Task(db.Model):
         self.assigned_to = assigned_to
         self.created_by = created_by
         self.position = position if position is not None else 0.0
+        self.checklist = checklist if checklist is not None else []
+        self.tags = tags if tags is not None else []
         self.attachments = attachments if attachments is not None else []
+        self.is_deleted = is_deleted
+        self.deleted_at = deleted_at
 
     def to_dict(self):
         assignee_data = self.assignee.to_dict() if self.assignee else None
@@ -57,11 +65,15 @@ class Task(db.Model):
             'priority': self.priority,
             'progress': self.progress,
             'position': self.position,
+            'checklist': self.checklist or [],
+            'tags': self.tags or [],
             'dueDate': self.due_date.isoformat() if self.due_date else None,
             'assignedTo': self.assigned_to,
             'assignee': assignee_data,
             'createdBy': self.created_by,
             'attachments': self.attachments,
+            'isDeleted': self.is_deleted,
+            'deletedAt': self.deleted_at.isoformat() if self.deleted_at else None,
             'createdAt': self.created_at.isoformat(),
             'updatedAt': self.updated_at.isoformat()
         }

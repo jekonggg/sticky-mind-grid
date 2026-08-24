@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -15,6 +15,7 @@ import { useTasks } from "@/hooks/useTasks";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
 import { TaskModal } from "./TaskModal";
+import { TrashModal } from "./TrashModal";
 import { LatestChangesPanel } from "./LatestChangesPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BoardHeader } from "./BoardHeader";
@@ -32,7 +33,9 @@ import {
   Users,
   Eye,
   ShieldAlert,
-  Radio
+  Radio,
+  Trash2,
+  Tag as TagIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -106,12 +109,25 @@ export function KanbanBoard() {
   const [isActivityOpen, setIsActivityOpen] = useState(true); 
   const [searchTerm, setSearchTerm] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all"); // 'all' | 'me' | userId
+  const [tagFilter, setTagFilter] = useState<string>("all"); // 'all' | tagName
+  const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [activeView, setActiveView] = useState<"overview" | "list" | "board" | "calendar" | "documents" | "members">("board");
   
   const { addActivity, setBoardId, refreshActivities } = useActivity();
   const scrollRef = useRef<HTMLDivElement>(null);
   const permissions = useBoardPermissions(board, members);
   const queryClient = useQueryClient();
+
+  // Extract unique tags across tasks
+  const availableTags = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; color: string }>();
+    tasks.forEach((t) => {
+      (t.tags || []).forEach((tag) => {
+        map.set(tag.name.toLowerCase(), tag);
+      });
+    });
+    return Array.from(map.values());
+  }, [tasks]);
 
   // Real-time Server-Sent Events (SSE) stream synchronization
   const { isConnected } = useBoardRealtime({
@@ -286,7 +302,7 @@ export function KanbanBoard() {
     setModalOpen(true);
   }, [permissions.canCreateTask]);
 
-  // Filter task matching both search query and assignee filter
+  // Filter task matching search query, assignee filter, and tag filter
   const isTaskMatchingFilters = useCallback(
     (t: Task) => {
       // Search matching
@@ -301,7 +317,8 @@ export function KanbanBoard() {
         )
           .toLowerCase()
           .includes(q);
-        if (!matchTitle && !matchDesc && !matchAssignee) return false;
+        const matchTags = (t.tags || []).some((tag) => tag.name.toLowerCase().includes(q));
+        if (!matchTitle && !matchDesc && !matchAssignee && !matchTags) return false;
       }
 
       // Assignee matching
@@ -313,9 +330,17 @@ export function KanbanBoard() {
         if (t.assignedTo !== assigneeFilter) return false;
       }
 
+      // Tag matching
+      if (tagFilter !== "all") {
+        const hasTag = (t.tags || []).some(
+          (tag) => tag.name.toLowerCase() === tagFilter.toLowerCase()
+        );
+        if (!hasTag) return false;
+      }
+
       return true;
     },
-    [searchTerm, assigneeFilter, currentUser]
+    [searchTerm, assigneeFilter, tagFilter, currentUser]
   );
 
   const filteredTasksByStatus = useCallback(
@@ -577,6 +602,40 @@ export function KanbanBoard() {
                     })}
                   </div>
                 )}
+
+                {/* Tag Filters */}
+                {availableTags.length > 0 && (
+                  <div className="flex items-center gap-1 pl-2 border-l border-border/60 shrink-0">
+                    <TagIcon className="h-3 w-3 text-muted-foreground mr-0.5" />
+                    {availableTags.map((tag) => {
+                      const isSelected = tagFilter.toLowerCase() === tag.name.toLowerCase();
+                      return (
+                        <button
+                          key={tag.id}
+                          onClick={() => setTagFilter(isSelected ? "all" : tag.name)}
+                          style={{
+                            backgroundColor: isSelected ? tag.color : `${tag.color}15`,
+                            color: isSelected ? "#ffffff" : tag.color,
+                            borderColor: `${tag.color}40`,
+                          }}
+                          className="px-2.5 py-0.5 rounded-full text-xs font-bold transition-all border shadow-2xs cursor-pointer"
+                        >
+                          {tag.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Trash Bin Trigger */}
+                <button
+                  onClick={() => setIsTrashOpen(true)}
+                  className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all border border-border/60 bg-background text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 shrink-0 cursor-pointer"
+                  title="View Trash Bin"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Trash</span>
+                </button>
               </div>
             )}
           </div>
@@ -673,6 +732,13 @@ export function KanbanBoard() {
           }
         }}
         onDelete={deleteTask}
+      />
+
+      <TrashModal
+        open={isTrashOpen}
+        onClose={() => setIsTrashOpen(false)}
+        boardId={board.id}
+        canManage={permissions.canManageBoard || permissions.role === "owner" || permissions.role === "admin"}
       />
     </div>
   );

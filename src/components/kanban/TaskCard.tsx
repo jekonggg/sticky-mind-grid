@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Task } from "@/types/task";
-import { GripVertical, Paperclip, FileText, Smile } from "lucide-react";
+import { GripVertical, Paperclip, FileText, Smile, CheckSquare } from "lucide-react";
 import { format } from "date-fns";
 import { getProgressColor } from "@/utils/taskUtils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -89,6 +89,21 @@ export function TaskCard({ task, onClick, isDragDisabled = false }: TaskCardProp
             </p>
           )}
 
+          {/* Tags Pills */}
+          {task.tags && task.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {task.tags.map((t) => (
+                <span
+                  key={t.id}
+                  style={{ backgroundColor: `${t.color}20`, color: t.color, borderColor: `${t.color}40` }}
+                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border shadow-2xs"
+                >
+                  {t.name}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* Progress Bar Area */}
           <div className="mt-2.5 space-y-1 flex flex-col">
             <div className="w-full h-1 bg-muted rounded-full overflow-hidden border border-border/10">
@@ -102,13 +117,21 @@ export function TaskCard({ task, onClick, isDragDisabled = false }: TaskCardProp
       </div>
 
       {/* Card Footer: Metadata + Assignee Avatar */}
-      {(task.dueDate || (task.attachments && task.attachments.length > 0) || task.assignee) && (
+      {(task.dueDate || (task.attachments && task.attachments.length > 0) || (task.checklist && task.checklist.length > 0) || task.assignee) && (
         <div className="mt-3 pt-2.5 border-t border-border/40 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {task.dueDate && (
               <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md">
                 <FileText className="h-2.5 w-2.5" />
                 {format(new Date(task.dueDate), "MMM d")}
+              </div>
+            )}
+            {task.checklist && task.checklist.length > 0 && (
+              <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md">
+                <CheckSquare className="h-2.5 w-2.5 text-primary" />
+                <span>
+                  {task.checklist.filter((i) => i.completed).length}/{task.checklist.length}
+                </span>
               </div>
             )}
             {task.attachments && task.attachments.length > 0 && (

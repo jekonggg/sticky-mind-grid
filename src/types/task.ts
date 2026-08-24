@@ -9,6 +9,18 @@ export interface Attachment {
   size?: string;
 }
 
+export interface ChecklistItem {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface Task {
   id: string;
   boardId: string;
@@ -27,7 +39,11 @@ export interface Task {
   dueDate?: Date;
   progress: number;
   position?: number;
+  checklist?: ChecklistItem[];
+  tags?: Tag[];
   attachments: Attachment[];
+  isDeleted?: boolean;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,6 +57,8 @@ export interface CreateTaskData {
   dueDate?: Date;
   progress?: number;
   position?: number;
+  checklist?: ChecklistItem[];
+  tags?: Tag[];
   attachments?: Attachment[];
 }
 
@@ -54,6 +72,8 @@ export interface UpdateTaskData {
   dueDate?: Date;
   progress?: number;
   position?: number;
+  checklist?: ChecklistItem[];
+  tags?: Tag[];
   attachments?: Attachment[];
 }
 

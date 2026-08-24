@@ -10,7 +10,13 @@ class TaskService:
     def get_tasks(board_id):
         if not board_id:
             return []
-        return Task.query.filter_by(board_id=board_id).order_by(Task.position.asc(), Task.created_at.asc()).all()
+        return Task.query.filter_by(board_id=board_id, is_deleted=False).order_by(Task.position.asc(), Task.created_at.asc()).all()
+
+    @staticmethod
+    def get_deleted_tasks(board_id):
+        if not board_id:
+            return []
+        return Task.query.filter_by(board_id=board_id, is_deleted=True).order_by(Task.deleted_at.desc()).all()
 
     @staticmethod
     def get_task_by_id(task_id):
@@ -26,7 +32,7 @@ class TaskService:
         if 'position' in data and data['position'] is not None:
             position = float(data['position'])
         else:
-            last_task = Task.query.filter_by(board_id=board_id, status=status).order_by(Task.position.desc()).first()
+            last_task = Task.query.filter_by(board_id=board_id, status=status, is_deleted=False).order_by(Task.position.desc()).first()
             position = (last_task.position + 1000.0) if (last_task and last_task.position is not None) else 1000.0
 
         new_task = Task(
@@ -38,6 +44,8 @@ class TaskService:
             priority=data.get('priority', 'medium'),
             progress=data.get('progress', 0),
             position=position,
+            checklist=data.get('checklist', []),
+            tags=data.get('tags', []),
             attachments=data.get('attachments', []),
             assigned_to=data.get('assignedTo'),
             created_by=creator_id
@@ -91,6 +99,8 @@ class TaskService:
         if 'priority' in data: task.priority = data['priority']
         if 'progress' in data: task.progress = data['progress']
         if 'position' in data and data['position'] is not None: task.position = float(data['position'])
+        if 'checklist' in data: task.checklist = data['checklist']
+        if 'tags' in data: task.tags = data['tags']
         if 'attachments' in data: task.attachments = data['attachments']
         if 'assignedTo' in data: task.assigned_to = data['assignedTo']
         if 'dueDate' in data:
@@ -185,6 +195,7 @@ class TaskService:
 
     @staticmethod
     def delete_task(task_id, user_id=None):
+        """Soft delete task to trash bin."""
         task = Task.query.get(task_id)
         if not task:
             return False
@@ -193,26 +204,109 @@ class TaskService:
         board_id = task.board_id
         task_title = task.title
 
-        # Record audit log before deleting
+        task.is_deleted = True
+        task.deleted_at = datetime.utcnow()
+
+        # Record audit log
         activity = Activity(
             type='delete',
             task_title=task_title,
-            message=f'Deleted task "{task_title}"',
+            message=f'Moved task "{task_title}" to Trash',
+            board_id=board_id,
+            user_id=user_id
+        )
+        db.session.add(activity)
+
+        if board:
+            board.touch()
+            
+        db.session.commit()
+
+        # Broadcast deletion
+        broadcaster.broadcast(board_id, "task:deleted", {"taskId": task_id})
+        broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
+
+        return True
+
+    @staticmethod
+    def restore_task(task_id, user_id=None):
+        """Restore soft-deleted task back to board."""
+        task = Task.query.get(task_id)
+        if not task or not task.is_deleted:
+            return None, "Task not found in trash"
+
+        task.is_deleted = False
+        task.deleted_at = None
+
+        activity = Activity(
+            type='create',
+            task_title=task.title,
+            message=f'Restored task "{task.title}" from Trash',
+            board_id=task.board_id,
+            user_id=user_id
+        )
+        db.session.add(activity)
+
+        if task.board:
+            task.board.touch()
+
+        db.session.commit()
+
+        broadcaster.broadcast(task.board_id, "task:created", task.to_dict())
+        broadcaster.broadcast(task.board_id, "activity:new", activity.to_dict())
+
+        return task, None
+
+    @staticmethod
+    def permanent_delete_task(task_id, user_id=None):
+        """Hard delete task permanently from database."""
+        task = Task.query.get(task_id)
+        if not task:
+            return False, "Task not found"
+
+        board_id = task.board_id
+        task_title = task.title
+
+        activity = Activity(
+            type='delete',
+            task_title=task_title,
+            message=f'Permanently deleted task "{task_title}"',
             board_id=board_id,
             user_id=user_id
         )
         db.session.add(activity)
 
         db.session.delete(task)
-        
-        # Update board timestamp
-        if board:
-            board.touch()
-            
         db.session.commit()
 
-        # Broadcast deletion and activity event
-        broadcaster.broadcast(board_id, "task:deleted", {"taskId": task_id})
+        broadcaster.broadcast(board_id, "task:deleted", {"taskId": task_id, "permanent": True})
         broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
 
-        return True
+        return True, None
+
+    @staticmethod
+    def empty_trash(board_id, user_id=None):
+        """Permanently delete all soft-deleted tasks for a board."""
+        deleted_tasks = Task.query.filter_by(board_id=board_id, is_deleted=True).all()
+        count = len(deleted_tasks)
+        if count == 0:
+            return 0
+
+        for t in deleted_tasks:
+            db.session.delete(t)
+
+        activity = Activity(
+            type='delete',
+            task_title='Trash Bin',
+            message=f'Emptied Trash Bin ({count} tasks permanently deleted)',
+            board_id=board_id,
+            user_id=user_id
+        )
+        db.session.add(activity)
+
+        db.session.commit()
+
+        broadcaster.broadcast(board_id, "trash:emptied", {"count": count})
+        broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
+
+        return count
