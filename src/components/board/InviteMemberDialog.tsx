@@ -39,7 +39,8 @@ export function InviteMemberDialog({ boardId }: InviteMemberDialogProps) {
   const [showDropdown, setShowDropdown] = useState(false);
 
   const { addActivity } = useActivity();
-  const { currentBoard } = useBoards();
+  const { boards } = useBoards();
+  const currentBoard = boards.find((b) => b.id === boardId);
   const queryClient = useQueryClient();
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 

@@ -24,7 +24,8 @@ interface BoardMembersProps {
 export function BoardMembers({ boardId }: BoardMembersProps) {
   const { user: currentUser } = useAuth();
   const { addActivity } = useActivity();
-  const { currentBoard } = useBoards();
+  const { boards } = useBoards();
+  const currentBoard = boards.find((b) => b.id === boardId);
   const queryClient = useQueryClient();
 
   const { data: members, isLoading } = useQuery({
