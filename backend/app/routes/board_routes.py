@@ -1,7 +1,9 @@
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, request, jsonify, Response, stream_with_context
+from flask_jwt_extended import jwt_required, get_jwt_identity, decode_token
 from app.services.board_service import BoardService
 from app.utils.decorators import require_board_access
+from app.utils.event_broadcaster import broadcaster
+from app.models.board_member import BoardMember
 
 bp = Blueprint('board_routes', __name__, url_prefix='/api/boards')
 
@@ -20,6 +22,51 @@ def get_board(board_id):
     if not board:
         return jsonify({'error': 'Board not found'}), 404
     return jsonify(board.to_dict()), 200
+
+@bp.route('/<board_id>/events', methods=['GET'])
+def stream_board_events(board_id):
+    """Server-Sent Events (SSE) stream for real-time board collaboration."""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '') or request.args.get('token')
+    if not token:
+        return jsonify({'error': 'Authentication token is required'}), 401
+    
+    try:
+        decoded = decode_token(token)
+        user_id = decoded['sub']
+    except Exception:
+        return jsonify({'error': 'Invalid or expired token'}), 401
+
+    board = BoardService.get_board_by_id(board_id)
+    if not board:
+        return jsonify({'error': 'Board not found'}), 404
+
+    membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
+    if not membership and board.owner_id != user_id:
+        return jsonify({'error': 'Unauthorized to subscribe to events for this board'}), 403
+
+    def event_stream():
+        q = broadcaster.subscribe(board_id)
+        yield f"data: {{\"type\":\"connected\",\"boardId\":\"{board_id}\"}}\n\n"
+        try:
+            while True:
+                try:
+                    msg = q.get(timeout=25.0)
+                    yield msg
+                except Exception:
+                    # Keep-alive comment
+                    yield ": ping\n\n"
+        finally:
+            broadcaster.unsubscribe(board_id, q)
+
+    return Response(
+        stream_with_context(event_stream()),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive'
+        }
+    )
 
 @bp.route('', methods=['POST'])
 @jwt_required()

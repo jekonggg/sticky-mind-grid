@@ -21,6 +21,7 @@ class Task(db.Model):
     due_date = db.Column(db.DateTime, nullable=True)
     assigned_to = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
+    position = db.Column(db.Float, default=0.0, nullable=False)
     attachments = db.Column(db.JSON, default=list)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -29,7 +30,7 @@ class Task(db.Model):
     creator = db.relationship('User', foreign_keys=[created_by], back_populates='created_tasks')
     assignee = db.relationship('User', foreign_keys=[assigned_to], back_populates='assigned_tasks')
 
-    def __init__(self, board_id: str, title: str, emoji: str = None, description: str = None, status: str = 'todo', priority: str = 'medium', progress: int = 0, due_date: datetime = None, assigned_to: str = None, created_by: str = None, attachments: list = None, **kwargs):
+    def __init__(self, board_id: str, title: str, emoji: str = None, description: str = None, status: str = 'todo', priority: str = 'medium', progress: int = 0, due_date: datetime = None, assigned_to: str = None, created_by: str = None, position: float = 0.0, attachments: list = None, **kwargs):
         super().__init__(**kwargs)
         self.board_id = board_id
         self.title = title
@@ -41,6 +42,7 @@ class Task(db.Model):
         self.due_date = due_date
         self.assigned_to = assigned_to
         self.created_by = created_by
+        self.position = position if position is not None else 0.0
         self.attachments = attachments if attachments is not None else []
 
     def to_dict(self):
@@ -54,6 +56,7 @@ class Task(db.Model):
             'status': self.status,
             'priority': self.priority,
             'progress': self.progress,
+            'position': self.position,
             'dueDate': self.due_date.isoformat() if self.due_date else None,
             'assignedTo': self.assigned_to,
             'assignee': assignee_data,

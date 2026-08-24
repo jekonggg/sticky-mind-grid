@@ -58,4 +58,18 @@ export const taskApi = {
     const res = await authenticatedFetch(`/tasks/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to delete task");
   },
+
+  async reorderTasks(boardId: string, items: Array<{ id: string; status?: string; position: number }>): Promise<Task[]> {
+    if (USE_MOCK) {
+      return [];
+    }
+
+    const res = await authenticatedFetch("/tasks/reorder", {
+      method: "PATCH",
+      body: JSON.stringify({ boardId, items }),
+    });
+    if (!res.ok) throw new Error("Failed to reorder tasks");
+    const data = await res.json();
+    return data.map(mapTask);
+  },
 };

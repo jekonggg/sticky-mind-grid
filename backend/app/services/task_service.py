@@ -2,6 +2,7 @@ from app import db
 from app.models.task import Task
 from app.models.activity import Activity
 from app.models.user import User
+from app.utils.event_broadcaster import broadcaster
 from datetime import datetime
 
 class TaskService:
@@ -9,7 +10,7 @@ class TaskService:
     def get_tasks(board_id):
         if not board_id:
             return []
-        return Task.query.filter_by(board_id=board_id).all()
+        return Task.query.filter_by(board_id=board_id).order_by(Task.position.asc(), Task.created_at.asc()).all()
 
     @staticmethod
     def get_task_by_id(task_id):
@@ -18,15 +19,25 @@ class TaskService:
     @staticmethod
     def create_task(data, user_id=None):
         creator_id = user_id or data.get('createdBy')
-        
+        board_id = data.get('boardId')
+        status = data.get('status', 'todo')
+
+        # Auto-compute position: place at the bottom of the target status column
+        if 'position' in data and data['position'] is not None:
+            position = float(data['position'])
+        else:
+            last_task = Task.query.filter_by(board_id=board_id, status=status).order_by(Task.position.desc()).first()
+            position = (last_task.position + 1000.0) if (last_task and last_task.position is not None) else 1000.0
+
         new_task = Task(
-            board_id=data.get('boardId'),
+            board_id=board_id,
             title=data.get('title'),
             emoji=data.get('emoji'),
             description=data.get('description'),
-            status=data.get('status', 'todo'),
+            status=status,
             priority=data.get('priority', 'medium'),
             progress=data.get('progress', 0),
+            position=position,
             attachments=data.get('attachments', []),
             assigned_to=data.get('assignedTo'),
             created_by=creator_id
@@ -54,6 +65,11 @@ class TaskService:
             new_task.board.touch()
 
         db.session.commit()
+
+        # Real-time event broadcast
+        broadcaster.broadcast(new_task.board_id, "task:created", new_task.to_dict())
+        broadcaster.broadcast(new_task.board_id, "activity:new", activity.to_dict())
+
         return new_task
 
     @staticmethod
@@ -74,6 +90,7 @@ class TaskService:
         if 'status' in data: task.status = data['status']
         if 'priority' in data: task.priority = data['priority']
         if 'progress' in data: task.progress = data['progress']
+        if 'position' in data and data['position'] is not None: task.position = float(data['position'])
         if 'attachments' in data: task.attachments = data['attachments']
         if 'assignedTo' in data: task.assigned_to = data['assignedTo']
         if 'dueDate' in data:
@@ -86,7 +103,8 @@ class TaskService:
                 task.due_date = None
 
         # Generate automated audit log based on what changed
-        if 'status' in data and task.status != old_status:
+        is_status_changed = 'status' in data and task.status != old_status
+        if is_status_changed:
             activity = Activity(
                 type='move',
                 task_title=task.title,
@@ -125,7 +143,45 @@ class TaskService:
             task.board.touch()
 
         db.session.commit()
+
+        # Real-time event broadcast
+        event_name = "task:moved" if is_status_changed else "task:updated"
+        broadcaster.broadcast(task.board_id, event_name, task.to_dict())
+        broadcaster.broadcast(task.board_id, "activity:new", activity.to_dict())
+
         return task
+
+    @staticmethod
+    def reorder_tasks(board_id, items, user_id=None):
+        """Batch update positions and statuses of multiple tasks."""
+        if not board_id or not items:
+            return []
+
+        updated_tasks = []
+        for item in items:
+            t_id = item.get('id')
+            if not t_id:
+                continue
+            task = Task.query.filter_by(id=t_id, board_id=board_id).first()
+            if task:
+                if 'status' in item:
+                    task.status = item['status']
+                if 'position' in item and item['position'] is not None:
+                    task.position = float(item['position'])
+                updated_tasks.append(task)
+
+        if updated_tasks:
+            # Update board timestamp
+            if updated_tasks[0].board:
+                updated_tasks[0].board.touch()
+            db.session.commit()
+
+            # Broadcast batch reorder event
+            broadcaster.broadcast(board_id, "tasks:reordered", {
+                "tasks": [t.to_dict() for t in updated_tasks]
+            })
+
+        return updated_tasks
 
     @staticmethod
     def delete_task(task_id, user_id=None):
@@ -154,4 +210,9 @@ class TaskService:
             board.touch()
             
         db.session.commit()
+
+        # Broadcast deletion and activity event
+        broadcaster.broadcast(board_id, "task:deleted", {"taskId": task_id})
+        broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
+
         return True

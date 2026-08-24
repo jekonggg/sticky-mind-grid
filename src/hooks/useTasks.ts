@@ -24,6 +24,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
   }, [initialColumns]);
 
   const fetchTasks = useCallback(async () => {
+    if (!boardId) return;
     try {
       setLoading(true);
       const data = await taskApi.getTasks(boardId);
@@ -38,7 +39,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
   useEffect(() => {
     fetchTasks();
     const interval = setInterval(() => {
-      if (document.visibilityState === "visible") {
+      if (document.visibilityState === "visible" && boardId) {
         taskApi.getTasks(boardId).then((data) => setTasks(data)).catch(() => {});
       }
     }, 4000);
@@ -56,45 +57,10 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
 
-    // Comprehensive field change tracking
-    const messages: string[] = [];
-    
-    if (data.title && data.title !== task.title) {
-      messages.push(`Renamed from "${task.title}" to "${data.title}"`);
-    }
-    if (data.status && data.status !== task.status) {
-      const oldTitle = columns.find(c => c.id === task.status)?.title || task.status;
-      const newTitle = columns.find(c => c.id === data.status)?.title || data.status;
-      messages.push(`Moved from ${oldTitle} ➔ ${newTitle}`);
-    }
-    if (data.priority && data.priority !== task.priority) {
-      messages.push(`Priority ➔ ${data.priority.toUpperCase()}`);
-    }
-    if (data.progress !== undefined && data.progress !== task.progress) {
-      messages.push(`Progress ➔ ${data.progress}%`);
-    }
-    if (data.dueDate !== undefined) {
-      const newDate = data.dueDate ? new Date(data.dueDate).toLocaleDateString() : 'None';
-      messages.push(`Due Date ➔ ${newDate}`);
-    }
-    if (data.description !== undefined && data.description !== task.description) {
-      messages.push(`Edited description`);
-    }
-    if (data.assignedTo !== undefined && data.assignedTo !== task.assignedTo) {
-      if (data.assignedTo) {
-        messages.push(`Reassigned task`);
-      } else {
-        messages.push(`Unassigned task`);
-      }
-    }
-
-    const finalMessage = messages.length > 0 ? messages.join(" | ") : `Updated task details`;
-
+    // Optimistic local update
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...data, updatedAt: new Date() } : t))
     );
-
-    addActivity("update", data.title || task.title, finalMessage, boardId);
 
     try {
       const updated = await taskApi.updateTask(id, data);
@@ -102,42 +68,66 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     } catch {
       fetchTasks();
     }
-  }, [fetchTasks, tasks, columns, addActivity, boardId]);
+  }, [fetchTasks, tasks]);
+
+  const reorderTasks = useCallback(async (items: Array<{ id: string; status?: string; position: number }>) => {
+    if (!boardId || items.length === 0) return;
+
+    // Optimistic local reorder
+    setTasks((prev) => {
+      const itemMap = new Map(items.map((i) => [i.id, i]));
+      const updated = prev.map((t) => {
+        const match = itemMap.get(t.id);
+        if (match) {
+          return {
+            ...t,
+            status: (match.status as TaskStatus) || t.status,
+            position: match.position,
+          };
+        }
+        return t;
+      });
+      return updated.sort((a, b) => (a.position || 0) - (b.position || 0));
+    });
+
+    try {
+      const updatedList = await taskApi.reorderTasks(boardId, items);
+      if (updatedList && updatedList.length > 0) {
+        setTasks(updatedList);
+      }
+    } catch {
+      fetchTasks();
+    }
+  }, [boardId, fetchTasks]);
 
   const moveTask = useCallback(async (id: string, status: TaskStatus) => {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
     if (task.status === status) return;
 
-    const oldTitle = columns.find(c => c.id === task.status)?.title || task.status;
-    const newTitle = columns.find(c => c.id === status)?.title || status;
-
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status, updatedAt: new Date() } : t))
     );
-
-    addActivity("move", task.title, `Moved from ${oldTitle} ➔ ${newTitle}`, boardId);
 
     try {
       await taskApi.updateTask(id, { status });
     } catch {
       fetchTasks();
     }
-  }, [fetchTasks, tasks, columns, addActivity, boardId]);
+  }, [fetchTasks, tasks]);
 
   const deleteTask = useCallback(async (id: string) => {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
 
     setTasks((prev) => prev.filter((t) => t.id !== id));
-    addActivity("delete", task.title, `Permanently deleted task "${task.title}"`, boardId);
 
     try {
       await taskApi.deleteTask(id);
     } catch {
       fetchTasks();
     }
-  }, [fetchTasks, tasks, addActivity, boardId]);
+  }, [fetchTasks, tasks]);
 
   const addColumn = useCallback((title: string) => {
     const newColumn: Column = {
@@ -163,11 +153,14 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     tasks,
     columns,
     loading,
+    setTasks,
     addTask,
     updateTask,
+    reorderTasks,
     moveTask,
     deleteTask,
     addColumn,
+    fetchTasks,
     getTasksByStatus,
   };
 }

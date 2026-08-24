@@ -49,6 +49,24 @@ def create_task():
     task = TaskService.create_task(data, user_id=user_id)
     return jsonify(task.to_dict()), 201
 
+@bp.route('/reorder', methods=['PATCH'])
+@jwt_required()
+def reorder_tasks():
+    data = request.json
+    user_id = get_jwt_identity()
+    board_id = data.get('boardId') if data else None
+    items = data.get('items') if data else None
+    
+    if not data or not board_id or not isinstance(items, list):
+        return jsonify({'error': 'boardId and items array are required'}), 400
+        
+    membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
+    if not membership or membership.role in ['viewer']:
+        return jsonify({'error': 'You do not have permission to reorder tasks on this board'}), 403
+
+    updated_tasks = TaskService.reorder_tasks(board_id, items, user_id=user_id)
+    return jsonify([t.to_dict() for t in updated_tasks]), 200
+
 @bp.route('/<task_id>', methods=['PATCH', 'PUT'])
 @jwt_required()
 @require_task_access('member')

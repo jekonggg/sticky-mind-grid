@@ -18,6 +18,7 @@ import { TaskModal } from "./TaskModal";
 import { LatestChangesPanel } from "./LatestChangesPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BoardHeader } from "./BoardHeader";
+import { arrayMove } from "@dnd-kit/sortable";
 import { 
   Loader2, 
   Plus, 
@@ -30,7 +31,8 @@ import {
   User,
   Users,
   Eye,
-  ShieldAlert
+  ShieldAlert,
+  Radio
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,9 +43,10 @@ import { Board, BoardMember } from "@/types/board";
 import { BoardHeroImage } from "../boards/BoardHeroImage";
 import { BoardModal } from "../boards/BoardModal";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBoardPermissions } from "@/hooks/useBoardPermissions";
+import { useBoardRealtime } from "@/hooks/useBoardRealtime";
 
 import { BoardOverview } from "./BoardOverview";
 import { TaskListView } from "./TaskListView";
@@ -88,10 +91,12 @@ export function KanbanBoard() {
     columns,
     addTask,
     updateTask,
+    reorderTasks,
     moveTask,
     deleteTask,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     addColumn,
+    fetchTasks,
     getTasksByStatus,
   } = useTasks(boardId || "", board?.columns);
 
@@ -103,9 +108,19 @@ export function KanbanBoard() {
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all"); // 'all' | 'me' | userId
   const [activeView, setActiveView] = useState<"overview" | "list" | "board" | "calendar" | "documents" | "members">("board");
   
-  const { addActivity, setBoardId } = useActivity();
+  const { addActivity, setBoardId, refreshActivities } = useActivity();
   const scrollRef = useRef<HTMLDivElement>(null);
   const permissions = useBoardPermissions(board, members);
+  const queryClient = useQueryClient();
+
+  // Real-time Server-Sent Events (SSE) stream synchronization
+  const { isConnected } = useBoardRealtime({
+    boardId,
+    onTaskChange: () => fetchTasks(),
+    onActivityChange: () => refreshActivities(),
+    onMemberChange: () => queryClient.invalidateQueries({ queryKey: ["boardMembers", boardId] }),
+    onBoardChange: (updated) => setBoard(updated),
+  });
 
   useEffect(() => {
     if (boardId) {
@@ -138,22 +153,21 @@ export function KanbanBoard() {
 
     const updatedColumns = board.columns.map(c => c.id === id ? { ...c, title: newTitle, emoji } : c);
     
-    // Only log if title changed
     if (oldCol.title !== newTitle) {
       addActivity("update", board.name, `Renamed state from "${oldCol.title}" ➔ "${newTitle}"`, boardId);
     }
     
-    handleBoardUpdate({ columns: updatedColumns });
+    try {
+      const updated = await boardApi.updateBoard(board.id, { columns: updatedColumns });
+      setBoard(updated);
+      toast.success("State renamed");
+    } catch {
+      toast.error("Failed to update state");
+    }
   };
 
   const handleAddNewState = async () => {
     if (!board) return;
-    const title = prompt("Enter state name:");
-    if (!title || !title.trim()) return;
-
-    const id = title.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
-    const newCol = { id, title: title.trim(), emoji: "📌" };
-
     const visibleCols = board.columns.filter(c => c.id !== 'archive');
     const archiveCol = board.columns.find(c => c.id === 'archive');
     
@@ -175,33 +189,9 @@ export function KanbanBoard() {
 
   const handleDragOver = useCallback(
     (event: DragOverEvent) => {
-      const { active, over } = event;
-      if (!over) return;
-
-      const activeData = active.data.current?.task as Task | undefined;
-      if (!activeData) return;
-
-      const overId = over.id as string;
-      const overStatus = columns.find((c) => c.id === overId)?.id;
-
-      if (overStatus && activeData.status !== overStatus) {
-        const visibleCols = columns.filter((c) => c.id !== "archive");
-        let newProgress = activeData.progress;
-        
-        if (overStatus === 'done' || overStatus === visibleCols[visibleCols.length - 1].id) {
-          newProgress = 100;
-        } else if (overStatus === 'todo' || overStatus === visibleCols[0].id) {
-          newProgress = 0;
-        } else if (overStatus === 'in_progress') {
-          newProgress = 30;
-        } else if (activeData.progress === 100 || activeData.progress <= 10) {
-          newProgress = 50;
-        }
-
-        updateTask(activeData.id, { status: overStatus, progress: newProgress });
-      }
+      // Over styles handled by Droppable
     },
-    [updateTask, columns]
+    []
   );
 
   const handleDragEnd = useCallback(
@@ -210,30 +200,73 @@ export function KanbanBoard() {
       setActiveTask(null);
       if (permissions.isReadOnly || !over) return;
 
-      const activeData = active.data.current?.task as Task | undefined;
-      if (!activeData) return;
-
+      const activeId = active.id as string;
       const overId = over.id as string;
-      const overStatus = columns.find((c) => c.id === overId)?.id;
 
-      if (overStatus && activeData.status !== overStatus) {
+      if (activeId === overId) return;
+
+      const activeTaskItem = tasks.find((t) => t.id === activeId);
+      if (!activeTaskItem) return;
+
+      // Determine target column status
+      const isOverColumn = columns.some((c) => c.id === overId);
+      const targetStatus: TaskStatus = isOverColumn
+        ? (overId as TaskStatus)
+        : (tasks.find((t) => t.id === overId)?.status || activeTaskItem.status);
+
+      // Tasks currently in the target column sorted by position
+      const targetColumnTasks = tasks
+        .filter((t) => t.status === targetStatus)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+
+      const activeIndexInTarget = targetColumnTasks.findIndex((t) => t.id === activeId);
+      const overIndexInTarget = isOverColumn
+        ? targetColumnTasks.length
+        : targetColumnTasks.findIndex((t) => t.id === overId);
+
+      let newTasksInTarget: Task[];
+      if (activeTaskItem.status === targetStatus) {
+        // Intra-column vertical reordering
+        if (activeIndexInTarget === -1 || overIndexInTarget === -1 || activeIndexInTarget === overIndexInTarget) {
+          return;
+        }
+        newTasksInTarget = arrayMove(targetColumnTasks, activeIndexInTarget, overIndexInTarget);
+      } else {
+        // Inter-column movement with exact drop index insertion
+        const updatedActiveTask = { ...activeTaskItem, status: targetStatus };
+        const filtered = targetColumnTasks.filter((t) => t.id !== activeId);
+        const insertIdx = overIndexInTarget >= 0 ? overIndexInTarget : filtered.length;
+        newTasksInTarget = [
+          ...filtered.slice(0, insertIdx),
+          updatedActiveTask,
+          ...filtered.slice(insertIdx),
+        ];
+
+        // Auto-adjust task progress based on milestone columns
         const visibleCols = columns.filter((c) => c.id !== "archive");
-        let newProgress = activeData.progress;
-        
-        if (overStatus === 'done' || overStatus === visibleCols[visibleCols.length - 1].id) {
+        let newProgress = activeTaskItem.progress;
+        if (targetStatus === 'done' || targetStatus === visibleCols[visibleCols.length - 1]?.id) {
           newProgress = 100;
-        } else if (overStatus === 'todo' || overStatus === visibleCols[0].id) {
+        } else if (targetStatus === 'todo' || targetStatus === visibleCols[0]?.id) {
           newProgress = 0;
-        } else if (overStatus === 'in_progress') {
+        } else if (targetStatus === 'in_progress') {
           newProgress = 30;
-        } else if (activeData.progress === 100 || activeData.progress <= 10) {
+        } else if (activeTaskItem.progress === 100 || activeTaskItem.progress <= 10) {
           newProgress = 50;
         }
-
-        updateTask(activeData.id, { status: overStatus, progress: newProgress });
+        updateTask(activeId, { status: targetStatus, progress: newProgress });
       }
+
+      // Continuous 1000-based position indices for MySQL persistence
+      const reorderItems = newTasksInTarget.map((t, idx) => ({
+        id: t.id,
+        status: targetStatus,
+        position: (idx + 1) * 1000.0,
+      }));
+
+      reorderTasks(reorderItems);
     },
-    [updateTask, columns, permissions.isReadOnly]
+    [permissions.isReadOnly, tasks, columns, updateTask, reorderTasks]
   );
 
   const handleTaskClick = useCallback((task: Task) => {
@@ -419,6 +452,11 @@ export function KanbanBoard() {
                       ) : (
                         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 capitalize text-[10px] font-bold py-0.5 px-2 shrink-0">
                           {permissions.role === "owner" ? "👑 Owner" : permissions.role === "admin" ? "🛡️ Admin" : "👤 Member"}
+                        </Badge>
+                      )}
+                      {isConnected && (
+                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 gap-1 text-[10px] font-bold py-0.5 px-2 shrink-0">
+                          <Radio className="h-3 w-3 animate-pulse text-emerald-500" /> Live
                         </Badge>
                       )}
                       {permissions.canEditBoard && (

@@ -26,6 +26,7 @@ export interface Task {
   } | null;
   dueDate?: Date;
   progress: number;
+  position?: number;
   attachments: Attachment[];
   createdAt: Date;
   updatedAt: Date;
@@ -39,6 +40,7 @@ export interface CreateTaskData {
   assignedTo?: string;
   dueDate?: Date;
   progress?: number;
+  position?: number;
   attachments?: Attachment[];
 }
 
@@ -51,6 +53,7 @@ export interface UpdateTaskData {
   assignedTo?: string;
   dueDate?: Date;
   progress?: number;
+  position?: number;
   attachments?: Attachment[];
 }
 

@@ -3,6 +3,7 @@ from app.models.board import Board
 from app.models.board_member import BoardMember
 from app.models.user import User
 from app.models.activity import Activity
+from app.utils.event_broadcaster import broadcaster
 
 class BoardService:
     @staticmethod
@@ -79,6 +80,8 @@ class BoardService:
 
         try:
             db.session.commit()
+            broadcaster.broadcast(board_id, "board:updated", board.to_dict())
+            broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
             return board
         except Exception as e:
             db.session.rollback()
@@ -122,6 +125,10 @@ class BoardService:
         db.session.add(activity)
 
         db.session.commit()
+
+        broadcaster.broadcast(board_id, "member:joined", membership.to_dict())
+        broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
+
         return membership, None
 
     @staticmethod
@@ -149,6 +156,10 @@ class BoardService:
 
         db.session.delete(membership)
         db.session.commit()
+
+        broadcaster.broadcast(board_id, "member:removed", {"userId": user_id})
+        broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
+
         return True
 
     @staticmethod
@@ -178,6 +189,8 @@ class BoardService:
 
         try:
             db.session.commit()
+            broadcaster.broadcast(board_id, "member:role_updated", membership.to_dict())
+            broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
             return membership, None
         except Exception as e:
             db.session.rollback()
