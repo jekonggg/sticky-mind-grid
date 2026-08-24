@@ -1,9 +1,8 @@
 from flask import Blueprint, request, jsonify, Response, stream_with_context
 from flask_jwt_extended import jwt_required, get_jwt_identity, decode_token
 from app.services.board_service import BoardService
-from app.utils.decorators import require_board_access
+from app.utils.decorators import require_board_access, get_effective_role, ROLE_HIERARCHY
 from app.utils.event_broadcaster import broadcaster
-from app.models.board_member import BoardMember
 
 bp = Blueprint('board_routes', __name__, url_prefix='/api/boards')
 
@@ -65,8 +64,7 @@ def stream_board_events(board_id):
     if not board:
         return jsonify({'error': 'Board not found'}), 404
 
-    membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-    if not membership and board.owner_id != user_id:
+    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['viewer']:
         return jsonify({'error': 'Unauthorized to subscribe to events for this board'}), 403
 
     def event_stream():
@@ -160,10 +158,7 @@ def remove_member(board_id, user_id):
     is_self = actor_id == str(user_id)
     if not is_self:
         # Require admin or owner privileges to remove other members
-        actor_mem = BoardMember.query.filter_by(board_id=board_id, user_id=actor_id, status='accepted').first()
-        is_board_owner = board.owner_id and str(board.owner_id) == actor_id
-        is_admin = is_board_owner or (actor_mem and actor_mem.role in ['admin', 'owner'])
-        if not is_admin:
+        if get_effective_role(board_id, actor_id) < ROLE_HIERARCHY['admin']:
             return jsonify({'error': 'Requires admin privileges to remove other members'}), 403
 
     success, error = BoardService.remove_member(board_id, user_id, actor_id=actor_id)

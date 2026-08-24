@@ -7,6 +7,7 @@ from app.models.notification import Notification
 from app.models.activity import Activity
 from app.models.board_member import BoardMember
 from app.utils.event_broadcaster import broadcaster
+from app.utils.decorators import get_effective_role, ROLE_HIERARCHY
 
 class CommentService:
     @staticmethod
@@ -22,8 +23,8 @@ class CommentService:
         author = User.query.get(user_id)
         author_name = author.full_name or author.email if author else "User"
 
-        # Detect mentions: regex matches @word or @email
-        board_members = BoardMember.query.filter_by(board_id=task.board_id).all()
+        # Detect mentions: regex matches @word or @email (accepted members only)
+        board_members = BoardMember.query.filter_by(board_id=task.board_id, status='accepted').all()
         mentioned_user_ids = []
 
         for member in board_members:
@@ -106,8 +107,7 @@ class CommentService:
         is_author = comment.user_id == user_id
         is_admin_or_owner = False
         if board_id:
-            membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-            is_admin_or_owner = bool(membership and membership.role in ['owner', 'admin'])
+            is_admin_or_owner = get_effective_role(board_id, user_id) >= ROLE_HIERARCHY['admin']
 
         if not is_author and not is_admin_or_owner:
             return False, "You do not have permission to delete this comment"

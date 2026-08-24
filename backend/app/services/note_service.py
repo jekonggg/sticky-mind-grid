@@ -3,8 +3,8 @@ from app.models.note import Note
 from app.models.board import Board
 from app.models.user import User
 from app.models.activity import Activity
-from app.models.board_member import BoardMember
 from app.utils.event_broadcaster import broadcaster
+from app.utils.decorators import get_effective_role, ROLE_HIERARCHY
 
 class NoteService:
     @staticmethod
@@ -59,15 +59,15 @@ class NoteService:
         if not note:
             return None, "Note not found"
 
-        # Check permissions (member, admin, or owner)
+        # Check permissions (member, admin, or owner with accepted membership)
         board_id = note.board_id
-        membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
+        level = get_effective_role(board_id, user_id)
         board = Board.query.get(board_id)
 
-        if not membership and (not board or board.owner_id != user_id):
+        if level < ROLE_HIERARCHY['viewer']:
             return None, "Unauthorized to edit notes on this board"
 
-        if membership and membership.role == 'viewer':
+        if level < ROLE_HIERARCHY['member']:
             return None, "Viewers cannot edit notes"
 
         author = User.query.get(user_id)
@@ -107,8 +107,7 @@ class NoteService:
 
         board_id = note.board_id
         is_author = note.user_id == user_id
-        membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-        is_admin_or_owner = bool(membership and membership.role in ['owner', 'admin'])
+        is_admin_or_owner = get_effective_role(board_id, user_id) >= ROLE_HIERARCHY['admin']
         board = Board.query.get(board_id)
         if board and board.owner_id == user_id:
             is_admin_or_owner = True

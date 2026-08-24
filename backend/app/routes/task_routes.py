@@ -1,8 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.services.task_service import TaskService
-from app.utils.decorators import require_task_access
-from app.models.board_member import BoardMember
+from app.utils.decorators import require_task_access, get_effective_role, ROLE_HIERARCHY
 from app.models.task import Task
 
 bp = Blueprint('task_routes', __name__, url_prefix='/api')
@@ -16,10 +15,9 @@ def get_tasks():
     if not board_id:
         return jsonify({'error': 'boardId query parameter is required'}), 400
 
-    membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-    if not membership:
+    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['viewer']:
         return jsonify({'error': 'Unauthorized to view tasks for this board'}), 403
-            
+
     tasks = TaskService.get_tasks(board_id)
     return jsonify([task.to_dict() for task in tasks]), 200
 
@@ -27,8 +25,7 @@ def get_tasks():
 @jwt_required()
 def get_trash(board_id):
     user_id = get_jwt_identity()
-    membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-    if not membership:
+    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['viewer']:
         return jsonify({'error': 'Unauthorized to view trash for this board'}), 403
 
     deleted_tasks = TaskService.get_deleted_tasks(board_id)
@@ -38,8 +35,7 @@ def get_trash(board_id):
 @jwt_required()
 def empty_trash(board_id):
     user_id = get_jwt_identity()
-    membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-    if not membership or membership.role in ['viewer', 'member']:
+    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['admin']:
         return jsonify({'error': 'Only board admins or owners can empty trash'}), 403
 
     count = TaskService.empty_trash(board_id, user_id=user_id)
@@ -63,10 +59,9 @@ def create_task():
     
     if not data or not board_id or not data.get('title'):
         return jsonify({'error': 'boardId and title are required'}), 400
-        
-    membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-    # Require at least 'member' role to create task
-    if not membership or membership.role in ['viewer']:
+
+    # Require at least 'member' role (accepted membership or owner) to create tasks
+    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['member']:
         return jsonify({'error': 'You do not have permission to create tasks on this board'}), 403
     
     task = TaskService.create_task(data, user_id=user_id)
@@ -82,15 +77,8 @@ def reorder_tasks():
     
     if not data or not board_id or not isinstance(items, list):
         return jsonify({'error': 'boardId and items array are required'}), 400
-        
-    from app.models.board import Board
-    board = Board.query.get(board_id)
-    if not board:
-        return jsonify({'error': 'Board not found'}), 404
 
-    is_owner = board.owner_id and str(board.owner_id) == user_id
-    membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id, status='accepted').first()
-    if not is_owner and (not membership or membership.role in ['viewer']):
+    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['member']:
         return jsonify({'error': 'You do not have permission to reorder tasks on this board'}), 403
 
     updated_tasks = TaskService.reorder_tasks(board_id, items, user_id=user_id)
@@ -125,8 +113,8 @@ def restore_task(task_id):
     if not task:
         return jsonify({'error': 'Task not found'}), 404
 
-    membership = BoardMember.query.filter_by(board_id=task.board_id, user_id=user_id).first()
-    if not membership or membership.role in ['viewer']:
+    membership_level = get_effective_role(task.board_id, user_id)
+    if membership_level < ROLE_HIERARCHY['member']:
         return jsonify({'error': 'Unauthorized to restore task'}), 403
 
     restored_task, error = TaskService.restore_task(task_id, user_id=user_id)
@@ -143,8 +131,7 @@ def permanent_delete_task(task_id):
     if not task:
         return jsonify({'error': 'Task not found'}), 404
 
-    membership = BoardMember.query.filter_by(board_id=task.board_id, user_id=user_id).first()
-    if not membership or membership.role in ['viewer', 'member']:
+    if get_effective_role(task.board_id, user_id) < ROLE_HIERARCHY['admin']:
         return jsonify({'error': 'Only admins or owners can permanently delete tasks'}), 403
 
     success, error = TaskService.permanent_delete_task(task_id, user_id=user_id)

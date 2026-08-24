@@ -1,8 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.services.activity_service import ActivityService
-from app.models.board_member import BoardMember
-from app.models.board import Board
+from app.utils.decorators import get_effective_role, ROLE_HIERARCHY
 
 bp = Blueprint('activity_routes', __name__, url_prefix='/api/activities')
 
@@ -15,12 +14,8 @@ def get_activities():
     if not board_id:
         return jsonify({'error': 'boardId query parameter is required'}), 400
 
-    membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-    if not membership:
-        # Check if user is the direct board owner
-        board = Board.query.get(board_id)
-        if not board or board.owner_id != user_id:
-            return jsonify({'error': 'Unauthorized to view activities for this board'}), 403
+    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['viewer']:
+        return jsonify({'error': 'Unauthorized to view activities for this board'}), 403
 
     limit = request.args.get('limit', 50, type=int)
     activities = ActivityService.get_activities(board_id, limit)
@@ -36,10 +31,7 @@ def add_activity():
     
     board_id = data.get('boardId')
     if board_id:
-        membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-        board = Board.query.get(board_id)
-        is_owner = board and board.owner_id == user_id
-        if not membership and not is_owner:
+        if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['viewer']:
             return jsonify({'error': 'Unauthorized to post activities on this board'}), 403
 
     # Inject user_id from token
@@ -56,12 +48,7 @@ def clear_history():
     if not board_id:
         return jsonify({'error': 'boardId query parameter is required'}), 400
 
-    membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-    board = Board.query.get(board_id)
-    is_owner = (board and board.owner_id == user_id) or (membership and membership.role == 'owner')
-    is_admin = is_owner or (membership and membership.role == 'admin')
-
-    if not is_admin:
+    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['admin']:
         return jsonify({'error': 'Only board admins or owners can clear activity history'}), 403
 
     ActivityService.clear_activities(board_id)
