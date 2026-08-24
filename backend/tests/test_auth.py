@@ -71,3 +71,63 @@ def test_get_current_user_profile(client, create_test_user, auth_headers):
 def test_get_profile_unauthorized(client):
     response = client.get("/api/auth/me")
     assert response.status_code == 401
+
+def test_change_password_requires_current_password(client, create_test_user, auth_headers):
+    user = create_test_user(email="pwchange1@example.com", password="oldpassword123")
+    response = client.patch(
+        "/api/auth/me",
+        headers=auth_headers(user.id),
+        data=json.dumps({"password": "newpassword123"}),
+        content_type="application/json"
+    )
+    assert response.status_code == 403
+
+    # Old password must still work
+    login = client.post(
+        "/api/auth/login",
+        data=json.dumps({"email": "pwchange1@example.com", "password": "oldpassword123"}),
+        content_type="application/json"
+    )
+    assert login.status_code == 200
+
+def test_change_password_wrong_current(client, create_test_user, auth_headers):
+    user = create_test_user(email="pwchange2@example.com", password="oldpassword123")
+    response = client.patch(
+        "/api/auth/me",
+        headers=auth_headers(user.id),
+        data=json.dumps({"password": "newpassword123", "currentPassword": "wrongpassword"}),
+        content_type="application/json"
+    )
+    assert response.status_code == 403
+
+    login = client.post(
+        "/api/auth/login",
+        data=json.dumps({"email": "pwchange2@example.com", "password": "oldpassword123"}),
+        content_type="application/json"
+    )
+    assert login.status_code == 200
+
+def test_change_password_with_correct_current(client, create_test_user, auth_headers):
+    user = create_test_user(email="pwchange3@example.com", password="oldpassword123")
+    response = client.patch(
+        "/api/auth/me",
+        headers=auth_headers(user.id),
+        data=json.dumps({"password": "newpassword123", "currentPassword": "oldpassword123"}),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+
+    # New password logs in, old one is rejected
+    new_login = client.post(
+        "/api/auth/login",
+        data=json.dumps({"email": "pwchange3@example.com", "password": "newpassword123"}),
+        content_type="application/json"
+    )
+    assert new_login.status_code == 200
+
+    old_login = client.post(
+        "/api/auth/login",
+        data=json.dumps({"email": "pwchange3@example.com", "password": "oldpassword123"}),
+        content_type="application/json"
+    )
+    assert old_login.status_code == 401

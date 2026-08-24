@@ -89,6 +89,9 @@ def update_me():
     if 'fullName' in data:
         user.full_name = data['fullName'].strip()
     if 'password' in data and data['password']:
+        current_password = data.get('currentPassword') or ''
+        if not current_password or not user.check_password(current_password):
+            return jsonify({'message': 'Current password is incorrect'}), 403
         user.set_password(data['password'])
         
     db.session.commit()
