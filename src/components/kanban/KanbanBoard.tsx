@@ -168,6 +168,12 @@ export function KanbanBoard() {
 
   const handleAddNewState = async () => {
     if (!board) return;
+    const title = prompt("Enter state name:");
+    if (!title || !title.trim()) return;
+
+    const id = title.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
+    const newCol = { id, title: title.trim(), emoji: "✨" };
+
     const visibleCols = board.columns.filter(c => c.id !== 'archive');
     const archiveCol = board.columns.find(c => c.id === 'archive');
     
@@ -176,7 +182,7 @@ export function KanbanBoard() {
       updatedColumns.push(archiveCol);
     }
 
-    addActivity("create", board.name, `Added new state "${title}"`, boardId);
+    addActivity("create", board.name, `Added new state "${title.trim()}"`, boardId);
     handleBoardUpdate({ columns: updatedColumns });
   };
 
