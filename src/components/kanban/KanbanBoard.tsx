@@ -738,7 +738,7 @@ export function KanbanBoard() {
         open={isTrashOpen}
         onClose={() => setIsTrashOpen(false)}
         boardId={board.id}
-        canManage={permissions.canManageBoard || permissions.role === "owner" || permissions.role === "admin"}
+        canManage={permissions.isAdmin || permissions.isOwner}
       />
     </div>
   );
