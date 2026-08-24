@@ -58,6 +58,8 @@ def create_app(config_class=Config):
     from app.routes import auth_routes
     from app.routes import comment_routes
     from app.routes import notification_routes
+    from app.routes import file_routes
+    from app.routes import note_routes
 
     app.register_blueprint(board_routes.bp)
     app.register_blueprint(task_routes.bp)
@@ -65,5 +67,7 @@ def create_app(config_class=Config):
     app.register_blueprint(auth_routes.bp)
     app.register_blueprint(comment_routes.bp)
     app.register_blueprint(notification_routes.bp)
+    app.register_blueprint(file_routes.bp)
+    app.register_blueprint(note_routes.bp)
 
     return app

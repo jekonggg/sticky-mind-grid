@@ -25,6 +25,8 @@ import {
 import { Trash2, ImagePlus, X, Check, FileText, File, Film, Music, User, Users, Eye } from "lucide-react";
 import { EmojiSelector } from "../common/EmojiSelector";
 import { TaskComments } from "./TaskComments";
+import { fileApi } from "@/services/fileApi";
+import { toast } from "sonner";
 
 import { boardApi } from "@/services/boardApi";
 
@@ -100,25 +102,44 @@ export function TaskModal({
     }
   }, [task, open]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (readOnly) return;
     const files = Array.from(e.target.files || []);
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
+    if (files.length === 0) return;
+
+    for (const file of files) {
+      try {
+        const uploaded = await fileApi.uploadFile(file);
         setAttachments((prev) => [
           ...prev,
           {
-            id: `att_${Date.now()}_${Math.random()}`,
-            name: file.name,
-            size: `${(file.size / 1024).toFixed(1)} KB`,
-            type: file.type.split("/")[0] || "file",
-            url: reader.result as string,
+            id: uploaded.id,
+            name: uploaded.name,
+            size: uploaded.size,
+            type: uploaded.type,
+            url: uploaded.url,
           },
         ]);
-      };
-      reader.readAsDataURL(file);
-    });
+        toast.success(`Uploaded ${file.name}`);
+      } catch (err: any) {
+        toast.error(err.message || `Failed to upload ${file.name}`);
+        // Fallback to local DataURL
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setAttachments((prev) => [
+            ...prev,
+            {
+              id: `att_${Date.now()}_${Math.random()}`,
+              name: file.name,
+              size: `${(file.size / 1024).toFixed(1)} KB`,
+              type: file.type.split("/")[0] || "file",
+              url: reader.result as string,
+            },
+          ]);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
   };
 
   const removeAttachment = (index: number) => {

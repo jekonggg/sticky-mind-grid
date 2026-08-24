@@ -357,7 +357,7 @@ export function KanbanBoard() {
       case "calendar":
         return <CalendarView tasks={filteredAllTasks} onTaskClick={handleTaskClick} />;
       case "documents":
-        return <DocumentsView tasks={filteredAllTasks} onTaskClick={handleTaskClick} />;
+        return <DocumentsView tasks={filteredAllTasks} boardId={board.id} readOnly={permissions.isReadOnly} onTaskClick={handleTaskClick} />;
       case "members":
         return (
           <div className="p-6 md:p-8 max-w-4xl mx-auto w-full">
