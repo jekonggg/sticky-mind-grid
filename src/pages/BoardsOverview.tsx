@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useBoards, SortOption } from "@/hooks/useBoards";
-import { Board } from "@/types/board";
+import { Board, BoardInvitation } from "@/types/board";
 import { BoardCard } from "@/components/boards/BoardCard";
 import { BoardModal } from "@/components/boards/BoardModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -23,15 +24,54 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, LayoutGrid } from "lucide-react";
+import { Plus, Search, LayoutGrid, Mail, Check, X, Shield, User, Eye, Loader2, Sparkles } from "lucide-react";
 import { BoardsHeroBanner } from "@/components/boards/BoardsHeroBanner";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { boardApi } from "@/services/boardApi";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 export default function BoardsOverview() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { boards, loading, search, setSearch, sort, setSort, createBoard, updateBoard, deleteBoard } = useBoards();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBoard, setEditingBoard] = useState<Board | null>(null);
   const [deletingBoard, setDeletingBoard] = useState<Board | null>(null);
+
+  // Fetch pending invitations
+  const { data: invitations = [], isLoading: isInvitesLoading } = useQuery<BoardInvitation[]>({
+    queryKey: ["pendingInvitations"],
+    queryFn: () => boardApi.getPendingInvitations(),
+    refetchInterval: 6000,
+  });
+
+  const acceptMutation = useMutation({
+    mutationFn: (boardId: string) => boardApi.acceptInvitation(boardId),
+    onSuccess: (data, boardId) => {
+      queryClient.invalidateQueries({ queryKey: ["pendingInvitations"] });
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      toast.success("Invitation accepted! Welcome to the board.");
+      navigate(`/boards/${boardId}`);
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to accept invitation");
+    },
+  });
+
+  const declineMutation = useMutation({
+    mutationFn: (boardId: string) => boardApi.declineInvitation(boardId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pendingInvitations"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      toast.info("Invitation declined");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to decline invitation");
+    },
+  });
 
   const handleEdit = (board: Board) => {
     setEditingBoard(board);
@@ -41,6 +81,17 @@ export default function BoardsOverview() {
   const handleNew = () => {
     setEditingBoard(null);
     setModalOpen(true);
+  };
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case "admin":
+        return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 text-[10px]"><Shield className="h-3 w-3 mr-1" /> Admin</Badge>;
+      case "viewer":
+        return <Badge variant="outline" className="bg-slate-500/10 text-slate-600 border-slate-500/30 text-[10px]"><Eye className="h-3 w-3 mr-1" /> Viewer</Badge>;
+      default:
+        return <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30 text-[10px]"><User className="h-3 w-3 mr-1" /> Member</Badge>;
+    }
   };
 
   return (
@@ -91,6 +142,80 @@ export default function BoardsOverview() {
 
       {/* Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        {/* Pending Invitations Section */}
+        {invitations.length > 0 && (
+          <div className="mb-8 p-5 bg-gradient-to-r from-primary/10 via-primary/5 to-background border border-primary/20 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-2 mb-3.5">
+              <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">
+                <Mail className="h-3.5 w-3.5" />
+              </div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-foreground">
+                Pending Board Invitations ({invitations.length})
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {invitations.map((invite) => (
+                <div
+                  key={invite.id}
+                  className="bg-card p-4 rounded-xl border border-border/80 shadow-sm flex items-center justify-between gap-4 transition-all hover:border-primary/40"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg shrink-0 border border-primary/20">
+                      {invite.board.emoji || "📋"}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-sm text-foreground truncate">
+                          {invite.board.name}
+                        </h4>
+                        {getRoleBadge(invite.role)}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                        Invited by <span className="font-semibold text-foreground">{invite.board.ownerName || "Board Owner"}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      size="sm"
+                      onClick={() => acceptMutation.mutate(invite.boardId)}
+                      disabled={acceptMutation.isPending || declineMutation.isPending}
+                      className="h-8 px-3 text-xs font-bold gap-1 bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs cursor-pointer"
+                    >
+                      {acceptMutation.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5" />
+                      )}
+                      Accept
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (confirm(`Decline invitation to "${invite.board.name}"?`)) {
+                          declineMutation.mutate(invite.boardId);
+                        }
+                      }}
+                      disabled={acceptMutation.isPending || declineMutation.isPending}
+                      className="h-8 px-2.5 text-xs font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-border/60 cursor-pointer"
+                    >
+                      {declineMutation.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <X className="h-3.5 w-3.5" />
+                      )}
+                      Decline
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, i) => (

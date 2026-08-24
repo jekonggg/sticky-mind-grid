@@ -144,6 +144,11 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                         You
                       </span>
                     )}
+                    {member.status === "pending" && (
+                      <span className="text-[9px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider">
+                        Pending
+                      </span>
+                    )}
                   </span>
                   {member.user?.fullName && (
                     <span className="text-[11px] text-muted-foreground truncate">{member.user.email}</span>

@@ -32,8 +32,8 @@ def require_board_access(minimum_role='viewer'):
                 
             membership = BoardMember.query.filter_by(board_id=board_id, user_id=current_user_id).first()
             
-            if not membership:
-                return jsonify({'error': 'You do not have access to this board'}), 403
+            if not membership or membership.status != 'accepted':
+                return jsonify({'error': 'You do not have active access to this board'}), 403
                 
             user_level = ROLE_HIERARCHY.get(membership.role, 0)
             required_level = ROLE_HIERARCHY.get(minimum_role, 0)
@@ -64,7 +64,7 @@ def require_task_access(minimum_role='viewer'):
                 return fn(*args, **kwargs)
 
             membership = BoardMember.query.filter_by(board_id=task.board_id, user_id=current_user_id).first()
-            if not membership:
+            if not membership or membership.status != 'accepted':
                 return jsonify({'error': 'You do not have access to this task'}), 403
                 
             user_level = ROLE_HIERARCHY.get(membership.role, 0)

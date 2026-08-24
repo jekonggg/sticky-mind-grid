@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, CheckCheck, AtSign, UserPlus, MessageSquare, CheckCircle2 } from "lucide-react";
+import { Bell, CheckCheck, AtSign, UserPlus, MessageSquare, CheckCircle2, XCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -59,6 +59,12 @@ export function NotificationBell() {
         return <AtSign className="h-3.5 w-3.5 text-blue-500" />;
       case "assignment":
         return <UserPlus className="h-3.5 w-3.5 text-green-500" />;
+      case "board_invite":
+        return <UserPlus className="h-3.5 w-3.5 text-primary" />;
+      case "invite_accepted":
+        return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />;
+      case "invite_declined":
+        return <XCircle className="h-3.5 w-3.5 text-destructive" />;
       case "task_comment":
         return <MessageSquare className="h-3.5 w-3.5 text-amber-500" />;
       default:

@@ -3,12 +3,44 @@ from app.models.board import Board
 from app.models.board_member import BoardMember
 from app.models.user import User
 from app.models.activity import Activity
+from app.models.notification import Notification
 from app.utils.event_broadcaster import broadcaster
 
 class BoardService:
     @staticmethod
     def get_user_boards(user_id):
-        return db.session.query(Board).join(BoardMember).filter(BoardMember.user_id == user_id).all()
+        return db.session.query(Board).join(BoardMember).filter(
+            BoardMember.user_id == user_id,
+            BoardMember.status == 'accepted'
+        ).all()
+
+    @staticmethod
+    def get_user_invitations(user_id):
+        memberships = BoardMember.query.filter_by(user_id=user_id, status='pending').all()
+        invites = []
+        for m in memberships:
+            board = m.board
+            if not board:
+                continue
+            owner = board.owner
+            owner_name = (owner.full_name or owner.email) if owner else "Board Owner"
+            invites.append({
+                'id': m.id,
+                'boardId': m.board_id,
+                'role': m.role,
+                'status': m.status,
+                'createdAt': m.created_at.isoformat() + 'Z' if m.created_at else None,
+                'board': {
+                    'id': board.id,
+                    'name': board.name,
+                    'emoji': board.emoji,
+                    'description': board.description,
+                    'color': board.color,
+                    'heroImageUrl': board.hero_image_url,
+                    'ownerName': owner_name
+                }
+            })
+        return invites
 
     @staticmethod
     def get_board_by_id(board_id):
@@ -34,11 +66,12 @@ class BoardService:
         db.session.add(new_board)
         db.session.flush()
         
-        # Create Owner Membership
+        # Create Owner Membership (Accepted by default)
         membership = BoardMember(
             board_id=new_board.id,
             user_id=owner_id,
-            role='owner'
+            role='owner',
+            status='accepted'
         )
         db.session.add(membership)
 
@@ -102,25 +135,93 @@ class BoardService:
         if not user:
             return None, "User not found"
             
+        board = Board.query.get(board_id)
+        if not board:
+            return None, "Board not found"
+
         existing = BoardMember.query.filter_by(board_id=board_id, user_id=user.id).first()
         if existing:
-            return None, "User is already a member of this board"
-            
-        membership = BoardMember(
-            board_id=board_id,
+            if existing.status == 'accepted':
+                return None, "User is already an active member of this board"
+            elif existing.status == 'pending':
+                return None, "An invitation is already pending for this user"
+            else:
+                # Re-invite if previously declined
+                existing.status = 'pending'
+                existing.role = role
+                membership = existing
+        else:
+            membership = BoardMember(
+                board_id=board_id,
+                user_id=user.id,
+                role=role,
+                status='pending'
+            )
+            db.session.add(membership)
+
+        actor = User.query.get(actor_id) if actor_id else None
+        actor_name = (actor.full_name or actor.email) if actor else "Board Owner"
+        user_name = user.full_name or user.email
+
+        # In-App Notification to Invited User
+        invite_notif = Notification(
             user_id=user.id,
-            role=role
+            type='board_invite',
+            title='Board Invitation',
+            message=f'{actor_name} invited you to join "{board.name}" as {role.capitalize()}',
+            link=f'/boards/{board_id}'
         )
-        db.session.add(membership)
+        db.session.add(invite_notif)
 
         # Audit log
-        user_name = user.full_name or user.email
         activity = Activity(
             type='update',
             task_title=user_name,
-            message=f'Invited {user_name} as {role}',
+            message=f'Invited {user_name} as {role} (Pending acceptance)',
             board_id=board_id,
             user_id=actor_id
+        )
+        db.session.add(activity)
+
+        db.session.commit()
+
+        broadcaster.broadcast(board_id, "member:invited", membership.to_dict())
+        broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
+
+        return membership, None
+
+    @staticmethod
+    def accept_invitation(board_id, user_id):
+        membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
+        if not membership:
+            return None, "Invitation not found"
+        if membership.status == 'accepted':
+            return membership, None
+
+        membership.status = 'accepted'
+        user = User.query.get(user_id)
+        user_name = (user.full_name or user.email) if user else "A user"
+        board = Board.query.get(board_id)
+        board_name = board.name if board else "the board"
+
+        # In-App Notification to Board Owner
+        if board and board.owner_id and board.owner_id != user_id:
+            owner_notif = Notification(
+                user_id=board.owner_id,
+                type='invite_accepted',
+                title='Invitation Accepted',
+                message=f'{user_name} accepted your invitation to join "{board_name}".',
+                link=f'/boards/{board_id}'
+            )
+            db.session.add(owner_notif)
+
+        # Audit log
+        activity = Activity(
+            type='update',
+            task_title=user_name,
+            message=f'{user_name} accepted the invitation and joined the board',
+            board_id=board_id,
+            user_id=user_id
         )
         db.session.add(activity)
 
@@ -130,6 +231,46 @@ class BoardService:
         broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
 
         return membership, None
+
+    @staticmethod
+    def decline_invitation(board_id, user_id):
+        membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
+        if not membership:
+            return False, "Invitation not found"
+
+        user = User.query.get(user_id)
+        user_name = (user.full_name or user.email) if user else "A user"
+        board = Board.query.get(board_id)
+        board_name = board.name if board else "the board"
+
+        # In-App Notification to Board Owner
+        if board and board.owner_id and board.owner_id != user_id:
+            owner_notif = Notification(
+                user_id=board.owner_id,
+                type='invite_declined',
+                title='Invitation Declined',
+                message=f'{user_name} declined the invitation to join "{board_name}".',
+                link=f'/boards/{board_id}'
+            )
+            db.session.add(owner_notif)
+
+        # Audit log
+        activity = Activity(
+            type='update',
+            task_title=user_name,
+            message=f'{user_name} declined the invitation to join the board',
+            board_id=board_id,
+            user_id=user_id
+        )
+        db.session.add(activity)
+
+        db.session.delete(membership)
+        db.session.commit()
+
+        broadcaster.broadcast(board_id, "member:removed", {"userId": user_id})
+        broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
+
+        return True, None
 
     @staticmethod
     def remove_member(board_id, user_id, actor_id=None):

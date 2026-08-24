@@ -12,6 +12,7 @@ class BoardMember(db.Model):
     board_id = db.Column(db.String(36), db.ForeignKey('boards.id', ondelete='CASCADE'), nullable=False)
     user_id = db.Column(db.String(36), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='member') # 'owner', 'admin', 'member', 'viewer'
+    status = db.Column(db.String(20), nullable=False, default='accepted') # 'pending', 'accepted', 'declined'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     board = db.relationship('Board', back_populates='memberships')
@@ -21,11 +22,12 @@ class BoardMember(db.Model):
         db.UniqueConstraint('board_id', 'user_id', name='uq_board_user'),
     )
 
-    def __init__(self, board_id: str, user_id: str, role: str = 'member', **kwargs):
+    def __init__(self, board_id: str, user_id: str, role: str = 'member', status: str = 'accepted', **kwargs):
         super().__init__(**kwargs)
         self.board_id = board_id
         self.user_id = user_id
         self.role = role
+        self.status = status
 
     def to_dict(self):
         # Allow expanding user details if joined
@@ -38,6 +40,7 @@ class BoardMember(db.Model):
             'boardId': self.board_id,
             'userId': self.user_id,
             'role': self.role,
+            'status': self.status,
             'user': user_data,
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None
         }

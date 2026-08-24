@@ -45,11 +45,31 @@ export const BOARD_COLORS = [
 
 import { User } from "./user";
 
+export type BoardMemberStatus = 'pending' | 'accepted' | 'declined';
+
 export interface BoardMember {
   id: string;
   boardId: string;
   userId: string;
   role: BoardRole;
+  status: BoardMemberStatus;
   user?: User;
   createdAt: string;
+}
+
+export interface BoardInvitation {
+  id: string;
+  boardId: string;
+  role: BoardRole;
+  status: BoardMemberStatus;
+  createdAt: string;
+  board: {
+    id: string;
+    name: string;
+    emoji?: string;
+    description?: string;
+    color: string;
+    heroImageUrl?: string;
+    ownerName?: string;
+  };
 }

@@ -14,6 +14,31 @@ def get_boards():
     boards = BoardService.get_user_boards(user_id)
     return jsonify([board.to_dict() for board in boards]), 200
 
+@bp.route('/invitations', methods=['GET'])
+@jwt_required()
+def get_invitations():
+    user_id = get_jwt_identity()
+    invitations = BoardService.get_user_invitations(user_id)
+    return jsonify(invitations), 200
+
+@bp.route('/<board_id>/invitations/accept', methods=['POST', 'PATCH'])
+@jwt_required()
+def accept_invitation(board_id):
+    user_id = get_jwt_identity()
+    membership, error = BoardService.accept_invitation(board_id, user_id)
+    if error:
+        return jsonify({'error': error}), 400
+    return jsonify(membership.to_dict()), 200
+
+@bp.route('/<board_id>/invitations/decline', methods=['POST', 'PATCH', 'DELETE'])
+@jwt_required()
+def decline_invitation(board_id):
+    user_id = get_jwt_identity()
+    success, error = BoardService.decline_invitation(board_id, user_id)
+    if error:
+        return jsonify({'error': error}), 400
+    return jsonify({'message': 'Invitation declined'}), 200
+
 @bp.route('/<board_id>', methods=['GET'])
 @jwt_required()
 @require_board_access('viewer')

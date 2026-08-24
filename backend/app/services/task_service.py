@@ -2,6 +2,7 @@ from app import db
 from app.models.task import Task
 from app.models.activity import Activity
 from app.models.user import User
+from app.models.notification import Notification
 from app.utils.event_broadcaster import broadcaster
 from datetime import datetime
 
@@ -68,6 +69,19 @@ class TaskService:
         )
         db.session.add(activity)
 
+        # Dispatch notification if assigned to another user
+        if new_task.assigned_to and str(new_task.assigned_to) != str(creator_id):
+            creator = User.query.get(creator_id) if creator_id else None
+            creator_name = (creator.full_name or creator.email) if creator else "A team member"
+            notif = Notification(
+                user_id=new_task.assigned_to,
+                type='assignment',
+                title='Task Assigned',
+                message=f'{creator_name} assigned "{new_task.title}" to you',
+                link=f'/boards/{new_task.board_id}'
+            )
+            db.session.add(notif)
+
         # Update board timestamp
         if new_task.board:
             new_task.board.touch()
@@ -128,6 +142,19 @@ class TaskService:
                 assignee = User.query.get(task.assigned_to)
                 assignee_name = assignee.full_name or assignee.email if assignee else "user"
                 msg = f'Assigned task "{task.title}" to {assignee_name}'
+                
+                # Notify assignee if not the actor
+                if str(task.assigned_to) != str(user_id):
+                    actor = User.query.get(user_id) if user_id else None
+                    actor_name = (actor.full_name or actor.email) if actor else "A team member"
+                    assign_notif = Notification(
+                        user_id=task.assigned_to,
+                        type='assignment',
+                        title='Task Assigned',
+                        message=f'{actor_name} assigned "{task.title}" to you',
+                        link=f'/boards/{task.board_id}'
+                    )
+                    db.session.add(assign_notif)
             else:
                 msg = f'Unassigned task "{task.title}"'
             activity = Activity(

@@ -86,4 +86,31 @@ export const boardApi = {
     }
     return res.json();
   },
+
+  async getPendingInvitations(): Promise<import("@/types/board").BoardInvitation[]> {
+    const res = await authenticatedFetch("/boards/invitations");
+    if (!res.ok) throw new Error("Failed to fetch invitations");
+    return res.json();
+  },
+
+  async acceptInvitation(boardId: string): Promise<BoardMember> {
+    const res = await authenticatedFetch(`/boards/${boardId}/invitations/accept`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || "Failed to accept invitation");
+    }
+    return res.json();
+  },
+
+  async declineInvitation(boardId: string): Promise<void> {
+    const res = await authenticatedFetch(`/boards/${boardId}/invitations/decline`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || "Failed to decline invitation");
+    }
+  },
 };
