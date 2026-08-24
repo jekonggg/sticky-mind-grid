@@ -26,3 +26,8 @@ dist-ssr
 # Ignore compiled Python files
 __pycache__/
 *.pyc
+
+# Environment files
+.env
+.env*.local
+backend/.env

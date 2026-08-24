@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { API_BASE } from "@/config/api";
 
 interface RealtimeEvent {
   type: string;
@@ -16,8 +17,6 @@ interface UseBoardRealtimeOptions {
   onMemberChange?: () => void;
   onBoardChange?: (board: any) => void;
 }
-
-const API_BASE = "http://127.0.0.1:5000/api";
 
 export function useBoardRealtime({
   boardId,

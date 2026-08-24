@@ -1,10 +1,9 @@
 import { AuthResponse } from "@/types/user";
-
-const API_BASE = "http://127.0.0.1:5000/api/auth";
+import { API_AUTH_BASE } from "@/config/api";
 
 export const authApi = {
   async login(email: string, password: string): Promise<AuthResponse> {
-    const res = await fetch(`${API_BASE}/login`, {
+    const res = await fetch(`${API_AUTH_BASE}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -17,7 +16,7 @@ export const authApi = {
   },
 
   async register(email: string, password: string, fullName: string): Promise<AuthResponse> {
-    const res = await fetch(`${API_BASE}/register`, {
+    const res = await fetch(`${API_AUTH_BASE}/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, fullName }),
@@ -30,7 +29,7 @@ export const authApi = {
   },
 
   async getMe(token: string) {
-    const res = await fetch(`${API_BASE}/me`, {
+    const res = await fetch(`${API_AUTH_BASE}/me`, {
       headers: {
         "Authorization": `Bearer ${token}`
       }
@@ -41,7 +40,7 @@ export const authApi = {
 
   async updateMe(data: { fullName?: string; password?: string }) {
     const token = localStorage.getItem("auth_token");
-    const res = await fetch(`${API_BASE}/me`, {
+    const res = await fetch(`${API_AUTH_BASE}/me`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -58,7 +57,7 @@ export const authApi = {
 
   async searchUsers(query: string) {
     const token = localStorage.getItem("auth_token");
-    const res = await fetch(`${API_BASE}/users/search?q=${encodeURIComponent(query)}`, {
+    const res = await fetch(`${API_AUTH_BASE}/users/search?q=${encodeURIComponent(query)}`, {
       headers: {
         "Authorization": `Bearer ${token}`
       }
