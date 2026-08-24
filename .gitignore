@@ -31,3 +31,7 @@ __pycache__/
 .env
 .env*.local
 backend/.env
+
+# Runtime artifacts and local tooling
+backend/uploads/
+.opencode/
