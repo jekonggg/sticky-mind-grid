@@ -23,9 +23,15 @@ class FileService:
             return None, "No file provided"
 
         orig_filename = secure_filename(file_storage.filename) or "file"
-        ext = os.path.splitext(orig_filename)[1]
+        ext = os.path.splitext(orig_filename)[1].lower().lstrip('.')
+
+        allowed = current_app.config.get('ALLOWED_UPLOAD_EXTENSIONS') or []
+        if ext and allowed and ext not in allowed:
+            return None, f"File type '.{ext}' is not allowed. Allowed types: {', .'.join(allowed[:12])} ..."
+
         unique_id = str(uuid.uuid4())
-        stored_filename = f"{unique_id}{ext}"
+        stored_ext = f".{ext}" if ext else ""
+        stored_filename = f"{unique_id}{stored_ext}"
         filepath = os.path.join(UPLOAD_FOLDER, stored_filename)
 
         file_storage.save(filepath)
