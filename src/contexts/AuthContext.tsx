@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User } from "@/types/user";
+import { TOKEN_STORAGE_KEY } from "@/config/api";
 
 export interface AuthContextType {
   user: User | null;
@@ -18,7 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem("auth_token");
+    const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
     const savedUser = localStorage.getItem("auth_user");
 
     if (savedToken && savedUser) {
@@ -31,14 +32,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = (userData: User, authToken: string) => {
     setUser(userData);
     setToken(authToken);
-    localStorage.setItem("auth_token", authToken);
+    localStorage.setItem(TOKEN_STORAGE_KEY, authToken);
     localStorage.setItem("auth_user", JSON.stringify(userData));
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem("auth_token");
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
     localStorage.removeItem("auth_user");
   };
 

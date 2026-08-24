@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { API_BASE } from "@/config/api";
+import { API_BASE, getStoredToken } from "@/config/api";
 
 interface RealtimeEvent {
   type: string;
@@ -33,7 +33,7 @@ export function useBoardRealtime({
   const connect = useCallback(() => {
     if (!boardId || !user) return;
 
-    const token = localStorage.getItem("token");
+    const token = getStoredToken();
     if (!token) return;
 
     // Close any previous stream

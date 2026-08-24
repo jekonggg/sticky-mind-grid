@@ -1,5 +1,5 @@
 import { Attachment } from "@/types/task";
-import { API_BASE } from "@/config/api";
+import { API_BASE, getStoredToken } from "@/config/api";
 
 export interface UploadedFileResponse {
   id: string;
@@ -13,7 +13,7 @@ export interface UploadedFileResponse {
 
 export const fileApi = {
   async uploadFile(file: File): Promise<UploadedFileResponse> {
-    const token = localStorage.getItem("token");
+    const token = getStoredToken();
     const formData = new FormData();
     formData.append("file", file);
 

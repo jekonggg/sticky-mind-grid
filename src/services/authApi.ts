@@ -1,5 +1,5 @@
 import { AuthResponse } from "@/types/user";
-import { API_AUTH_BASE } from "@/config/api";
+import { API_AUTH_BASE, getStoredToken } from "@/config/api";
 
 export const authApi = {
   async login(email: string, password: string): Promise<AuthResponse> {
@@ -39,7 +39,7 @@ export const authApi = {
   },
 
   async updateMe(data: { fullName?: string; password?: string }) {
-    const token = localStorage.getItem("auth_token");
+    const token = getStoredToken();
     const res = await fetch(`${API_AUTH_BASE}/me`, {
       method: "PATCH",
       headers: {
@@ -56,7 +56,7 @@ export const authApi = {
   },
 
   async searchUsers(query: string) {
-    const token = localStorage.getItem("auth_token");
+    const token = getStoredToken();
     const res = await fetch(`${API_AUTH_BASE}/users/search?q=${encodeURIComponent(query)}`, {
       headers: {
         "Authorization": `Bearer ${token}`

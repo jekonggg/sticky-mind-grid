@@ -1,7 +1,7 @@
-import { API_BASE } from "@/config/api";
+import { API_BASE, TOKEN_STORAGE_KEY, getStoredToken } from "@/config/api";
 
 export async function authenticatedFetch(endpoint: string, options: RequestInit = {}) {
-  const token = localStorage.getItem("auth_token");
+  const token = getStoredToken();
   
   const headers = new Headers(options.headers || {});
   if (token) {
@@ -18,7 +18,7 @@ export async function authenticatedFetch(endpoint: string, options: RequestInit 
 
   if (response.status === 401) {
     // Handle unauthorized - clear token and potentially redirect
-    localStorage.removeItem("auth_token");
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
     localStorage.removeItem("auth_user");
     window.location.href = "/login";
     throw new Error("Unauthorized");
