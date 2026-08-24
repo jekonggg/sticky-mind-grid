@@ -24,11 +24,14 @@ import {
 import { Trash2, ImagePlus, X, Check, FileText, File, Film, Music, User, Users } from "lucide-react";
 import { EmojiSelector } from "../common/EmojiSelector";
 
+import { boardApi } from "@/services/boardApi";
+
 interface TaskModalProps {
   open: boolean;
   onClose: () => void;
   task?: Task | null;
   columns?: Column[];
+  boardId?: string;
   members?: BoardMember[];
   onSubmit: (data: UpdateTaskData) => void;
   onDelete?: (id: string) => void;
@@ -39,10 +42,12 @@ export function TaskModal({
   onClose,
   task,
   columns,
+  boardId,
   members = [],
   onSubmit,
   onDelete,
 }: TaskModalProps) {
+  const [boardMembers, setBoardMembers] = useState<BoardMember[]>(members);
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState("");
   const [description, setDescription] = useState("");
@@ -54,6 +59,20 @@ export function TaskModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!task;
+
+  // Sync passed members or fetch if boardId is provided
+  useEffect(() => {
+    if (members && members.length > 0) {
+      setBoardMembers(members);
+    } else {
+      const activeBoardId = boardId || task?.boardId;
+      if (activeBoardId && open) {
+        boardApi.getMembers(activeBoardId).then((data) => {
+          setBoardMembers(data || []);
+        }).catch(() => {});
+      }
+    }
+  }, [members, boardId, task?.boardId, open]);
 
   useEffect(() => {
     if (task) {
@@ -233,7 +252,7 @@ export function TaskModal({
                     <span className="text-xs font-medium">Unassigned</span>
                   </div>
                 </SelectItem>
-                {members.map((m) => {
+                {boardMembers.map((m) => {
                   const name = m.user?.fullName || m.user?.email || "Member";
                   const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
                   return (

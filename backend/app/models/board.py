@@ -14,7 +14,7 @@ class Board(db.Model):
     name = db.Column(db.String(255), nullable=False)
     emoji = db.Column(db.String(50), nullable=True)
     description = db.Column(db.Text, nullable=True)
-    color = db.Column(db.String(50), nullable=True)
+    color = db.Column(db.String(50), nullable=False, default='hsl(220, 80%, 56%)')
     hero_image_url = db.Column(db.Text().with_variant(LONGTEXT, "mysql"), nullable=True)
     columns = db.Column(db.JSON, default=list)
     owner_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True) # Temporarily nullable for migration
@@ -29,12 +29,14 @@ class Board(db.Model):
         self.updated_at = datetime.utcnow()
 
     def to_dict(self):
+        # Ensure a valid HSL color is always returned
+        safe_color = self.color if (self.color and self.color.startswith('hsl')) else 'hsl(220, 80%, 56%)'
         return {
             'id': self.id,
             'name': self.name,
             'emoji': self.emoji,
             'description': self.description,
-            'color': self.color,
+            'color': safe_color,
             'heroImageUrl': self.hero_image_url,
             'columns': self.columns,
             'ownerId': self.owner_id,

@@ -24,7 +24,7 @@ class BoardService:
             name=data.get('name'),
             emoji=data.get('emoji'),
             description=data.get('description'),
-            color=data.get('color', 'bg-blue-500'),
+            color=data.get('color') or 'hsl(220, 80%, 56%)',
             hero_image_url=data.get('heroImageUrl'),
             columns=data.get('columns', default_columns),
             owner_id=owner_id

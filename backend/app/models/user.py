@@ -21,6 +21,11 @@ class User(db.Model):
     activities = db.relationship('Activity', back_populates='user', lazy=True)
     board_memberships = db.relationship('BoardMember', back_populates='user', lazy=True, cascade="all, delete-orphan")
 
+    def __init__(self, email: str, full_name: str = "", **kwargs):
+        super().__init__(**kwargs)
+        self.email = email
+        self.full_name = full_name
+
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
 

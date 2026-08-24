@@ -4,7 +4,9 @@ import { Smile } from "lucide-react";
 
 interface EmojiSelectorProps {
   currentEmoji?: string;
-  onSelect: (emoji: string) => void;
+  value?: string;
+  onSelect?: (emoji: string) => void;
+  onChange?: (emoji: string) => void;
   className?: string;
 }
 
@@ -14,7 +16,12 @@ const COMMON_EMOJIS = [
   "📱", "💻", "🌐", "🔒", "🔑", "📅", "🏷️", "📎", "📌", "💬"
 ];
 
-export function EmojiSelector({ currentEmoji, onSelect, className }: EmojiSelectorProps) {
+export function EmojiSelector({ currentEmoji, value, onSelect, onChange, className }: EmojiSelectorProps) {
+  const selected = value ?? currentEmoji;
+  const handleSelect = (emoji: string) => {
+    onSelect?.(emoji);
+    onChange?.(emoji);
+  };
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -23,12 +30,12 @@ export function EmojiSelector({ currentEmoji, onSelect, className }: EmojiSelect
           variant="ghost" 
           size="icon" 
           className={`h-9 w-9 rounded-xl shrink-0 border border-border/50 shadow-sm transition-all
-            ${currentEmoji ? "bg-primary/5 text-primary" : "bg-muted/30 text-muted-foreground"} 
+            ${selected ? "bg-primary/5 text-primary" : "bg-muted/30 text-muted-foreground"} 
             hover:bg-primary/10 hover:text-primary hover:border-primary/30 ${className}`}
           title="Personalize with Emoji"
         >
-          {currentEmoji ? (
-            <span className="text-lg leading-none">{currentEmoji}</span>
+          {selected ? (
+            <span className="text-lg leading-none">{selected}</span>
           ) : (
             <Smile className="h-4 w-4" />
           )}
@@ -40,9 +47,9 @@ export function EmojiSelector({ currentEmoji, onSelect, className }: EmojiSelect
             <button
               key={emoji}
               type="button"
-              onClick={() => onSelect(emoji)}
+              onClick={() => handleSelect(emoji)}
               className={`h-9 w-9 flex items-center justify-center text-xl rounded-xl transition-all
-                ${currentEmoji === emoji ? "bg-primary/20 scale-110 shadow-inner" : "hover:bg-muted"}
+                ${selected === emoji ? "bg-primary/20 scale-110 shadow-inner" : "hover:bg-muted"}
               `}
             >
               {emoji}

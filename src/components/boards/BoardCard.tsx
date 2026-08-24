@@ -21,6 +21,7 @@ interface BoardCardProps {
 
 export function BoardCard({ board, taskCount = 0, onEdit, onDelete }: BoardCardProps) {
   const navigate = useNavigate();
+  const boardColor = board.color && board.color.startsWith("hsl") ? board.color : "hsl(220, 80%, 56%)";
 
   return (
     <Card
@@ -30,12 +31,12 @@ export function BoardCard({ board, taskCount = 0, onEdit, onDelete }: BoardCardP
       <BoardHeroImage
         src={board.heroImageUrl}
         alt={board.name}
-        color={board.color}
+        color={boardColor}
         aspectRatio="video"
       />
       
       {/* Color bar */}
-      <div className="h-1 w-full" style={{ backgroundColor: board.color }} />
+      <div className="h-1 w-full" style={{ backgroundColor: boardColor }} />
 
       <CardContent className="p-4 pt-4">
         <div className="flex items-start justify-between gap-2">
@@ -43,12 +44,12 @@ export function BoardCard({ board, taskCount = 0, onEdit, onDelete }: BoardCardP
             <div
               className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-border/50 shadow-sm
                 ${board.emoji ? "bg-primary/5" : "bg-muted/50"}`}
-              style={{ borderColor: board.emoji ? "transparent" : board.color + "44" }}
+              style={{ borderColor: board.emoji ? "transparent" : boardColor + "44" }}
             >
               {board.emoji ? (
                 <span className="text-xl leading-none">{board.emoji}</span>
               ) : (
-                <LayoutGrid className="h-5 w-5" style={{ color: board.color }} />
+                <LayoutGrid className="h-5 w-5" style={{ color: boardColor }} />
               )}
             </div>
             <div className="min-w-0">
