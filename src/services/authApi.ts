@@ -37,5 +37,23 @@ export const authApi = {
     });
     if (!res.ok) throw new Error("Failed to fetch user profile");
     return res.json();
+  },
+
+  async updateMe(data: { fullName?: string; password?: string }) {
+    const token = localStorage.getItem("auth_token");
+    const res = await fetch(`${API_BASE}/me`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || "Failed to update profile");
+    }
+    return res.json();
   }
 };
+

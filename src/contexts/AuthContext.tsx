@@ -6,6 +6,7 @@ interface AuthContextType {
   token: string | null;
   login: (userData: User, token: string) => void;
   logout: () => void;
+  updateUser: (updatedUser: Partial<User>) => void;
   loading: boolean;
 }
 
@@ -41,12 +42,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem("auth_user");
   };
 
+  const updateUser = (updatedUser: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const merged = { ...prev, ...updatedUser };
+      localStorage.setItem("auth_user", JSON.stringify(merged));
+      return merged;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, updateUser, loading }}>
       {children}
     </AuthContext.Provider>
   );
 };
+
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

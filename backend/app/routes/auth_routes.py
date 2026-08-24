@@ -72,3 +72,25 @@ def get_me():
         return jsonify({'message': 'User not found'}), 404
         
     return jsonify(user.to_dict()), 200
+
+@bp.route('/me', methods=['PATCH', 'PUT'])
+@jwt_required()
+def update_me():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if not user:
+        return jsonify({'message': 'User not found'}), 404
+        
+    data = request.get_json()
+    if not data:
+        return jsonify({'message': 'No data provided'}), 400
+        
+    if 'fullName' in data:
+        user.full_name = data['fullName'].strip()
+    if 'password' in data and data['password']:
+        user.set_password(data['password'])
+        
+    db.session.commit()
+    return jsonify(user.to_dict()), 200
+
