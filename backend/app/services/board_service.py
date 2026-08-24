@@ -106,5 +106,26 @@ class BoardService:
         return True
 
     @staticmethod
+    def update_member_role(board_id, user_id, new_role):
+        if new_role not in ['admin', 'member', 'viewer']:
+            return None, "Invalid role specified"
+            
+        membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
+        if not membership:
+            return None, "Member not found on this board"
+            
+        if membership.role == 'owner':
+            return None, "Cannot change the role of the board owner"
+            
+        membership.role = new_role
+        try:
+            db.session.commit()
+            return membership, None
+        except Exception as e:
+            db.session.rollback()
+            return None, str(e)
+
+    @staticmethod
     def get_board_members(board_id):
         return BoardMember.query.filter_by(board_id=board_id).all()
+

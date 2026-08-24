@@ -28,9 +28,12 @@ import {
   Pencil,
   Filter,
   User,
-  Users
+  Users,
+  Eye,
+  ShieldAlert
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useParams, useNavigate } from "react-router-dom";
 import { boardApi } from "@/services/boardApi";
@@ -40,6 +43,7 @@ import { BoardModal } from "../boards/BoardModal";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBoardPermissions } from "@/hooks/useBoardPermissions";
 
 import { BoardOverview } from "./BoardOverview";
 import { TaskListView } from "./TaskListView";
@@ -101,6 +105,7 @@ export function KanbanBoard() {
   
   const { addActivity, setBoardId } = useActivity();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const permissions = useBoardPermissions(board, members);
 
   useEffect(() => {
     if (boardId) {
@@ -203,7 +208,7 @@ export function KanbanBoard() {
     (event: DragEndEvent) => {
       const { active, over } = event;
       setActiveTask(null);
-      if (!over) return;
+      if (permissions.isReadOnly || !over) return;
 
       const activeData = active.data.current?.task as Task | undefined;
       if (!activeData) return;
@@ -228,7 +233,7 @@ export function KanbanBoard() {
         updateTask(activeData.id, { status: overStatus, progress: newProgress });
       }
     },
-    [updateTask, columns]
+    [updateTask, columns, permissions.isReadOnly]
   );
 
   const handleTaskClick = useCallback((task: Task) => {
@@ -237,9 +242,10 @@ export function KanbanBoard() {
   }, []);
 
   const openNewModal = useCallback(() => {
+    if (!permissions.canCreateTask) return;
     setEditingTask(null);
     setModalOpen(true);
-  }, []);
+  }, [permissions.canCreateTask]);
 
   // Filter task matching both search query and assignee filter
   const isTaskMatchingFilters = useCallback(
@@ -321,7 +327,7 @@ export function KanbanBoard() {
                 <h2 className="text-3xl font-black tracking-tight text-foreground">Board Members</h2>
                 <p className="text-sm text-muted-foreground mt-1">Manage who has access to this board</p>
               </div>
-              <InviteMemberDialog boardId={board.id} />
+              {permissions.canManageMembers && <InviteMemberDialog boardId={board.id} />}
             </div>
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 max-h-[70vh] overflow-y-auto">
               <BoardMembers boardId={board.id} />
@@ -349,20 +355,24 @@ export function KanbanBoard() {
                       title={col.title}
                       emoji={col.emoji}
                       tasks={filteredTasksByStatus(col.id)}
+                      canRename={permissions.canEditBoard}
+                      isDragDisabled={permissions.isReadOnly}
                       onTaskClick={handleTaskClick}
                       onRename={handleRenameColumn}
                     />
                   ))}
 
-                <div className="w-80 shrink-0">
-                  <button
-                    onClick={handleAddNewState}
-                    className="w-full flex items-center justify-center gap-2 p-4 text-muted-foreground hover:text-foreground hover:bg-background rounded-xl border border-dashed border-border/60 transition-all group bg-white/40"
-                  >
-                    <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
-                    <span className="text-sm font-bold">New State</span>
-                  </button>
-                </div>
+                {permissions.canEditBoard && (
+                  <div className="w-80 shrink-0">
+                    <button
+                      onClick={handleAddNewState}
+                      className="w-full flex items-center justify-center gap-2 p-4 text-muted-foreground hover:text-foreground hover:bg-background rounded-xl border border-dashed border-border/60 transition-all group bg-white/40"
+                    >
+                      <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
+                      <span className="text-sm font-bold">New State</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               <DragOverlay>
@@ -398,19 +408,30 @@ export function KanbanBoard() {
                     </div>
                   )}
                   <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2 group/title">
+                    <div className="flex items-center gap-2 group/title flex-wrap">
                       <h1 className="text-xl md:text-3xl font-black text-foreground tracking-tight truncate">
                         {board.name}
                       </h1>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 rounded-full hover:bg-muted transition-colors shrink-0 text-primary bg-primary/5" 
-                        onClick={() => setIsBoardModalOpen(true)} 
-                        title="Edit Board & Icon"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      {permissions.isReadOnly ? (
+                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 gap-1 text-[11px] font-bold py-0.5 px-2.5 shrink-0">
+                          <Eye className="h-3 w-3" /> View Only
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 capitalize text-[10px] font-bold py-0.5 px-2 shrink-0">
+                          {permissions.role === "owner" ? "👑 Owner" : permissions.role === "admin" ? "🛡️ Admin" : "👤 Member"}
+                        </Badge>
+                      )}
+                      {permissions.canEditBoard && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 rounded-full hover:bg-muted transition-colors shrink-0 text-primary bg-primary/5" 
+                          onClick={() => setIsBoardModalOpen(true)} 
+                          title="Edit Board & Icon"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                     {board.description && (
                       <p className="text-xs md:text-sm text-muted-foreground font-medium line-clamp-1 opacity-80">
@@ -571,18 +592,20 @@ export function KanbanBoard() {
         </SheetContent>
       </Sheet>
 
-      <Button
-        onClick={openNewModal}
-        className="fixed bottom-8 right-8 h-14 w-14 hover:w-40 rounded-full shadow-2xl shadow-primary/20 flex items-center justify-center group/fab hover:scale-105 active:scale-95 transition-all duration-500 ease-out z-50 bg-primary hover:bg-primary/90 overflow-hidden px-0 border-4 border-background"
-        title="Create New Task"
-      >
-        <div className="flex items-center justify-center w-full h-full relative">
-           <Plus className="h-6 w-6 text-primary-foreground absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 group-hover/fab:rotate-90 group-hover/fab:left-6" />
-           <span className="text-primary-foreground font-black uppercase text-[10px] tracking-[0.2em] whitespace-nowrap absolute left-14 opacity-0 group-hover/fab:opacity-100 translate-x-4 group-hover/fab:translate-x-0 transition-all duration-500 ease-out delay-75">
-             Add Task
-           </span>
-        </div>
-      </Button>
+      {permissions.canCreateTask && (
+        <Button
+          onClick={openNewModal}
+          className="fixed bottom-8 right-8 h-14 w-14 hover:w-40 rounded-full shadow-2xl shadow-primary/20 flex items-center justify-center group/fab hover:scale-105 active:scale-95 transition-all duration-500 ease-out z-50 bg-primary hover:bg-primary/90 overflow-hidden px-0 border-4 border-background"
+          title="Create New Task"
+        >
+          <div className="flex items-center justify-center w-full h-full relative">
+             <Plus className="h-6 w-6 text-primary-foreground absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 group-hover/fab:rotate-90 group-hover/fab:left-6" />
+             <span className="text-primary-foreground font-black uppercase text-[10px] tracking-[0.2em] whitespace-nowrap absolute left-14 opacity-0 group-hover/fab:opacity-100 translate-x-4 group-hover/fab:translate-x-0 transition-all duration-500 ease-out delay-75">
+               Add Task
+             </span>
+          </div>
+        </Button>
+      )}
 
       <BoardModal
         open={isBoardModalOpen}
@@ -597,6 +620,7 @@ export function KanbanBoard() {
         task={editingTask}
         columns={board.columns}
         members={members}
+        readOnly={permissions.isReadOnly}
         onSubmit={(data) => {
           if (editingTask) {
             updateTask(editingTask.id, data);

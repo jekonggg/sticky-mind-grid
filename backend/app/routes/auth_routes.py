@@ -94,3 +94,18 @@ def update_me():
     db.session.commit()
     return jsonify(user.to_dict()), 200
 
+@bp.route('/users/search', methods=['GET'])
+@jwt_required()
+def search_users():
+    query = request.args.get('q', '').strip()
+    if not query:
+        return jsonify([]), 200
+        
+    users = User.query.filter(
+        (User.email.ilike(f'%{query}%')) | 
+        (User.full_name.ilike(f'%{query}%'))
+    ).limit(10).all()
+    
+    return jsonify([user.to_dict() for user in users]), 200
+
+

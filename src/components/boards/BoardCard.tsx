@@ -11,6 +11,7 @@ import {
 import { MoreHorizontal, Pencil, Trash2, LayoutGrid } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { BoardHeroImage } from "./BoardHeroImage";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface BoardCardProps {
   board: Board;
@@ -21,6 +22,7 @@ interface BoardCardProps {
 
 export function BoardCard({ board, taskCount = 0, onEdit, onDelete }: BoardCardProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const boardColor = board.color && board.color.startsWith("hsl") ? board.color : "hsl(220, 80%, 56%)";
 
   return (
@@ -77,13 +79,15 @@ export function BoardCard({ board, taskCount = 0, onEdit, onDelete }: BoardCardP
                 <Pencil className="h-3.5 w-3.5 mr-2" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => onDelete(board)}
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-2" />
-                Delete
-              </DropdownMenuItem>
+              {(!board.ownerId || board.ownerId === user?.id) && (
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => onDelete(board)}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

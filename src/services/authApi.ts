@@ -54,6 +54,17 @@ export const authApi = {
       throw new Error(error.message || "Failed to update profile");
     }
     return res.json();
+  },
+
+  async searchUsers(query: string) {
+    const token = localStorage.getItem("auth_token");
+    const res = await fetch(`${API_BASE}/users/search?q=${encodeURIComponent(query)}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+    if (!res.ok) throw new Error("Failed to search users");
+    return res.json();
   }
 };
 

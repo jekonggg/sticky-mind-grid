@@ -9,12 +9,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 interface TaskCardProps {
   task: Task;
   onClick: (task: Task) => void;
+  isDragDisabled?: boolean;
 }
 
-export function TaskCard({ task, onClick }: TaskCardProps) {
+export function TaskCard({ task, onClick, isDragDisabled = false }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { task },
+    disabled: isDragDisabled,
   });
 
   const style = {
@@ -47,14 +49,16 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         </div>
       )}
       <div className="flex items-start gap-2">
-        <button
-          className="mt-0.5 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0 text-muted-foreground"
-          {...attributes}
-          {...listeners}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
+        {!isDragDisabled && (
+          <button
+            className="mt-0.5 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0 text-muted-foreground"
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
             <div className="flex items-center gap-1.5 min-w-0 flex-1">

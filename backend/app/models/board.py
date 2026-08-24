@@ -25,6 +25,16 @@ class Board(db.Model):
     tasks = db.relationship('Task', back_populates='board', lazy=True, cascade="all, delete-orphan")
     memberships = db.relationship('BoardMember', back_populates='board', lazy=True, cascade="all, delete-orphan")
 
+    def __init__(self, name: str, emoji: str = None, description: str = None, color: str = 'hsl(220, 80%, 56%)', hero_image_url: str = None, columns: list = None, owner_id: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.name = name
+        self.emoji = emoji
+        self.description = description
+        self.color = color or 'hsl(220, 80%, 56%)'
+        self.hero_image_url = hero_image_url
+        self.columns = columns if columns is not None else []
+        self.owner_id = owner_id
+
     def touch(self):
         self.updated_at = datetime.utcnow()
 

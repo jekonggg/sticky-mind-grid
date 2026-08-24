@@ -10,11 +10,22 @@ interface KanbanColumnProps {
   title: string;
   emoji?: string;
   tasks: Task[];
+  canRename?: boolean;
+  isDragDisabled?: boolean;
   onTaskClick: (task: Task) => void;
   onRename?: (id: string, newTitle: string, emoji?: string) => void;
 }
 
-export function KanbanColumn({ id, title, emoji, tasks, onTaskClick, onRename }: KanbanColumnProps) {
+export function KanbanColumn({
+  id,
+  title,
+  emoji,
+  tasks,
+  canRename = true,
+  isDragDisabled = false,
+  onTaskClick,
+  onRename,
+}: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
@@ -65,8 +76,10 @@ export function KanbanColumn({ id, title, emoji, tasks, onTaskClick, onRename }:
           />
         ) : (
           <h3 
-            onClick={() => setIsEditing(true)}
-            className="text-sm font-bold text-foreground tracking-tight cursor-text hover:text-primary transition-colors truncate flex-1"
+            onClick={() => canRename && setIsEditing(true)}
+            className={`text-sm font-bold text-foreground tracking-tight truncate flex-1 ${
+              canRename ? "cursor-text hover:text-primary transition-colors" : "cursor-default"
+            }`}
           >
             {title}
           </h3>
@@ -88,7 +101,14 @@ export function KanbanColumn({ id, title, emoji, tasks, onTaskClick, onRename }:
               No tasks
             </div>
           ) : (
-            tasks.map((task) => <TaskCard key={task.id} task={task} onClick={onTaskClick} />)
+            tasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onClick={onTaskClick}
+                isDragDisabled={isDragDisabled}
+              />
+            ))
           )}
         </SortableContext>
       </div>

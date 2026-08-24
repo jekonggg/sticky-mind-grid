@@ -83,3 +83,19 @@ def remove_member(board_id, user_id):
     if not success:
         return jsonify({'error': 'Could not remove member. Cannot remove sole owner.'}), 400
     return jsonify({'message': 'Member removed'}), 200
+
+@bp.route('/<board_id>/members/<user_id>', methods=['PATCH', 'PUT'])
+@jwt_required()
+@require_board_access('admin')
+def update_member_role(board_id, user_id):
+    data = request.json
+    if not data or 'role' not in data:
+        return jsonify({'error': 'Role is required'}), 400
+        
+    role = data.get('role')
+    member, error = BoardService.update_member_role(board_id, user_id, role)
+    if error:
+        return jsonify({'error': error}), 400
+        
+    return jsonify(member.to_dict()), 200
+

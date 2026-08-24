@@ -1,5 +1,7 @@
 import { Column } from "./task";
 
+export type BoardRole = 'owner' | 'admin' | 'member' | 'viewer';
+
 export interface Board {
   id: string;
   name: string;
@@ -8,6 +10,7 @@ export interface Board {
   color: string;
   heroImageUrl?: string;
   columns: Column[];
+  ownerId?: string;
   taskCount?: number;
   createdAt: Date;
   updatedAt: Date;
@@ -46,7 +49,7 @@ export interface BoardMember {
   id: string;
   boardId: string;
   userId: string;
-  role: 'owner' | 'admin' | 'member' | 'viewer';
+  role: BoardRole;
   user?: User;
   createdAt: string;
 }

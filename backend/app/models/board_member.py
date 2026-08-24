@@ -21,6 +21,12 @@ class BoardMember(db.Model):
         db.UniqueConstraint('board_id', 'user_id', name='uq_board_user'),
     )
 
+    def __init__(self, board_id: str, user_id: str, role: str = 'member', **kwargs):
+        super().__init__(**kwargs)
+        self.board_id = board_id
+        self.user_id = user_id
+        self.role = role
+
     def to_dict(self):
         # Allow expanding user details if joined
         user_data = None

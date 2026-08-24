@@ -74,4 +74,16 @@ export const boardApi = {
       throw new Error(error.error || "Failed to remove member");
     }
   },
+
+  async updateMemberRole(boardId: string, userId: string, role: string): Promise<BoardMember> {
+    const res = await authenticatedFetch(`/boards/${boardId}/members/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || "Failed to update member role");
+    }
+    return res.json();
+  },
 };

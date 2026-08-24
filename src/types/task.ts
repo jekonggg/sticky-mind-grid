@@ -2,9 +2,11 @@ export type TaskStatus = string;
 export type Priority = "low" | "medium" | "high";
 
 export interface Attachment {
+  id?: string;
   name: string;
   url: string; // Base64 or mock URL
   type: string; // mime-type
+  size?: string;
 }
 
 export interface Task {
