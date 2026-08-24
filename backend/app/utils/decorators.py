@@ -5,6 +5,8 @@ from app.models.board_member import BoardMember
 from app.models.board import Board
 from app.models.task import Task
 
+from app import db
+
 ROLE_HIERARCHY = {
     'owner': 4,
     'admin': 3,
@@ -22,7 +24,7 @@ def get_effective_role(board_id, user_id):
     - Returns 0 when the user has no access at all.
     """
     user_id = str(user_id)
-    board = Board.query.get(board_id)
+    board = db.session.get(Board, board_id)
     if board and board.owner_id and str(board.owner_id) == user_id:
         return ROLE_HIERARCHY['owner']
 
@@ -44,7 +46,7 @@ def require_board_access(minimum_role='viewer'):
             if not board_id:
                 return jsonify({'error': 'Board ID is required in the path variables'}), 400
                 
-            board = Board.query.get(board_id)
+            board = db.session.get(Board, board_id)
             if not board:
                 return jsonify({'error': 'Board not found'}), 404
 
@@ -77,7 +79,7 @@ def require_task_access(minimum_role='viewer'):
             if not task_id:
                 return jsonify({'error': 'Task ID is required'}), 400
                 
-            task = Task.query.get(task_id)
+            task = db.session.get(Task, task_id)
             if not task:
                 return jsonify({'error': 'Task not found'}), 404
                 

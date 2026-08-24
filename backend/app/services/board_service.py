@@ -44,7 +44,7 @@ class BoardService:
 
     @staticmethod
     def get_board_by_id(board_id):
-        return Board.query.get(board_id)
+        return db.session.get(Board, board_id)
 
     @staticmethod
     def create_board(data, owner_id):
@@ -90,7 +90,7 @@ class BoardService:
 
     @staticmethod
     def update_board(board_id, data, user_id=None):
-        board = Board.query.get(board_id)
+        board = db.session.get(Board, board_id)
         if not board:
             return None
         
@@ -122,7 +122,7 @@ class BoardService:
 
     @staticmethod
     def delete_board(board_id):
-        board = Board.query.get(board_id)
+        board = db.session.get(Board, board_id)
         if not board:
             return False
         db.session.delete(board)
@@ -135,7 +135,7 @@ class BoardService:
         if not user:
             return None, "User not found"
             
-        board = Board.query.get(board_id)
+        board = db.session.get(Board, board_id)
         if not board:
             return None, "Board not found"
 
@@ -159,7 +159,7 @@ class BoardService:
             )
             db.session.add(membership)
 
-        actor = User.query.get(actor_id) if actor_id else None
+        actor = db.session.get(User, actor_id) if actor_id else None
         actor_name = (actor.full_name or actor.email) if actor else "Board Owner"
         user_name = user.full_name or user.email
 
@@ -199,9 +199,9 @@ class BoardService:
             return membership, None
 
         membership.status = 'accepted'
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         user_name = (user.full_name or user.email) if user else "A user"
-        board = Board.query.get(board_id)
+        board = db.session.get(Board, board_id)
         board_name = board.name if board else "the board"
 
         # In-App Notification to Board Owner
@@ -238,9 +238,9 @@ class BoardService:
         if not membership:
             return False, "Invitation not found"
 
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         user_name = (user.full_name or user.email) if user else "A user"
-        board = Board.query.get(board_id)
+        board = db.session.get(Board, board_id)
         board_name = board.name if board else "the board"
 
         # In-App Notification to Board Owner
@@ -278,7 +278,7 @@ class BoardService:
         if not membership:
             return False, "Member not found on this board"
 
-        board = Board.query.get(board_id)
+        board = db.session.get(Board, board_id)
         if not board:
             return False, "Board not found"
 
@@ -291,7 +291,7 @@ class BoardService:
                 return False, "The board owner cannot leave the board. You must transfer ownership or delete the board."
 
         user_name = membership.user.full_name or membership.user.email if membership.user else "Member"
-        actor = User.query.get(actor_id) if actor_id else None
+        actor = db.session.get(User, actor_id) if actor_id else None
         actor_name = (actor.full_name or actor.email) if actor else "Board Admin"
 
         if is_self:

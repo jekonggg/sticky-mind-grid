@@ -16,11 +16,11 @@ class CommentService:
 
     @staticmethod
     def create_comment(task_id, user_id, content):
-        task = Task.query.get(task_id)
+        task = db.session.get(Task, task_id)
         if not task:
             return None, "Task not found"
 
-        author = User.query.get(user_id)
+        author = db.session.get(User, user_id)
         author_name = author.full_name or author.email if author else "User"
 
         # Detect mentions: regex matches @word or @email (accepted members only)
@@ -96,7 +96,7 @@ class CommentService:
 
     @staticmethod
     def delete_comment(comment_id, user_id):
-        comment = Comment.query.get(comment_id)
+        comment = db.session.get(Comment, comment_id)
         if not comment:
             return False, "Comment not found"
 
