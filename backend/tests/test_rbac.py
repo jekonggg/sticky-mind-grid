@@ -219,3 +219,44 @@ def test_declined_member_cannot_view_tasks(client, create_test_user, create_test
 
     response = client.get(f"/api/tasks?boardId={board.id}", headers=auth_headers(declined.id))
     assert response.status_code == 403
+
+def test_member_cannot_move_task_into_foreign_board(client, create_test_user, create_test_board, auth_headers):
+    """A member of board A must not relocate tasks into board B they don't belong to."""
+    owner_a = create_test_user(email="ownera_move@example.com")
+    owner_b = create_test_user(email="ownerb_move@example.com")
+    board_a, _ = create_test_board(owner=owner_a, name="Move Source Board")
+    board_b, _ = create_test_board(owner=owner_b, name="Move Target Board")
+
+    member = create_test_user(email="mover@example.com", full_name="Board A Member")
+    _add_membership(board_a.id, member.id, role="member", status="accepted")
+
+    task_res = client.post(
+        "/api/tasks",
+        headers=auth_headers(member.id),
+        data=json.dumps({"boardId": board_a.id, "title": "A Task"}),
+        content_type="application/json"
+    )
+    assert task_res.status_code == 201
+    task_id = task_res.get_json()["id"]
+
+    # Hijack attempt into board B -> blocked
+    res = client.patch(
+        f"/api/tasks/{task_id}",
+        headers=auth_headers(member.id),
+        data=json.dumps({"boardId": board_b.id}),
+        content_type="application/json"
+    )
+    assert res.status_code == 403
+
+    # Task stayed on board A
+    fetched = client.get(f"/api/tasks/{task_id}", headers=auth_headers(member.id))
+    assert fetched.get_json()["boardId"] == board_a.id
+
+    # Sanity: ordinary update within board A still works
+    ok = client.patch(
+        f"/api/tasks/{task_id}",
+        headers=auth_headers(member.id),
+        data=json.dumps({"title": "Renamed In Place"}),
+        content_type="application/json"
+    )
+    assert ok.status_code == 200
