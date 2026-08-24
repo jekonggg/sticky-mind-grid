@@ -12,6 +12,28 @@ ROLE_HIERARCHY = {
     'viewer': 1
 }
 
+def get_effective_role(board_id, user_id):
+    """Return the numeric role level a user holds on a board.
+
+    - Board owners get 'owner' level even without an accepted membership
+      row (covers legacy boards created before memberships existed).
+    - Only memberships with status == 'accepted' count; pending or
+      declined invitees have no access.
+    - Returns 0 when the user has no access at all.
+    """
+    user_id = str(user_id)
+    board = Board.query.get(board_id)
+    if board and board.owner_id and str(board.owner_id) == user_id:
+        return ROLE_HIERARCHY['owner']
+
+    membership = BoardMember.query.filter_by(
+        board_id=board_id, user_id=user_id, status='accepted'
+    ).first()
+    if not membership:
+        return 0
+
+    return ROLE_HIERARCHY.get(membership.role, 0)
+
 def require_board_access(minimum_role='viewer'):
     def decorator(fn):
         @wraps(fn)
