@@ -26,3 +26,21 @@ class Config:
         if origin.strip()
     ]
 
+    # Upload limits
+    MAX_CONTENT_LENGTH = int(os.environ.get('MAX_UPLOAD_MB', '10')) * 1024 * 1024
+    ALLOWED_UPLOAD_EXTENSIONS = [
+        ext.strip().lower()
+        for ext in os.environ.get(
+            'ALLOWED_UPLOAD_EXTENSIONS',
+            # images
+            'png,jpg,jpeg,gif,webp,svg,bmp,ico,'
+            # documents
+            'pdf,doc,docx,xls,xlsx,ppt,pptx,txt,md,csv,json,rtf,odt,ods,odp,'
+            # archives
+            'zip,rar,7z,tar,gz,'
+            # media
+            'mp4,mov,avi,mkv,webm,mp3,wav,ogg,flac'
+        ).split(',')
+        if ext.strip()
+    ]
+

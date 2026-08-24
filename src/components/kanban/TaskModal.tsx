@@ -156,21 +156,9 @@ export function TaskModal({
         ]);
         toast.success(`Uploaded ${file.name}`);
       } catch (err: any) {
+        // Surface rejection reasons (size cap, disallowed type) instead of
+        // silently falling back to embedding the file as base64 in MySQL.
         toast.error(err.message || `Failed to upload ${file.name}`);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setAttachments((prev) => [
-            ...prev,
-            {
-              id: `att_${Date.now()}_${Math.random()}`,
-              name: file.name,
-              size: `${(file.size / 1024).toFixed(1)} KB`,
-              type: file.type.split("/")[0] || "file",
-              url: reader.result as string,
-            },
-          ]);
-        };
-        reader.readAsDataURL(file);
       }
     }
   };

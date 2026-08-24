@@ -1,4 +1,4 @@
-from flask import Flask, request, make_response
+from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
@@ -34,42 +34,39 @@ def create_app(config_class=Config):
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     )
     
+    # CORS: Flask-CORS is the single source of truth. Only origins listed in
+    # Config.CORS_ORIGINS receive Access-Control headers; preflights for other
+    # origins are rejected by flask-cors itself.
+    cors_origins = app.config.get('CORS_ORIGINS') or [
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000"
+    ]
+    CORS(
+        app,
+        resources={r"/*": {"origins": cors_origins}},
+        supports_credentials=True,
+        allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials", "X-Requested-With", "Accept", "Origin"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    )
+
     jwt.init_app(app)
     bcrypt.init_app(app)
-
-    # Universal CORS handler to guarantee headers on all responses and preflights
-    @app.before_request
-    def handle_preflight():
-        if request.method == "OPTIONS":
-            origin = request.headers.get("Origin", "*")
-            response = make_response("", 204)
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
-            return response
-
-    @app.after_request
-    def add_cors_headers(response):
-        origin = request.headers.get("Origin")
-        if origin:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
-        return response
 
     @app.errorhandler(Exception)
     def handle_global_exception(e):
         import traceback
         traceback.print_exc()
-        from flask import jsonify
-        response = make_response(jsonify({'error': str(e)}), 500)
-        origin = request.headers.get("Origin")
-        if origin:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-        return response
+        # Never leak internal error details to clients outside debug mode
+        message = str(e) if app.debug else 'Internal server error'
+        return jsonify({'error': message}), 500
+
+    @app.errorhandler(413)
+    def handle_request_entity_too_large(e):
+        limit_mb = (app.config.get('MAX_CONTENT_LENGTH') or 0) / (1024 * 1024)
+        return jsonify({'error': f'File too large. Maximum upload size is {limit_mb:.0f} MB'}), 413
 
     from app.routes import board_routes
     from app.routes import task_routes
