@@ -30,81 +30,109 @@ export function useBoardRealtime({
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const connect = useCallback(() => {
-    if (!boardId || !user) return;
+  // Keep latest callbacks in ref without triggering reconnection loops
+  const callbacksRef = useRef({
+    onTaskChange,
+    onActivityChange,
+    onMemberChange,
+    onBoardChange,
+  });
+
+  useEffect(() => {
+    callbacksRef.current = {
+      onTaskChange,
+      onActivityChange,
+      onMemberChange,
+      onBoardChange,
+    };
+  });
+
+  const userId = user?.id;
+
+  useEffect(() => {
+    if (!boardId || !userId) {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      setIsConnected(false);
+      return;
+    }
 
     const token = getStoredToken();
     if (!token) return;
 
-    // Close any previous stream
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
+    let isMounted = true;
 
-    const url = `${API_BASE}/boards/${boardId}/events?token=${encodeURIComponent(token)}`;
-    const es = new EventSource(url);
-    eventSourceRef.current = es;
-
-    es.onopen = () => {
-      setIsConnected(true);
-    };
-
-    es.onmessage = (e) => {
-      try {
-        const payload: RealtimeEvent = JSON.parse(e.data);
-        if (!payload || !payload.type) return;
-
-        switch (payload.type) {
-          case "connected":
-            setIsConnected(true);
-            break;
-
-          case "task:created":
-          case "task:updated":
-          case "task:moved":
-          case "task:deleted":
-          case "tasks:reordered":
-            onTaskChange?.();
-            break;
-
-          case "activity:new":
-            onActivityChange?.(payload.data);
-            break;
-
-          case "member:joined":
-          case "member:removed":
-          case "member:role_updated":
-            onMemberChange?.();
-            break;
-
-          case "board:updated":
-            onBoardChange?.(payload.data);
-            break;
-
-          default:
-            break;
-        }
-      } catch (err) {
-        // Ignore unparseable or ping frames
+    const connect = () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
       }
+
+      const url = `${API_BASE}/boards/${boardId}/events?token=${encodeURIComponent(token)}`;
+      const es = new EventSource(url);
+      eventSourceRef.current = es;
+
+      es.onopen = () => {
+        if (isMounted) setIsConnected(true);
+      };
+
+      es.onmessage = (e) => {
+        try {
+          const payload: RealtimeEvent = JSON.parse(e.data);
+          if (!payload || !payload.type) return;
+
+          switch (payload.type) {
+            case "connected":
+              if (isMounted) setIsConnected(true);
+              break;
+
+            case "task:created":
+            case "task:updated":
+            case "task:moved":
+            case "task:deleted":
+            case "tasks:reordered":
+              callbacksRef.current.onTaskChange?.();
+              break;
+
+            case "activity:new":
+              callbacksRef.current.onActivityChange?.(payload.data);
+              break;
+
+            case "member:joined":
+            case "member:removed":
+            case "member:role_updated":
+              callbacksRef.current.onMemberChange?.();
+              break;
+
+            case "board:updated":
+              callbacksRef.current.onBoardChange?.(payload.data);
+              break;
+
+            default:
+              break;
+          }
+        } catch (err) {
+          // Ignore unparseable or ping frames
+        }
+      };
+
+      es.onerror = () => {
+        if (isMounted) setIsConnected(false);
+        es.close();
+
+        // Attempt reconnect after 3 seconds
+        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (isMounted && boardId) connect();
+        }, 3000);
+      };
     };
 
-    es.onerror = () => {
-      setIsConnected(false);
-      es.close();
-
-      // Attempt reconnect after 3 seconds
-      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = setTimeout(() => {
-        if (boardId) connect();
-      }, 3000);
-    };
-  }, [boardId, user, onTaskChange, onActivityChange, onMemberChange, onBoardChange]);
-
-  useEffect(() => {
     connect();
 
     return () => {
+      isMounted = false;
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
@@ -112,7 +140,7 @@ export function useBoardRealtime({
       }
       setIsConnected(false);
     };
-  }, [connect]);
+  }, [boardId, userId]);
 
   return { isConnected };
 }

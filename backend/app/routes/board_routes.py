@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, Response, stream_with_context
 from flask_jwt_extended import jwt_required, get_jwt_identity, decode_token
+from app import db
 from app.services.board_service import BoardService
 from app.utils.decorators import require_board_access, get_effective_role, ROLE_HIERARCHY
 from app.utils.event_broadcaster import broadcaster
@@ -62,9 +63,14 @@ def stream_board_events(board_id):
 
     board = BoardService.get_board_by_id(board_id)
     if not board:
+        db.session.remove()
         return jsonify({'error': 'Board not found'}), 404
 
-    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['viewer']:
+    effective_role = get_effective_role(board_id, user_id)
+    # Release database connection back to the pool immediately so the long-lived SSE stream does not hold it
+    db.session.remove()
+
+    if effective_role < ROLE_HIERARCHY['viewer']:
         return jsonify({'error': 'Unauthorized to subscribe to events for this board'}), 403
 
     def event_stream():

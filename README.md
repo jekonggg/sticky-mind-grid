@@ -1,95 +1,71 @@
-# 🚀 Sticky Mind Grid
+# Sticky Mind Grid
 
-A sophisticated, persistent Trello-style task management application built with a modern **React-Vite** frontend and a robust **Flask-MySQL** backend. Designed to showcase high-density data management, dynamic UI patterns, and meticulous audit logging.
-
----
-
-## 🏛️ Project Architecture
-Sticky Mind Grid is a full-stack solution featuring:
-- **Frontend**: React 18, Vite, TailwindCSS, Framer Motion (for smooth transitions), and `dnd-kit` for drag-and-drop.
-- **Backend**: Flask 3.0, SQLAlchemy, MySQL (via PyMySQL).
-- **State Management**: React Context API for persistent activity logging and board states.
+A full-stack Trello-style task management application with a **React/Vite** frontend and **Flask/MySQL** backend. Features kanban drag-and-drop, multiple views, real-time collaboration, role-based access control, file uploads, and activity auditing.
 
 ---
 
-## ✅ Core Requirement Satisfaction
-This project meticulously satisfies the core "Trello-style" requirements:
-- [x] Board Management: Create, edit, and delete multiple 프로젝트 boards.
-- [x] Ticket Creation: Full CRUD operations for tasks, including metadata (Priority, Due Date, Progress).
-- [x] Stage Transitions: Drag tickets between user-defined columns (e.g., To Do ➔ Done) with automatic progress snapping.
-- [x] Persistent History: Every action is saved to a MySQL database and displayed in a real-time audit trail.
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System architecture, data models, API routes, services |
+| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Current feature status, technical debt, testing status |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Development roadmap prioritized by need |
+| [`AGENTS.md`](AGENTS.md) | AI agent development guide and conventions |
 
 ---
 
-## ✨ High-End Features
-- **Dynamic Board Insights**: The "Overview" tab automatically adapts its analytics to match the specific columns/states defined by the user.
-- **Intelligent Progress Snapping**: Moving tickets automatically updates progress: 
-  - First Column ➔ 0%
-  - Intermediate Columns ➔ 30%/50%
-  - Final Column ➔ 100%
-- **Multiple Visualizations**: 
-  - **Kanban Board**: Drag-and-drop interface.
-  - **Task List**: Searchable, sortable tabular view.
-  - **Interactive Calendar**: Plot tasks by due dates.
-  - **Activity Feed**: Field-level change tracking (e.g., "Renamed Task from X ➔ Y").
-- **Optimized Storage**: Uses MySQL `LONGTEXT` to support high-resolution base64 hero images for board banners.
+## Setup
+
+### Backend (Flask + MySQL)
+
+Requires **Python 3.10+** and a **MySQL** server.
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # macOS/Linux
+
+pip install -r requirements.txt
+
+# Configure MySQL connection in config.py or set DATABASE_URL env var
+
+# Seed database with sample data (drops existing tables)
+python seed.py
+
+# Start dev server
+python run.py                # http://127.0.0.1:5000
+```
+
+### Frontend (React + Vite)
+
+```bash
+npm install
+npm run dev                  # http://localhost:8080
+```
+
+Set `VITE_API_BASE_URL` in `.env` (defaults to `http://127.0.0.1:5000/api`).
+
+### Testing
+
+```bash
+# Frontend
+npm run test                 # Vitest single run
+npm run test:watch           # Vitest watch mode
+npx tsc --noEmit             # Type checking
+
+# Backend
+cd backend
+pytest tests -v
+```
 
 ---
 
-## 🛠️ Setup Instructions
+## Quick Start
 
-### 1. Backend (Flask + MySQL)
-Ensure you have **Python 3.10+** and a **MySQL** server (e.g., XAMPP/phpMyAdmin) running.
-
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate  # Windows
-   source venv/bin/activate  # macOS/Linux
-   ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Configuration: Ensure your MySQL connection string in `config.py` is correct.
-5. **Initial Reseeding (Recommended)**:
-   This will drop all tables and populate the app with three high-density showcase boards.
-   ```bash
-   python seed.py
-   ```
-6. Run the server:
-   ```bash
-   python run.py
-   ```
-
-### 2. Frontend (React + Vite)
-1. In the root directory, install dependencies:
-   ```bash
-   npm install
-   ```
-2. Run the development server:
-   ```bash
-   npm run dev
-   ```
-3. Open [http://localhost:5173](http://localhost:5173) in your browser.
-
----
-
-## 🧭 Navigation Guide
-1. **The Dashboard**: Your primary entry point. The **"🚀 Showcase: Sticky Mind Grid Core"** board is pinned to the top to demonstrate core features immediately.
-2. **The Kanban Board**: Move tickets across columns to see persistent progress tracking and audit logging in the right-hand sidebar.
-3. **The Overview Tab**: View real-time analytics tailored to that board's specific workflow states.
-4. **Task Modal**: Double-click any task to edit descriptions, add attachments, or set due dates.
-5. **The History Sidebar**: Track "Who did what and when." Every field change (Title/Priority/Status) is recorded with descriptive "X ➔ Y" logs.
-
----
-
-## 👨‍💻 Developer's Note
-Built as a demonstration of technical proficiency and creative UI design. Key focus areas were **data persistence**, **responsive layout adaptation**, and **low-latency state synchronization** between the React frontend and the MySQL database.
-
-> [!TIP]
-> Use the `seed.py` script to explore a "populated" world. It includes varied tasks with due dates specifically set for **April 2026** to showcase the **Calendar** functionality.
+1. Open the dashboard — your boards are displayed as cards with hero images
+2. Open a board — switch between Kanban, List, Calendar, Documents, and Overview views
+3. Drag tasks between columns — progress auto-snaps (0% → 30% → 100%)
+4. Check the Activity sidebar — every change is logged with "who did what and when"
+5. Use `seed.py` to populate sample data — includes tasks with due dates set for **April 2026** to showcase the Calendar
