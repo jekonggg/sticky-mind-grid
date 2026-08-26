@@ -39,26 +39,25 @@ class CommentService:
             
             if pattern.search(content):
                 mentioned_user_ids.append(member.user_id)
-                # Create Notification for mentioned user
-                notif = Notification(
+                from app.services.notification_service import NotificationService
+                NotificationService.create_notification(
                     user_id=member.user_id,
                     type='mention',
                     title='New Mention',
                     message=f'{author_name} mentioned you on "{task.title}": "{content[:60]}..."',
                     link=f'/boards/{task.board_id}'
                 )
-                db.session.add(notif)
 
         # Notify assignee if someone else comments on their task
         if task.assigned_to and task.assigned_to != user_id and task.assigned_to not in mentioned_user_ids:
-            notif = Notification(
+            from app.services.notification_service import NotificationService
+            NotificationService.create_notification(
                 user_id=task.assigned_to,
                 type='task_comment',
                 title='New Comment on Your Task',
                 message=f'{author_name} commented on "{task.title}": "{content[:60]}..."',
                 link=f'/boards/{task.board_id}'
             )
-            db.session.add(notif)
 
         # Create Comment
         new_comment = Comment(

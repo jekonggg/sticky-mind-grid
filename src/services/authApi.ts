@@ -38,7 +38,7 @@ export const authApi = {
     return res.json();
   },
 
-  async updateMe(data: { fullName?: string; password?: string; currentPassword?: string }) {
+  async updateMe(data: { fullName?: string; avatarUrl?: string | null; password?: string; currentPassword?: string }) {
     const token = getStoredToken();
     const res = await fetch(`${API_AUTH_BASE}/me`, {
       method: "PATCH",

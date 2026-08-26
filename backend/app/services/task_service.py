@@ -73,14 +73,14 @@ class TaskService:
         if new_task.assigned_to and str(new_task.assigned_to) != str(creator_id):
             creator = db.session.get(User, creator_id) if creator_id else None
             creator_name = (creator.full_name or creator.email) if creator else "A team member"
-            notif = Notification(
+            from app.services.notification_service import NotificationService
+            NotificationService.create_notification(
                 user_id=new_task.assigned_to,
                 type='assignment',
                 title='Task Assigned',
                 message=f'{creator_name} assigned "{new_task.title}" to you',
                 link=f'/boards/{new_task.board_id}'
             )
-            db.session.add(notif)
 
         # Update board timestamp
         if new_task.board:
@@ -147,14 +147,14 @@ class TaskService:
                 if str(task.assigned_to) != str(user_id):
                     actor = db.session.get(User, user_id) if user_id else None
                     actor_name = (actor.full_name or actor.email) if actor else "A team member"
-                    assign_notif = Notification(
+                    from app.services.notification_service import NotificationService
+                    NotificationService.create_notification(
                         user_id=task.assigned_to,
                         type='assignment',
                         title='Task Assigned',
                         message=f'{actor_name} assigned "{task.title}" to you',
                         link=f'/boards/{task.board_id}'
                     )
-                    db.session.add(assign_notif)
             else:
                 msg = f'Unassigned task "{task.title}"'
             activity = Activity(

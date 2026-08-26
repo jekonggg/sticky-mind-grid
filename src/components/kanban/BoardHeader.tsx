@@ -5,7 +5,7 @@ import { boardApi } from "@/services/boardApi";
 import { Board } from "@/types/board";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +14,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ProfileModal } from "@/components/auth/ProfileModal";
+import { SettingsModal } from "@/components/settings/SettingsModal";
+import { SettingsTab } from "@/types/settings";
+import { useSettings } from "@/contexts/SettingsContext";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import {
   Home,
@@ -27,6 +29,10 @@ import {
   User,
   Kanban,
   Sparkles,
+  Settings,
+  Moon,
+  Sun,
+  Palette,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,7 +54,9 @@ export function BoardHeader({
   const { user, logout } = useAuth();
 
   const [boards, setBoards] = useState<Board[]>([]);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
+  const { settings, updateLocalSetting } = useSettings();
 
   useEffect(() => {
     // Load available boards for quick switcher
@@ -65,6 +73,11 @@ export function BoardHeader({
     logout();
     toast.success("Logged out successfully");
     navigate("/login");
+  };
+
+  const openSettings = (tab: SettingsTab = "profile") => {
+    setSettingsTab(tab);
+    setIsSettingsOpen(true);
   };
 
   const userInitial = user?.fullName?.charAt(0) || user?.email?.charAt(0) || "U";
@@ -188,6 +201,9 @@ export function BoardHeader({
                 className="relative h-9.5 w-9.5 rounded-full p-0 ring-2 ring-primary/20 hover:ring-primary/50 transition-all focus-visible:ring-primary"
               >
                 <Avatar className="h-9 w-9">
+                  {user?.avatarUrl ? (
+                    <AvatarImage src={user.avatarUrl} alt={user?.fullName || "User"} className="object-cover" />
+                  ) : null}
                   <AvatarFallback className="bg-primary/10 text-primary font-black text-xs uppercase">
                     {userInitial}
                   </AvatarFallback>
@@ -197,8 +213,14 @@ export function BoardHeader({
 
             <DropdownMenuContent className="w-64 p-1.5" align="end" forceMount>
               {/* User Profile Header */}
-              <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-lg mb-1">
+              <div 
+                onClick={() => openSettings("profile")}
+                className="flex items-center gap-3 p-2 bg-muted/30 hover:bg-muted/60 rounded-lg mb-1 cursor-pointer transition-colors"
+              >
                 <Avatar className="h-10 w-10 border border-primary/20">
+                  {user?.avatarUrl ? (
+                    <AvatarImage src={user.avatarUrl} alt={user?.fullName || "User"} className="object-cover" />
+                  ) : null}
                   <AvatarFallback className="bg-primary/10 text-primary font-black text-sm uppercase">
                     {userInitial}
                   </AvatarFallback>
@@ -215,13 +237,77 @@ export function BoardHeader({
 
               <DropdownMenuSeparator />
 
-              {/* Edit Profile */}
+              {/* Quick Theme Toggle */}
+              <div className="px-2 py-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Theme
+                </p>
+                <div className="grid grid-cols-3 gap-1 bg-muted/50 p-1 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => updateLocalSetting("theme", "light")}
+                    className={`flex items-center justify-center gap-1 py-1 rounded text-[11px] font-semibold transition-all ${
+                      settings.theme === "light"
+                        ? "bg-background text-foreground shadow-xs font-bold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Sun className="h-3 w-3" />
+                    <span>Light</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateLocalSetting("theme", "dark")}
+                    className={`flex items-center justify-center gap-1 py-1 rounded text-[11px] font-semibold transition-all ${
+                      settings.theme === "dark"
+                        ? "bg-background text-foreground shadow-xs font-bold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Moon className="h-3 w-3" />
+                    <span>Dark</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateLocalSetting("theme", "system")}
+                    className={`flex items-center justify-center gap-1 py-1 rounded text-[11px] font-semibold transition-all ${
+                      settings.theme === "system"
+                        ? "bg-background text-foreground shadow-xs font-bold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span>Auto</span>
+                  </button>
+                </div>
+              </div>
+
+              <DropdownMenuSeparator />
+
+              {/* Account Settings */}
               <DropdownMenuItem
-                onClick={() => setIsProfileOpen(true)}
+                onClick={() => openSettings("profile")}
                 className="cursor-pointer text-xs font-semibold py-2 flex items-center gap-2"
               >
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span>Account Profile</span>
+              </DropdownMenuItem>
+
+              {/* Preferences & Appearance */}
+              <DropdownMenuItem
+                onClick={() => openSettings("appearance")}
+                className="cursor-pointer text-xs font-semibold py-2 flex items-center gap-2"
+              >
+                <Palette className="h-4 w-4 text-muted-foreground" />
+                <span>Appearance & Theme</span>
+              </DropdownMenuItem>
+
+              {/* All Settings */}
+              <DropdownMenuItem
+                onClick={() => openSettings("workflow")}
+                className="cursor-pointer text-xs font-semibold py-2 flex items-center gap-2"
+              >
+                <Settings className="h-4 w-4 text-muted-foreground" />
+                <span>All Settings</span>
               </DropdownMenuItem>
 
               {/* My Boards */}
@@ -248,8 +334,12 @@ export function BoardHeader({
         </div>
       </header>
 
-      {/* Account Profile Dialog */}
-      <ProfileModal open={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      {/* Unified System & User Settings Dialog */}
+      <SettingsModal
+        open={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        initialTab={settingsTab}
+      />
     </>
   );
 }

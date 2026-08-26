@@ -7,6 +7,8 @@ import BoardsOverview from "./pages/BoardsOverview";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import { ThemeProvider } from "next-themes";
+import { SettingsProvider } from "./contexts/SettingsContext";
 import { ActivityProvider } from "./hooks/useActivity";
 import { KanbanBoard } from "./components/kanban/KanbanBoard";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -16,27 +18,31 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <ActivityProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              
-              <Route element={<ProtectedRoute />}>
-                <Route path="/" element={<BoardsOverview />} />
-                <Route path="/boards/:boardId" element={<KanbanBoard />} />
-              </Route>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <TooltipProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <SettingsProvider>
+              <ActivityProvider>
+                <Toaster />
+                <Sonner />
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/" element={<BoardsOverview />} />
+                    <Route path="/boards/:boardId" element={<KanbanBoard />} />
+                  </Route>
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </ActivityProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </ActivityProvider>
+            </SettingsProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

@@ -76,6 +76,8 @@ def create_app(config_class=Config):
     from app.routes import notification_routes
     from app.routes import file_routes
     from app.routes import note_routes
+    from app.routes import system_routes
+    from app.routes import user_routes
 
     app.register_blueprint(board_routes.bp)
     app.register_blueprint(task_routes.bp)
@@ -85,5 +87,7 @@ def create_app(config_class=Config):
     app.register_blueprint(notification_routes.bp)
     app.register_blueprint(file_routes.bp)
     app.register_blueprint(note_routes.bp)
+    app.register_blueprint(system_routes.bp)
+    app.register_blueprint(user_routes.bp)
 
     return app

@@ -12,6 +12,7 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     full_name = db.Column(db.String(255), nullable=True)
+    avatar_url = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -22,11 +23,13 @@ class User(db.Model):
     board_memberships = db.relationship('BoardMember', back_populates='user', lazy=True, cascade="all, delete-orphan")
     comments = db.relationship('Comment', back_populates='user', lazy=True, cascade="all, delete-orphan")
     notifications = db.relationship('Notification', back_populates='user', lazy=True, cascade="all, delete-orphan")
+    preferences = db.relationship('UserPreference', back_populates='user', uselist=False, cascade="all, delete-orphan")
 
-    def __init__(self, email: str, full_name: str = "", **kwargs):
+    def __init__(self, email: str, full_name: str = "", avatar_url: str = None, **kwargs):
         super().__init__(**kwargs)
         self.email = email
         self.full_name = full_name
+        self.avatar_url = avatar_url
 
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
@@ -39,5 +42,6 @@ class User(db.Model):
             'id': self.id,
             'email': self.email,
             'fullName': self.full_name,
+            'avatarUrl': self.avatar_url,
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None
         }

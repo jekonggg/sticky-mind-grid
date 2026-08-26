@@ -3,12 +3,15 @@ import { render, RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import { AuthContext, AuthContextType } from "@/contexts/AuthContext";
+import { ThemeProvider } from "next-themes";
+import { SettingsProvider } from "@/contexts/SettingsContext";
 import { User } from "@/types/user";
 
 export const mockUser: User = {
   id: "user-123",
   email: "testuser@example.com",
   fullName: "Test User",
+  avatarUrl: null,
   createdAt: new Date().toISOString(),
 };
 
@@ -45,9 +48,13 @@ export function renderWithProviders(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <AuthContext.Provider value={authValue}>
-          <BrowserRouter>{children}</BrowserRouter>
-        </AuthContext.Provider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <AuthContext.Provider value={authValue}>
+            <SettingsProvider>
+              <BrowserRouter>{children}</BrowserRouter>
+            </SettingsProvider>
+          </AuthContext.Provider>
+        </ThemeProvider>
       </QueryClientProvider>
     );
   }

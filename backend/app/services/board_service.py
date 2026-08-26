@@ -169,14 +169,14 @@ class BoardService:
         user_name = user.full_name or user.email
 
         # In-App Notification to Invited User
-        invite_notif = Notification(
+        from app.services.notification_service import NotificationService
+        NotificationService.create_notification(
             user_id=user.id,
             type='board_invite',
             title='Board Invitation',
             message=f'{actor_name} invited you to join "{board.name}" as {role.capitalize()}',
             link=f'/boards/{board_id}'
         )
-        db.session.add(invite_notif)
 
         # Audit log
         activity = Activity(

@@ -59,11 +59,13 @@ import { BoardMembers } from "../board/BoardMembers";
 import { InviteMemberDialog } from "../board/InviteMemberDialog";
 
 import { useActivity } from "@/hooks/useActivity";
+import { useSettings } from "@/contexts/SettingsContext";
 
 export function KanbanBoard() {
   const { boardId } = useParams<{ boardId: string }>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+  const { settings, playSound } = useSettings();
   const [board, setBoard] = useState<Board | null>(null);
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
 
@@ -111,7 +113,9 @@ export function KanbanBoard() {
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all"); // 'all' | 'me' | userId
   const [tagFilter, setTagFilter] = useState<string>("all"); // 'all' | tagName
   const [isTrashOpen, setIsTrashOpen] = useState(false);
-  const [activeView, setActiveView] = useState<"overview" | "list" | "board" | "calendar" | "documents" | "members">("board");
+  const [activeView, setActiveView] = useState<"overview" | "list" | "board" | "calendar" | "documents" | "members">(
+    (settings.defaultBoardView as any) || "board"
+  );
   
   const { addActivity, setBoardId, refreshActivities } = useActivity();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -264,19 +268,29 @@ export function KanbanBoard() {
           ...filtered.slice(insertIdx),
         ];
 
-        // Auto-adjust task progress based on milestone columns
+        // Auto-adjust task progress based on milestone columns if enabled
         const visibleCols = columns.filter((c) => c.id !== "archive");
+        const isDoneCol = targetStatus === 'done' || targetStatus === visibleCols[visibleCols.length - 1]?.id;
         let newProgress = activeTaskItem.progress;
-        if (targetStatus === 'done' || targetStatus === visibleCols[visibleCols.length - 1]?.id) {
-          newProgress = 100;
-        } else if (targetStatus === 'todo' || targetStatus === visibleCols[0]?.id) {
-          newProgress = 0;
-        } else if (targetStatus === 'in_progress') {
-          newProgress = 30;
-        } else if (activeTaskItem.progress === 100 || activeTaskItem.progress <= 10) {
-          newProgress = 50;
+
+        if (settings.autoProgressSnapping) {
+          if (isDoneCol) {
+            newProgress = 100;
+          } else if (targetStatus === 'todo' || targetStatus === visibleCols[0]?.id) {
+            newProgress = 0;
+          } else if (targetStatus === 'in_progress') {
+            newProgress = 30;
+          } else if (activeTaskItem.progress === 100 || activeTaskItem.progress <= 10) {
+            newProgress = 50;
+          }
         }
         updateTask(activeId, { status: targetStatus, progress: newProgress });
+
+        if (isDoneCol) {
+          playSound("complete");
+        } else {
+          playSound("move");
+        }
       }
 
       // Continuous 1000-based position indices for MySQL persistence
@@ -288,7 +302,7 @@ export function KanbanBoard() {
 
       reorderTasks(reorderItems);
     },
-    [permissions.isReadOnly, tasks, columns, updateTask, reorderTasks]
+    [permissions.isReadOnly, tasks, columns, updateTask, reorderTasks, settings.autoProgressSnapping, playSound]
   );
 
   const handleTaskClick = useCallback((task: Task) => {

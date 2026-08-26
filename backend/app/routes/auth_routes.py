@@ -88,6 +88,8 @@ def update_me():
         
     if 'fullName' in data:
         user.full_name = data['fullName'].strip()
+    if 'avatarUrl' in data:
+        user.avatar_url = data['avatarUrl']
     if 'password' in data and data['password']:
         current_password = data.get('currentPassword') or ''
         if not current_password or not user.check_password(current_password):
