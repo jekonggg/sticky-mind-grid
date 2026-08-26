@@ -254,34 +254,32 @@ Large base64 strings stored in LONGTEXT columns can cause database bloat and slo
 
 ### Framework
 - **Frontend:** Vitest 3.2.4 + React Testing Library 16 + jsdom
-- **Backend:** pytest (not in requirements.txt, installed separately)
-- **E2E:** Playwright (installed, configured, no tests written)
-- **CI:** GitHub Actions runs backend pytest + frontend typecheck + vitest
+- **Backend:** pytest (configured with SQLite in-memory test database)
+- **E2E:** Playwright 1.57.0 (12 spec suites covering core user workflows)
+- **CI:** GitHub Actions runs backend pytest + frontend typecheck + vitest + Playwright E2E
 
 ### Existing Tests
 
-| Area | Framework | Tests | Coverage |
-|------|-----------|-------|----------|
-| Auth (register/login/profile) | pytest | 9 | Good — happy + error paths |
-| Tasks (CRUD lifecycle) | pytest | 1 | Single integration test |
-| RBAC (role matrix) | pytest | 19 | Excellent — full matrix + edge cases |
-| Invitations (invite/accept/decline) | pytest | 5 | Good — lifecycle + notifications |
-| BoardCard component | Vitest | 3 | Partial — renders, owner vs non-owner menu |
-| BoardMembers component | Vitest | 2 | Partial — renders members, leave action |
-| NotificationBell component | Vitest | 2 | Partial — badge, mark all read |
-| BoardsOverview invitations | Vitest | 2 | Partial — banner, accept invitation |
+| Area | Framework | Tests / Suites | Coverage |
+|------|-----------|----------------|----------|
+| Auth (register/login/profile) | pytest | 9 tests | Good — happy + error paths |
+| Tasks (CRUD lifecycle) | pytest | 1 test | Single integration test |
+| RBAC (role matrix) | pytest | 19 tests | Excellent — full matrix + edge cases |
+| Invitations (invite/accept/decline) | pytest | 5 tests | Good — lifecycle + notifications |
+| BoardCard component | Vitest | 3 tests | Partial — renders, owner vs non-owner menu |
+| BoardMembers component | Vitest | 2 tests | Partial — renders members, leave action |
+| NotificationBell component | Vitest | 2 tests | Partial — badge, mark all read |
+| BoardsOverview invitations | Vitest | 2 tests | Partial — banner, accept invitation |
+| E2E User Journeys & Workflows | Playwright | 12 spec files | Broad — auth, boards, kanban, members, activity, notifications, documents, filters, navigation, overview, settings, trash |
 
 ### Missing Test Areas
 
-**Frontend (critical gaps):**
-- All hooks (useTasks, useBoards, useActivity, useBoardPermissions, useBoardRealtime)
-- All services (authApi, boardApi, taskApi, etc.)
+**Frontend Unit/Component (critical gaps):**
+- Custom hooks (`useTasks`, `useBoards`, `useActivity`, `useBoardPermissions`, `useBoardRealtime`)
+- API service layers (`authApi`, `boardApi`, `taskApi`, etc.)
 - AuthContext logic
-- KanbanBoard and drag-and-drop behavior
-- Task creation/editing forms
-- Login and Register pages
-- Route guards and navigation
-- Calendar, Documents, List views
+- Task creation/editing modal form interactions
+- Calendar and List view components
 
 **Backend (critical gaps):**
 - Board CRUD endpoints (create, update, list)
@@ -293,9 +291,6 @@ Large base64 strings stored in LONGTEXT columns can cause database bloat and slo
 - File upload/download
 - Notes API
 - Edge cases (malformed JSON, concurrent modifications, expired tokens)
-
-**E2E:**
-- Zero Playwright tests exist
 
 ---
 

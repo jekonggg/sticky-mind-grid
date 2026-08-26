@@ -50,12 +50,18 @@ Set `VITE_API_BASE_URL` in `.env` (defaults to `http://127.0.0.1:5000/api`).
 ### Testing
 
 ```bash
-# Frontend
+# Frontend Unit & Component Tests (Vitest)
 npm run test                 # Vitest single run
 npm run test:watch           # Vitest watch mode
-npx tsc --noEmit             # Type checking
 
-# Backend
+# End-to-End Tests (Playwright)
+npm run test:e2e             # Playwright headless run
+npm run test:e2e:ui          # Playwright interactive UI mode
+
+# Type Checking
+npx tsc --noEmit             # TypeScript typecheck
+
+# Backend Tests (pytest)
 cd backend
 pytest tests -v
 ```

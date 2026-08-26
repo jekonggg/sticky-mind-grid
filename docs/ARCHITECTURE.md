@@ -520,28 +520,27 @@ Two decorators enforce access:
 
 ## Testing Architecture
 
-### Frontend
-
+### Frontend Unit & Component Testing
 - **Framework:** Vitest + React Testing Library + jsdom
 - **Setup:** `src/test/setup.ts` mocks browser APIs and ActivityContext
 - **Utilities:** `src/test/test-utils.tsx` provides `renderWithProviders()` with QueryClient, AuthContext, BrowserRouter
-- **Existing tests:** 9 real tests across 4 test files (BoardCard, BoardMembers, NotificationBell, BoardsOverview) + 1 placeholder (`example.test.ts`)
-- **Coverage gaps:** No tests for hooks, services, contexts, kanban logic, drag-and-drop, forms, routing
+- **Scope:** Fast, isolated testing of pure functions, utility helpers, custom hooks, React UI components, API services, and contexts
 
-### Backend
-
+### Backend Testing
 - **Framework:** pytest
 - **Setup:** `backend/tests/conftest.py` provides Flask test client, auth headers, factory functions
 - **Database:** SQLite in-memory for test isolation
-- **Existing tests:** 34 tests across 4 test files (auth: 9, tasks: 1, RBAC: 19, invitations: 5)
-- **Coverage gaps:** No tests for board CRUD, file uploads, notes, notifications API, activities API, SSE endpoint, trash/restore flow
+- **Scope:** REST API endpoints, RBAC permissions, service business logic, cascading deletes, and database models
 
-### E2E
+### End-to-End (E2E) Testing
+- **Framework:** Playwright (`@playwright/test`)
+- **Configuration:** `playwright.config.ts` (manages test directory `./e2e`, local webServer, trace capture, and reporters)
+- **Scope:** Real browser-based automation covering full user journeys, authentication lifecycle, board CRUD, kanban drag-and-drop, permissions, notifications, activity feeds, documents, settings, and regression prevention
+- **Test Specs:** Located in `e2e/` (e.g., `auth.spec.ts`, `boards.spec.ts`, `kanban.spec.ts`, `members.spec.ts`, `activity.spec.ts`, `notifications.spec.ts`, etc.)
 
-- **Framework:** Playwright (installed, configured)
-- **Tests:** None — config is scaffolded but no spec files exist
-
-### CI
-
+### CI / Automation
 - GitHub Actions workflow at `.github/workflows/test.yml`
-- Runs backend pytest + frontend typecheck + vitest on push/PR to `main` and `MultiUserCollab`
+- Runs three parallel/staged jobs on push/PR to `main` and `MultiUserCollab`:
+  1. `backend-tests`: Installs dependencies and runs `pytest tests -v`
+  2. `frontend-tests`: Runs `npx tsc --noEmit` and `npm run test` (Vitest)
+  3. `e2e-tests`: Installs browser binaries and runs `npx playwright test` with artifact reporting

@@ -122,16 +122,81 @@ backend/
 11. **No unused variable warnings.** ESLint has `no-unused-vars` turned off. Don't rely on the linter to catch dead code.
 12. **Preserve existing behavior.** Unless explicitly asked to change behavior, maintain current functionality.
 
+## Development & Testing Lifecycle
+
+Every feature or ticket must follow this structured lifecycle to ensure code quality, regression prevention, and architectural consistency:
+
+```
+Feature / Ticket
+       ↓
+Understand Requirements (Inspect models, services, components)
+       ↓
+Implement (Follow existing conventions & architecture)
+       ↓
+Vitest Tests (Fast unit/component/hook coverage)
+       ↓
+Playwright Tests (E2E user journey & regression coverage)
+       ↓
+Run Full Test Suite (Vitest + Playwright + Pytest + Typecheck + Lint)
+       ↓
+Review (Self-audit against architecture & conventions)
+       ↓
+Complete (Definition of Done satisfied)
+```
+
+## Testing Strategy & Responsibilities
+
+Testing is divided across three dedicated layers with distinct responsibilities:
+
+### 1. Vitest (Frontend Unit & Component Testing)
+Use for fast, isolated testing of:
+- **Pure functions & utility functions:** `src/utils/` calculations, formatters, and helpers.
+- **Custom hooks:** `useTasks`, `useBoards`, `useBoardPermissions`, `useBoardRealtime`, etc.
+- **React components:** UI components, modals, dialogs, form inputs, and state rendering.
+- **Services & API logic:** API utility wrappers, data transformation functions.
+- **State management & contexts:** `AuthContext`, `ActivityContext`, query caching logic.
+- **Error handling & edge cases:** Component fallback states, empty states, and validation errors.
+
+### 2. Playwright (End-to-End Browser Testing)
+Use for realistic, browser-based validation of complete user workflows:
+- **Authentication workflows:** Register, login, logout, session persistence, route redirects.
+- **Critical user journeys:** Multi-step board and task workflows across views.
+- **CRUD workflows:** Creating, editing, archiving, restoring, and deleting boards/tasks/notes.
+- **Complex UI interactions:** Drag-and-drop card movements between columns, reordering.
+- **Forms & validation:** Submitting task details, board settings, invite dialogs.
+- **File interactions:** Attachment uploads, download actions, preview rendering.
+- **Role-based UI behavior:** Owner vs admin vs member vs viewer permissions and action availability.
+- **Regression scenarios:** Verifying critical paths remain functional after major changes.
+
+> **Rule on E2E scope:** Do not require every small code change (e.g., minor style tweak or pure helper fix) to have a new Playwright test if the change does not introduce or modify a user-facing workflow. Focus Playwright on user-facing journeys and workflow regressions.
+
+### 3. Pytest (Backend API & Service Testing)
+Use for server-side validation against in-memory SQLite:
+- **API routes & endpoints:** Request parsing, status codes, response payloads.
+- **Service layer:** Business logic in `BoardService`, `TaskService`, `CommentService`, etc.
+- **RBAC decorators:** Role verification (`owner`, `admin`, `member`, `viewer`).
+- **Database transactions & cascading:** Integrity of foreign keys, soft delete vs hard delete.
+
+---
+
 ## Testing Instructions
 
-### Frontend Tests
+### Frontend Unit & Component Tests (Vitest)
 ```bash
 npm run test          # Single run (vitest run)
 npm run test:watch    # Watch mode
 ```
-Tests are in `src/test/`. The setup file (`src/test/setup.ts`) mocks browser APIs and the ActivityContext. Custom `renderWithProviders` wrapper in `src/test/test-utils.tsx` provides QueryClient, AuthContext, and BrowserRouter.
+Tests are in `src/test/` (or co-located `*.test.tsx`). The setup file (`src/test/setup.ts`) mocks browser APIs and the ActivityContext. Custom `renderWithProviders` wrapper in `src/test/test-utils.tsx` provides QueryClient, AuthContext, and BrowserRouter.
 
-### Backend Tests
+### End-to-End Tests (Playwright)
+```bash
+npm run test:e2e          # Run all E2E tests headless
+npm run test:e2e:ui       # Interactive UI mode
+npm run test:e2e:report   # View last test run report
+```
+E2E tests reside in `e2e/`. They run against the active application to validate full browser flows, drag-and-drop, authentication, and board views.
+
+### Backend Tests (Pytest)
 ```bash
 cd backend
 pip install pytest    # If not installed
@@ -139,18 +204,34 @@ pytest tests -v
 ```
 Tests use SQLite in-memory database (`TestConfig` in `conftest.py`). Fixtures provide Flask client, auth headers, and factory functions for users/boards.
 
-### Type Checking
+### Type Checking & Linting
 ```bash
-npx tsc --noEmit
+npx tsc --noEmit      # TypeScript check
+npm run lint          # ESLint check
 ```
 
-### Linting
-```bash
-npm run lint
-```
+### Full Verification Command Checklist
+Before concluding work on a feature, run:
+1. `npm run test` (Vitest suite)
+2. `npm run test:e2e` (Playwright E2E suite)
+3. `pytest tests -v` (Backend Pytest suite, from `backend/`)
+4. `npx tsc --noEmit` (TypeScript typecheck)
+5. `npm run lint` (ESLint)
 
 ### CI
-GitHub Actions workflow (`.github/workflows/test.yml`) runs backend pytest and frontend typecheck + vitest on push/PR to `main` and `MultiUserCollab` branches.
+GitHub Actions workflow (`.github/workflows/test.yml`) runs backend pytest, frontend typecheck + vitest, and Playwright E2E tests on push/PR to `main` and `MultiUserCollab` branches.
+
+## Definition of Done
+
+A feature, ticket, or bug fix is strictly considered **Complete** only when all of the following criteria are met:
+
+1. **Implementation Complete:** Code meets feature specifications and complies with project architecture and coding conventions.
+2. **Vitest Tests:** Appropriate unit, hook, or component tests exist or have been updated for new logic.
+3. **Playwright Tests:** Appropriate E2E tests exist or have been updated whenever a user workflow or interactive flow is added or modified.
+4. **Backend Tests:** Backend API endpoints, RBAC rules, and service logic are validated with pytest.
+5. **Full Suite Green:** All test suites (Vitest, Playwright, Pytest), TypeScript typecheck, and ESLint pass without failures.
+6. **No Regressions:** No unrelated functionality or existing test suites are broken.
+7. **Documentation Updated:** Documentation is updated when the workflow, API contract, models, or architectural behavior changes (see Documentation Maintenance below).
 
 ## Documentation Maintenance
 
