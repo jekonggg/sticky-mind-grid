@@ -253,10 +253,10 @@ Large base64 strings stored in LONGTEXT columns can cause database bloat and slo
 ## Testing Status
 
 ### Framework
-- **Frontend:** Vitest 3.2.4 + React Testing Library 16 + jsdom
-- **Backend:** pytest (configured with SQLite in-memory test database)
-- **E2E:** Playwright 1.57.0 (12 spec suites covering core user workflows)
-- **CI:** GitHub Actions runs backend pytest + frontend typecheck + vitest + Playwright E2E
+- **Frontend:** Vitest 3.2.4 + React Testing Library 16 + jsdom + `@vitest/coverage-v8`
+- **Backend:** pytest + `pytest-cov` (configured with SQLite in-memory test database, 73% coverage)
+- **E2E:** Playwright 1.57.0 (12 spec suites covering 117 tests)
+- **CI:** GitHub Actions runs backend pytest + coverage, frontend typecheck + vitest coverage, and full-stack Playwright E2E
 
 ### Existing Tests
 
@@ -264,33 +264,31 @@ Large base64 strings stored in LONGTEXT columns can cause database bloat and slo
 |------|-----------|----------------|----------|
 | Auth (register/login/profile) | pytest | 9 tests | Good — happy + error paths |
 | Tasks (CRUD lifecycle) | pytest | 1 test | Single integration test |
+| Boards (CRUD lifecycle & cascade) | pytest | 5 tests | Good — create, get, list, update, cascade delete |
+| Notes (CRUD lifecycle) | pytest | 1 test | Good — create, list, update, delete |
 | RBAC (role matrix) | pytest | 19 tests | Excellent — full matrix + edge cases |
 | Invitations (invite/accept/decline) | pytest | 5 tests | Good — lifecycle + notifications |
+| System & User Preferences | pytest | 5 tests | Good — health check, preferences, export |
 | BoardCard component | Vitest | 3 tests | Partial — renders, owner vs non-owner menu |
 | BoardMembers component | Vitest | 2 tests | Partial — renders members, leave action |
 | NotificationBell component | Vitest | 2 tests | Partial — badge, mark all read |
 | BoardsOverview invitations | Vitest | 2 tests | Partial — banner, accept invitation |
-| E2E User Journeys & Workflows | Playwright | 12 spec files | Broad — auth, boards, kanban, members, activity, notifications, documents, filters, navigation, overview, settings, trash |
+| SettingsModal component & tabs | Vitest | 6 tests | Good — rendering, tabs, theme, data export |
+| useBoardPermissions hook | Vitest | 6 tests | Excellent — full role matrix derivation |
+| apiUtils service helper | Vitest | 3 tests | Good — token injection, FormData, 401 redirect |
+| E2E User Journeys & Workflows | Playwright | 12 spec files (117 tests) | Broad — auth, boards, kanban, members, activity, notifications, documents, filters, navigation, overview, settings, trash |
 
 ### Missing Test Areas
 
-**Frontend Unit/Component (critical gaps):**
-- Custom hooks (`useTasks`, `useBoards`, `useActivity`, `useBoardPermissions`, `useBoardRealtime`)
-- API service layers (`authApi`, `boardApi`, `taskApi`, etc.)
-- AuthContext logic
+**Frontend Unit/Component:**
+- Remaining custom hooks (`useTasks`, `useBoards`, `useActivity`, `useBoardRealtime`)
+- Specialized API service wrappers (`boardApi`, `taskApi`, etc.)
 - Task creation/editing modal form interactions
-- Calendar and List view components
 
-**Backend (critical gaps):**
-- Board CRUD endpoints (create, update, list)
-- Board member management API (remove, update role)
-- Trash/restore flow (only RBAC tested, not the actual flow)
-- SSE/events endpoint
-- Activities API
-- Notifications API
-- File upload/download
-- Notes API
-- Edge cases (malformed JSON, concurrent modifications, expired tokens)
+**Backend:**
+- Activities API (clear history)
+- File upload extension & size validation
+- SSE/events endpoint concurrency
 
 ---
 

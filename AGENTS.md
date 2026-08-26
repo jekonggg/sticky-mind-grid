@@ -185,6 +185,7 @@ Use for server-side validation against in-memory SQLite:
 ```bash
 npm run test          # Single run (vitest run)
 npm run test:watch    # Watch mode
+npm run test:coverage # Generate V8 test coverage report
 ```
 Tests are in `src/test/` (or co-located `*.test.tsx`). The setup file (`src/test/setup.ts`) mocks browser APIs and the ActivityContext. Custom `renderWithProviders` wrapper in `src/test/test-utils.tsx` provides QueryClient, AuthContext, and BrowserRouter.
 
@@ -199,10 +200,15 @@ E2E tests reside in `e2e/`. They run against the active application to validate 
 ### Backend Tests (Pytest)
 ```bash
 cd backend
-pip install pytest    # If not installed
-pytest tests -v
+pytest tests -v                 # Run all backend tests
+pytest --cov=app tests -v       # Run with code coverage report
 ```
 Tests use SQLite in-memory database (`TestConfig` in `conftest.py`). Fixtures provide Flask client, auth headers, and factory functions for users/boards.
+
+### Database Isolation Policy
+- **Primary Dev Database (`sticky_mind_grid`):** Reserved for manual development. Automated test suites should never execute against or modify your primary dev database.
+- **E2E Test Database (`sticky_mind_grid_test` / CI ephemeral SQLite):** Dedicated database used for E2E browser tests to ensure clean, repeatable runs without polluting or wiping sample tasks.
+- **Pytest Database (`sqlite:///:memory:`):** In-memory ephemeral database created and destroyed per test.
 
 ### Type Checking & Linting
 ```bash
@@ -212,14 +218,14 @@ npm run lint          # ESLint check
 
 ### Full Verification Command Checklist
 Before concluding work on a feature, run:
-1. `npm run test` (Vitest suite)
+1. `npm run test:coverage` (Vitest suite with coverage)
 2. `npm run test:e2e` (Playwright E2E suite)
-3. `pytest tests -v` (Backend Pytest suite, from `backend/`)
+3. `pytest --cov=app tests -v` (Backend Pytest suite with coverage, from `backend/`)
 4. `npx tsc --noEmit` (TypeScript typecheck)
 5. `npm run lint` (ESLint)
 
 ### CI
-GitHub Actions workflow (`.github/workflows/test.yml`) runs backend pytest, frontend typecheck + vitest, and Playwright E2E tests on push/PR to `main` and `MultiUserCollab` branches.
+GitHub Actions workflow (`.github/workflows/test.yml`) runs backend pytest with coverage, frontend typecheck + vitest coverage, and full-stack Playwright E2E tests on push/PR to `main` and `MultiUserCollab` branches.
 
 ## Definition of Done
 

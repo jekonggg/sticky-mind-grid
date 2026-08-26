@@ -8,7 +8,7 @@ on:
 
 jobs:
   backend-tests:
-    name: Backend API & RBAC Tests
+    name: Backend API, RBAC & Coverage Suite
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -26,13 +26,12 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest
 
-      - name: Run Backend Pytest Suite
-        run: pytest tests -v
+      - name: Run Backend Pytest Suite with Coverage
+        run: pytest --cov=app tests -v
 
   frontend-tests:
-    name: Frontend Typecheck & Vitest Suite
+    name: Frontend Typecheck & Vitest Coverage
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -50,15 +49,49 @@ jobs:
       - name: TypeScript Typecheck
         run: npx tsc --noEmit
 
-      - name: Run Vitest Suite
-        run: npm run test
+      - name: Run Vitest Suite with Coverage
+        run: npm run test:coverage
 
   e2e-tests:
-    name: Playwright E2E Tests
+    name: Playwright Full-Stack E2E Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Setup Python for Backend
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Backend Dependencies
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+
+      - name: Seed Ephemeral CI Test Database (SQLite)
+        working-directory: backend
+        env:
+          DATABASE_URL: "sqlite:////tmp/e2e_ci.db"
+        run: |
+          python seed.py
+
+      - name: Start Flask Backend Daemon
+        working-directory: backend
+        env:
+          DATABASE_URL: "sqlite:////tmp/e2e_ci.db"
+        run: |
+          python run.py &
+          # Poll health endpoint until backend is ready
+          for i in {1..30}; do
+            if curl -s http://127.0.0.1:5000/api/health | grep -q "healthy"; then
+              echo "Backend is ready!"
+              break
+            fi
+            echo "Waiting for backend..."
+            sleep 1
+          done
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -66,13 +99,13 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Install Dependencies
+      - name: Install Frontend Dependencies
         run: npm ci
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright Tests
+      - name: Run Playwright E2E Tests
         run: npx playwright test
 
       - name: Upload Playwright Report

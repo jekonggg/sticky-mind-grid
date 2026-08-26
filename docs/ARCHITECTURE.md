@@ -521,26 +521,33 @@ Two decorators enforce access:
 ## Testing Architecture
 
 ### Frontend Unit & Component Testing
-- **Framework:** Vitest + React Testing Library + jsdom
+- **Framework:** Vitest + React Testing Library + jsdom + `@vitest/coverage-v8`
 - **Setup:** `src/test/setup.ts` mocks browser APIs and ActivityContext
 - **Utilities:** `src/test/test-utils.tsx` provides `renderWithProviders()` with QueryClient, AuthContext, BrowserRouter
-- **Scope:** Fast, isolated testing of pure functions, utility helpers, custom hooks, React UI components, API services, and contexts
+- **Scope:** Fast, isolated testing of pure functions, utility helpers, custom hooks (`useBoardPermissions`, `useTasks`), React UI components, API services (`apiUtils`), and contexts
+- **Commands:** `npm run test`, `npm run test:coverage`
 
 ### Backend Testing
-- **Framework:** pytest
+- **Framework:** pytest + `pytest-cov`
 - **Setup:** `backend/tests/conftest.py` provides Flask test client, auth headers, factory functions
-- **Database:** SQLite in-memory for test isolation
+- **Database:** SQLite in-memory (`sqlite:///:memory:`) for test isolation
 - **Scope:** REST API endpoints, RBAC permissions, service business logic, cascading deletes, and database models
+- **Commands:** `pytest tests -v`, `pytest --cov=app tests -v`
 
 ### End-to-End (E2E) Testing
 - **Framework:** Playwright (`@playwright/test`)
-- **Configuration:** `playwright.config.ts` (manages test directory `./e2e`, local webServer, trace capture, and reporters)
+- **Configuration:** `playwright.config.ts` (manages test directory `./e2e`, local webServer on port 5173, trace capture, and reporters)
 - **Scope:** Real browser-based automation covering full user journeys, authentication lifecycle, board CRUD, kanban drag-and-drop, permissions, notifications, activity feeds, documents, settings, and regression prevention
-- **Test Specs:** Located in `e2e/` (e.g., `auth.spec.ts`, `boards.spec.ts`, `kanban.spec.ts`, `members.spec.ts`, `activity.spec.ts`, `notifications.spec.ts`, etc.)
+- **Test Specs:** Located in `e2e/` (12 spec suites covering 117 tests)
+
+### Database Isolation Strategy
+- **Primary Dev Database (`sticky_mind_grid`):** Dedicated to manual development and developer data. Automated test runners never touch or mutate this database.
+- **CI / E2E Test Database (`sqlite:////tmp/e2e_ci.db` / `sticky_mind_grid_test`):** Dedicated ephemeral database seeded with `seed.py` for Playwright runs.
+- **Pytest Database (`sqlite:///:memory:`):** In-memory ephemeral database created and destroyed per test.
 
 ### CI / Automation
 - GitHub Actions workflow at `.github/workflows/test.yml`
 - Runs three parallel/staged jobs on push/PR to `main` and `MultiUserCollab`:
-  1. `backend-tests`: Installs dependencies and runs `pytest tests -v`
-  2. `frontend-tests`: Runs `npx tsc --noEmit` and `npm run test` (Vitest)
-  3. `e2e-tests`: Installs browser binaries and runs `npx playwright test` with artifact reporting
+  1. `backend-tests`: Installs Python dependencies and runs `pytest --cov=app tests -v`
+  2. `frontend-tests`: Runs `npx tsc --noEmit` and `npm run test:coverage` (Vitest with V8 coverage)
+  3. `e2e-tests`: Provisions and seeds a temporary SQLite test database, starts the Flask backend daemon, waits on `/api/health`, installs Node dependencies + Chromium, and executes `npx playwright test` with report artifacts.

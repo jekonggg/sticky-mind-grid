@@ -41,3 +41,16 @@ test-results/
 playwright-report/
 blob-report/
 .playwright/
+
+# Test coverage and reports
+coverage/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+backend/.pytest_cache/
+
+# Local test databases
+*.db
+*.sqlite
+*.sqlite3
