@@ -109,7 +109,8 @@ jobs:
       - name: Run Playwright E2E Tests
         run: |
           cd backend && python run.py &
-          sleep 3
+          cd .. && npx vite --host 127.0.0.1 --port 5173 &
+          sleep 5
           for i in {1..30}; do
             if curl -s http://127.0.0.1:5000/api/health | grep -q "healthy"; then
               echo "Backend is ready!"
@@ -118,8 +119,15 @@ jobs:
             echo "Waiting for backend..."
             sleep 1
           done
-          cd ..
-          npx playwright test
+          for i in {1..30}; do
+            if curl -s http://127.0.0.1:5173 > /dev/null 2>&1; then
+              echo "Frontend is ready!"
+              break
+            fi
+            echo "Waiting for frontend..."
+            sleep 1
+          done
+          ./node_modules/.bin/playwright test
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v4
