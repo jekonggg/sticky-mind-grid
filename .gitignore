@@ -42,6 +42,9 @@ playwright-report/
 blob-report/
 .playwright/
 
+# E2E test database
+e2e_test.db
+
 # Test coverage and reports
 coverage/
 .coverage

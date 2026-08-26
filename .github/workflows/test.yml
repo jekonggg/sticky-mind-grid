@@ -55,6 +55,21 @@ jobs:
   e2e-tests:
     name: Playwright Full-Stack E2E Tests
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: sticky_mind_grid_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: mysql+pymysql://root:root@127.0.0.1:3306/sticky_mind_grid_test
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -70,20 +85,14 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Seed Ephemeral CI Test Database (SQLite)
+      - name: Seed Test Database
         working-directory: backend
-        env:
-          DATABASE_URL: "sqlite:////tmp/e2e_ci.db"
-        run: |
-          python seed.py
+        run: python seed.py
 
       - name: Start Flask Backend Daemon
         working-directory: backend
-        env:
-          DATABASE_URL: "sqlite:////tmp/e2e_ci.db"
         run: |
           python run.py &
-          # Poll health endpoint until backend is ready
           for i in {1..30}; do
             if curl -s http://127.0.0.1:5000/api/health | grep -q "healthy"; then
               echo "Backend is ready!"

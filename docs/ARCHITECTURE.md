@@ -542,7 +542,8 @@ Two decorators enforce access:
 
 ### Database Isolation Strategy
 - **Primary Dev Database (`sticky_mind_grid`):** Dedicated to manual development and developer data. Automated test runners never touch or mutate this database.
-- **CI / E2E Test Database (`sqlite:////tmp/e2e_ci.db` / `sticky_mind_grid_test`):** Dedicated ephemeral database seeded with `seed.py` for Playwright runs.
+- **Local E2E Test Database (`sticky_mind_grid_test`):** MySQL database used by local Playwright runs. Seeded fresh before each run via `npm run test:e2e` (orchestrated by `e2e/run.mjs`). Isolated from the dev database.
+- **CI E2E Test Database (`sticky_mind_grid_test`):** MySQL database provisioned via GitHub Actions service container. Seeded fresh each CI run. Matches local and production MySQL.
 - **Pytest Database (`sqlite:///:memory:`):** In-memory ephemeral database created and destroyed per test.
 
 ### CI / Automation
@@ -550,4 +551,4 @@ Two decorators enforce access:
 - Runs three parallel/staged jobs on push/PR to `main` and `MultiUserCollab`:
   1. `backend-tests`: Installs Python dependencies and runs `pytest --cov=app tests -v`
   2. `frontend-tests`: Runs `npx tsc --noEmit` and `npm run test:coverage` (Vitest with V8 coverage)
-  3. `e2e-tests`: Provisions and seeds a temporary SQLite test database, starts the Flask backend daemon, waits on `/api/health`, installs Node dependencies + Chromium, and executes `npx playwright test` with report artifacts.
+  3. `e2e-tests`: Provisions a MySQL 8.0 service container (`sticky_mind_grid_test`), seeds it, starts the Flask backend daemon, waits on `/api/health`, installs Node dependencies + Chromium, and executes `npx playwright test` with report artifacts.
