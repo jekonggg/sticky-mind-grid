@@ -128,7 +128,7 @@ jobs:
           FLASK_DEBUG: "false"
         run: |
           cd backend && python run.py &
-          cd .. && ./node_modules/.bin/vite --host 127.0.0.1 --port 5173 &
+          ./node_modules/.bin/vite --host 127.0.0.1 --port 5173 &
           sleep 5
           BACKEND_READY=false
           for i in {1..30}; do
