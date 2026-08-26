@@ -88,11 +88,28 @@ jobs:
       - name: Seed Test Database
         working-directory: backend
         run: |
+          SEED_OK=false
           for i in {1..10}; do
-            python seed.py && break
+            if python seed.py; then
+              echo "Seed succeeded on attempt $i"
+              SEED_OK=true
+              break
+            fi
             echo "Seed attempt $i failed, retrying..."
             sleep 2
           done
+          if [ "$SEED_OK" != "true" ]; then
+            echo "ERROR: Seed failed after 10 attempts"
+            exit 1
+          fi
+          python -c "
+          from app import create_app, db
+          app = create_app()
+          with app.app_context():
+              result = db.session.execute(db.text('SHOW TABLES'))
+              tables = [row[0] for row in result]
+              print(f'DB OK - {len(tables)} tables: {tables}')
+          "
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -107,24 +124,35 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright E2E Tests
+        env:
+          FLASK_DEBUG: "false"
         run: |
           cd backend && python run.py &
-          cd .. && npx vite --host 127.0.0.1 --port 5173 &
+          cd .. && ./node_modules/.bin/vite --host 127.0.0.1 --port 5173 &
           sleep 5
+          BACKEND_READY=false
           for i in {1..30}; do
             if curl -s http://127.0.0.1:5000/api/health | grep -q "healthy"; then
               echo "Backend is ready!"
+              BACKEND_READY=true
               break
             fi
-            echo "Waiting for backend..."
+            echo "Waiting for backend... (attempt $i/30)"
             sleep 1
           done
+          if [ "$BACKEND_READY" != "true" ]; then
+            echo "ERROR: Backend failed to become healthy after 30 attempts"
+            curl -s http://127.0.0.1:5000/api/health || true
+            kill %1 2>/dev/null || true
+            kill %2 2>/dev/null || true
+            exit 1
+          fi
           for i in {1..30}; do
             if curl -s http://127.0.0.1:5173 > /dev/null 2>&1; then
               echo "Frontend is ready!"
               break
             fi
-            echo "Waiting for frontend..."
+            echo "Waiting for frontend... (attempt $i/30)"
             sleep 1
           done
           ./node_modules/.bin/playwright test
