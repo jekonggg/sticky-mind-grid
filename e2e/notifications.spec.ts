@@ -1,11 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { registerUser, uniqueEmail } from "./helpers";
 
-const TEST_EMAIL = uniqueEmail("notifications");
-
 test.describe("Notifications", () => {
   test.beforeEach(async ({ page }) => {
-    await registerUser(page, TEST_EMAIL);
+    await registerUser(page, uniqueEmail("notifications"));
   });
 
   test("shows notification bell in header", async ({ page }) => {

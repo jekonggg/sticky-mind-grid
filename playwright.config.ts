@@ -5,7 +5,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: process.env.CI ? "github" : "html",
   use: {
     baseURL: "http://localhost:5173",
@@ -14,13 +14,16 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1281, height: 720 },
+      },
     },
   ],
   webServer: process.env.CI
     ? undefined
     : {
-        command: "npm run dev",
+        command: "npm run dev -- --port 5173",
         url: "http://localhost:5173",
         reuseExistingServer: true,
         timeout: 120 * 1000,

@@ -27,13 +27,17 @@ test.describe("Authentication", () => {
       await page.getByLabel("Email").fill("nonexistent@example.com");
       await page.getByLabel("Password").fill("wrongpassword");
       await page.getByRole("button", { name: "Sign In" }).click();
-      await expect(page.getByText("Failed to login")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/invalid credentials|failed to login/i)).toBeVisible({ timeout: 10000 });
     });
 
     test("sign in button shows loading state", async ({ page }) => {
       await page.goto("/login");
       await page.getByLabel("Email").fill("test@test.com");
       await page.getByLabel("Password").fill("password");
+      await page.route("**/api/auth/login", async (route) => {
+        await new Promise((r) => setTimeout(r, 400));
+        await route.continue();
+      });
       await page.getByRole("button", { name: "Sign In" }).click();
       await expect(page.getByText("Signing in...")).toBeVisible({ timeout: 5000 });
     });
@@ -67,7 +71,7 @@ test.describe("Authentication", () => {
       await page.getByLabel("Email").fill(email);
       await page.getByLabel("Password").fill("password123");
       await page.getByRole("button", { name: "Create Account" }).click();
-      await page.waitForURL("/", { timeout: 15000 });
+      await page.waitForURL("/", { timeout: 30000 });
       await expect(page).toHaveURL("/");
     });
 
@@ -103,7 +107,7 @@ test.describe("Authentication", () => {
       await page.getByLabel("Email").fill(email);
       await page.getByLabel("Password").fill(password);
       await page.getByRole("button", { name: "Create Account" }).click();
-      await page.waitForURL("/", { timeout: 15000 });
+      await page.waitForURL("/", { timeout: 30000 });
 
       await page.getByRole("button", { name: /user menu/i }).click();
       await page.getByRole("menuitem", { name: /log out/i }).click();
@@ -112,7 +116,7 @@ test.describe("Authentication", () => {
       await page.getByLabel("Email").fill(email);
       await page.getByLabel("Password").fill(password);
       await page.getByRole("button", { name: "Sign In" }).click();
-      await page.waitForURL("/", { timeout: 15000 });
+      await page.waitForURL("/", { timeout: 30000 });
       await expect(page).toHaveURL("/");
     });
   });

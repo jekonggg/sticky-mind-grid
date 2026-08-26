@@ -198,6 +198,8 @@ export function BoardHeader({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
+                aria-label="User menu"
+                title="User menu"
                 className="relative h-9.5 w-9.5 rounded-full p-0 ring-2 ring-primary/20 hover:ring-primary/50 transition-all focus-visible:ring-primary"
               >
                 <Avatar className="h-9 w-9">

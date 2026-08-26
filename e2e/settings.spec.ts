@@ -1,17 +1,22 @@
 import { test, expect } from "@playwright/test";
 import { registerUser, uniqueEmail } from "./helpers";
 
-const TEST_EMAIL = uniqueEmail("settings");
-
 test.describe("Settings Modal", () => {
+  let currentEmail: string;
+
   test.beforeEach(async ({ page }) => {
-    await registerUser(page, TEST_EMAIL, "testpassword123", "Settings User");
+    currentEmail = uniqueEmail("settings");
+    await registerUser(page, currentEmail, "testpassword123", "Settings User");
     await page.getByRole("button", { name: /user menu/i }).click();
     await page.getByRole("menuitem", { name: /all settings/i }).click();
-    await expect(page.getByText("Settings")).toBeVisible();
+    await expect(page.getByRole("dialog")).toBeVisible();
   });
 
   test.describe("Profile tab", () => {
+    test.beforeEach(async ({ page }) => {
+      await page.getByRole("button", { name: "Account Profile" }).click();
+    });
+
     test("shows profile form fields", async ({ page }) => {
       await expect(page.locator("#fullName")).toBeVisible();
       await expect(page.locator("#email")).toBeVisible();
@@ -24,7 +29,7 @@ test.describe("Settings Modal", () => {
     });
 
     test("pre-fills email as disabled", async ({ page }) => {
-      await expect(page.locator("#email")).toHaveValue(TEST_EMAIL);
+      await expect(page.locator("#email")).toHaveValue(currentEmail);
     });
 
     test("shows password change fields", async ({ page }) => {
@@ -49,7 +54,7 @@ test.describe("Settings Modal", () => {
       await page.getByRole("button", { name: "Appearance" }).click();
       await expect(page.getByRole("button", { name: "Light" })).toBeVisible();
       await expect(page.getByRole("button", { name: "Dark" })).toBeVisible();
-      await expect(page.getByRole("button", { name: "System" })).toBeVisible();
+      await expect(page.getByRole("button", { name: /System.*Syncs/i })).toBeVisible();
     });
 
     test("shows theme descriptions", async ({ page }) => {
@@ -99,7 +104,7 @@ test.describe("Settings Modal", () => {
 
     test("can close settings with Escape", async ({ page }) => {
       await page.keyboard.press("Escape");
-      await expect(page.getByText("Settings")).not.toBeVisible();
+      await expect(page.getByRole("dialog")).not.toBeVisible();
     });
   });
 });

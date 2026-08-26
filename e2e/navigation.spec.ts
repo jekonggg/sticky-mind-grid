@@ -8,7 +8,7 @@ test.describe("Navigation", () => {
 
   test("404 page has link back to home", async ({ page }) => {
     await page.goto("/some-unknown-route");
-    await page.getByRole("link", { name: /go home/i }).click();
+    await page.getByRole("link", { name: /return to home/i }).click();
     await expect(page).toHaveURL("/login");
   });
 

@@ -7,14 +7,12 @@ import {
   uniqueEmail,
 } from "./helpers";
 
-const TEST_EMAIL = uniqueEmail("overview");
-
 test.describe("Board Overview", () => {
   test.beforeEach(async ({ page }) => {
-    await registerUser(page, TEST_EMAIL);
+    await registerUser(page, uniqueEmail("overview"));
     await createBoard(page, "Overview Test Board");
     await navigateToBoard(page, "Overview Test Board");
-    await page.getByRole("button", { name: "Overview" }).click();
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
   });
 
   test("shows Total Tasks stat", async ({ page }) => {
@@ -44,9 +42,9 @@ test.describe("Board Overview", () => {
   });
 
   test("updates task count after creating task", async ({ page }) => {
-    await page.getByRole("button", { name: "Board" }).click();
+    await page.getByRole("button", { name: "Board", exact: true }).click();
     await createTask(page, "Count Task");
-    await page.getByRole("button", { name: "Overview" }).click();
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
     await expect(page.locator("h3.text-3xl").first()).toHaveText("1");
   });
 });

@@ -1,20 +1,18 @@
 import { test, expect } from "@playwright/test";
 import { registerUser, createBoard, navigateToBoard, uniqueEmail } from "./helpers";
 
-const TEST_EMAIL = uniqueEmail("boards");
-
 test.describe("Boards Overview", () => {
   test.beforeEach(async ({ page }) => {
-    await registerUser(page, TEST_EMAIL);
+    await registerUser(page, uniqueEmail("boards"));
   });
 
   test("shows empty state for new user", async ({ page }) => {
     await expect(page.getByText("No boards yet")).toBeVisible();
-    await expect(page.getByText("Create your first board")).toBeVisible();
+    await expect(page.getByText(/Create your first board/)).toBeVisible();
   });
 
   test("shows page heading and branding", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: "Sticky Mind Grid" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sticky Mind Grid" }).first()).toBeVisible();
     await expect(page.getByText("Your boards, in one place.")).toBeVisible();
     await expect(page.getByText("My Boards")).toBeVisible();
   });
@@ -53,8 +51,8 @@ test.describe("Boards Overview", () => {
       await card.locator("button").last().click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
       await expect(page.getByText(/Delete "Delete Me"\?/)).toBeVisible();
-      await expect(page.getByText("This will permanently delete this board")).toBeVisible();
-      await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
+      await expect(page.getByText(/This will permanently delete this board/)).toBeVisible();
+      await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
       await expect(page.getByText("No boards yet")).toBeVisible({ timeout: 5000 });
     });
 
@@ -64,7 +62,7 @@ test.describe("Boards Overview", () => {
       await card.hover();
       await card.locator("button").last().click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
-      await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
+      await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click();
       await expect(page.getByRole("heading", { name: "Keep Me" })).toBeVisible();
     });
 
@@ -84,17 +82,17 @@ test.describe("Boards Overview", () => {
       await createBoard(page, "Backend API");
       await createBoard(page, "DevOps Pipeline");
       await page.getByPlaceholder("Search boards…").fill("Frontend");
-      await expect(page.getByRole("heading", { name: "Frontend App" })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Backend API" })).not.toBeVisible();
-      await expect(page.getByRole("heading", { name: "DevOps Pipeline" })).not.toBeVisible();
+      await expect(page.locator(".grid").getByRole("heading", { name: "Frontend App" })).toBeVisible();
+      await expect(page.locator(".grid").getByRole("heading", { name: "Backend API" })).not.toBeVisible();
+      await expect(page.locator(".grid").getByRole("heading", { name: "DevOps Pipeline" })).not.toBeVisible();
     });
 
     test("filters boards by description", async ({ page }) => {
       await createBoard(page, "Project Alpha", "Machine learning pipeline");
       await createBoard(page, "Project Beta", "Web application frontend");
       await page.getByPlaceholder("Search boards…").fill("machine learning");
-      await expect(page.getByRole("heading", { name: "Project Alpha" })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Project Beta" })).not.toBeVisible();
+      await expect(page.locator(".grid").getByRole("heading", { name: "Project Alpha" })).toBeVisible();
+      await expect(page.locator(".grid").getByRole("heading", { name: "Project Beta" })).not.toBeVisible();
     });
 
     test("shows no results message", async ({ page }) => {
@@ -107,10 +105,10 @@ test.describe("Boards Overview", () => {
       await createBoard(page, "Board One");
       await createBoard(page, "Board Two");
       await page.getByPlaceholder("Search boards…").fill("Board One");
-      await expect(page.getByRole("heading", { name: "Board Two" })).not.toBeVisible();
+      await expect(page.locator(".grid").getByRole("heading", { name: "Board Two" })).not.toBeVisible();
       await page.getByPlaceholder("Search boards…").clear();
-      await expect(page.getByRole("heading", { name: "Board One" })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Board Two" })).toBeVisible();
+      await expect(page.locator(".grid").getByRole("heading", { name: "Board One" })).toBeVisible();
+      await expect(page.locator(".grid").getByRole("heading", { name: "Board Two" })).toBeVisible();
     });
   });
 
@@ -120,10 +118,9 @@ test.describe("Boards Overview", () => {
       await createBoard(page, "Alpha Board");
       await page.getByRole("combobox").click();
       await page.getByRole("option", { name: "Name (A–Z)" }).click();
-      const cards = page.locator(".group.cursor-pointer");
-      const firstCardText = await cards.first().textContent();
-      const lastCardText = await cards.last().textContent();
-      expect(firstCardText?.indexOf("Alpha")).toBeLessThan(lastCardText?.indexOf("Zebra") ?? 0);
+      const cards = page.locator(".grid .group.cursor-pointer");
+      await expect(cards.first()).toContainText("Alpha Board");
+      await expect(cards.last()).toContainText("Zebra Board");
     });
 
     test("sorts boards by created date", async ({ page }) => {
@@ -131,7 +128,7 @@ test.describe("Boards Overview", () => {
       await createBoard(page, "Second Board");
       await page.getByRole("combobox").click();
       await page.getByRole("option", { name: "Created Date" }).click();
-      const cards = page.locator(".group.cursor-pointer");
+      const cards = page.locator(".grid .group.cursor-pointer");
       await expect(cards.first()).toContainText("Second Board");
       await expect(cards.last()).toContainText("First Board");
     });

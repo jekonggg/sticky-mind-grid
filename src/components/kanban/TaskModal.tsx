@@ -571,6 +571,7 @@ export function TaskModal({
                 <button
                   key={val}
                   type="button"
+                  data-state={progress === val ? "active" : "inactive"}
                   disabled={readOnly}
                   onClick={() => setProgress(val)}
                   className={`flex-1 py-1 text-[11px] font-bold rounded-lg border transition-all ${

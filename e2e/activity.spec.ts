@@ -7,11 +7,9 @@ import {
   uniqueEmail,
 } from "./helpers";
 
-const TEST_EMAIL = uniqueEmail("activity");
-
 test.describe("Activity Sidebar", () => {
   test.beforeEach(async ({ page }) => {
-    await registerUser(page, TEST_EMAIL);
+    await registerUser(page, uniqueEmail("activity"));
     await createBoard(page, "Activity Test Board");
     await navigateToBoard(page, "Activity Test Board");
   });
@@ -20,8 +18,8 @@ test.describe("Activity Sidebar", () => {
     await expect(page.getByText("History")).toBeVisible();
   });
 
-  test("shows empty state initially", async ({ page }) => {
-    await expect(page.getByText("No recent activity to show")).toBeVisible();
+  test("shows initial board creation activity", async ({ page }) => {
+    await expect(page.getByText(/Created board/i)).toBeVisible();
   });
 
   test("shows activity after creating a task", async ({ page }) => {

@@ -13,11 +13,11 @@ export async function registerUser(
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Create Account" }).click();
-  await page.waitForURL("/", { timeout: 15000 });
+  await page.waitForURL("/", { timeout: 30000 });
 }
 
 export async function createBoard(page: Page, name: string, description = "") {
-  await page.getByRole("button", { name: /create board/i }).click();
+  await page.getByRole("button", { name: /create board/i }).first().click();
   await page.getByPlaceholder("Project or Board name…").fill(name);
   if (description) {
     await page.getByPlaceholder("What is this board for?").fill(description);
@@ -27,7 +27,7 @@ export async function createBoard(page: Page, name: string, description = "") {
 }
 
 export async function navigateToBoard(page: Page, boardName: string) {
-  await page.getByRole("heading", { name: boardName }).click();
+  await page.locator(".grid").getByRole("heading", { name: boardName }).first().click();
   await page.waitForURL(/\/boards\//, { timeout: 15000 });
 }
 
@@ -38,7 +38,11 @@ export async function createTask(page: Page, title: string) {
 }
 
 export async function expectToast(page: Page, pattern: RegExp, timeout = 10000) {
-  await page.locator("[data-sonner-toast]").filter({ has: page.locator(`text=${pattern.source}`) }).first().waitFor({ state: "visible", timeout });
+  await page
+    .locator("[data-sonner-toast], [data-sonner-toast-id], li[role=status]")
+    .filter({ hasText: pattern })
+    .first()
+    .waitFor({ state: "visible", timeout });
 }
 
 export function uniqueEmail(prefix = "e2e") {

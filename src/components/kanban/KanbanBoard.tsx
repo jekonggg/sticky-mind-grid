@@ -99,7 +99,6 @@ export function KanbanBoard() {
     reorderTasks,
     moveTask,
     deleteTask,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     addColumn,
     fetchTasks,
     getTasksByStatus,
@@ -530,6 +529,7 @@ export function KanbanBoard() {
                 {views.map((view) => (
                   <button 
                     key={view.id} 
+                    aria-selected={activeView === view.id}
                     onClick={() => setActiveView(view.id)} 
                     className={`px-5 py-2 text-xs font-black uppercase tracking-widest transition-all rounded-full relative z-10 
                       ${activeView === view.id 

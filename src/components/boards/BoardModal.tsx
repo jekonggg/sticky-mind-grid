@@ -179,7 +179,7 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
     if (!name.trim()) return;
 
     const finalUrl = sanitizeImageUrl(heroImageUrl);
-    let finalColumns = [...columns];
+    const finalColumns = [...columns];
     if (!finalColumns.some((c) => c.id === "archive")) {
       finalColumns.push({ id: "archive", title: "Archive", emoji: "📦" });
     }

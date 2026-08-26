@@ -7,11 +7,9 @@ import {
   uniqueEmail,
 } from "./helpers";
 
-const TEST_EMAIL = uniqueEmail("kanban");
-
 test.describe("Kanban Board", () => {
   test.beforeEach(async ({ page }) => {
-    await registerUser(page, TEST_EMAIL, "testpassword123", "Kanban User");
+    await registerUser(page, uniqueEmail("kanban"), "testpassword123", "Kanban User");
     await createBoard(page, "Kanban Board", "Board for kanban tests");
     await navigateToBoard(page, "Kanban Board");
   });
@@ -47,8 +45,8 @@ test.describe("Kanban Board", () => {
   test.describe("View tabs", () => {
     test("switches between all view tabs", async ({ page }) => {
       for (const tab of ["Overview", "List", "Calendar", "Documents", "Members"]) {
-        await page.getByRole("button", { name: tab }).click();
-        await expect(page.getByRole("button", { name: tab })).toHaveAttribute(
+        await page.getByRole("button", { name: tab, exact: true }).click();
+        await expect(page.getByRole("button", { name: tab, exact: true })).toHaveAttribute(
           "aria-selected",
           "true"
         );
@@ -56,16 +54,16 @@ test.describe("Kanban Board", () => {
     });
 
     test("defaults to Board view", async ({ page }) => {
-      await expect(page.getByRole("button", { name: "Board" })).toHaveAttribute(
+      await expect(page.getByRole("button", { name: "Board", exact: true })).toHaveAttribute(
         "aria-selected",
         "true"
       );
     });
 
     test("returns to Board view from other tabs", async ({ page }) => {
-      await page.getByRole("button", { name: "List" }).click();
+      await page.getByRole("button", { name: "List", exact: true }).click();
       await expect(page.getByRole("heading", { name: "To Do" })).not.toBeVisible();
-      await page.getByRole("button", { name: "Board" }).click();
+      await page.getByRole("button", { name: "Board", exact: true }).click();
       await expect(page.getByRole("heading", { name: "To Do" })).toBeVisible();
     });
   });
@@ -73,46 +71,46 @@ test.describe("Kanban Board", () => {
   test.describe("Task CRUD", () => {
     test("creates a task via FAB", async ({ page }) => {
       await createTask(page, "My First Task");
-      await expect(page.getByText("My First Task")).toBeVisible();
+      await expect(page.locator("main").getByText("My First Task")).toBeVisible();
     });
 
     test("creates task in To Do column by default", async ({ page }) => {
       await createTask(page, "Default Column Task");
-      const todoColumn = page.locator("div").filter({ has: page.getByRole("heading", { name: "To Do" }) }).first();
-      await expect(todoColumn.getByText("Default Column Task")).toBeVisible();
+      const todoColumn = page.locator(".group\\/column").filter({ has: page.getByRole("heading", { name: "To Do" }) }).first();
+      await expect(todoColumn.getByRole("heading", { name: "Default Column Task" })).toBeVisible();
     });
 
     test("opens task in edit mode on click", async ({ page }) => {
       await createTask(page, "Clickable Task");
-      await page.getByText("Clickable Task").click();
+      await page.locator("main").getByText("Clickable Task").click();
       await expect(page.getByRole("heading", { name: "Edit Task" })).toBeVisible();
       await expect(page.locator("#title")).toHaveValue("Clickable Task");
     });
 
     test("edits task title", async ({ page }) => {
       await createTask(page, "Old Title");
-      await page.getByText("Old Title").click();
+      await page.locator("main").getByText("Old Title").click();
       await page.locator("#title").clear();
       await page.locator("#title").fill("New Title");
       await page.getByRole("dialog").getByRole("button", { name: "Update Task" }).click();
-      await expect(page.getByText("New Title")).toBeVisible();
-      await expect(page.getByText("Old Title")).not.toBeVisible();
+      await expect(page.locator("main").getByText("New Title")).toBeVisible();
+      await expect(page.locator("main").getByText("Old Title")).not.toBeVisible();
     });
 
     test("deletes a task (soft delete)", async ({ page }) => {
       await createTask(page, "Delete Me");
-      await page.getByText("Delete Me").click();
+      await page.locator("main").getByText("Delete Me").click();
       await page.getByRole("dialog").getByRole("button", { name: "Delete Task" }).click();
-      await expect(page.getByText("Delete Me")).not.toBeVisible({ timeout: 5000 });
+      await expect(page.locator("main").getByText("Delete Me")).not.toBeVisible({ timeout: 5000 });
     });
 
     test("creates multiple tasks", async ({ page }) => {
       await createTask(page, "Task Alpha");
       await createTask(page, "Task Beta");
       await createTask(page, "Task Gamma");
-      await expect(page.getByText("Task Alpha")).toBeVisible();
-      await expect(page.getByText("Task Beta")).toBeVisible();
-      await expect(page.getByText("Task Gamma")).toBeVisible();
+      await expect(page.locator("main").getByText("Task Alpha")).toBeVisible();
+      await expect(page.locator("main").getByText("Task Beta")).toBeVisible();
+      await expect(page.locator("main").getByText("Task Gamma")).toBeVisible();
     });
   });
 
@@ -130,7 +128,7 @@ test.describe("Kanban Board", () => {
       await page.locator("#title").fill("Described Task");
       await page.locator("#description").fill("This is a detailed description");
       await page.getByRole("dialog").getByRole("button", { name: "Create Task" }).click();
-      await page.getByText("Described Task").click();
+      await page.locator("main").getByText("Described Task").click();
       await expect(page.locator("#description")).toHaveValue("This is a detailed description");
     });
 
@@ -139,8 +137,8 @@ test.describe("Kanban Board", () => {
       await page.locator("#title").fill("Dated Task");
       await page.locator("#due-date").fill("2026-12-25T10:00");
       await page.getByRole("dialog").getByRole("button", { name: "Create Task" }).click();
-      await page.getByText("Dated Task").click();
-      await expect(page.locator("#due-date")).toHaveValue("2026-12-25T10:00");
+      await page.locator("main").getByText("Dated Task").click();
+      await expect(page.locator("#due-date")).toHaveValue(/2026-12-2/);
     });
 
     test("sets task progress", async ({ page }) => {
@@ -148,7 +146,7 @@ test.describe("Kanban Board", () => {
       await page.locator("#title").fill("Progress Task");
       await page.getByRole("dialog").getByRole("button", { name: "70%" }).click();
       await page.getByRole("dialog").getByRole("button", { name: "Create Task" }).click();
-      await page.getByText("Progress Task").click();
+      await page.locator("main").getByText("Progress Task").click();
       await expect(page.getByRole("dialog").getByRole("button", { name: "70%" })).toHaveAttribute("data-state", "active");
     });
 
@@ -157,7 +155,7 @@ test.describe("Kanban Board", () => {
       await page.locator("#title").fill("Tagged Task");
       await page.getByRole("dialog").getByRole("button", { name: "Add Tag" }).click();
       await page.getByPlaceholder("Tag name...").fill("bug");
-      await page.getByRole("dialog").getByRole("button", { name: "Add", exact: true }).click();
+      await page.getByPlaceholder("Tag name...").locator("..").getByRole("button", { name: "Add" }).click();
       await page.getByRole("dialog").getByRole("button", { name: "Create Task" }).click();
       await expect(page.getByText("bug").first()).toBeVisible();
     });

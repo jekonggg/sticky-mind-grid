@@ -7,11 +7,9 @@ import {
   uniqueEmail,
 } from "./helpers";
 
-const TEST_EMAIL = uniqueEmail("documents");
-
 test.describe("Documents View", () => {
   test.beforeEach(async ({ page }) => {
-    await registerUser(page, TEST_EMAIL);
+    await registerUser(page, uniqueEmail("documents"));
     await createBoard(page, "Docs Test Board");
     await navigateToBoard(page, "Docs Test Board");
     await page.getByRole("button", { name: "Documents" }).click();
