@@ -35,3 +35,9 @@ backend/.env
 # Runtime artifacts and local tooling
 backend/uploads/
 .opencode/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+.playwright/
