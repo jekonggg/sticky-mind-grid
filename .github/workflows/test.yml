@@ -64,10 +64,10 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd='mysqladmin ping -h 127.0.0.1 --silent'
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
+          --health-cmd "mysqladmin ping -h 127.0.0.1 --silent || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: mysql+pymysql://root:root@127.0.0.1:3306/sticky_mind_grid_test?charset=utf8mb4
     steps:
