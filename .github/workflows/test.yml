@@ -94,20 +94,6 @@ jobs:
             sleep 2
           done
 
-      - name: Start Flask Backend Daemon
-        working-directory: backend
-        run: |
-          python run.py &
-          sleep 3
-          for i in {1..30}; do
-            if curl -s http://127.0.0.1:5000/api/health | grep -q "healthy"; then
-              echo "Backend is ready!"
-              break
-            fi
-            echo "Waiting for backend..."
-            sleep 1
-          done
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -120,21 +106,20 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Start Vite Dev Server
+      - name: Run Playwright E2E Tests
         run: |
-          npm run dev &
-          sleep 5
+          cd backend && python run.py &
+          sleep 3
           for i in {1..30}; do
-            if curl -s http://localhost:5173 > /dev/null 2>&1; then
-              echo "Frontend is ready!"
+            if curl -s http://127.0.0.1:5000/api/health | grep -q "healthy"; then
+              echo "Backend is ready!"
               break
             fi
-            echo "Waiting for frontend..."
+            echo "Waiting for backend..."
             sleep 1
           done
-
-      - name: Run Playwright E2E Tests
-        run: npx playwright test
+          cd ..
+          npx playwright test
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v4
