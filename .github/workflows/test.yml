@@ -120,6 +120,19 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Start Vite Dev Server
+        run: |
+          npm run dev &
+          sleep 5
+          for i in {1..30}; do
+            if curl -s http://localhost:5173 > /dev/null 2>&1; then
+              echo "Frontend is ready!"
+              break
+            fi
+            echo "Waiting for frontend..."
+            sleep 1
+          done
+
       - name: Run Playwright E2E Tests
         run: npx playwright test
 
