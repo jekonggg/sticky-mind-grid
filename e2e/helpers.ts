@@ -33,8 +33,11 @@ export async function navigateToBoard(page: Page, boardName: string) {
 
 export async function createTask(page: Page, title: string) {
   await page.locator('button[title="Create New Task"]').click();
-  await page.getByRole("dialog").locator("#title").fill(title);
-  await page.getByRole("dialog").getByRole("button", { name: "Create Task" }).click();
+  await page.locator("#title").waitFor({ state: "visible", timeout: 15000 });
+  await page.locator("#title").fill(title);
+  await page.waitForTimeout(700); // Allow debounced auto-save
+  const closeBtn = page.locator('button[title="Close task (Esc)"]').or(page.getByRole("button", { name: "Board", exact: true })).first();
+  await closeBtn.click();
 }
 
 export async function expectToast(page: Page, pattern: RegExp, timeout = 10000) {

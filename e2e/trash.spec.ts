@@ -33,7 +33,7 @@ test.describe("Trash & Restore", () => {
   test("deleted task appears in trash", async ({ page }) => {
     await createTask(page, "To Be Trashed");
     await page.locator("main").getByText("To Be Trashed").click();
-    await page.getByRole("dialog").getByRole("button", { name: "Delete Task" }).click();
+    await page.getByRole("button", { name: "Delete Task" }).click();
     await page.locator('button[title="View Trash Bin"]').click();
     await expect(page.getByRole("dialog").getByText("To Be Trashed")).toBeVisible({ timeout: 10000 });
   });
@@ -41,7 +41,7 @@ test.describe("Trash & Restore", () => {
   test("restores a task from trash", async ({ page }) => {
     await createTask(page, "Restore Me");
     await page.locator("main").getByText("Restore Me").click();
-    await page.getByRole("dialog").getByRole("button", { name: "Delete Task" }).click();
+    await page.getByRole("button", { name: "Delete Task" }).click();
     await page.locator('button[title="View Trash Bin"]').click();
     await expect(page.getByRole("dialog").getByText("Restore Me")).toBeVisible({ timeout: 10000 });
     await page.getByRole("button", { name: "Restore" }).click();

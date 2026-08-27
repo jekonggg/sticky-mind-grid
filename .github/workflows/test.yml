@@ -5,6 +5,7 @@ on:
     branches: [ main, MultiUserCollab ]
   pull_request:
     branches: [ main, MultiUserCollab ]
+  workflow_dispatch:
 
 jobs:
   backend-tests:

@@ -18,6 +18,8 @@ import { SettingsModal } from "@/components/settings/SettingsModal";
 import { SettingsTab } from "@/types/settings";
 import { useSettings } from "@/contexts/SettingsContext";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { LatestChangesPanel } from "./LatestChangesPanel";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   Home,
   Search,
@@ -33,6 +35,7 @@ import {
   Moon,
   Sun,
   Palette,
+  History,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -55,6 +58,7 @@ export function BoardHeader({
 
   const [boards, setBoards] = useState<Board[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const { settings, updateLocalSetting } = useSettings();
 
@@ -190,6 +194,19 @@ export function BoardHeader({
 
         {/* Right: Actions & User Avatar Menu */}
         <div className="flex items-center justify-end gap-2.5 w-1/3">
+          {/* On-demand Board Activity Trigger */}
+          {boardId && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsActivityOpen(true)}
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
+              title="Activity History"
+            >
+              <History className="h-4 w-4" />
+            </Button>
+          )}
+
           {/* Notification Center */}
           <NotificationBell />
 
@@ -342,6 +359,18 @@ export function BoardHeader({
         onClose={() => setIsSettingsOpen(false)}
         initialTab={settingsTab}
       />
+
+      {/* On-Demand Activity History Sheet */}
+      <Sheet open={isActivityOpen} onOpenChange={setIsActivityOpen}>
+        <SheetContent side="right" className="p-0 w-[85%] sm:w-[400px]">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Recent Activity</SheetTitle>
+          </SheetHeader>
+          <div className="h-full overflow-hidden">
+            <LatestChangesPanel />
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

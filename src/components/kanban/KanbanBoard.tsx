@@ -14,17 +14,13 @@ import { Task, TaskStatus, CreateTaskData } from "@/types/task";
 import { useTasks } from "@/hooks/useTasks";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
-import { TaskModal } from "./TaskModal";
 import { TrashModal } from "./TrashModal";
-import { LatestChangesPanel } from "./LatestChangesPanel";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BoardHeader } from "./BoardHeader";
+import { TaskDetailWorkspace } from "../task/TaskDetailWorkspace";
 import { arrayMove } from "@dnd-kit/sortable";
 import { 
   Loader2, 
   Plus, 
-  PanelRightClose, 
-  PanelRightOpen, 
   Settings, 
   Smile, 
   Pencil,
@@ -105,9 +101,7 @@ export function KanbanBoard() {
   } = useTasks(boardId || "", board?.columns);
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [isActivityOpen, setIsActivityOpen] = useState(true); 
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all"); // 'all' | 'me' | userId
   const [tagFilter, setTagFilter] = useState<string>("all"); // 'all' | tagName
@@ -115,6 +109,11 @@ export function KanbanBoard() {
   const [activeView, setActiveView] = useState<"overview" | "list" | "board" | "calendar" | "documents" | "members">(
     (settings.defaultBoardView as any) || "board"
   );
+
+  const selectedTask = useMemo(() => {
+    if (!selectedTaskId) return null;
+    return tasks.find((t) => t.id === selectedTaskId) || null;
+  }, [selectedTaskId, tasks]);
   
   const { addActivity, setBoardId, refreshActivities } = useActivity();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -305,15 +304,25 @@ export function KanbanBoard() {
   );
 
   const handleTaskClick = useCallback((task: Task) => {
-    setEditingTask(task);
-    setModalOpen(true);
+    setSelectedTaskId(task.id);
   }, []);
 
-  const openNewModal = useCallback(() => {
-    if (!permissions.canCreateTask) return;
-    setEditingTask(null);
-    setModalOpen(true);
-  }, [permissions.canCreateTask]);
+  const openNewModal = useCallback(async () => {
+    if (!permissions.canCreateTask || !board) return;
+    try {
+      const defaultStatus = board.columns && board.columns.length > 0 ? board.columns[0].id : "todo";
+      const newTask = await addTask({
+        title: "Untitled Task",
+        status: defaultStatus,
+        priority: "medium",
+      });
+      if (newTask && newTask.id) {
+        setSelectedTaskId(newTask.id);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create task");
+    }
+  }, [permissions.canCreateTask, board, addTask]);
 
   // Filter task matching search query, assignee filter, and tag filter
   const isTaskMatchingFilters = useCallback(
@@ -469,8 +478,8 @@ export function KanbanBoard() {
     <div className="flex flex-col h-screen bg-background overflow-hidden font-sans">
       <BoardHeader search={searchTerm} onSearchChange={setSearchTerm} />
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 overflow-y-scroll overflow-x-hidden min-h-0 custom-scrollbar flex flex-col [scrollbar-gutter:stable]">
+      <div className="flex flex-1 overflow-hidden relative">
+        <div className={`flex-1 overflow-y-scroll overflow-x-hidden min-h-0 custom-scrollbar flex flex-col [scrollbar-gutter:stable] transition-all duration-200 ${selectedTask ? 'hidden md:flex' : 'flex'}`}>
           <div className="relative h-48 md:h-56 shrink-0 overflow-hidden">
             <BoardHeroImage src={board.heroImageUrl} alt={board.name} color={board.color} className="h-full w-full" aspectRatio="auto" />
           </div>
@@ -659,55 +668,24 @@ export function KanbanBoard() {
           </div>
         </div>
 
-        <aside 
-          className={`hidden lg:flex flex-col h-full shrink-0 border-l border-border bg-card shadow-xl transition-all duration-300 ease-in-out relative ${
-            isActivityOpen ? "w-[340px]" : "w-6"
-          }`}
-        >
-          <button
-            onClick={() => setIsActivityOpen(!isActivityOpen)}
-            className="absolute -left-3 top-8 w-6 h-6 bg-background border border-border rounded-full flex items-center justify-center z-20 shadow-md hover:bg-muted transition-all active:scale-95"
-            title={isActivityOpen ? "Collapse Activity" : "Expand Activity"}
-          >
-            {isActivityOpen ? (
-              <PanelRightClose className="h-3 w-3 text-muted-foreground" />
-            ) : (
-              <PanelRightOpen className="h-3 w-3 text-primary" />
-            )}
-          </button>
-          
-          <div className={`flex-1 overflow-hidden transition-opacity duration-300 flex flex-col ${isActivityOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-            <div className="p-4 border-b bg-muted/30 shrink-0">
-               <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <div className="w-1 h-1 bg-primary rounded-full animate-pulse" />
-                  Recent Activity
-               </h2>
-            </div>
-            <div className="flex-1 overflow-hidden">
-               <LatestChangesPanel />
-            </div>
-          </div>
-          
-          {!isActivityOpen && (
-            <div className="absolute inset-y-0 left-0 right-0 flex flex-col items-center py-20 pointer-events-none select-none opacity-40">
-               <div className="rotate-90 whitespace-nowrap text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-                  Activity Feed
-               </div>
-            </div>
-          )}
-        </aside>
+        {/* Notion-Style Right-Side Task Detail Workspace */}
+        {selectedTask && board && (
+          <aside className="w-full md:w-[580px] lg:w-[680px] xl:w-[740px] shrink-0 border-l border-border bg-background shadow-2xl h-full overflow-hidden flex flex-col z-30 transition-all duration-200 animate-in slide-in-from-right duration-200">
+            <TaskDetailWorkspace
+              task={selectedTask}
+              board={board}
+              members={members}
+              readOnly={permissions.isReadOnly}
+              onClose={() => setSelectedTaskId(null)}
+              onUpdateTask={(updates) => updateTask(selectedTask.id, updates)}
+              onDeleteTask={(id) => {
+                deleteTask(id);
+                setSelectedTaskId(null);
+              }}
+            />
+          </aside>
+        )}
       </div>
-
-      <Sheet open={isActivityOpen && !window.matchMedia("(min-width: 1024px)").matches} onOpenChange={setIsActivityOpen}>
-        <SheetContent side="right" className="p-0 w-[85%] sm:w-[400px]">
-          <SheetHeader className="p-4 border-b">
-            <SheetTitle>Recent Activity</SheetTitle>
-          </SheetHeader>
-          <div className="h-full overflow-hidden">
-             <LatestChangesPanel />
-          </div>
-        </SheetContent>
-      </Sheet>
 
       {permissions.canCreateTask && (
         <Button
@@ -729,23 +707,6 @@ export function KanbanBoard() {
         onClose={() => setIsBoardModalOpen(false)}
         board={board}
         onSubmit={handleBoardUpdate}
-      />
-
-      <TaskModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        task={editingTask}
-        columns={board.columns}
-        members={members}
-        readOnly={permissions.isReadOnly}
-        onSubmit={(data) => {
-          if (editingTask) {
-            updateTask(editingTask.id, data);
-          } else {
-            addTask(data as CreateTaskData);
-          }
-        }}
-        onDelete={deleteTask}
       />
 
       <TrashModal

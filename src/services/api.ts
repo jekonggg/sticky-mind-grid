@@ -22,6 +22,13 @@ export const taskApi = {
     return data.map(mapTask);
   },
 
+  async getTask(id: string): Promise<Task> {
+    const res = await authenticatedFetch(`/tasks/${id}`);
+    if (!res.ok) throw new Error("Failed to fetch task");
+    const data = await res.json();
+    return mapTask(data);
+  },
+
   async createTask(data: CreateTaskData & { boardId: string }): Promise<Task> {
     if (USE_MOCK) {
        return {} as Task;

@@ -11,6 +11,7 @@ import { ThemeProvider } from "next-themes";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { ActivityProvider } from "./hooks/useActivity";
 import { KanbanBoard } from "./components/kanban/KanbanBoard";
+import TaskDetailPage from "./pages/TaskDetailPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
@@ -33,6 +34,7 @@ const App = () => (
                   <Route element={<ProtectedRoute />}>
                     <Route path="/" element={<BoardsOverview />} />
                     <Route path="/boards/:boardId" element={<KanbanBoard />} />
+                    <Route path="/boards/:boardId/tasks/:taskId" element={<TaskDetailPage />} />
                   </Route>
 
                   <Route path="*" element={<NotFound />} />

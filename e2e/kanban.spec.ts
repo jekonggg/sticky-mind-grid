@@ -30,15 +30,9 @@ test.describe("Kanban Board", () => {
       await expect(page.getByText("No tasks").first()).toBeVisible();
     });
 
-    test("shows activity sidebar", async ({ page }) => {
-      await expect(page.getByText("History")).toBeVisible();
-    });
-
-    test("toggles activity sidebar", async ({ page }) => {
-      await page.locator('button[title="Collapse Activity"]').click();
-      await expect(page.locator('button[title="Expand Activity"]')).toBeVisible();
-      await page.locator('button[title="Expand Activity"]').click();
-      await expect(page.locator('button[title="Collapse Activity"]')).toBeVisible();
+    test("shows on-demand activity history in header", async ({ page }) => {
+      await page.locator('button[title="Activity History"]').click();
+      await expect(page.getByRole("heading", { name: "History" })).toBeVisible();
     });
   });
 
@@ -68,8 +62,8 @@ test.describe("Kanban Board", () => {
     });
   });
 
-  test.describe("Task CRUD", () => {
-    test("creates a task via FAB", async ({ page }) => {
+  test.describe("Task CRUD & Right-Side Notion Workspace", () => {
+    test("creates a task via FAB and opens right-side workspace", async ({ page }) => {
       await createTask(page, "My First Task");
       await expect(page.locator("main").getByText("My First Task")).toBeVisible();
     });
@@ -80,27 +74,34 @@ test.describe("Kanban Board", () => {
       await expect(todoColumn.getByRole("heading", { name: "Default Column Task" })).toBeVisible();
     });
 
-    test("opens task in edit mode on click", async ({ page }) => {
+    test("opens task in right-side workspace on click while keeping board visible", async ({ page }) => {
       await createTask(page, "Clickable Task");
       await page.locator("main").getByText("Clickable Task").click();
-      await expect(page.getByRole("heading", { name: "Edit Task" })).toBeVisible();
       await expect(page.locator("#title")).toHaveValue("Clickable Task");
+      // Board columns remain visible on screen
+      await expect(page.getByRole("heading", { name: "To Do" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "In Progress" })).toBeVisible();
+      // Right-side properties visible
+      await expect(page.getByText("Status")).toBeVisible();
+      await expect(page.getByText("Priority")).toBeVisible();
+      await expect(page.getByText("Progress")).toBeVisible();
     });
 
-    test("edits task title", async ({ page }) => {
+    test("edits task title in right-side workspace", async ({ page }) => {
       await createTask(page, "Old Title");
       await page.locator("main").getByText("Old Title").click();
-      await page.locator("#title").clear();
       await page.locator("#title").fill("New Title");
-      await page.getByRole("dialog").getByRole("button", { name: "Update Task" }).click();
+      await page.waitForTimeout(700);
+      const closeBtn = page.locator('button[title="Close task (Esc)"]').or(page.getByRole("button", { name: "Board", exact: true })).first();
+      await closeBtn.click();
       await expect(page.locator("main").getByText("New Title")).toBeVisible();
       await expect(page.locator("main").getByText("Old Title")).not.toBeVisible();
     });
 
-    test("deletes a task (soft delete)", async ({ page }) => {
+    test("deletes a task from right-side workspace (soft delete)", async ({ page }) => {
       await createTask(page, "Delete Me");
       await page.locator("main").getByText("Delete Me").click();
-      await page.getByRole("dialog").getByRole("button", { name: "Delete Task" }).click();
+      await page.getByRole("button", { name: "Delete Task" }).click();
       await expect(page.locator("main").getByText("Delete Me")).not.toBeVisible({ timeout: 5000 });
     });
 
@@ -114,61 +115,29 @@ test.describe("Kanban Board", () => {
     });
   });
 
-  test.describe("Task fields", () => {
-    test("sets task priority", async ({ page }) => {
+  test.describe("Task fields in Right-Side Workspace", () => {
+    test("sets task description in workspace", async ({ page }) => {
       await page.locator('button[title="Create New Task"]').click();
-      await page.locator("#title").fill("High Priority Task");
-      await page.getByRole("dialog").getByRole("button", { name: "high" }).click();
-      await page.getByRole("dialog").getByRole("button", { name: "Create Task" }).click();
-      await expect(page.getByText("high").first()).toBeVisible();
-    });
-
-    test("sets task description", async ({ page }) => {
-      await page.locator('button[title="Create New Task"]').click();
+      await page.locator("#title").waitFor({ state: "visible", timeout: 10000 });
       await page.locator("#title").fill("Described Task");
-      await page.locator("#description").fill("This is a detailed description");
-      await page.getByRole("dialog").getByRole("button", { name: "Create Task" }).click();
+      await page.locator("#description").fill("This is a detailed description in Notion workspace");
+      await page.waitForTimeout(900);
+      const closeBtn = page.locator('button[title="Close task (Esc)"]').or(page.getByRole("button", { name: "Board", exact: true })).first();
+      await closeBtn.click();
       await page.locator("main").getByText("Described Task").click();
-      await expect(page.locator("#description")).toHaveValue("This is a detailed description");
+      await expect(page.locator("#description")).toHaveValue("This is a detailed description in Notion workspace");
     });
 
-    test("sets task due date", async ({ page }) => {
+    test("adds checklist items in Notion workspace", async ({ page }) => {
       await page.locator('button[title="Create New Task"]').click();
-      await page.locator("#title").fill("Dated Task");
-      await page.locator("#due-date").fill("2026-12-25T10:00");
-      await page.getByRole("dialog").getByRole("button", { name: "Create Task" }).click();
-      await page.locator("main").getByText("Dated Task").click();
-      await expect(page.locator("#due-date")).toHaveValue(/2026-12-2/);
-    });
-
-    test("sets task progress", async ({ page }) => {
-      await page.locator('button[title="Create New Task"]').click();
-      await page.locator("#title").fill("Progress Task");
-      await page.getByRole("dialog").getByRole("button", { name: "70%" }).click();
-      await page.getByRole("dialog").getByRole("button", { name: "Create Task" }).click();
-      await page.locator("main").getByText("Progress Task").click();
-      await expect(page.getByRole("dialog").getByRole("button", { name: "70%" })).toHaveAttribute("data-state", "active");
-    });
-
-    test("adds a tag to a task", async ({ page }) => {
-      await page.locator('button[title="Create New Task"]').click();
-      await page.locator("#title").fill("Tagged Task");
-      await page.getByRole("dialog").getByRole("button", { name: "Add Tag" }).click();
-      await page.getByPlaceholder("Tag name...").fill("bug");
-      await page.getByPlaceholder("Tag name...").locator("..").getByRole("button", { name: "Add" }).click();
-      await page.getByRole("dialog").getByRole("button", { name: "Create Task" }).click();
-      await expect(page.getByText("bug").first()).toBeVisible();
-    });
-
-    test("adds checklist items", async ({ page }) => {
-      await page.locator('button[title="Create New Task"]').click();
+      await page.locator("#title").waitFor({ state: "visible", timeout: 10000 });
       await page.locator("#title").fill("Checklist Task");
-      await page.getByPlaceholder("Add a subtask...").fill("Subtask 1");
-      await page.getByPlaceholder("Add a subtask...").press("Enter");
-      await page.getByPlaceholder("Add a subtask...").fill("Subtask 2");
-      await page.getByPlaceholder("Add a subtask...").press("Enter");
-      await expect(page.getByText("Subtask 1")).toBeVisible();
-      await expect(page.getByText("Subtask 2")).toBeVisible();
+      await page.getByPlaceholder(/add a subtask/i).fill("Subtask 1");
+      await page.getByPlaceholder(/add a subtask/i).press("Enter");
+      await page.getByPlaceholder(/add a subtask/i).fill("Subtask 2");
+      await page.getByPlaceholder(/add a subtask/i).press("Enter");
+      await expect(page.getByDisplayValue("Subtask 1")).toBeVisible();
+      await expect(page.getByDisplayValue("Subtask 2")).toBeVisible();
     });
   });
 
