@@ -293,29 +293,6 @@ export function TaskProperties({
           </div>
         </div>
 
-        {/* Progress Slider Property */}
-        <div className="flex items-center gap-4">
-          <div className="w-28 flex items-center gap-2 text-muted-foreground text-xs font-semibold shrink-0">
-            <Sliders className="h-3.5 w-3.5 text-muted-foreground" />
-            <span>Progress</span>
-          </div>
-          <div className="flex-1 flex items-center gap-3 w-full sm:max-w-xs">
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="5"
-              disabled={readOnly}
-              value={progress}
-              onChange={(e) => onProgressChange(Number(e.target.value))}
-              className="w-full accent-primary h-1.5 bg-muted rounded-lg cursor-pointer disabled:cursor-not-allowed"
-            />
-            <span className="text-xs font-bold text-foreground w-10 shrink-0 text-right">
-              {progress}%
-            </span>
-          </div>
-        </div>
-
         {/* Timestamps */}
         <div className="flex items-center gap-4">
           <div className="w-28 flex items-center gap-2 text-muted-foreground text-xs font-semibold shrink-0">

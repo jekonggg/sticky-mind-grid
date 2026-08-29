@@ -87,14 +87,12 @@ describe("TaskDetailPage Component", () => {
     });
   });
 
-  it("renders properties, status, priority, and progress", async () => {
+  it("renders properties, status, priority, and tags", async () => {
     renderWithProviders(<TaskDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByText("Status")).toBeInTheDocument();
       expect(screen.getByText("Priority")).toBeInTheDocument();
-      expect(screen.getByText("Progress")).toBeInTheDocument();
-      expect(screen.getByText("25%")).toBeInTheDocument();
       expect(screen.getByText("Frontend")).toBeInTheDocument();
     });
   });

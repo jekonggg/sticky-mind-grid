@@ -1,5 +1,6 @@
 from app import db
 from app.models.task import Task
+from app.models.board import Board
 from app.models.activity import Activity
 from app.models.user import User
 from app.models.notification import Notification
@@ -86,11 +87,15 @@ class TaskService:
         if new_task.board:
             new_task.board.touch()
 
+        db.session.flush()
+        task_dict = new_task.to_dict()
+        activity_dict = activity.to_dict() if activity else None
         db.session.commit()
 
         # Real-time event broadcast
-        broadcaster.broadcast(new_task.board_id, "task:created", new_task.to_dict())
-        broadcaster.broadcast(new_task.board_id, "activity:new", activity.to_dict())
+        broadcaster.broadcast(new_task.board_id, "task:created", task_dict)
+        if activity_dict:
+            broadcaster.broadcast(new_task.board_id, "activity:new", activity_dict)
 
         return new_task
 
@@ -116,7 +121,7 @@ class TaskService:
         if 'checklist' in data: task.checklist = data['checklist']
         if 'tags' in data: task.tags = data['tags']
         if 'attachments' in data: task.attachments = data['attachments']
-        if 'assignedTo' in data: task.assigned_to = data['assignedTo']
+        if 'assignedTo' in data: task.assigned_to = data['assignedTo'] if data['assignedTo'] != "unassigned" else None
         if 'dueDate' in data:
             if data['dueDate']:
                 try:
@@ -126,26 +131,30 @@ class TaskService:
             else:
                 task.due_date = None
 
+        is_status_changed = old_status != task.status
+        is_assigned_changed = old_assigned_to != task.assigned_to
+        is_title_changed = old_title != task.title
+
         # Generate automated audit log based on what changed
-        is_status_changed = 'status' in data and task.status != old_status
+        activity = None
         if is_status_changed:
             activity = Activity(
                 type='move',
                 task_title=task.title,
-                message=f'Moved task "{task.title}" from {old_status} to {task.status}',
+                message=f'Moved "{task.title}" to {task.status}',
                 board_id=task.board_id,
                 user_id=user_id
             )
             db.session.add(activity)
-        elif 'assignedTo' in data and task.assigned_to != old_assigned_to:
+        elif is_assigned_changed:
             if task.assigned_to:
                 assignee = db.session.get(User, task.assigned_to)
-                assignee_name = assignee.full_name or assignee.email if assignee else "user"
+                assignee_name = (assignee.full_name or assignee.email) if assignee else "user"
                 msg = f'Assigned task "{task.title}" to {assignee_name}'
                 
                 # Notify assignee if not the actor
-                if str(task.assigned_to) != str(user_id):
-                    actor = db.session.get(User, user_id) if user_id else None
+                if user_id and str(user_id) != str(task.assigned_to):
+                    actor = db.session.get(User, user_id)
                     actor_name = (actor.full_name or actor.email) if actor else "A team member"
                     from app.services.notification_service import NotificationService
                     NotificationService.create_notification(
@@ -165,7 +174,7 @@ class TaskService:
                 user_id=user_id
             )
             db.session.add(activity)
-        else:
+        elif is_title_changed:
             activity = Activity(
                 type='update',
                 task_title=task.title,
@@ -179,12 +188,16 @@ class TaskService:
         if task.board:
             task.board.touch()
 
+        db.session.flush()
+        task_dict = task.to_dict()
+        activity_dict = activity.to_dict() if activity else None
         db.session.commit()
 
         # Real-time event broadcast
         event_name = "task:moved" if is_status_changed else "task:updated"
-        broadcaster.broadcast(task.board_id, event_name, task.to_dict())
-        broadcaster.broadcast(task.board_id, "activity:new", activity.to_dict())
+        broadcaster.broadcast(task.board_id, event_name, task_dict)
+        if activity_dict:
+            broadcaster.broadcast(task.board_id, "activity:new", activity_dict)
 
         return task
 
@@ -212,14 +225,17 @@ class TaskService:
 
         if updated_tasks:
             try:
-                # Update board timestamp
-                if updated_tasks[0].board:
-                    updated_tasks[0].board.touch()
+                board = db.session.get(Board, board_id)
+                if board:
+                    board.touch()
                 db.session.commit()
+
+                # Pre-serialize tasks before session detachment/expiration issues
+                serialized_tasks = [t.to_dict() for t in updated_tasks]
 
                 # Broadcast batch reorder event
                 broadcaster.broadcast(board_id, "tasks:reordered", {
-                    "tasks": [t.to_dict() for t in updated_tasks]
+                    "tasks": serialized_tasks
                 })
             except Exception as e:
                 db.session.rollback()

@@ -29,15 +29,36 @@ export async function createBoard(page: Page, name: string, description = "") {
 export async function navigateToBoard(page: Page, boardName: string) {
   await page.locator(".grid").getByRole("heading", { name: boardName }).first().click();
   await page.waitForURL(/\/boards\//, { timeout: 15000 });
+  await page.locator("h1").filter({ hasText: boardName }).waitFor({ state: "visible", timeout: 15000 });
+  await page.getByRole("heading", { name: "To Do" }).waitFor({ state: "visible", timeout: 15000 });
 }
 
 export async function createTask(page: Page, title: string) {
-  await page.locator('button[title="Create New Task"]').click();
-  await page.locator("#title").waitFor({ state: "visible", timeout: 15000 });
-  await page.locator("#title").fill(title);
-  await page.waitForTimeout(700); // Allow debounced auto-save
-  const closeBtn = page.locator('button[title="Close task (Esc)"]').or(page.getByRole("button", { name: "Board", exact: true })).first();
-  await closeBtn.click();
+  // Ensure board columns are rendered
+  await page.getByRole("heading", { name: "To Do" }).waitFor({ state: "visible", timeout: 15000 });
+
+  // If a task workspace is already open, close it first
+  const existingCloseBtn = page.locator('button[title="Close task (Esc)"]').first();
+  if (await existingCloseBtn.isVisible()) {
+    await existingCloseBtn.click();
+    await page.waitForTimeout(300);
+  }
+
+  const fab = page.locator('button[title="Create New Task"]');
+  await fab.waitFor({ state: "visible", timeout: 15000 });
+  await page.waitForTimeout(200);
+  await fab.dispatchEvent("click");
+
+  const titleInput = page.locator("#title");
+  await titleInput.waitFor({ state: "visible", timeout: 15000 });
+  await titleInput.fill(title);
+  await titleInput.blur();
+  await page.waitForTimeout(500); // Allow debounced auto-save
+  const closeBtn = page.locator('button[title="Close task (Esc)"]').first();
+  if (await closeBtn.isVisible()) {
+    await closeBtn.click();
+    await page.waitForTimeout(300);
+  }
 }
 
 export async function expectToast(page: Page, pattern: RegExp, timeout = 10000) {

@@ -74,6 +74,6 @@ class Task(db.Model):
             'attachments': self.attachments,
             'isDeleted': self.is_deleted,
             'deletedAt': self.deleted_at.isoformat() if self.deleted_at else None,
-            'createdAt': self.created_at.isoformat(),
-            'updatedAt': self.updated_at.isoformat()
+            'createdAt': self.created_at.isoformat() if self.created_at else None,
+            'updatedAt': self.updated_at.isoformat() if self.updated_at else None
         }

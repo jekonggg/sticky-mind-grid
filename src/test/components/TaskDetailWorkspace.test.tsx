@@ -62,8 +62,6 @@ describe("TaskDetailWorkspace Component", () => {
     expect(screen.getByText("Sprint Board")).toBeInTheDocument();
     expect(screen.getByText("Status")).toBeInTheDocument();
     expect(screen.getByText("Priority")).toBeInTheDocument();
-    expect(screen.getByText("Progress")).toBeInTheDocument();
-    expect(screen.getByText("50%")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Create TaskDetailWorkspace")).toBeInTheDocument();
   });
 

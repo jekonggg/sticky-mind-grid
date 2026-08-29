@@ -65,7 +65,7 @@ export function TaskDetailWorkspace({
     setLocalTags(task.tags || []);
     setLocalChecklist(task.checklist || []);
     setLocalAttachments(task.attachments || []);
-  }, [task.id, task]);
+  }, [task.id]);
 
   // Keyboard shortcut: Escape to close side panel
   useEffect(() => {
@@ -88,6 +88,16 @@ export function TaskDetailWorkspace({
     titleDebounceRef.current = setTimeout(() => {
       onUpdateTask({ title: newTitle });
     }, 600);
+  };
+
+  const handleTitleBlur = () => {
+    if (titleDebounceRef.current) {
+      clearTimeout(titleDebounceRef.current);
+      titleDebounceRef.current = null;
+    }
+    if (localTitle.trim() && localTitle !== task.title) {
+      onUpdateTask({ title: localTitle.trim() });
+    }
   };
 
   const handleDescriptionChange = (newDesc: string) => {
@@ -166,6 +176,7 @@ export function TaskDetailWorkspace({
         readOnly={readOnly}
         onClose={onClose}
         onTitleChange={handleTitleChange}
+        onTitleBlur={handleTitleBlur}
         onEmojiChange={handleEmojiChange}
         onDelete={handleDelete}
       />

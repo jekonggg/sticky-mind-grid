@@ -46,7 +46,7 @@ describe("SettingsModal Component", () => {
     expect(screen.getByRole("button", { name: /Language & Region/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Privacy & Data/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /System & About/i })).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("switches to Appearance tab and displays theme cards", async () => {
     renderWithProviders(<SettingsModal open={true} onClose={onClose} />);

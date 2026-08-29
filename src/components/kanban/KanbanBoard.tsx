@@ -110,10 +110,12 @@ export function KanbanBoard() {
     (settings.defaultBoardView as any) || "board"
   );
 
+  const [createdDraftTask, setCreatedDraftTask] = useState<Task | null>(null);
+
   const selectedTask = useMemo(() => {
     if (!selectedTaskId) return null;
-    return tasks.find((t) => t.id === selectedTaskId) || null;
-  }, [selectedTaskId, tasks]);
+    return tasks.find((t) => t.id === selectedTaskId) || (createdDraftTask?.id === selectedTaskId ? createdDraftTask : null);
+  }, [selectedTaskId, tasks, createdDraftTask]);
   
   const { addActivity, setBoardId, refreshActivities } = useActivity();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -266,23 +268,8 @@ export function KanbanBoard() {
           ...filtered.slice(insertIdx),
         ];
 
-        // Auto-adjust task progress based on milestone columns if enabled
         const visibleCols = columns.filter((c) => c.id !== "archive");
         const isDoneCol = targetStatus === 'done' || targetStatus === visibleCols[visibleCols.length - 1]?.id;
-        let newProgress = activeTaskItem.progress;
-
-        if (settings.autoProgressSnapping) {
-          if (isDoneCol) {
-            newProgress = 100;
-          } else if (targetStatus === 'todo' || targetStatus === visibleCols[0]?.id) {
-            newProgress = 0;
-          } else if (targetStatus === 'in_progress') {
-            newProgress = 30;
-          } else if (activeTaskItem.progress === 100 || activeTaskItem.progress <= 10) {
-            newProgress = 50;
-          }
-        }
-        updateTask(activeId, { status: targetStatus, progress: newProgress });
 
         if (isDoneCol) {
           playSound("complete");
@@ -300,10 +287,11 @@ export function KanbanBoard() {
 
       reorderTasks(reorderItems);
     },
-    [permissions.isReadOnly, tasks, columns, updateTask, reorderTasks, settings.autoProgressSnapping, playSound]
+    [permissions.isReadOnly, tasks, columns, reorderTasks, playSound]
   );
 
   const handleTaskClick = useCallback((task: Task) => {
+    setCreatedDraftTask(null);
     setSelectedTaskId(task.id);
   }, []);
 
@@ -317,6 +305,7 @@ export function KanbanBoard() {
         priority: "medium",
       });
       if (newTask && newTask.id) {
+        setCreatedDraftTask(newTask);
         setSelectedTaskId(newTask.id);
       }
     } catch (err: any) {
@@ -676,11 +665,15 @@ export function KanbanBoard() {
               board={board}
               members={members}
               readOnly={permissions.isReadOnly}
-              onClose={() => setSelectedTaskId(null)}
+              onClose={() => {
+                setSelectedTaskId(null);
+                setCreatedDraftTask(null);
+              }}
               onUpdateTask={(updates) => updateTask(selectedTask.id, updates)}
               onDeleteTask={(id) => {
                 deleteTask(id);
                 setSelectedTaskId(null);
+                setCreatedDraftTask(null);
               }}
             />
           </aside>
@@ -693,7 +686,7 @@ export function KanbanBoard() {
           className="fixed bottom-8 right-8 h-14 w-14 hover:w-40 rounded-full shadow-2xl shadow-primary/20 flex items-center justify-center group/fab hover:scale-105 active:scale-95 transition-all duration-500 ease-out z-50 bg-primary hover:bg-primary/90 overflow-hidden px-0 border-4 border-background"
           title="Create New Task"
         >
-          <div className="flex items-center justify-center w-full h-full relative">
+          <div className="pointer-events-none flex items-center justify-center w-full h-full relative">
              <Plus className="h-6 w-6 text-primary-foreground absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 group-hover/fab:rotate-90 group-hover/fab:left-6" />
              <span className="text-primary-foreground font-black uppercase text-[10px] tracking-[0.2em] whitespace-nowrap absolute left-14 opacity-0 group-hover/fab:opacity-100 translate-x-4 group-hover/fab:translate-x-0 transition-all duration-500 ease-out delay-75">
                Add Task

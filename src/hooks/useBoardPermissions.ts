@@ -44,8 +44,8 @@ export function useBoardPermissions(
     }
 
     // Check if user is board owner
-    const isDirectOwner = board.ownerId === user.id;
-    const membership = members.find((m) => m.userId === user.id);
+    const isDirectOwner = Boolean(board.ownerId && user?.id && String(board.ownerId) === String(user.id));
+    const membership = members.find((m) => Boolean(m.userId && user?.id && String(m.userId) === String(user.id)));
 
     let role: BoardRole = "viewer";
     if (isDirectOwner || membership?.role === "owner") {

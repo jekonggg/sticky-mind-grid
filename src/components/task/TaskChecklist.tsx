@@ -127,6 +127,7 @@ export function TaskChecklist({ checklist, readOnly, onChange, onProgressSync }:
               ) : (
                 <input
                   type="text"
+                  data-testid="checklist-item-input"
                   value={item.title || item.text || ""}
                   onChange={(e) => handleUpdateText(item.id, e.target.value)}
                   className={`flex-1 text-sm bg-transparent border-none outline-none focus:ring-0 px-0 ${

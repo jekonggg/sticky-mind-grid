@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { commentApi } from "@/services/commentApi";
 import { Comment } from "@/types/task";
@@ -15,6 +15,10 @@ interface TaskCommentsProps {
   taskId: string;
   boardMembers: BoardMember[];
   readOnly?: boolean;
+}
+
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsProps) {
@@ -67,8 +71,8 @@ export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsPro
 
     if (lastAtIndex !== -1) {
       const query = textBeforeCursor.slice(lastAtIndex + 1);
-      // Only suggest if no space after @ or minimal space
-      if (!query.includes(" ") || query.length < 15) {
+      // Allow multi-word query (e.g. "@John D") up to reasonable length
+      if (query.length <= 30 && !query.includes("\n")) {
         setMentionQuery(query.toLowerCase());
         return;
       }
@@ -77,7 +81,7 @@ export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsPro
   };
 
   const handleSelectMention = (member: BoardMember) => {
-    const name = member.user?.fullName || member.user?.email || "user";
+    const name = member.user?.fullName || member.user?.email || "Member";
     const textBeforeCursor = content.slice(0, cursorPos);
     const lastAtIndex = textBeforeCursor.lastIndexOf("@");
 
@@ -88,34 +92,68 @@ export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsPro
       setContent(newText);
       setMentionQuery(null);
       setTimeout(() => {
-        textareaRef.current?.focus();
+        if (textareaRef.current) {
+          const newPos = before.length + name.length + 2;
+          textareaRef.current.focus();
+          textareaRef.current.setSelectionRange(newPos, newPos);
+        }
       }, 50);
     }
   };
 
-  const filteredMembers = mentionQuery !== null
-    ? boardMembers.filter((m) => {
-        const name = (m.user?.fullName || "").toLowerCase();
-        const email = (m.user?.email || "").toLowerCase();
-        return name.includes(mentionQuery) || email.includes(mentionQuery);
-      })
-    : [];
+  const filteredMembers =
+    mentionQuery !== null
+      ? boardMembers.filter((m) => {
+          const name = (m.user?.fullName || "").toLowerCase();
+          const email = (m.user?.email || "").toLowerCase();
+          return name.includes(mentionQuery) || email.includes(mentionQuery);
+        })
+      : [];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!content.trim()) return;
     addMutation.mutate(content.trim());
   };
 
-  // Render comment text highlighting @mentions
+  // Render comment text highlighting full-name @mentions
   const renderFormattedContent = (text: string) => {
-    const parts = text.split(/(@[a-zA-Z0-9._\-\s]+?(?=\s|$|[.,!?]))/g);
+    if (!text) return null;
+
+    // Collect all valid member target strings (fullName, email, and first names)
+    const mentionTargets: string[] = [];
+    boardMembers.forEach((m) => {
+      if (m.user?.fullName) {
+        mentionTargets.push(m.user.fullName);
+      }
+      if (m.user?.email) {
+        mentionTargets.push(m.user.email);
+      }
+    });
+
+    // Deduplicate and sort longest first so "John Doe" matches before "John"
+    const uniqueTargets = Array.from(new Set(mentionTargets)).sort((a, b) => b.length - a.length);
+
+    let mentionRegex: RegExp;
+    if (uniqueTargets.length > 0) {
+      const targetsPattern = uniqueTargets.map((t) => escapeRegExp(t)).join("|");
+      // Matches @Target (case-insensitive) OR generic @username / @word
+      mentionRegex = new RegExp(
+        `(@(?:${targetsPattern}|[a-zA-Z0-9._-]+(?:\\s+[a-zA-Z0-9._-]+)?))(?=\\s|$|[.,!?;:])`,
+        "gi"
+      );
+    } else {
+      mentionRegex = /(@[a-zA-Z0-9._-]+(?:\s+[a-zA-Z0-9._-]+)?)(?=\\s|$|[.,!?;:])/gi;
+    }
+
+    const parts = text.split(mentionRegex);
+
     return parts.map((part, idx) => {
-      if (part.startsWith("@")) {
+      if (part && part.startsWith("@")) {
         return (
           <span
             key={idx}
-            className="inline-flex items-center font-bold text-primary bg-primary/10 px-1 py-0.2 rounded text-[11px]"
+            className="inline-flex items-center font-bold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded text-[11px] mx-0.5 shadow-2xs"
           >
             {part}
           </span>
@@ -187,7 +225,7 @@ export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsPro
                     onClick={() => {
                       if (confirm("Delete this comment?")) deleteMutation.mutate(c.id);
                     }}
-                    className="h-6 w-6 opacity-0 group-hover/comment:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
+                    className="h-6 w-6 opacity-0 group-hover/comment:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0 cursor-pointer"
                     title="Delete comment"
                   >
                     <Trash2 className="h-3 w-3" />
@@ -244,18 +282,18 @@ export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsPro
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
-                  handleSubmit(e);
+                  handleSubmit();
                 }
               }}
               rows={2}
-              className="resize-none text-xs pr-16 bg-background/50 border-border/60"
+              className="resize-none text-xs pr-16 bg-background/50 border-border/60 focus-visible:ring-primary"
             />
             <Button
               type="button"
-              onClick={handleSubmit}
+              onClick={() => handleSubmit()}
               size="sm"
               disabled={addMutation.isPending || !content.trim()}
-              className="absolute right-2 bottom-2 h-7 px-2.5 gap-1 text-xs font-bold"
+              className="absolute right-2 bottom-2 h-7 px-2.5 gap-1 text-xs font-bold shadow-xs cursor-pointer"
             >
               {addMutation.isPending ? (
                 <Loader2 className="h-3 w-3 animate-spin" />

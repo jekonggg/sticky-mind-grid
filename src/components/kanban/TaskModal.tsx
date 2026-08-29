@@ -35,6 +35,10 @@ import {
   Square,
   Tag as TagIcon,
   Plus,
+  Calendar,
+  AlertCircle,
+  Clock,
+  Sparkles,
 } from "lucide-react";
 import { EmojiSelector } from "../common/EmojiSelector";
 import { TaskComments } from "./TaskComments";
@@ -101,9 +105,12 @@ export function TaskModal({
     } else {
       const activeBoardId = boardId || task?.boardId;
       if (activeBoardId && open) {
-        boardApi.getMembers(activeBoardId).then((data) => {
-          setBoardMembers(data || []);
-        }).catch(() => {});
+        boardApi
+          .getMembers(activeBoardId)
+          .then((data) => {
+            setBoardMembers(data || []);
+          })
+          .catch(() => {});
       }
     }
   }, [members, boardId, task?.boardId, open]);
@@ -113,7 +120,7 @@ export function TaskModal({
       setTitle(task.title);
       setEmoji(task.emoji || "");
       setDescription(task.description || "");
-      setPriority(task.priority);
+      setPriority(task.priority || "medium");
       setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : "");
       setProgress(task.progress || 0);
       setAssignedTo(task.assignedTo || "unassigned");
@@ -156,8 +163,6 @@ export function TaskModal({
         ]);
         toast.success(`Uploaded ${file.name}`);
       } catch (err: any) {
-        // Surface rejection reasons (size cap, disallowed type) instead of
-        // silently falling back to embedding the file as base64 in MySQL.
         toast.error(err.message || `Failed to upload ${file.name}`);
       }
     }
@@ -217,23 +222,16 @@ export function TaskModal({
     setTags((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (readOnly || !title.trim()) return;
-
-    let finalStatus = task?.status;
-    if (columns && columns.length >= 3) {
-      if (progress === 100) finalStatus = "done";
-      else if (progress === 30) finalStatus = "in_progress";
-      else if (progress === 0) finalStatus = "todo";
-    }
 
     onSubmit({
       title: title.trim(),
       emoji: emoji || undefined,
       description: description.trim() || undefined,
       priority,
-      status: finalStatus,
+      status: task?.status,
       assignedTo: assignedTo === "unassigned" ? null : assignedTo,
       dueDate: dueDate ? new Date(dueDate) : undefined,
       progress,
@@ -244,33 +242,72 @@ export function TaskModal({
     onClose();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-xl max-h-[95vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold flex items-center gap-2">
-            {readOnly ? (
-              <>
-                <span>Task Details</span>
-                <span className="text-xs font-bold text-amber-600 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Eye className="h-3 w-3" /> View Only
-                </span>
-              </>
-            ) : isEditing ? (
-              "Edit Task"
-            ) : (
-              "New Task"
+      <DialogContent
+        onKeyDown={handleKeyDown}
+        className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 overflow-hidden shadow-2xl border-border/80"
+      >
+        {/* Header with Top Quick Save Option */}
+        <DialogHeader className="px-6 pt-5 pb-3 border-b border-border/40 shrink-0 bg-background">
+          <div className="flex items-center justify-between gap-3 pr-6">
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              {readOnly ? (
+                <>
+                  <span>Task Details</span>
+                  <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Eye className="h-3 w-3" /> View Only
+                  </span>
+                </>
+              ) : isEditing ? (
+                <div className="flex items-center gap-2">
+                  <span>Edit Task</span>
+                  <span className="text-[11px] font-medium text-muted-foreground hidden sm:inline">
+                    (Ctrl + Enter to save)
+                  </span>
+                </div>
+              ) : (
+                "New Task"
+              )}
+            </DialogTitle>
+
+            {!readOnly && isEditing && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => handleSubmit()}
+                disabled={!title.trim()}
+                className="h-8 px-3.5 font-bold text-xs gap-1.5 shadow-sm ml-auto"
+              >
+                <Check className="h-3.5 w-3.5" />
+                <span>Save</span>
+              </Button>
             )}
-          </DialogTitle>
+          </div>
           <DialogDescription className="sr-only">
             Task details, assignments, attachments, checklists, and discussions
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
+        {/* Scrollable Form Body */}
+        <form
+          id="task-modal-form"
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
+        >
           {/* Title & Emoji */}
           <div className="space-y-1.5">
-            <Label htmlFor="title" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <Label
+              htmlFor="title"
+              className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+            >
               Task Title <span className="text-destructive">*</span>
             </Label>
             <div className="flex gap-2">
@@ -287,7 +324,7 @@ export function TaskModal({
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="What needs to be done?"
                 disabled={readOnly}
-                className="h-10 text-sm font-semibold flex-1"
+                className="h-10 text-sm font-semibold flex-1 bg-background/50 border-border/60 focus-visible:ring-primary"
                 autoFocus
               />
             </div>
@@ -303,14 +340,14 @@ export function TaskModal({
                 <button
                   type="button"
                   onClick={() => setIsAddingTag(true)}
-                  className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1"
+                  className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Plus className="h-3 w-3" /> Add Tag
                 </button>
               )}
             </div>
 
-            <div className="flex flex-wrap gap-1.5 items-center min-h-[30px] p-1.5 rounded-lg bg-muted/30 border border-border/40">
+            <div className="flex flex-wrap gap-1.5 items-center min-h-[34px] p-1.5 rounded-lg bg-muted/30 border border-border/40">
               {tags.length === 0 && !isAddingTag && (
                 <span className="text-[11px] text-muted-foreground italic px-1">
                   No tags added
@@ -319,16 +356,23 @@ export function TaskModal({
               {tags.map((tag) => (
                 <span
                   key={tag.id}
-                  style={{ backgroundColor: `${tag.color}20`, borderColor: `${tag.color}60`, color: tag.color }}
+                  style={{
+                    backgroundColor: `${tag.color}20`,
+                    borderColor: `${tag.color}60`,
+                    color: tag.color,
+                  }}
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border shadow-xs"
                 >
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: tag.color }}
+                  />
                   {tag.name}
                   {!readOnly && (
                     <button
                       type="button"
                       onClick={() => handleDeleteTag(tag.id)}
-                      className="hover:opacity-70 ml-0.5"
+                      className="hover:opacity-70 ml-0.5 cursor-pointer"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -359,13 +403,18 @@ export function TaskModal({
                         type="button"
                         onClick={() => setSelectedTagColor(c)}
                         style={{ backgroundColor: c }}
-                        className={`h-4 w-4 rounded-full transition-transform ${
+                        className={`h-4 w-4 rounded-full transition-transform cursor-pointer ${
                           selectedTagColor === c ? "ring-2 ring-primary scale-110" : "opacity-80"
                         }`}
                       />
                     ))}
                   </div>
-                  <Button type="button" size="sm" onClick={handleAddTag} className="h-7 px-2 text-xs font-bold">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleAddTag}
+                    className="h-7 px-2 text-xs font-bold"
+                  >
                     Add
                   </Button>
                   <Button
@@ -384,58 +433,104 @@ export function TaskModal({
 
           {/* Description */}
           <div className="space-y-1.5">
-            <Label htmlFor="description" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <Label
+              htmlFor="description"
+              className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+            >
               Description
             </Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={readOnly ? "No description provided." : "Add more details, requirements, or links…"}
+              placeholder={
+                readOnly ? "No description provided." : "Add more details, requirements, or links…"
+              }
               rows={3}
               disabled={readOnly}
-              className="resize-none text-xs leading-relaxed"
+              className="resize-none text-xs leading-relaxed bg-background/50 border-border/60 focus-visible:ring-primary"
             />
           </div>
 
           {/* Priority & Due Date */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Priority Section with Color Indicators */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Priority
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5 text-primary" /> Priority
               </Label>
-              <div className="flex gap-1 p-1 bg-muted/60 rounded-lg border border-border/40">
-                {(["low", "medium", "high"] as Priority[]).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    disabled={readOnly}
-                    onClick={() => setPriority(p)}
-                    className={`flex-1 py-1 px-2 text-[10px] font-black uppercase tracking-wider rounded-md transition-all
-                      ${
-                        priority === p
-                          ? "bg-background text-foreground shadow-sm ring-1 ring-border/50"
-                          : "text-muted-foreground hover:text-foreground"
+              <div className="flex gap-1.5 p-1 bg-muted/60 rounded-lg border border-border/40 h-10 items-center">
+                {(["low", "medium", "high"] as Priority[]).map((p) => {
+                  const isSelected = priority === p;
+                  const config = {
+                    low: {
+                      dot: "bg-blue-500",
+                      active:
+                        "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 shadow-xs font-bold",
+                      label: "Low",
+                    },
+                    medium: {
+                      dot: "bg-amber-500",
+                      active:
+                        "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 shadow-xs font-bold",
+                      label: "Medium",
+                    },
+                    high: {
+                      dot: "bg-red-500",
+                      active:
+                        "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 shadow-xs font-bold",
+                      label: "High",
+                    },
+                  }[p];
+
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      disabled={readOnly}
+                      onClick={() => setPriority(p)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 text-[11px] uppercase tracking-wider rounded-md border transition-all cursor-pointer ${
+                        isSelected
+                          ? `${config.active} border`
+                          : "border-transparent text-muted-foreground hover:text-foreground hover:bg-background/40 font-semibold"
                       } ${readOnly ? "cursor-default opacity-80" : ""}`}
-                  >
-                    {p}
-                  </button>
-                ))}
+                    >
+                      <span className={`h-2 w-2 rounded-full shrink-0 ${config.dot}`} />
+                      <span>{config.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
+            {/* Consistent Due Date Field */}
             <div className="space-y-1.5">
-              <Label htmlFor="due-date" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Due Date & Time
+              <Label
+                htmlFor="due-date"
+                className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
+              >
+                <Calendar className="h-3.5 w-3.5 text-primary" /> Due Date & Time
               </Label>
-              <Input
-                id="due-date"
-                type="datetime-local"
-                value={dueDate}
-                disabled={readOnly}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="h-9 py-1 px-3 text-xs font-semibold"
-              />
+              <div className="relative flex items-center">
+                <Input
+                  id="due-date"
+                  type="datetime-local"
+                  value={dueDate}
+                  disabled={readOnly}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="h-10 text-xs font-sans font-medium bg-background/50 border-border/60 focus-visible:ring-primary pr-8 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-70 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
+                />
+                {dueDate && !readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => setDueDate("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-destructive p-1 transition-colors cursor-pointer"
+                    title="Clear due date"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -445,7 +540,7 @@ export function TaskModal({
               <Users className="h-3.5 w-3.5 text-primary" /> Assignee
             </Label>
             <Select value={assignedTo} onValueChange={setAssignedTo} disabled={readOnly}>
-              <SelectTrigger className="h-10 bg-background/50 border-border/60">
+              <SelectTrigger className="h-10 bg-background/50 border-border/60 text-xs">
                 <SelectValue placeholder="Assign to team member..." />
               </SelectTrigger>
               <SelectContent className="max-h-60">
@@ -489,7 +584,10 @@ export function TaskModal({
               </Label>
               {checklist.length > 0 && (
                 <span className="text-[10px] font-bold text-muted-foreground">
-                  {Math.round((checklist.filter((i) => i.completed).length / checklist.length) * 100)}% done
+                  {Math.round(
+                    (checklist.filter((i) => i.completed).length / checklist.length) * 100
+                  )}
+                  % done
                 </span>
               )}
             </div>
@@ -521,7 +619,7 @@ export function TaskModal({
                         e.stopPropagation();
                         handleDeleteChecklistItem(item.id);
                       }}
-                      className="text-muted-foreground hover:text-destructive p-0.5"
+                      className="text-muted-foreground hover:text-destructive p-0.5 cursor-pointer"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -558,34 +656,6 @@ export function TaskModal({
             )}
           </div>
 
-          {/* Progress / Status Slider */}
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center justify-between text-xs">
-              <Label htmlFor="progress" className="font-bold uppercase tracking-wider text-muted-foreground text-[10px]">
-                Progress State
-              </Label>
-              <span className="font-bold text-primary">{progress}%</span>
-            </div>
-            <div className="flex gap-2">
-              {[0, 30, 70, 100].map((val) => (
-                <button
-                  key={val}
-                  type="button"
-                  data-state={progress === val ? "active" : "inactive"}
-                  disabled={readOnly}
-                  onClick={() => setProgress(val)}
-                  className={`flex-1 py-1 text-[11px] font-bold rounded-lg border transition-all ${
-                    progress === val
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "bg-muted/40 text-muted-foreground hover:bg-muted"
-                  } ${readOnly ? "cursor-default" : ""}`}
-                >
-                  {val === 0 ? "To Do" : val === 100 ? "Done" : `${val}%`}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Attachments Section */}
           <div className="space-y-2 pt-2 border-t border-border/40">
             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -598,7 +668,11 @@ export function TaskModal({
                   className="relative group aspect-square rounded-lg border border-border bg-muted/40 flex flex-col items-center justify-center p-2 text-center overflow-hidden hover:border-primary/50 transition-colors"
                 >
                   {file.url ? (
-                    <img src={file.url} alt={file.name} className="absolute inset-0 w-full h-full object-cover" />
+                    <img
+                      src={file.url}
+                      alt={file.name}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
                   ) : (
                     <FileText className="h-6 w-6 text-muted-foreground mb-1" />
                   )}
@@ -616,7 +690,7 @@ export function TaskModal({
                     <button
                       type="button"
                       onClick={() => removeAttachment(i)}
-                      className="absolute top-1 right-1 p-1 bg-background/80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background z-10 shadow-sm"
+                      className="absolute top-1 right-1 p-1 bg-background/80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background z-10 shadow-sm cursor-pointer"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -652,60 +726,62 @@ export function TaskModal({
               <TaskComments taskId={task.id} boardMembers={boardMembers} readOnly={readOnly} />
             </div>
           )}
-
-          <DialogFooter className="flex items-center !justify-between pt-4 border-t border-border/50">
-            {readOnly ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 px-5 font-bold text-xs ml-auto"
-                onClick={onClose}
-              >
-                Close
-              </Button>
-            ) : (
-              <>
-                {isEditing && onDelete ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 px-3 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs font-bold"
-                    onClick={() => {
-                      onDelete(task.id);
-                      onClose();
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1.5" />
-                    Delete Task
-                  </Button>
-                ) : (
-                  <div />
-                )}
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9 px-4 font-bold text-xs"
-                    onClick={onClose}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="h-9 px-4 font-bold text-xs"
-                    disabled={!title.trim()}
-                  >
-                    {isEditing ? "Update Task" : "Create Task"}
-                  </Button>
-                </div>
-              </>
-            )}
-          </DialogFooter>
         </form>
+
+        {/* Sticky Footer: Always visible on screen */}
+        <DialogFooter className="px-6 py-3 border-t border-border/60 bg-background/95 backdrop-blur-md shrink-0 flex items-center !justify-between">
+          {readOnly ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 px-5 font-bold text-xs ml-auto"
+              onClick={onClose}
+            >
+              Close
+            </Button>
+          ) : (
+            <>
+              {isEditing && onDelete ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 px-3 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs font-bold"
+                  onClick={() => {
+                    onDelete(task.id);
+                    onClose();
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  Delete Task
+                </Button>
+              ) : (
+                <div />
+              )}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-4 font-bold text-xs"
+                  onClick={onClose}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  form="task-modal-form"
+                  size="sm"
+                  className="h-9 px-4 font-bold text-xs shadow-sm"
+                  disabled={!title.trim()}
+                >
+                  {isEditing ? "Update Task" : "Create Task"}
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

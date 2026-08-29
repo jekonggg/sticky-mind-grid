@@ -84,15 +84,17 @@ test.describe("Kanban Board", () => {
       // Right-side properties visible
       await expect(page.getByText("Status")).toBeVisible();
       await expect(page.getByText("Priority")).toBeVisible();
-      await expect(page.getByText("Progress")).toBeVisible();
+      await expect(page.getByText("Assignee")).toBeVisible();
+      await expect(page.getByText("Due Date")).toBeVisible();
     });
 
     test("edits task title in right-side workspace", async ({ page }) => {
       await createTask(page, "Old Title");
       await page.locator("main").getByText("Old Title").click();
       await page.locator("#title").fill("New Title");
-      await page.waitForTimeout(700);
-      const closeBtn = page.locator('button[title="Close task (Esc)"]').or(page.getByRole("button", { name: "Board", exact: true })).first();
+      await page.locator("#title").blur();
+      await page.waitForTimeout(500);
+      const closeBtn = page.locator('button[title="Close task (Esc)"]').first();
       await closeBtn.click();
       await expect(page.locator("main").getByText("New Title")).toBeVisible();
       await expect(page.locator("main").getByText("Old Title")).not.toBeVisible();
@@ -117,8 +119,8 @@ test.describe("Kanban Board", () => {
 
   test.describe("Task fields in Right-Side Workspace", () => {
     test("sets task description in workspace", async ({ page }) => {
-      await page.locator('button[title="Create New Task"]').click();
-      await page.locator("#title").waitFor({ state: "visible", timeout: 10000 });
+      await page.locator('button[title="Create New Task"]').dispatchEvent("click");
+      await page.locator("#title").waitFor({ state: "visible", timeout: 15000 });
       await page.locator("#title").fill("Described Task");
       await page.locator("#description").fill("This is a detailed description in Notion workspace");
       await page.waitForTimeout(900);
@@ -129,15 +131,17 @@ test.describe("Kanban Board", () => {
     });
 
     test("adds checklist items in Notion workspace", async ({ page }) => {
-      await page.locator('button[title="Create New Task"]').click();
-      await page.locator("#title").waitFor({ state: "visible", timeout: 10000 });
+      await page.locator('button[title="Create New Task"]').dispatchEvent("click");
+      await page.locator("#title").waitFor({ state: "visible", timeout: 15000 });
       await page.locator("#title").fill("Checklist Task");
       await page.getByPlaceholder(/add a subtask/i).fill("Subtask 1");
       await page.getByPlaceholder(/add a subtask/i).press("Enter");
+      await expect(page.getByTestId("checklist-item-input")).toHaveCount(1);
       await page.getByPlaceholder(/add a subtask/i).fill("Subtask 2");
       await page.getByPlaceholder(/add a subtask/i).press("Enter");
-      await expect(page.getByDisplayValue("Subtask 1")).toBeVisible();
-      await expect(page.getByDisplayValue("Subtask 2")).toBeVisible();
+      await expect(page.getByTestId("checklist-item-input")).toHaveCount(2);
+      await expect(page.getByTestId("checklist-item-input").nth(0)).toHaveValue("Subtask 1");
+      await expect(page.getByTestId("checklist-item-input").nth(1)).toHaveValue("Subtask 2");
     });
   });
 

@@ -56,7 +56,7 @@ def get_task(task_id):
 @jwt_required()
 def create_task():
     data = request.json
-    user_id = get_jwt_identity()
+    user_id = str(get_jwt_identity())
     board_id = data.get('boardId') if data else None
     
     if not data or not board_id or not data.get('title'):
@@ -66,8 +66,12 @@ def create_task():
     if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['member']:
         return jsonify({'error': 'You do not have permission to create tasks on this board'}), 403
     
-    task = TaskService.create_task(data, user_id=user_id)
-    return jsonify(task.to_dict()), 201
+    try:
+        task = TaskService.create_task(data, user_id=user_id)
+        return jsonify(task.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @bp.route('/tasks/reorder', methods=['PATCH'])
 @jwt_required()
@@ -83,8 +87,11 @@ def reorder_tasks():
     if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['member']:
         return jsonify({'error': 'You do not have permission to reorder tasks on this board'}), 403
 
-    updated_tasks = TaskService.reorder_tasks(board_id, items, user_id=user_id)
-    return jsonify([t.to_dict() for t in updated_tasks]), 200
+    try:
+        updated_tasks = TaskService.reorder_tasks(board_id, items, user_id=user_id)
+        return jsonify([t.to_dict() for t in updated_tasks]), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @bp.route('/tasks/<task_id>', methods=['PATCH', 'PUT'])
 @jwt_required()

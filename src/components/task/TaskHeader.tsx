@@ -22,6 +22,7 @@ interface TaskHeaderProps {
   readOnly?: boolean;
   onClose?: () => void;
   onTitleChange: (title: string) => void;
+  onTitleBlur?: () => void;
   onEmojiChange: (emoji: string) => void;
   onCoverChange?: (cover: string) => void;
   onDelete?: () => void;
@@ -46,6 +47,7 @@ export function TaskHeader({
   readOnly,
   onClose,
   onTitleChange,
+  onTitleBlur,
   onEmojiChange,
   onCoverChange,
   onDelete,
@@ -219,6 +221,7 @@ export function TaskHeader({
               id="title"
               value={title}
               onChange={(e) => onTitleChange(e.target.value)}
+              onBlur={onTitleBlur}
               placeholder="Untitled Task"
               className="w-full text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground bg-transparent border-none outline-none focus:ring-0 placeholder:text-muted-foreground/30 py-1 transition-all"
             />

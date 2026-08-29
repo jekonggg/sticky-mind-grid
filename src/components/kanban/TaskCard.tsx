@@ -104,15 +104,24 @@ export function TaskCard({ task, onClick, isDragDisabled = false }: TaskCardProp
             </div>
           )}
 
-          {/* Progress Bar Area */}
-          <div className="mt-2.5 space-y-1 flex flex-col">
-            <div className="w-full h-1 bg-muted rounded-full overflow-hidden border border-border/10">
-              <div
-                className={`h-full transition-all duration-500 ease-out ${getProgressColor(task.progress)}`}
-                style={{ width: `${task.progress}%` }}
-              />
+          {/* Subtask Progress Bar: Rendered only when task has checklist items */}
+          {task.checklist && task.checklist.length > 0 && (
+            <div className="mt-2.5 space-y-1 flex flex-col">
+              {(() => {
+                const completed = task.checklist.filter((i) => i.completed).length;
+                const total = task.checklist.length;
+                const subtaskPct = Math.round((completed / total) * 100);
+                return (
+                  <div className="w-full h-1 bg-muted rounded-full overflow-hidden border border-border/10">
+                    <div
+                      className={`h-full transition-all duration-500 ease-out ${getProgressColor(subtaskPct)}`}
+                      style={{ width: `${subtaskPct}%` }}
+                    />
+                  </div>
+                );
+              })()}
             </div>
-          </div>
+          )}
         </div>
       </div>
 
