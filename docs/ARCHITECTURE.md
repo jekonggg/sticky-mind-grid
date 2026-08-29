@@ -520,6 +520,23 @@ Two decorators enforce access:
 
 ## Testing Architecture
 
+The project adheres to a tiered testing strategy designed for rapid development feedback, reliable automated verification checkpoints, and realistic browser validation. For full details on the development lifecycle, see [`AGENTS.md`](../AGENTS.md).
+
+### Tiered Testing Strategy
+
+1. **Targeted Testing (Continuous during development):**
+   - **Frontend:** Scoped Vitest runs for changed utilities, hooks, components, or state logic (`npx vitest run <path>`).
+   - **Backend:** Scoped pytest runs for changed services, routes, or RBAC rules (`pytest <path> -k <test_name>`).
+   - **TypeScript:** Typechecking via `npx tsc --noEmit` when interfaces or types change.
+   - **Targeted Playwright:** Automated spec runs (`npx playwright test e2e/<spec>`) when modifying user-facing workflows.
+
+2. **Full Verification Suite (Checkpoints & Handoffs):**
+   - Comprehensive automated verification covering Vitest coverage (`npm run test:coverage`), backend pytest with coverage (`pytest --cov=app tests -v`), TypeScript typecheck (`npx tsc --noEmit`), and ESLint (`npm run lint`).
+   - Executed at meaningful completion boundaries or before merge/PR.
+
+3. **Full Playwright E2E Suite (User-Triggered):**
+   - Executed against the running application and dedicated test database (`sticky_mind_grid_test`) when manually requested by the user.
+
 ### Frontend Unit & Component Testing
 - **Framework:** Vitest + React Testing Library + jsdom + `@vitest/coverage-v8`
 - **Setup:** `src/test/setup.ts` mocks browser APIs and ActivityContext
@@ -539,6 +556,7 @@ Two decorators enforce access:
 - **Configuration:** `playwright.config.ts` (manages test directory `./e2e`, local webServer on port 5173, trace capture, and reporters)
 - **Scope:** Real browser-based automation covering full user journeys, authentication lifecycle, board CRUD, kanban drag-and-drop, permissions, notifications, activity feeds, documents, settings, and regression prevention
 - **Test Specs:** Located in `e2e/` (12 spec suites covering 117 tests)
+- **Execution Policy:** Targeted specs run during workflow changes; complete suite is user-triggered
 
 ### Database Isolation Strategy
 - **Primary Dev Database (`sticky_mind_grid`):** Dedicated to manual development and developer data. Automated test runners never touch or mutate this database.

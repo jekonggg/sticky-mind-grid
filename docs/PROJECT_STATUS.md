@@ -252,10 +252,11 @@ Large base64 strings stored in LONGTEXT columns can cause database bloat and slo
 
 ## Testing Status
 
-### Framework
+### Framework & Workflow
+- **Strategy:** Tiered testing with fast targeted tests during development, automated full verification checkpoints, and user-triggered Playwright E2E suite (see [`AGENTS.md`](../AGENTS.md)).
 - **Frontend:** Vitest 3.2.4 + React Testing Library 16 + jsdom + `@vitest/coverage-v8`
 - **Backend:** pytest + `pytest-cov` (configured with SQLite in-memory test database, 73% coverage)
-- **E2E:** Playwright 1.57.0 (12 spec suites covering 117 tests)
+- **E2E:** Playwright 1.57.0 (12 spec suites covering 117 tests, isolated against `sticky_mind_grid_test`)
 - **CI:** GitHub Actions runs backend pytest + coverage, frontend typecheck + vitest coverage, and full-stack Playwright E2E
 
 ### Existing Tests

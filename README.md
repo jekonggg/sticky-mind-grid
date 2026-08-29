@@ -7,11 +7,11 @@ A full-stack Trello-style task management application with a **React/Vite** fron
 ## Documentation
 
 | Document | Purpose |
-|----------|---------|
+|---|---|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System architecture, data models, API routes, services |
 | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Current feature status, technical debt, testing status |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Development roadmap prioritized by need |
-| [`AGENTS.md`](AGENTS.md) | AI agent development guide and conventions |
+| [`AGENTS.md`](AGENTS.md) | AI agent development guide, workflow lifecycle, and conventions |
 
 ---
 
@@ -47,24 +47,47 @@ npm run dev                  # http://localhost:8080
 
 Set `VITE_API_BASE_URL` in `.env` (defaults to `http://127.0.0.1:5000/api`).
 
-### Testing
+---
 
+## Testing & Verification
+
+The project uses a tiered testing strategy: fast targeted tests during active development, automated full verification at completion checkpoints, and user-triggered Playwright E2E browser tests.
+
+### 1. Targeted Feedback (During Development)
 ```bash
-# Frontend Unit & Component Tests (Vitest)
-npm run test                 # Vitest single run
-npm run test:watch           # Vitest watch mode
+# Frontend targeted test
+npx vitest run src/test/path/to/TargetComponent.test.tsx
 
-# End-to-End Tests (Playwright)
-npm run test:e2e             # Playwright headless run
-npm run test:e2e:ui          # Playwright interactive UI mode
+# Backend targeted test
+cd backend && pytest tests/test_specific.py -v && cd ..
 
-# Type Checking
-npx tsc --noEmit             # TypeScript typecheck
-
-# Backend Tests (pytest)
-cd backend
-pytest tests -v
+# TypeScript typecheck
+npx tsc --noEmit
 ```
+
+### 2. Full Verification Suite (Checkpoint)
+```bash
+npm run test:coverage         # Frontend Vitest suite with V8 coverage
+cd backend && pytest --cov=app tests -v && cd .. # Backend Pytest suite with coverage
+npx tsc --noEmit              # TypeScript typecheck
+npm run lint                  # ESLint code quality check
+```
+
+### 3. End-to-End Tests (Playwright)
+```bash
+# Targeted workflow test
+npx playwright test e2e/task-crud.spec.ts
+
+# Full Playwright E2E suite (User-triggered against test DB)
+npm run test:e2e              # Headless run
+npm run test:e2e:ui           # Interactive UI mode
+npm run test:e2e:report       # View last HTML report
+```
+
+### Database Isolation Policy
+- **Development (`sticky_mind_grid`):** Reserved for manual development.
+- **E2E Tests (`sticky_mind_grid_test`):** Automated test database seeded fresh before runs.
+- **Pytest (`sqlite:///:memory:`):** Ephemeral in-memory database per test.
 
 ---
 
