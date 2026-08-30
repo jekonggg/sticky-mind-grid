@@ -39,7 +39,6 @@ const mockMembers: BoardMember[] = [
       email: "owner@example.com",
       fullName: "Owner User",
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     },
   },
   {
@@ -63,7 +62,6 @@ const mockMembers: BoardMember[] = [
       email: "pending@example.com",
       fullName: "Pending Colleague",
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     },
   },
 ];

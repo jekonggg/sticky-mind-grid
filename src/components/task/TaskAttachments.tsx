@@ -28,9 +28,9 @@ export function TaskAttachments({ attachments, readOnly, onChange }: TaskAttachm
         const uploaded = await fileApi.uploadFile(file);
         newAttachments.push({
           id: uploaded.id,
-          name: uploaded.filename,
+          name: uploaded.name || file.name,
           url: uploaded.url,
-          type: uploaded.contentType || file.type,
+          type: uploaded.type || file.type,
           size: uploaded.size || file.size,
           uploadedAt: new Date(),
         });
@@ -57,8 +57,9 @@ export function TaskAttachments({ attachments, readOnly, onChange }: TaskAttachm
     }
   };
 
-  const formatFileSize = (bytes?: number) => {
+  const formatFileSize = (bytes?: string | number) => {
     if (!bytes) return "";
+    if (typeof bytes === "string") return bytes;
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;

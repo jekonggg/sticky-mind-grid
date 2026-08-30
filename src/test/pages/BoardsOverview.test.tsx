@@ -60,8 +60,6 @@ const mockInvitations: BoardInvitation[] = [
       emoji: "🌟",
       color: "hsl(140, 70%, 50%)",
       ownerName: "Alice Director",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     },
   },
 ];

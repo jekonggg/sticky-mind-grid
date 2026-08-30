@@ -40,8 +40,8 @@ const mockBoard: Board = {
   color: "hsl(220, 80%, 60%)",
   columns: [],
   ownerId: "user-owner-1",
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
 describe("useBoardPermissions hook", () => {

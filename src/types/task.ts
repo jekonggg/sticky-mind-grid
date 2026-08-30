@@ -1,17 +1,19 @@
 export type TaskStatus = string;
-export type Priority = "low" | "medium" | "high";
+export type Priority = "low" | "medium" | "high" | "urgent";
 
 export interface Attachment {
   id?: string;
   name: string;
   url: string; // Base64 or mock URL
   type: string; // mime-type
-  size?: string;
+  size?: string | number;
+  uploadedAt?: Date | string;
 }
 
 export interface ChecklistItem {
   id: string;
-  title: string;
+  title?: string;
+  text?: string;
   completed: boolean;
 }
 
@@ -52,6 +54,7 @@ export interface CreateTaskData {
   title: string;
   emoji?: string;
   description?: string;
+  status?: TaskStatus;
   priority: Priority;
   assignedTo?: string;
   dueDate?: Date;
@@ -97,6 +100,7 @@ export interface Column {
   id: string;
   title: string;
   emoji?: string;
+  color?: string;
 }
 
 export interface Comment {
@@ -114,10 +118,22 @@ export interface Comment {
   updatedAt?: Date;
 }
 
+export type NotificationType =
+  | "mention"
+  | "assignment"
+  | "task_comment"
+  | "invite"
+  | "board_invite"
+  | "invite_accepted"
+  | "invite_declined"
+  | "member_left"
+  | "member_removed"
+  | "system";
+
 export interface Notification {
   id: string;
   userId: string;
-  type: "mention" | "assignment" | "task_comment" | "invite" | "system";
+  type: NotificationType;
   title: string;
   message: string;
   link?: string;

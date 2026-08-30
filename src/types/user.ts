@@ -3,7 +3,7 @@ export interface User {
   email: string;
   fullName: string | null;
   avatarUrl?: string | null;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface AuthResponse {

@@ -15,7 +15,7 @@ describe("authenticatedFetch service helper", () => {
 
   afterEach(() => {
     global.fetch = originalFetch;
-    window.location = originalLocation;
+    (window as any).location = originalLocation;
     vi.restoreAllMocks();
   });
 

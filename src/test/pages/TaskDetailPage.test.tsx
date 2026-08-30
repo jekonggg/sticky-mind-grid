@@ -40,6 +40,7 @@ const mockBoard: Board = {
   id: "board-1",
   name: "Engineering Roadmap",
   ownerId: mockUser.id,
+  color: "hsl(220, 80%, 56%)",
   columns: [
     { id: "todo", title: "To Do", color: "#3b82f6" },
     { id: "in-progress", title: "In Progress", color: "#eab308" },

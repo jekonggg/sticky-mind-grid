@@ -9,6 +9,7 @@ const mockBoard: Board = {
   id: "board-1",
   name: "Sprint Board",
   ownerId: mockUser.id,
+  color: "hsl(220, 80%, 56%)",
   columns: [
     { id: "todo", title: "To Do", color: "#3b82f6" },
     { id: "in-progress", title: "In Progress", color: "#eab308" },
@@ -58,7 +59,7 @@ describe("TaskDetailWorkspace Component", () => {
     );
 
     expect(screen.getByDisplayValue("Build Right-Side Task Workspace")).toBeInTheDocument();
-    expect(screen.getByText(/⚡/)).toBeInTheDocument();
+    expect(screen.getAllByText(/⚡/)[0]).toBeInTheDocument();
     expect(screen.getByText("Sprint Board")).toBeInTheDocument();
     expect(screen.getByText("Status")).toBeInTheDocument();
     expect(screen.getByText("Priority")).toBeInTheDocument();

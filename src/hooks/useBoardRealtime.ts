@@ -13,6 +13,8 @@ interface RealtimeEvent {
 interface UseBoardRealtimeOptions {
   boardId?: string | null;
   onTaskChange?: () => void;
+  onTaskUpdate?: (task: any) => void;
+  onTaskDelete?: (taskId: string) => void;
   onActivityChange?: (activity: any) => void;
   onMemberChange?: () => void;
   onBoardChange?: (board: any) => void;
@@ -21,6 +23,8 @@ interface UseBoardRealtimeOptions {
 export function useBoardRealtime({
   boardId,
   onTaskChange,
+  onTaskUpdate,
+  onTaskDelete,
   onActivityChange,
   onMemberChange,
   onBoardChange,
@@ -33,6 +37,8 @@ export function useBoardRealtime({
   // Keep latest callbacks in ref without triggering reconnection loops
   const callbacksRef = useRef({
     onTaskChange,
+    onTaskUpdate,
+    onTaskDelete,
     onActivityChange,
     onMemberChange,
     onBoardChange,
@@ -41,6 +47,8 @@ export function useBoardRealtime({
   useEffect(() => {
     callbacksRef.current = {
       onTaskChange,
+      onTaskUpdate,
+      onTaskDelete,
       onActivityChange,
       onMemberChange,
       onBoardChange,
@@ -88,11 +96,19 @@ export function useBoardRealtime({
               break;
 
             case "task:created":
-            case "task:updated":
             case "task:moved":
-            case "task:deleted":
             case "tasks:reordered":
               callbacksRef.current.onTaskChange?.();
+              break;
+
+            case "task:updated":
+              callbacksRef.current.onTaskChange?.();
+              callbacksRef.current.onTaskUpdate?.(payload.data);
+              break;
+
+            case "task:deleted":
+              callbacksRef.current.onTaskChange?.();
+              callbacksRef.current.onTaskDelete?.(payload.data?.taskId || payload.data?.id || payload.data);
               break;
 
             case "activity:new":

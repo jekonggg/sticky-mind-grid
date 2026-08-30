@@ -11,8 +11,9 @@ const mockBoard: Board = {
   ownerId: mockUser.id,
   emoji: "🚀",
   color: "hsl(220, 80%, 56%)",
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
+  columns: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
 describe("BoardCard Component", () => {
