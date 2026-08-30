@@ -386,7 +386,7 @@ export function KanbanBoard() {
       case "overview":
         return <BoardOverview board={board} tasks={tasks} />;
       case "list":
-        return <TaskListView tasks={filteredAllTasks} selectedTaskId={selectedTaskId} onTaskClick={handleTaskClick} />;
+        return <TaskListView tasks={filteredAllTasks} columns={board?.columns} selectedTaskId={selectedTaskId} onTaskClick={handleTaskClick} />;
       case "calendar":
         return <CalendarView tasks={filteredAllTasks} selectedTaskId={selectedTaskId} onTaskClick={handleTaskClick} />;
       case "documents":

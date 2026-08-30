@@ -49,4 +49,33 @@ describe("TaskListView Component", () => {
     fireEvent.click(screen.getByText("Task with Custom Emoji"));
     expect(onTaskClick).toHaveBeenCalledWith(mockTasks[0]);
   });
+
+  it("matches status title and emoji from board columns like Quality Assurance", () => {
+    const customTasks: Task[] = [
+      {
+        id: "task-qa",
+        title: "Test Task in QA",
+        boardId: "board-1",
+        status: "qa",
+        priority: "urgent",
+        progress: 90,
+        attachments: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    const mockColumns = [
+      { id: "todo", title: "To Do", emoji: "📋" },
+      { id: "qa", title: "Quality Assurance", emoji: "🧪", color: "#8b5cf6" },
+    ];
+
+    renderWithProviders(
+      <TaskListView tasks={customTasks} columns={mockColumns} onTaskClick={vi.fn()} />
+    );
+
+    // Ensure "Quality Assurance" is rendered exactly, not "Qa"
+    expect(screen.getByText("Quality Assurance")).toBeInTheDocument();
+    expect(screen.getByText("🧪")).toBeInTheDocument();
+  });
 });

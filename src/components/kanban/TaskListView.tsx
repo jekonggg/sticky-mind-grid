@@ -1,4 +1,4 @@
-import { Task } from "@/types/task";
+import { Task, Column } from "@/types/task";
 import { getProgressColor } from "@/utils/taskUtils";
 import {
   Table,
@@ -16,11 +16,12 @@ import { Button } from "@/components/ui/button";
 
 interface TaskListViewProps {
   tasks: Task[];
+  columns?: Column[];
   selectedTaskId?: string | null;
   onTaskClick: (task: Task) => void;
 }
 
-export function TaskListView({ tasks, selectedTaskId, onTaskClick }: TaskListViewProps) {
+export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick }: TaskListViewProps) {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
@@ -32,12 +33,6 @@ export function TaskListView({ tasks, selectedTaskId, onTaskClick }: TaskListVie
       default:
         return "";
     }
-  };
-
-  const statusIcons: Record<string, React.ReactNode> = {
-    todo: <Clock className="h-3 w-3 mr-1.5" />,
-    in_progress: <AlertCircle className="h-3 w-3 mr-1.5 text-blue-500" />,
-    done: <CheckCircle2 className="h-3 w-3 mr-1.5 text-green-500" />,
   };
 
   return (
@@ -134,10 +129,26 @@ export function TaskListView({ tasks, selectedTaskId, onTaskClick }: TaskListVie
                       </div>
                     </TableCell>
                     <TableCell className="py-4">
-                      <div className="flex items-center text-xs font-bold capitalize">
-                        {statusIcons[task.status] || <Clock className="h-3 w-3 mr-1.5" />}
-                        {task.status.replace("_", " ")}
-                      </div>
+                      {(() => {
+                        const column = columns.find((c) => c.id === task.status);
+                        const statusTitle = column?.title || task.status.replace(/_/g, " ");
+                        const statusEmoji = column?.emoji;
+                        const statusColor = column?.color;
+
+                        return (
+                          <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                            {statusEmoji ? (
+                              <span className="text-sm shrink-0 leading-none">{statusEmoji}</span>
+                            ) : (
+                              <span
+                                className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
+                                style={{ backgroundColor: statusColor || "var(--primary)" }}
+                              />
+                            )}
+                            <span className="truncate">{statusTitle}</span>
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="py-4">
                       {task.assignee ? (
