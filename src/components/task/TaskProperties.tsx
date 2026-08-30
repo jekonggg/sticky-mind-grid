@@ -22,7 +22,7 @@ import {
   Plus,
   X,
   Check,
-  Sparkles,
+  ListTodo,
 } from "lucide-react";
 import { format, formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
 
@@ -64,7 +64,7 @@ export function TaskProperties({
   assignedTo,
   members,
   dueDate,
-  progress,
+  progress = 0,
   tags,
   createdAt,
   updatedAt,
@@ -96,49 +96,43 @@ export function TaskProperties({
     onTagsChange(tags.filter((t) => t.id !== tagId));
   };
 
-  const formatDueBadge = (dateStr: string) => {
-    if (!dateStr) return null;
+  const getDueStatus = (dateStr: string) => {
+    if (!dateStr) return "none";
     const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return null;
-
-    if (isPast(d) && !isToday(d)) {
-      return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Overdue</Badge>;
-    }
-    if (isToday(d)) {
-      return <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] px-1.5 py-0">Due Today</Badge>;
-    }
-    if (isTomorrow(d)) {
-      return <Badge className="bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 text-[10px] px-1.5 py-0">Tomorrow</Badge>;
-    }
-    return null;
+    if (isNaN(d.getTime())) return "none";
+    if (isPast(d) && !isToday(d)) return "overdue";
+    if (isToday(d)) return "today";
+    return "upcoming";
   };
 
   const assignedMember = members.find((m) => m.userId === assignedTo);
+  const currentColumn = columns.find((c) => c.id === status);
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-6 sm:px-12 py-6 border-b border-border/40">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
+    <div className="w-full max-w-4xl mx-auto px-6 sm:px-10 py-5 border-b border-border/40 space-y-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5 text-sm">
         {/* Status Property */}
-        <div className="flex items-center gap-4">
-          <div className="w-28 flex items-center gap-2 text-muted-foreground text-xs font-semibold shrink-0">
-            <span className="w-2 h-2 rounded-full bg-primary/70" />
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 select-none">
+            <ListTodo className="h-4 w-4 text-muted-foreground shrink-0" />
             <span>Status</span>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {readOnly ? (
-              <Badge variant="outline" className="font-semibold text-xs capitalize">
-                {columns.find((c) => c.id === status)?.title || status}
+              <Badge variant="outline" className="font-bold text-xs capitalize gap-1.5 py-1 px-2.5 bg-card/60 border-border/60 truncate">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: currentColumn?.color || "var(--primary)" }} />
+                <span className="truncate">{currentColumn?.title || status}</span>
               </Badge>
             ) : (
               <Select value={status} onValueChange={onStatusChange}>
-                <SelectTrigger className="h-8 text-xs font-medium border-border/60 bg-background/50 hover:bg-muted/40 transition-colors w-full sm:w-[220px]">
+                <SelectTrigger className="h-8 text-xs font-medium border-border/60 bg-card/60 hover:bg-muted/50 transition-colors w-full shadow-2xs">
                   <SelectValue placeholder="Select Status" />
                 </SelectTrigger>
                 <SelectContent>
                   {columns.map((col) => (
                     <SelectItem key={col.id} value={col.id} className="text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col.color || "var(--primary)" }} />
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: col.color || "var(--primary)" }} />
                         <span>{col.title}</span>
                       </div>
                     </SelectItem>
@@ -150,16 +144,16 @@ export function TaskProperties({
         </div>
 
         {/* Priority Property */}
-        <div className="flex items-center gap-4">
-          <div className="w-28 flex items-center gap-2 text-muted-foreground text-xs font-semibold shrink-0">
-            <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 select-none">
+            <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
             <span>Priority</span>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {readOnly ? (
               <Badge
                 variant="outline"
-                className={`capitalize text-xs font-bold ${
+                className={`capitalize text-xs font-bold gap-1.5 py-1 px-2.5 ${
                   priority === "urgent"
                     ? "bg-rose-500/10 text-rose-600 border-rose-500/30"
                     : priority === "high"
@@ -169,35 +163,44 @@ export function TaskProperties({
                     : "bg-slate-500/10 text-slate-600 border-slate-500/30"
                 }`}
               >
-                {priority}
+                <span className={`w-2 h-2 rounded-full shrink-0 ${
+                  priority === "urgent"
+                    ? "bg-rose-500"
+                    : priority === "high"
+                    ? "bg-orange-500"
+                    : priority === "medium"
+                    ? "bg-amber-500"
+                    : "bg-slate-400"
+                }`} />
+                <span>{priority}</span>
               </Badge>
             ) : (
               <Select value={priority} onValueChange={(v) => onPriorityChange(v as Priority)}>
-                <SelectTrigger className="h-8 text-xs font-medium border-border/60 bg-background/50 hover:bg-muted/40 transition-colors w-full sm:w-[220px]">
+                <SelectTrigger className="h-8 text-xs font-medium border-border/60 bg-card/60 hover:bg-muted/50 transition-colors w-full shadow-2xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low" className="text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-slate-400" />
+                      <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
                       <span>Low</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="medium" className="text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
                       <span>Medium</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="high" className="text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-orange-500" />
+                      <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
                       <span>High</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="urgent" className="text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
                       <span className="font-semibold text-rose-500">Urgent</span>
                     </div>
                   </SelectItem>
@@ -208,26 +211,26 @@ export function TaskProperties({
         </div>
 
         {/* Assignee Property */}
-        <div className="flex items-center gap-4">
-          <div className="w-28 flex items-center gap-2 text-muted-foreground text-xs font-semibold shrink-0">
-            <User className="h-3.5 w-3.5 text-muted-foreground" />
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 select-none">
+            <User className="h-4 w-4 text-muted-foreground shrink-0" />
             <span>Assignee</span>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {readOnly ? (
               <div className="flex items-center gap-2">
-                <Avatar className="h-5 w-5">
+                <Avatar className="h-5 w-5 border border-border/50 shrink-0">
                   <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
                     {(assignedMember?.user?.fullName || assignedMember?.user?.email || "U").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-xs text-foreground font-medium">
+                <span className="text-xs text-foreground font-medium truncate">
                   {assignedMember ? (assignedMember.user?.fullName || assignedMember.user?.email) : "Unassigned"}
                 </span>
               </div>
             ) : (
-              <Select value={assignedTo} onValueChange={onAssigneeChange}>
-                <SelectTrigger className="h-8 text-xs font-medium border-border/60 bg-background/50 hover:bg-muted/40 transition-colors w-full sm:w-[220px]">
+              <Select value={assignedTo || "unassigned"} onValueChange={onAssigneeChange}>
+                <SelectTrigger className="h-8 text-xs font-medium border-border/60 bg-card/60 hover:bg-muted/50 transition-colors w-full shadow-2xs">
                   <SelectValue placeholder="Assign member" />
                 </SelectTrigger>
                 <SelectContent>
@@ -240,12 +243,12 @@ export function TaskProperties({
                     return (
                       <SelectItem key={m.userId} value={m.userId} className="text-xs">
                         <div className="flex items-center gap-2">
-                          <Avatar className="h-4 w-4">
+                          <Avatar className="h-4 w-4 shrink-0">
                             <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-bold">
                               {initial}
                             </AvatarFallback>
                           </Avatar>
-                          <span>{name}</span>
+                          <span className="truncate">{name}</span>
                         </div>
                       </SelectItem>
                     );
@@ -257,49 +260,106 @@ export function TaskProperties({
         </div>
 
         {/* Due Date Property */}
-        <div className="flex items-center gap-4">
-          <div className="w-28 flex items-center gap-2 text-muted-foreground text-xs font-semibold shrink-0">
-            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-            <span>Due Date</span>
-          </div>
-          <div className="flex-1 flex items-center gap-2">
-            {readOnly ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-foreground font-medium">
-                  {dueDate ? format(new Date(dueDate), "MMM d, yyyy h:mm a") : "No due date"}
+        {(() => {
+          const dueStatus = getDueStatus(dueDate);
+          const isOverdue = dueStatus === "overdue";
+          const isTodayDue = dueStatus === "today";
+
+          return (
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 select-none">
+                <Calendar
+                  className={`h-4 w-4 shrink-0 transition-colors ${
+                    isOverdue
+                      ? "text-rose-500"
+                      : isTodayDue
+                      ? "text-amber-500"
+                      : "text-muted-foreground"
+                  }`}
+                />
+                <span className={isOverdue ? "text-rose-500 font-bold" : isTodayDue ? "text-amber-600 dark:text-amber-400 font-bold" : ""}>
+                  Due Date
                 </span>
-                {formatDueBadge(dueDate)}
+              </div>
+              <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                {readOnly ? (
+                  <span
+                    className={`text-xs truncate font-medium ${
+                      isOverdue
+                        ? "text-rose-600 dark:text-rose-400 font-bold"
+                        : isTodayDue
+                        ? "text-amber-600 dark:text-amber-400 font-bold"
+                        : "text-foreground"
+                    }`}
+                    title={isOverdue ? "Overdue" : isTodayDue ? "Due Today" : undefined}
+                  >
+                    {dueDate ? format(new Date(dueDate), "MMM d, yyyy h:mm a") : "No due date"}
+                  </span>
+                ) : (
+                  <Input
+                    type="datetime-local"
+                    value={dueDate}
+                    onChange={(e) => onDueDateChange(e.target.value)}
+                    title={isOverdue ? "Overdue" : isTodayDue ? "Due Today" : undefined}
+                    className={`h-8 text-xs w-full min-w-0 shadow-2xs px-2 transition-colors ${
+                      isOverdue
+                        ? "border-rose-500/60 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-semibold focus-visible:ring-rose-500"
+                        : isTodayDue
+                        ? "border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold focus-visible:ring-amber-500"
+                        : "border-border/60 bg-card/60 text-foreground"
+                    }`}
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Progress Property */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 select-none">
+            <Sliders className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span>Progress</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            {readOnly ? (
+              <div className="flex items-center gap-2.5 w-full">
+                <div className="flex-1 h-2 bg-muted/80 rounded-full overflow-hidden border border-border/40">
+                  <div
+                    className="h-full bg-primary transition-all duration-300 rounded-full"
+                    style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+                  />
+                </div>
+                <span className="text-xs font-bold text-muted-foreground min-w-[32px] shrink-0">
+                  {progress}%
+                </span>
               </div>
             ) : (
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Input
-                  type="datetime-local"
-                  value={dueDate}
-                  onChange={(e) => onDueDateChange(e.target.value)}
-                  className="h-8 text-xs border-border/60 bg-background/50 w-full sm:w-[220px]"
+              <div className="flex items-center gap-2.5 w-full">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={progress}
+                  onChange={(e) => onProgressChange(Number(e.target.value))}
+                  className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary min-w-0"
                 />
-                {dueDate && (
-                  <button
-                    onClick={() => onDueDateChange("")}
-                    className="text-xs text-muted-foreground hover:text-destructive transition-colors p-1"
-                    title="Clear due date"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                {formatDueBadge(dueDate)}
+                <span className="text-xs font-black text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md min-w-[38px] text-center shrink-0">
+                  {progress}%
+                </span>
               </div>
             )}
           </div>
         </div>
 
         {/* Timestamps */}
-        <div className="flex items-center gap-4">
-          <div className="w-28 flex items-center gap-2 text-muted-foreground text-xs font-semibold shrink-0">
-            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 select-none">
+            <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
             <span>Updated</span>
           </div>
-          <div className="flex-1 text-xs text-muted-foreground">
+          <div className="flex-1 min-w-0 text-xs text-muted-foreground font-medium truncate">
             {updatedAt ? (
               <span title={format(new Date(updatedAt), "PPpp")}>
                 {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
@@ -312,12 +372,12 @@ export function TaskProperties({
       </div>
 
       {/* Tags / Labels Row */}
-      <div className="mt-4 pt-4 border-t border-border/30 flex items-start gap-4">
-        <div className="w-28 flex items-center gap-2 text-muted-foreground text-xs font-semibold shrink-0 pt-1">
-          <TagIcon className="h-3.5 w-3.5 text-muted-foreground" />
+      <div className="pt-3 border-t border-border/30 flex items-start gap-2.5">
+        <div className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 pt-1 select-none">
+          <TagIcon className="h-4 w-4 text-muted-foreground shrink-0" />
           <span>Tags</span>
         </div>
-        <div className="flex-1 flex flex-wrap items-center gap-1.5">
+        <div className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
           {tags.map((tag) => (
             <span
               key={tag.id}
@@ -331,8 +391,9 @@ export function TaskProperties({
               <span>{tag.name}</span>
               {!readOnly && (
                 <button
+                  type="button"
                   onClick={() => handleRemoveTag(tag.id)}
-                  className="hover:opacity-75 transition-opacity"
+                  className="hover:opacity-75 transition-opacity cursor-pointer ml-0.5"
                   title="Remove tag"
                 >
                   <X className="h-3 w-3" />
@@ -363,7 +424,7 @@ export function TaskProperties({
                       type="button"
                       onClick={() => setSelectedTagColor(color)}
                       style={{ backgroundColor: color }}
-                      className={`w-3.5 h-3.5 rounded-full transition-transform ${
+                      className={`w-3.5 h-3.5 rounded-full transition-transform cursor-pointer ${
                         selectedTagColor === color ? "scale-125 ring-1 ring-offset-1 ring-primary" : "opacity-70"
                       }`}
                     />
@@ -381,7 +442,7 @@ export function TaskProperties({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsAddingTag(true)}
-                className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1 border-dashed border-border/80"
+                className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1 border-dashed border-border/80 shadow-2xs"
               >
                 <Plus className="h-3 w-3" />
                 <span>Add Tag</span>

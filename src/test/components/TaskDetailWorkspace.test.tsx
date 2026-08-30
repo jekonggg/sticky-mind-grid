@@ -63,7 +63,30 @@ describe("TaskDetailWorkspace Component", () => {
     expect(screen.getByText("Sprint Board")).toBeInTheDocument();
     expect(screen.getByText("Status")).toBeInTheDocument();
     expect(screen.getByText("Priority")).toBeInTheDocument();
+    expect(screen.getByText("Assignee")).toBeInTheDocument();
+    expect(screen.getByText("Due Date")).toBeInTheDocument();
+    expect(screen.getByText("Progress")).toBeInTheDocument();
+    expect(screen.getByText("Updated")).toBeInTheDocument();
+    expect(screen.getByText("Tags")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Create TaskDetailWorkspace")).toBeInTheDocument();
+  });
+
+  it("handles progress slider change", () => {
+    renderWithProviders(
+      <TaskDetailWorkspace
+        task={mockTask}
+        board={mockBoard}
+        members={[]}
+        onClose={onClose}
+        onUpdateTask={onUpdateTask}
+        onDeleteTask={onDeleteTask}
+      />
+    );
+
+    const progressSlider = screen.getByRole("slider");
+    expect(progressSlider).toBeInTheDocument();
+    fireEvent.change(progressSlider, { target: { value: "75" } });
+    expect(onUpdateTask).toHaveBeenCalledWith({ progress: 75 });
   });
 
   it("calls onClose when clicking the Close/Board button", () => {

@@ -292,7 +292,7 @@ export function KanbanBoard() {
 
   const handleTaskClick = useCallback((task: Task) => {
     setCreatedDraftTask(null);
-    setSelectedTaskId(task.id);
+    setSelectedTaskId((prev) => (prev === task.id ? null : task.id));
   }, []);
 
   const openNewModal = useCallback(async () => {
@@ -318,34 +318,24 @@ export function KanbanBoard() {
     (t: Task) => {
       // Search matching
       if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase();
-        const matchTitle = t.title.toLowerCase().includes(q);
-        const matchDesc = t.description?.toLowerCase().includes(q);
-        const matchAssignee = (
-          t.assignee?.fullName ||
-          t.assignee?.email ||
-          ""
-        )
-          .toLowerCase()
-          .includes(q);
-        const matchTags = (t.tags || []).some((tag) => tag.name.toLowerCase().includes(q));
-        if (!matchTitle && !matchDesc && !matchAssignee && !matchTags) return false;
+        const query = searchTerm.toLowerCase();
+        const matchesTitle = t.title.toLowerCase().includes(query);
+        const matchesDesc = t.description?.toLowerCase().includes(query) || false;
+        const matchesTag = (t.tags || []).some((tag) => tag.name.toLowerCase().includes(query));
+        const matchesAssignee = (t.assignee?.fullName || t.assignee?.email || "").toLowerCase().includes(query);
+        if (!matchesTitle && !matchesDesc && !matchesTag && !matchesAssignee) return false;
       }
 
-      // Assignee matching
+      // Assignee filtering
       if (assigneeFilter === "me") {
-        if (t.assignedTo !== currentUser?.id) return false;
-      } else if (assigneeFilter === "unassigned") {
-        if (t.assignedTo) return false;
+        if (!currentUser || t.assignedTo !== currentUser.id) return false;
       } else if (assigneeFilter !== "all") {
         if (t.assignedTo !== assigneeFilter) return false;
       }
 
-      // Tag matching
+      // Tag filtering
       if (tagFilter !== "all") {
-        const hasTag = (t.tags || []).some(
-          (tag) => tag.name.toLowerCase() === tagFilter.toLowerCase()
-        );
+        const hasTag = (t.tags || []).some((tag) => tag.name.toLowerCase() === tagFilter.toLowerCase());
         if (!hasTag) return false;
       }
 
@@ -356,13 +346,14 @@ export function KanbanBoard() {
 
   const filteredTasksByStatus = useCallback(
     (status: string) => {
-      const statusTasks = getTasksByStatus(status);
-      return statusTasks.filter(isTaskMatchingFilters);
+      return getTasksByStatus(status).filter(isTaskMatchingFilters);
     },
     [getTasksByStatus, isTaskMatchingFilters]
   );
 
-  const filteredAllTasks = tasks.filter(isTaskMatchingFilters);
+  const filteredAllTasks = useMemo(() => {
+    return tasks.filter(isTaskMatchingFilters);
+  }, [tasks, isTaskMatchingFilters]);
 
   if (loading || !board) {
     return (
@@ -376,12 +367,12 @@ export function KanbanBoard() {
   }
 
   const views = [
-    { id: "overview", label: "Overview" },
-    { id: "board", label: "Board" },
-    { id: "list", label: "List" },
+    { id: "board", label: "Board View" },
+    { id: "list", label: "List View" },
     { id: "calendar", label: "Calendar" },
     { id: "documents", label: "Documents" },
-    { id: "members", label: "Members" },
+    { id: "overview", label: "Analytics" },
+    { id: "members", label: "Team" },
   ] as const;
 
   const renderActiveView = () => {
@@ -389,9 +380,9 @@ export function KanbanBoard() {
       case "overview":
         return <BoardOverview board={board} tasks={tasks} />;
       case "list":
-        return <TaskListView tasks={filteredAllTasks} onTaskClick={handleTaskClick} />;
+        return <TaskListView tasks={filteredAllTasks} selectedTaskId={selectedTaskId} onTaskClick={handleTaskClick} />;
       case "calendar":
-        return <CalendarView tasks={filteredAllTasks} onTaskClick={handleTaskClick} />;
+        return <CalendarView tasks={filteredAllTasks} selectedTaskId={selectedTaskId} onTaskClick={handleTaskClick} />;
       case "documents":
         return <DocumentsView tasks={filteredAllTasks} boardId={board.id} readOnly={permissions.isReadOnly} onTaskClick={handleTaskClick} />;
       case "members":
@@ -432,6 +423,7 @@ export function KanbanBoard() {
                       tasks={filteredTasksByStatus(col.id)}
                       canRename={permissions.canEditBoard}
                       isDragDisabled={permissions.isReadOnly}
+                      selectedTaskId={selectedTaskId}
                       onTaskClick={handleTaskClick}
                       onRename={handleRenameColumn}
                     />

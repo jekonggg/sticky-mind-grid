@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 
 interface CalendarViewProps {
   tasks: Task[];
+  selectedTaskId?: string | null;
   onTaskClick: (task: Task) => void;
 }
 
 type ViewMode = "month" | "week" | "day";
 
-export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
+export function CalendarView({ tasks, selectedTaskId, onTaskClick }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   

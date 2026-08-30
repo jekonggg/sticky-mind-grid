@@ -8,11 +8,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface TaskCardProps {
   task: Task;
+  isSelected?: boolean;
   onClick: (task: Task) => void;
   isDragDisabled?: boolean;
 }
 
-export function TaskCard({ task, onClick, isDragDisabled = false }: TaskCardProps) {
+export function TaskCard({ task, isSelected = false, onClick, isDragDisabled = false }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { task },
@@ -34,8 +35,9 @@ export function TaskCard({ task, onClick, isDragDisabled = false }: TaskCardProp
     <div
       ref={setNodeRef}
       style={style}
-      className={`group bg-card text-card-foreground rounded-xl border border-border/60 p-3 shadow-sm cursor-pointer
+      className={`group bg-card text-card-foreground rounded-xl border p-3 shadow-sm cursor-pointer
         hover:shadow-md hover:border-primary/30 transition-all duration-150 relative
+        ${isSelected ? "border-primary ring-2 ring-primary/20 bg-primary/5 shadow-md" : "border-border/60"}
         ${isDragging ? "opacity-50 shadow-xl scale-[1.02] border-primary" : ""}`}
       onClick={() => onClick(task)}
     >

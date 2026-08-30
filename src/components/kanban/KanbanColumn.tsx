@@ -12,6 +12,7 @@ interface KanbanColumnProps {
   tasks: Task[];
   canRename?: boolean;
   isDragDisabled?: boolean;
+  selectedTaskId?: string | null;
   onTaskClick: (task: Task) => void;
   onRename?: (id: string, newTitle: string, emoji?: string) => void;
 }
@@ -23,6 +24,7 @@ export function KanbanColumn({
   tasks,
   canRename = true,
   isDragDisabled = false,
+  selectedTaskId,
   onTaskClick,
   onRename,
 }: KanbanColumnProps) {
@@ -105,6 +107,7 @@ export function KanbanColumn({
               <TaskCard
                 key={task.id}
                 task={task}
+                isSelected={selectedTaskId === task.id}
                 onClick={onTaskClick}
                 isDragDisabled={isDragDisabled}
               />

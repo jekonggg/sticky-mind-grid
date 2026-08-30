@@ -16,10 +16,11 @@ import { Button } from "@/components/ui/button";
 
 interface TaskListViewProps {
   tasks: Task[];
+  selectedTaskId?: string | null;
   onTaskClick: (task: Task) => void;
 }
 
-export function TaskListView({ tasks, onTaskClick }: TaskListViewProps) {
+export function TaskListView({ tasks, selectedTaskId, onTaskClick }: TaskListViewProps) {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
@@ -84,10 +85,16 @@ export function TaskListView({ tasks, onTaskClick }: TaskListViewProps) {
                   .charAt(0)
                   .toUpperCase();
 
+                const isSelected = selectedTaskId === task.id;
+
                 return (
                   <TableRow
                     key={task.id}
-                    className="group cursor-pointer hover:bg-muted/40 transition-colors border-border/50"
+                    className={`group cursor-pointer transition-colors border-border/50 ${
+                      isSelected
+                        ? "bg-primary/10 hover:bg-primary/15 font-semibold"
+                        : "hover:bg-muted/40"
+                    }`}
                     onClick={() => onTaskClick(task)}
                   >
                     <TableCell className="py-4">
