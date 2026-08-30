@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import { AuthContext, AuthContextType } from "@/contexts/AuthContext";
 import { ThemeProvider } from "next-themes";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { User } from "@/types/user";
 
 export const mockUser: User = {
@@ -49,11 +50,13 @@ export function renderWithProviders(
     return (
       <QueryClientProvider client={queryClient}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <AuthContext.Provider value={authValue}>
-            <SettingsProvider>
-              <BrowserRouter>{children}</BrowserRouter>
-            </SettingsProvider>
-          </AuthContext.Provider>
+          <TooltipProvider>
+            <AuthContext.Provider value={authValue}>
+              <SettingsProvider>
+                <BrowserRouter>{children}</BrowserRouter>
+              </SettingsProvider>
+            </AuthContext.Provider>
+          </TooltipProvider>
         </ThemeProvider>
       </QueryClientProvider>
     );
