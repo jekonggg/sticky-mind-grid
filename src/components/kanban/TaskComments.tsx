@@ -4,7 +4,7 @@ import { commentApi } from "@/services/commentApi";
 import { Comment } from "@/types/task";
 import { BoardMember } from "@/types/board";
 import { useAuth } from "@/contexts/AuthContext";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageSquare, Send, Trash2, AtSign, Loader2 } from "lucide-react";
@@ -193,6 +193,7 @@ export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsPro
                 className="flex items-start gap-2.5 p-2.5 rounded-xl bg-muted/40 border border-border/40 text-xs group/comment relative"
               >
                 <Avatar className="h-7 w-7 border border-primary/20 shrink-0 mt-0.5">
+                  <AvatarImage src={c.user?.avatarUrl} alt={authorName} />
                   <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
                     {initial}
                   </AvatarFallback>
@@ -258,6 +259,7 @@ export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsPro
                       className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted text-left transition-colors cursor-pointer"
                     >
                       <Avatar className="h-5 w-5 border border-primary/20 shrink-0">
+                        <AvatarImage src={m.user?.avatarUrl} alt={name} />
                         <AvatarFallback className="text-[9px] font-bold bg-primary/10 text-primary">
                           {initial}
                         </AvatarFallback>

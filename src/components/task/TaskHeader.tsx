@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Trash2, Copy, Check, Sparkles, Image as ImageIcon, Smile, Share2, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, Trash2, Copy, Check, Sparkles, Image as ImageIcon, Smile, Share2, MoreHorizontal, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmojiSelector } from "../common/EmojiSelector";
@@ -19,6 +19,7 @@ interface TaskHeaderProps {
   title: string;
   emoji: string;
   coverImage?: string;
+  saveStatus?: "idle" | "saving" | "saved";
   readOnly?: boolean;
   onClose?: () => void;
   onTitleChange: (title: string) => void;
@@ -44,6 +45,7 @@ export function TaskHeader({
   title,
   emoji,
   coverImage,
+  saveStatus = "idle",
   readOnly,
   onClose,
   onTitleChange,

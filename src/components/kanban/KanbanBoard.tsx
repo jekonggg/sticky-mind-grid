@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useParams, useNavigate } from "react-router-dom";
 import { boardApi } from "@/services/boardApi";
 import { Board, BoardMember } from "@/types/board";
@@ -133,10 +133,16 @@ export function KanbanBoard() {
     return Array.from(map.values());
   }, [tasks]);
 
+  const lastLocalEditTimeRef = useRef<number>(0);
+
   // Real-time Server-Sent Events (SSE) stream synchronization
   const { isConnected } = useBoardRealtime({
     boardId,
-    onTaskChange: () => fetchTasks(),
+    onTaskChange: () => {
+      // Suppress full board reload if the edit was made locally in this window within last 2 seconds
+      if (Date.now() - lastLocalEditTimeRef.current < 2000) return;
+      fetchTasks();
+    },
     onActivityChange: () => refreshActivities(),
     onMemberChange: () => queryClient.invalidateQueries({ queryKey: ["boardMembers", boardId] }),
     onBoardChange: (updated) => setBoard(updated),
@@ -599,7 +605,8 @@ export function KanbanBoard() {
                               : "bg-background text-muted-foreground border-border/60 hover:border-primary/40 hover:text-foreground"
                           }`}
                         >
-                          <Avatar className="h-4.5 w-4.5">
+                          <Avatar className="h-5 w-5 shrink-0">
+                            <AvatarImage src={m.user?.avatarUrl} alt={name} />
                             <AvatarFallback className="text-[9px] font-black bg-primary/10 text-primary">
                               {initial}
                             </AvatarFallback>
@@ -682,7 +689,10 @@ export function KanbanBoard() {
               setSelectedTaskId(null);
               setCreatedDraftTask(null);
             }}
-            onUpdateTask={(updates) => updateTask(selectedTask.id, updates)}
+            onUpdateTask={async (updates) => {
+              lastLocalEditTimeRef.current = Date.now();
+              await updateTask(selectedTask.id, updates);
+            }}
             onDeleteTask={(id) => {
               deleteTask(id);
               setSelectedTaskId(null);

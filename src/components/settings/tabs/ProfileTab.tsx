@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/services/authApi";
-import { API_BASE, getStoredToken } from "@/config/api";
+import { fileApi } from "@/services/fileApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,27 +53,18 @@ export function ProfileTab({ onClose }: { onClose?: () => void }) {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
       setUploadingAvatar(true);
-      const token = getStoredToken();
-      const res = await fetch(`${API_BASE}/files/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
+      const uploaded = await fileApi.uploadFile(file);
+      setAvatarUrl(uploaded.url);
+
+      // Instantly persist avatar to user profile
+      const updatedUser = await authApi.updateMe({
+        fullName: fullName.trim() || user?.fullName,
+        avatarUrl: uploaded.url,
       });
-
-      if (!res.ok) {
-        throw new Error("Failed to upload avatar image");
-      }
-
-      const result = await res.json();
-      setAvatarUrl(result.url);
-      toast.success("Avatar uploaded. Save profile to apply changes.");
+      updateUser(updatedUser);
+      toast.success("Avatar updated successfully");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to upload avatar";
       toast.error(message);
@@ -85,8 +76,22 @@ export function ProfileTab({ onClose }: { onClose?: () => void }) {
     }
   };
 
-  const handleRemoveAvatar = () => {
-    setAvatarUrl(null);
+  const handleRemoveAvatar = async () => {
+    try {
+      setUploadingAvatar(true);
+      setAvatarUrl(null);
+      const updatedUser = await authApi.updateMe({
+        fullName: fullName.trim() || user?.fullName,
+        avatarUrl: null,
+      });
+      updateUser(updatedUser);
+      toast.success("Avatar removed");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to remove avatar";
+      toast.error(message);
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

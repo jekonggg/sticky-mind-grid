@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { boardApi } from "@/services/boardApi";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -117,6 +117,7 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
             className="inline-block h-9 w-9 rounded-full ring-2 ring-background transition-transform hover:scale-110 hover:z-10 cursor-pointer shadow-sm"
             title={`${member.user?.fullName || member.user?.email} (${member.role})`}
           >
+            <AvatarImage src={member.user?.avatarUrl} alt={member.user?.fullName || member.user?.email} />
             <AvatarFallback className="text-xs bg-muted font-bold">
               {member.user?.fullName?.charAt(0).toUpperCase() || member.user?.email?.charAt(0).toUpperCase()}
             </AvatarFallback>
@@ -142,6 +143,7 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
             >
               <div className="flex items-center gap-3 min-w-0">
                 <Avatar className="h-9 w-9 border border-border/80 shrink-0">
+                  <AvatarImage src={member.user?.avatarUrl} alt={member.user?.fullName || member.user?.email} />
                   <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
                     {member.user?.fullName?.charAt(0).toUpperCase() || member.user?.email?.charAt(0).toUpperCase()}
                   </AvatarFallback>

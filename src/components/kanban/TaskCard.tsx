@@ -4,7 +4,7 @@ import { Task } from "@/types/task";
 import { GripVertical, Paperclip, FileText, Smile, CheckSquare } from "lucide-react";
 import { format } from "date-fns";
 import { getProgressColor } from "@/utils/taskUtils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface TaskCardProps {
   task: Task;
@@ -161,7 +161,8 @@ export function TaskCard({ task, isSelected = false, onClick, isDragDisabled = f
               <span className="text-[10px] font-bold text-muted-foreground truncate max-w-[70px] hidden sm:inline">
                 {task.assignee.fullName?.split(" ")[0] || task.assignee.email.split("@")[0]}
               </span>
-              <Avatar className="h-5.5 w-5.5 border border-primary/20 ring-1 ring-background">
+              <Avatar className="h-6 w-6 border border-primary/20 ring-1 ring-background shrink-0">
+                <AvatarImage src={task.assignee.avatarUrl} alt={assigneeName} />
                 <AvatarFallback className="text-[9px] font-black bg-primary/10 text-primary">
                   {assigneeInitial}
                 </AvatarFallback>

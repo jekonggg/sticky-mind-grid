@@ -1,7 +1,7 @@
 import React from "react";
 import { useActivity } from "@/hooks/useActivity";
 import { History, Activity as ActivityIcon, ArrowRight, CheckCircle2, User, Clock } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow, format } from "date-fns";
 
@@ -48,6 +48,7 @@ export function TaskActivityLog({ taskTitle }: TaskActivityLogProps) {
                 <div className="absolute -left-[23px] top-1 w-2.5 h-2.5 rounded-full bg-background border-2 border-primary" />
 
                 <Avatar className="h-5 w-5 mt-0.5 shrink-0">
+                  <AvatarImage src={act.user?.avatarUrl} alt={userName} />
                   <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-bold">
                     {initial}
                   </AvatarFallback>

@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserPlus, Loader2, Search, UserCheck } from "lucide-react";
 import { boardApi } from "@/services/boardApi";
 import { authApi } from "@/services/authApi";
@@ -163,6 +163,7 @@ export function InviteMemberDialog({ boardId }: InviteMemberDialogProps) {
                         className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/80 text-left transition-colors cursor-pointer group"
                       >
                         <Avatar className="h-7 w-7 border border-primary/20 shrink-0">
+                          <AvatarImage src={u.avatarUrl} alt={u.fullName || u.email} />
                           <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
                             {initial}
                           </AvatarFallback>

@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { User, Mail, KeyRound, Loader2 } from "lucide-react";
 
@@ -96,6 +96,7 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
           {/* Avatar Preview */}
           <div className="flex items-center gap-4 p-3 bg-muted/40 rounded-xl border border-border/40">
             <Avatar className="h-12 w-12 border-2 border-primary/20">
+              <AvatarImage src={user?.avatarUrl} alt={fullName} className="object-cover" />
               <AvatarFallback className="bg-primary/10 text-primary font-bold text-base uppercase">
                 {fullName.charAt(0) || user?.email.charAt(0) || "U"}
               </AvatarFallback>

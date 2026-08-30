@@ -67,13 +67,13 @@ class Task(db.Model):
             'position': self.position,
             'checklist': self.checklist or [],
             'tags': self.tags or [],
-            'dueDate': self.due_date.isoformat() if self.due_date else None,
+            'dueDate': self.due_date.isoformat() + 'Z' if self.due_date else None,
             'assignedTo': self.assigned_to,
             'assignee': assignee_data,
             'createdBy': self.created_by,
             'attachments': self.attachments,
             'isDeleted': self.is_deleted,
-            'deletedAt': self.deleted_at.isoformat() if self.deleted_at else None,
-            'createdAt': self.created_at.isoformat() if self.created_at else None,
-            'updatedAt': self.updated_at.isoformat() if self.updated_at else None
+            'deletedAt': self.deleted_at.isoformat() + 'Z' if self.deleted_at else None,
+            'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None,
+            'updatedAt': self.updated_at.isoformat() + 'Z' if self.updated_at else None
         }

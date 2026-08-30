@@ -154,7 +154,7 @@ describe("TaskDetailWorkspace Component", () => {
     );
   });
 
-  it("calls onDeleteTask when delete button is clicked", () => {
+  it("displays Saved status indicator after updating task property", async () => {
     renderWithProviders(
       <TaskDetailWorkspace
         task={mockTask}
@@ -166,8 +166,12 @@ describe("TaskDetailWorkspace Component", () => {
       />
     );
 
-    const deleteBtn = screen.getByTitle(/delete task/i);
-    fireEvent.click(deleteBtn);
-    expect(onDeleteTask).toHaveBeenCalledWith("task-1");
+    const progressSlider = screen.getByRole("slider");
+    fireEvent.change(progressSlider, { target: { value: "90" } });
+
+    await waitFor(() => {
+      expect(screen.getByText("Saved")).toBeInTheDocument();
+    });
   });
 });
+

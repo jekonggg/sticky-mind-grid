@@ -93,6 +93,7 @@ export interface Activity {
     id: string;
     email: string;
     fullName?: string;
+    avatarUrl?: string;
   };
 }
 
@@ -111,6 +112,7 @@ export interface Comment {
     id: string;
     email: string;
     fullName?: string;
+    avatarUrl?: string;
   };
   content: string;
   mentions: string[];

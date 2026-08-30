@@ -35,5 +35,5 @@ class Activity(db.Model):
             'message': self.message,
             'userId': self.user_id,
             'user': self.user.to_dict() if self.user else None,
-            'timestamp': self.timestamp.isoformat()
+            'timestamp': self.timestamp.isoformat() + 'Z' if self.timestamp else None
         }

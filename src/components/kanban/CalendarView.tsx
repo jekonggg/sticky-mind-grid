@@ -210,26 +210,69 @@ export function CalendarView({ tasks, selectedTaskId, onTaskClick }: CalendarVie
               </div>
             </>
           ) : (
-            /* Day View: Hourly Plotting */
+            /* Day View: Hourly Plotting with Dynamic Compact Heights */
             <div className="flex-1 overflow-y-auto custom-scrollbar relative" style={{ maxHeight: 'calc(100vh - 300px)' }}>
-              <div className="relative">
-                {/* Visual grid lines for better plotting feel */}
-                <div className="absolute inset-0 pointer-events-none">
-                  {hours.map(h => (
-                    <div key={h} className="h-[100px] border-b border-border/10" />
-                  ))}
-                </div>
-
+              <div className="relative divide-y divide-border/25">
                 {hours.map((hour) => {
                   const hourTasks = getTasksForHour(currentDate, hour);
+                  const hasTasks = hourTasks.length > 0;
                   const isCurrentHour = isSameDay(currentDate, new Date()) && getHours(new Date()) === hour;
 
+                  if (!hasTasks) {
+                    // Shrunk / Compact Row for Empty Hours
+                    return (
+                      <div
+                        key={hour}
+                        className={`flex min-h-[34px] transition-colors group/hour hover:bg-muted/20 ${
+                          isCurrentHour ? "bg-primary/[0.03] ring-1 ring-inset ring-primary/20" : ""
+                        }`}
+                      >
+                        <div className="w-20 flex-shrink-0 flex items-center justify-center gap-1 border-r border-border/25 bg-muted/5 py-1 select-none">
+                          <span
+                            className={`text-[10px] font-medium tracking-tight ${
+                              isCurrentHour ? "text-primary font-bold" : "text-muted-foreground/40 group-hover/hour:text-muted-foreground/70"
+                            }`}
+                          >
+                            {format(setHours(new Date(), hour), "h aa")}
+                          </span>
+                          {isCurrentHour && (
+                            <span className="text-[8px] font-black uppercase px-1 py-0.2 rounded bg-primary text-primary-foreground leading-none">
+                              NOW
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 px-3 py-1 flex items-center text-[10px] text-muted-foreground/20 italic group-hover/hour:text-muted-foreground/50 transition-colors">
+                          <span>—</span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Expanded Row for Hours with Tasks
                   return (
-                    <div key={hour} className={`flex min-h-[100px] border-b border-border/30 relative transition-colors ${isCurrentHour ? "bg-primary/[0.02]" : ""}`}>
-                      <div className="w-20 flex-shrink-0 flex justify-center pt-3 border-r border-border/30 bg-muted/5">
-                        <span className={`text-[10px] font-black tracking-tight ${isCurrentHour ? "text-primary" : "text-muted-foreground/60"}`}>
+                    <div
+                      key={hour}
+                      className={`flex min-h-[100px] relative transition-colors ${
+                        isCurrentHour ? "bg-primary/[0.04]" : "bg-card/10"
+                      }`}
+                    >
+                      <div className="w-20 flex-shrink-0 flex flex-col items-center justify-start pt-3 pb-2 border-r border-border/30 bg-muted/10 select-none">
+                        <span
+                          className={`text-xs font-black tracking-tight ${
+                            isCurrentHour ? "text-primary" : "text-foreground"
+                          }`}
+                        >
                           {format(setHours(new Date(), hour), "h aa")}
                         </span>
+                        {isCurrentHour ? (
+                          <span className="mt-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-primary text-primary-foreground">
+                            NOW
+                          </span>
+                        ) : (
+                          <span className="mt-1 text-[9px] font-bold text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-full">
+                            {hourTasks.length} {hourTasks.length === 1 ? "task" : "tasks"}
+                          </span>
+                        )}
                       </div>
                       <div className="flex-1 p-3 flex flex-wrap gap-3 items-start relative">
                         {hourTasks.map((task) => (
@@ -237,33 +280,48 @@ export function CalendarView({ tasks, selectedTaskId, onTaskClick }: CalendarVie
                             key={task.id}
                             onClick={() => onTaskClick(task)}
                             className="group bg-card border border-border/50 p-3 rounded-xl shadow-sm cursor-pointer hover:border-primary/50 transition-all hover:shadow-md max-w-[350px] flex-1 min-w-[240px] relative overflow-hidden"
-                            style={{ 
-                                borderLeft: `4px solid ${
-                                  task.priority === 'high' ? 'rgb(239, 68, 68)' : 
-                                  task.priority === 'medium' ? 'rgb(245, 158, 11)' : 'rgb(59, 130, 246)'
-                                }`
-                              }}
+                            style={{
+                              borderLeft: `4px solid ${
+                                task.priority === "high"
+                                  ? "rgb(239, 68, 68)"
+                                  : task.priority === "medium"
+                                  ? "rgb(245, 158, 11)"
+                                  : "rgb(59, 130, 246)"
+                              }`,
+                            }}
                           >
                             <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${
-                                        task.priority === 'high' ? 'bg-destructive animate-pulse' : 
-                                        task.priority === 'medium' ? 'bg-amber-500' : 'bg-primary'
-                                    }`} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40">
-                                        {task.priority}
-                                    </span>
-                                </div>
-                                <span className="text-[10px] font-black text-primary/70">
-                                    {format(new Date(task.dueDate!), "HH:mm")}
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    task.priority === "high"
+                                      ? "bg-destructive animate-pulse"
+                                      : task.priority === "medium"
+                                      ? "bg-amber-500"
+                                      : "bg-primary"
+                                  }`}
+                                />
+                                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">
+                                  {task.priority}
                                 </span>
+                              </div>
+                              <span className="text-[10px] font-black text-primary/70">
+                                {format(new Date(task.dueDate!), "HH:mm")}
+                              </span>
                             </div>
-                            <h4 className="text-sm font-black leading-tight mb-3 uppercase group-hover:text-primary transition-colors line-clamp-2">{task.title}</h4>
+                            <h4 className="text-sm font-black leading-tight mb-3 uppercase group-hover:text-primary transition-colors line-clamp-2">
+                              {task.title}
+                            </h4>
                             <div className="flex items-center gap-3 bg-muted/30 p-2 rounded-lg">
-                                <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary" style={{ width: `${task.progress}%` }} />
-                                </div>
-                                <span className="text-[10px] font-black opacity-80">{task.progress}%</span>
+                              <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-primary"
+                                  style={{ width: `${task.progress}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] font-black opacity-80">
+                                {task.progress}%
+                              </span>
                             </div>
                           </div>
                         ))}

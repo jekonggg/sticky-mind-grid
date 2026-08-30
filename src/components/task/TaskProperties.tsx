@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -220,6 +220,7 @@ export function TaskProperties({
             {readOnly ? (
               <div className="flex items-center gap-2">
                 <Avatar className="h-5 w-5 border border-border/50 shrink-0">
+                  <AvatarImage src={assignedMember?.user?.avatarUrl} alt={assignedMember?.user?.fullName || "User"} />
                   <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
                     {(assignedMember?.user?.fullName || assignedMember?.user?.email || "U").charAt(0).toUpperCase()}
                   </AvatarFallback>
@@ -244,6 +245,7 @@ export function TaskProperties({
                       <SelectItem key={m.userId} value={m.userId} className="text-xs">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-4 w-4 shrink-0">
+                            <AvatarImage src={m.user?.avatarUrl} alt={name} />
                             <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-bold">
                               {initial}
                             </AvatarFallback>

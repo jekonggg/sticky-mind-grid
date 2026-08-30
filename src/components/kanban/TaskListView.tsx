@@ -9,9 +9,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
-import { MoreHorizontal, AlertCircle, Clock, CheckCircle2, User } from "lucide-react";
+import { MoreHorizontal, AlertCircle, Clock, CheckCircle2, User, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface TaskListViewProps {
@@ -98,8 +98,16 @@ export function TaskListView({ tasks, selectedTaskId, onTaskClick }: TaskListVie
                     onClick={() => onTaskClick(task)}
                   >
                     <TableCell className="py-4">
-                      <div className="flex items-center gap-2">
-                        {task.emoji && <span className="text-base shrink-0">{task.emoji}</span>}
+                      <div className="flex items-center gap-3">
+                        {/* Uniform leading icon container */}
+                        <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0 border transition-all duration-200 select-none bg-muted/20 border-border/40 group-hover:border-primary/30 group-hover:bg-primary/5">
+                          {task.emoji ? (
+                            <span className="text-base leading-none">{task.emoji}</span>
+                          ) : (
+                            <FileText className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary transition-colors" />
+                          )}
+                        </div>
+
                         <div className="flex flex-col gap-0.5 min-w-0">
                           <span className="font-bold text-foreground text-sm group-hover:text-primary transition-colors truncate">
                             {task.title}
@@ -135,6 +143,7 @@ export function TaskListView({ tasks, selectedTaskId, onTaskClick }: TaskListVie
                       {task.assignee ? (
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6 border border-primary/20">
+                            <AvatarImage src={task.assignee.avatarUrl} alt={assigneeName} />
                             <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
                               {assigneeInitial}
                             </AvatarFallback>

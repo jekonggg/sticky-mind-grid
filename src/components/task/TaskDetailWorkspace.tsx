@@ -10,6 +10,8 @@ import { TaskChecklist } from "./TaskChecklist";
 import { TaskAttachments } from "./TaskAttachments";
 import { TaskActivityLog } from "./TaskActivityLog";
 import { TaskComments } from "../kanban/TaskComments";
+import { formatDistanceToNow } from "date-fns";
+import { Clock, Loader2, Check, Cloud } from "lucide-react";
 import { toast } from "sonner";
 
 interface TaskDetailWorkspaceProps {
@@ -48,7 +50,10 @@ export function TaskDetailWorkspace({
   const [localTags, setLocalTags] = useState<Tag[]>(task.tags || []);
   const [localChecklist, setLocalChecklist] = useState<ChecklistItem[]>(task.checklist || []);
   const [localAttachments, setLocalAttachments] = useState<Attachment[]>(task.attachments || []);
+  const [localUpdatedAt, setLocalUpdatedAt] = useState<Date | string | undefined>(task.updatedAt);
 
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const titleDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const descDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -65,7 +70,29 @@ export function TaskDetailWorkspace({
     setLocalTags(task.tags || []);
     setLocalChecklist(task.checklist || []);
     setLocalAttachments(task.attachments || []);
-  }, [task.id]);
+    setLocalUpdatedAt(task.updatedAt);
+    setSaveStatus("idle");
+  }, [task.id, task.updatedAt]);
+
+  // Unified silent background update handler
+  const performUpdate = useCallback(
+    async (updates: Partial<Task>) => {
+      setSaveStatus("saving");
+      setLocalUpdatedAt(new Date());
+      try {
+        await onUpdateTask(updates);
+        setSaveStatus("saved");
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = setTimeout(() => {
+          setSaveStatus("idle");
+        }, 2000);
+      } catch (err: any) {
+        setSaveStatus("idle");
+        toast.error(err?.message || "Failed to update task");
+      }
+    },
+    [onUpdateTask]
+  );
 
   // Keyboard shortcut: Escape to close side panel
   useEffect(() => {
@@ -81,12 +108,12 @@ export function TaskDetailWorkspace({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  // Field change handlers
+  // Field change handlers (Silent & instant)
   const handleTitleChange = (newTitle: string) => {
     setLocalTitle(newTitle);
     if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
     titleDebounceRef.current = setTimeout(() => {
-      onUpdateTask({ title: newTitle });
+      performUpdate({ title: newTitle });
     }, 600);
   };
 
@@ -96,7 +123,7 @@ export function TaskDetailWorkspace({
       titleDebounceRef.current = null;
     }
     if (localTitle.trim() && localTitle !== task.title) {
-      onUpdateTask({ title: localTitle.trim() });
+      performUpdate({ title: localTitle.trim() });
     }
   };
 
@@ -104,61 +131,56 @@ export function TaskDetailWorkspace({
     setLocalDescription(newDesc);
     if (descDebounceRef.current) clearTimeout(descDebounceRef.current);
     descDebounceRef.current = setTimeout(() => {
-      onUpdateTask({ description: newDesc });
+      performUpdate({ description: newDesc });
     }, 800);
   };
 
   const handleEmojiChange = (newEmoji: string) => {
     setLocalEmoji(newEmoji);
-    onUpdateTask({ emoji: newEmoji });
+    performUpdate({ emoji: newEmoji });
   };
 
   const handleStatusChange = (newStatus: string) => {
     setLocalStatus(newStatus);
     const colName = board.columns?.find((c) => c.id === newStatus)?.title || newStatus;
-    onUpdateTask({ status: newStatus });
+    performUpdate({ status: newStatus });
     playSound("move");
     addActivity("move", localTitle, `Moved task to ${colName}`, board.id);
-    toast.success(`Status updated to ${colName}`);
   };
 
   const handlePriorityChange = (newPriority: Priority) => {
     setLocalPriority(newPriority);
-    onUpdateTask({ priority: newPriority });
-    toast.success(`Priority set to ${newPriority}`);
+    performUpdate({ priority: newPriority });
   };
 
   const handleAssigneeChange = (newUserId: string) => {
     setLocalAssignedTo(newUserId);
-    const assignedUser = members.find((m) => m.userId === newUserId);
-    const name = assignedUser?.user?.fullName || assignedUser?.user?.email || "Unassigned";
-    onUpdateTask({ assignedTo: newUserId });
-    toast.success(`Assigned to ${name}`);
+    performUpdate({ assignedTo: newUserId });
   };
 
   const handleDueDateChange = (newDueDate: string) => {
     setLocalDueDate(newDueDate);
-    onUpdateTask({ dueDate: newDueDate ? new Date(newDueDate) : undefined });
+    performUpdate({ dueDate: newDueDate ? new Date(newDueDate) : undefined });
   };
 
   const handleProgressChange = (newProgress: number) => {
     setLocalProgress(newProgress);
-    onUpdateTask({ progress: newProgress });
+    performUpdate({ progress: newProgress });
   };
 
   const handleTagsChange = (newTags: Tag[]) => {
     setLocalTags(newTags);
-    onUpdateTask({ tags: newTags });
+    performUpdate({ tags: newTags });
   };
 
   const handleChecklistChange = (newChecklist: ChecklistItem[]) => {
     setLocalChecklist(newChecklist);
-    onUpdateTask({ checklist: newChecklist });
+    performUpdate({ checklist: newChecklist });
   };
 
   const handleAttachmentsChange = (newAttachments: Attachment[]) => {
     setLocalAttachments(newAttachments);
-    onUpdateTask({ attachments: newAttachments });
+    performUpdate({ attachments: newAttachments });
   };
 
   const handleDelete = () => {
@@ -166,75 +188,120 @@ export function TaskDetailWorkspace({
   };
 
   return (
-    <div className="h-full flex flex-col overflow-y-auto bg-background text-foreground selection:bg-primary/20">
-      {/* Header & Page Controls */}
-      <TaskHeader
-        boardId={board.id}
-        boardName={board.name}
-        title={localTitle}
-        emoji={localEmoji}
-        readOnly={readOnly}
-        onClose={onClose}
-        onTitleChange={handleTitleChange}
-        onTitleBlur={handleTitleBlur}
-        onEmojiChange={handleEmojiChange}
-        onDelete={handleDelete}
-      />
-
-      {/* Notion-Style Properties Grid */}
-      <TaskProperties
-        status={localStatus}
-        columns={board.columns || []}
-        priority={localPriority}
-        assignedTo={localAssignedTo}
-        members={members}
-        dueDate={localDueDate}
-        progress={localProgress}
-        tags={localTags}
-        createdAt={task.createdAt}
-        updatedAt={task.updatedAt}
-        readOnly={readOnly}
-        onStatusChange={handleStatusChange}
-        onPriorityChange={handlePriorityChange}
-        onAssigneeChange={handleAssigneeChange}
-        onDueDateChange={handleDueDateChange}
-        onProgressChange={handleProgressChange}
-        onTagsChange={handleTagsChange}
-      />
-
-      {/* Document / Notes Body */}
-      <TaskDescription
-        description={localDescription}
-        readOnly={readOnly}
-        onChange={handleDescriptionChange}
-      />
-
-      {/* Subtasks & Checklist */}
-      <TaskChecklist
-        checklist={localChecklist}
-        readOnly={readOnly}
-        onChange={handleChecklistChange}
-        onProgressSync={handleProgressChange}
-      />
-
-      {/* Attachments Section */}
-      <TaskAttachments
-        attachments={localAttachments}
-        readOnly={readOnly}
-        onChange={handleAttachmentsChange}
-      />
-
-      {/* Discussion & Comments Section */}
-      <div className="w-full max-w-4xl mx-auto px-6 sm:px-12 py-6 border-b border-border/40">
-        <TaskComments
-          taskId={task.id}
-          boardMembers={members}
+    <div className="h-full flex flex-col bg-background text-foreground selection:bg-primary/20">
+      {/* Scrollable Main Content */}
+      <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
+        {/* Header & Page Controls */}
+        <TaskHeader
+          boardId={board.id}
+          boardName={board.name}
+          title={localTitle}
+          emoji={localEmoji}
           readOnly={readOnly}
+          onClose={onClose}
+          onTitleChange={handleTitleChange}
+          onTitleBlur={handleTitleBlur}
+          onEmojiChange={handleEmojiChange}
+          onDelete={handleDelete}
         />
+
+        {/* Notion-Style Properties Grid */}
+        <TaskProperties
+          status={localStatus}
+          columns={board.columns || []}
+          priority={localPriority}
+          assignedTo={localAssignedTo}
+          members={members}
+          dueDate={localDueDate}
+          progress={localProgress}
+          tags={localTags}
+          createdAt={task.createdAt}
+          updatedAt={task.updatedAt}
+          readOnly={readOnly}
+          onStatusChange={handleStatusChange}
+          onPriorityChange={handlePriorityChange}
+          onAssigneeChange={handleAssigneeChange}
+          onDueDateChange={handleDueDateChange}
+          onProgressChange={handleProgressChange}
+          onTagsChange={handleTagsChange}
+        />
+
+        {/* Document / Notes Body */}
+        <TaskDescription
+          description={localDescription}
+          readOnly={readOnly}
+          onChange={handleDescriptionChange}
+        />
+
+        {/* Subtasks & Checklist */}
+        <TaskChecklist
+          checklist={localChecklist}
+          readOnly={readOnly}
+          onChange={handleChecklistChange}
+          onProgressSync={handleProgressChange}
+        />
+
+        {/* Attachments Section */}
+        <TaskAttachments
+          attachments={localAttachments}
+          readOnly={readOnly}
+          onChange={handleAttachmentsChange}
+        />
+
+        {/* Discussion & Comments Section */}
+        <div className="w-full max-w-4xl mx-auto px-6 sm:px-12 py-6 border-b border-border/40">
+          <TaskComments
+            taskId={task.id}
+            boardMembers={members}
+            readOnly={readOnly}
+          />
+        </div>
+
+        {/* Task Audit & Activity History */}
+        <TaskActivityLog taskTitle={localTitle} />
       </div>
 
-      {/* Task Audit & Activity History */}
-      <TaskActivityLog taskTitle={localTitle} />
+      {/* Sticky Micro-Status Bar Footer (Option 1) */}
+      <div className="h-8 px-6 shrink-0 border-t border-border/40 bg-muted/20 backdrop-blur-sm flex items-center justify-between text-[11px] text-muted-foreground select-none">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Clock className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+          <span className="truncate">
+            Updated {(() => {
+              if (!localUpdatedAt) return "just now";
+              let d: Date;
+              if (localUpdatedAt instanceof Date) {
+                d = localUpdatedAt;
+              } else {
+                const s = String(localUpdatedAt);
+                d = s.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(s) ? new Date(s) : new Date(`${s}Z`);
+              }
+              if (isNaN(d.getTime())) return "just now";
+              return formatDistanceToNow(d, { addSuffix: true });
+            })()}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {saveStatus === "saving" && (
+            <span className="flex items-center gap-1.5 text-muted-foreground font-medium animate-pulse">
+              <Loader2 className="h-3 w-3 animate-spin text-primary" />
+              <span>Saving changes...</span>
+            </span>
+          )}
+          {saveStatus === "saved" && (
+            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold animate-in fade-in">
+              <Check className="h-3 w-3" />
+              <span>Saved</span>
+            </span>
+          )}
+          {saveStatus === "idle" && (
+            <span className="flex items-center gap-1 text-muted-foreground/60">
+              <Cloud className="h-3 w-3 text-muted-foreground/40" />
+              <span>Synced</span>
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

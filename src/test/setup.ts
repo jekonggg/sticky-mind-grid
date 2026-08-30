@@ -48,3 +48,51 @@ vi.mock("@/hooks/useActivity", () => ({
   }),
   ActivityProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
+
+// Default safe global fetch mock to isolate unit tests from dev server
+global.fetch = vi.fn().mockImplementation((url: string | URL | Request) => {
+  const urlStr = String(url);
+
+  if (urlStr.includes("/api/users/me/preferences")) {
+    return Promise.resolve(
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+  }
+
+  if (urlStr.includes("/comments")) {
+    return Promise.resolve(
+      new Response(JSON.stringify({ comments: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+  }
+
+  if (urlStr.includes("/notes")) {
+    return Promise.resolve(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+  }
+
+  if (urlStr.includes("/api/activities")) {
+    return Promise.resolve(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+  }
+
+  return Promise.resolve(
+    new Response(JSON.stringify({}), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    })
+  );
+});

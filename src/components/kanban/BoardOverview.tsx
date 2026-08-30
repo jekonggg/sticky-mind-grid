@@ -45,6 +45,7 @@ export function BoardOverview({ board, tasks }: BoardOverviewProps) {
       label: col.title,
       value,
       icon: Icon,
+      emoji: col.emoji,
       color,
       bg
     };
@@ -55,6 +56,7 @@ export function BoardOverview({ board, tasks }: BoardOverviewProps) {
       label: "Total Tasks",
       value: totalTasks,
       icon: Circle,
+      emoji: undefined,
       color: "text-primary",
       bg: "bg-primary/10",
     },
@@ -76,9 +78,15 @@ export function BoardOverview({ board, tasks }: BoardOverviewProps) {
                     {stat.value}
                   </h3>
                 </div>
-                <div className={`p-3 rounded-xl ${stat.bg} ${stat.color} transition-transform group-hover:scale-110`}>
-                  <stat.icon className="h-6 w-6" />
-                </div>
+                {stat.emoji ? (
+                  <div className={`h-12 w-12 rounded-xl ${stat.bg} border border-border/40 flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs shrink-0`}>
+                    <span className="text-2xl leading-none">{stat.emoji}</span>
+                  </div>
+                ) : (
+                  <div className={`p-3 rounded-xl ${stat.bg} ${stat.color} transition-transform group-hover:scale-110 shrink-0`}>
+                    <stat.icon className="h-6 w-6" />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
