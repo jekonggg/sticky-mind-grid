@@ -295,10 +295,10 @@ export function KanbanBoard() {
     setSelectedTaskId((prev) => (prev === task.id ? null : task.id));
   }, []);
 
-  const openNewModal = useCallback(async () => {
+  const openNewModal = useCallback(async (targetStatus?: TaskStatus) => {
     if (!permissions.canCreateTask || !board) return;
     try {
-      const defaultStatus = board.columns && board.columns.length > 0 ? board.columns[0].id : "todo";
+      const defaultStatus = targetStatus || (board.columns && board.columns.length > 0 ? board.columns[0].id : "todo");
       const newTask = await addTask({
         title: "Untitled Task",
         status: defaultStatus,
@@ -422,9 +422,11 @@ export function KanbanBoard() {
                       emoji={col.emoji}
                       tasks={filteredTasksByStatus(col.id)}
                       canRename={permissions.canEditBoard}
+                      canCreateTask={permissions.canCreateTask}
                       isDragDisabled={permissions.isReadOnly}
                       selectedTaskId={selectedTaskId}
                       onTaskClick={handleTaskClick}
+                      onAddTask={openNewModal}
                       onRename={handleRenameColumn}
                     />
                   ))}
@@ -460,10 +462,12 @@ export function KanbanBoard() {
       <BoardHeader search={searchTerm} onSearchChange={setSearchTerm} />
 
       <div className="flex flex-1 overflow-hidden relative">
-        <div className={`flex-1 overflow-y-scroll overflow-x-hidden min-h-0 custom-scrollbar flex flex-col [scrollbar-gutter:stable] transition-all duration-200 ${selectedTask ? 'hidden md:flex' : 'flex'}`}>
-          <div className="relative h-48 md:h-56 shrink-0 overflow-hidden">
-            <BoardHeroImage src={board.heroImageUrl} alt={board.name} color={board.color} className="h-full w-full" aspectRatio="auto" />
-          </div>
+        {/* Main Board Viewport Screen */}
+        <div className={`flex-1 h-full min-w-0 relative flex flex-col overflow-hidden transition-all duration-200 ${selectedTask ? 'hidden md:flex' : 'flex'}`}>
+          <div className="flex-1 overflow-y-scroll overflow-x-hidden min-h-0 custom-scrollbar flex flex-col [scrollbar-gutter:stable]">
+            <div className="relative h-48 md:h-56 shrink-0 overflow-hidden">
+              <BoardHeroImage src={board.heroImageUrl} alt={board.name} color={board.color} className="h-full w-full" aspectRatio="auto" />
+            </div>
 
           <div className="bg-background border-b border-border/50 shrink-0">
             <div className="px-6 py-5 md:px-10 flex flex-col md:flex-row items-center justify-between gap-6 max-w-[1600px] mx-auto w-full">
@@ -649,43 +653,45 @@ export function KanbanBoard() {
           </div>
         </div>
 
-        {/* Notion-Style Right-Side Task Detail Workspace */}
-        {selectedTask && board && (
-          <aside className="w-full md:w-[580px] lg:w-[680px] xl:w-[740px] shrink-0 border-l border-border bg-background shadow-2xl h-full overflow-hidden flex flex-col z-30 transition-all duration-200 animate-in slide-in-from-right duration-200">
-            <TaskDetailWorkspace
-              task={selectedTask}
-              board={board}
-              members={members}
-              readOnly={permissions.isReadOnly}
-              onClose={() => {
-                setSelectedTaskId(null);
-                setCreatedDraftTask(null);
-              }}
-              onUpdateTask={(updates) => updateTask(selectedTask.id, updates)}
-              onDeleteTask={(id) => {
-                deleteTask(id);
-                setSelectedTaskId(null);
-                setCreatedDraftTask(null);
-              }}
-            />
-          </aside>
+        {/* Floating Add Task FAB anchored to the actual board area screen */}
+        {permissions.canCreateTask && (
+          <Button
+            onClick={() => openNewModal()}
+            className="absolute bottom-8 right-8 h-14 w-14 hover:w-40 rounded-full shadow-2xl shadow-primary/20 flex items-center justify-center group/fab hover:scale-105 active:scale-95 transition-all duration-500 ease-out z-20 bg-primary hover:bg-primary/90 overflow-hidden px-0 border-4 border-background"
+            title="Create New Task"
+          >
+            <div className="pointer-events-none flex items-center justify-center w-full h-full relative">
+               <Plus className="h-6 w-6 text-primary-foreground absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 group-hover/fab:rotate-90 group-hover/fab:left-6" />
+               <span className="text-primary-foreground font-black uppercase text-[10px] tracking-[0.2em] whitespace-nowrap absolute left-14 opacity-0 group-hover/fab:opacity-100 translate-x-4 group-hover/fab:translate-x-0 transition-all duration-500 ease-out delay-75">
+                 Add Task
+               </span>
+            </div>
+          </Button>
         )}
       </div>
 
-      {permissions.canCreateTask && (
-        <Button
-          onClick={openNewModal}
-          className="fixed bottom-8 right-8 h-14 w-14 hover:w-40 rounded-full shadow-2xl shadow-primary/20 flex items-center justify-center group/fab hover:scale-105 active:scale-95 transition-all duration-500 ease-out z-50 bg-primary hover:bg-primary/90 overflow-hidden px-0 border-4 border-background"
-          title="Create New Task"
-        >
-          <div className="pointer-events-none flex items-center justify-center w-full h-full relative">
-             <Plus className="h-6 w-6 text-primary-foreground absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 group-hover/fab:rotate-90 group-hover/fab:left-6" />
-             <span className="text-primary-foreground font-black uppercase text-[10px] tracking-[0.2em] whitespace-nowrap absolute left-14 opacity-0 group-hover/fab:opacity-100 translate-x-4 group-hover/fab:translate-x-0 transition-all duration-500 ease-out delay-75">
-               Add Task
-             </span>
-          </div>
-        </Button>
+      {/* Notion-Style Right-Side Task Detail Workspace */}
+      {selectedTask && board && (
+        <aside className="w-full md:w-[580px] lg:w-[680px] xl:w-[740px] shrink-0 border-l border-border bg-background shadow-2xl h-full overflow-hidden flex flex-col z-30 transition-all duration-200 animate-in slide-in-from-right duration-200">
+          <TaskDetailWorkspace
+            task={selectedTask}
+            board={board}
+            members={members}
+            readOnly={permissions.isReadOnly}
+            onClose={() => {
+              setSelectedTaskId(null);
+              setCreatedDraftTask(null);
+            }}
+            onUpdateTask={(updates) => updateTask(selectedTask.id, updates)}
+            onDeleteTask={(id) => {
+              deleteTask(id);
+              setSelectedTaskId(null);
+              setCreatedDraftTask(null);
+            }}
+          />
+        </aside>
       )}
+    </div>
 
       <BoardModal
         open={isBoardModalOpen}

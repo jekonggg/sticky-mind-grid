@@ -4,6 +4,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { Task, TaskStatus } from "@/types/task";
 import { TaskCard } from "./TaskCard";
 import { Input } from "@/components/ui/input";
+import { Plus } from "lucide-react";
 
 interface KanbanColumnProps {
   id: TaskStatus;
@@ -11,9 +12,11 @@ interface KanbanColumnProps {
   emoji?: string;
   tasks: Task[];
   canRename?: boolean;
+  canCreateTask?: boolean;
   isDragDisabled?: boolean;
   selectedTaskId?: string | null;
   onTaskClick: (task: Task) => void;
+  onAddTask?: (status: TaskStatus) => void;
   onRename?: (id: string, newTitle: string, emoji?: string) => void;
 }
 
@@ -23,9 +26,11 @@ export function KanbanColumn({
   emoji,
   tasks,
   canRename = true,
+  canCreateTask = false,
   isDragDisabled = false,
   selectedTaskId,
   onTaskClick,
+  onAddTask,
   onRename,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
@@ -114,6 +119,17 @@ export function KanbanColumn({
             ))
           )}
         </SortableContext>
+
+        {canCreateTask && onAddTask && (
+          <button
+            onClick={() => onAddTask(id)}
+            className="w-full flex items-center justify-center gap-1.5 py-2 px-2 mt-1 text-xs font-semibold text-muted-foreground/80 hover:text-primary hover:bg-background/80 rounded-lg border border-dashed border-border/60 hover:border-primary/40 transition-all group cursor-pointer"
+            title={`Add task to ${title}`}
+          >
+            <Plus className="h-3.5 w-3.5 transition-transform group-hover:rotate-90 text-primary" />
+            <span>Add Task</span>
+          </button>
+        )}
       </div>
     </div>
   );
