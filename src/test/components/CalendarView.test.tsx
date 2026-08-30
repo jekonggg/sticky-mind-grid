@@ -57,4 +57,32 @@ describe("CalendarView Component", () => {
     fireEvent.click(taskCards[0]);
     expect(onTaskClick).toHaveBeenCalledWith(mockTasks[0]);
   });
+
+  it("switches to Week view and displays rich task containers with columns and progress", () => {
+    const onTaskClick = vi.fn();
+    const mockColumns = [
+      { id: "todo", title: "To Do", emoji: "📋" },
+      { id: "qa", title: "Quality Assurance", emoji: "🧪" },
+    ];
+
+    renderWithProviders(
+      <CalendarView
+        tasks={mockTasks}
+        columns={mockColumns}
+        onTaskClick={onTaskClick}
+      />
+    );
+
+    // Switch to Week view
+    const weekBtn = screen.getByRole("button", { name: "Week" });
+    fireEvent.click(weekBtn);
+
+    expect(screen.getByText(/week view/i)).toBeInTheDocument();
+
+    // Check that task is rendered with rich metadata
+    const taskCards = screen.getAllByText("Sprint Planning");
+    expect(taskCards.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Progress")).toBeInTheDocument();
+    expect(screen.getByText("40%")).toBeInTheDocument();
+  });
 });

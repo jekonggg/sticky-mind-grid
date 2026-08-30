@@ -1,18 +1,21 @@
-import { Task } from "@/types/task";
+import { Task, Column } from "@/types/task";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, startOfDay, endOfDay, setHours, getHours } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutGrid, Columns, Square } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutGrid, Columns, Square, CheckSquare, Paperclip, FileText } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getProgressColor } from "@/utils/taskUtils";
 
 interface CalendarViewProps {
   tasks: Task[];
+  columns?: Column[];
   selectedTaskId?: string | null;
   onTaskClick: (task: Task) => void;
 }
 
 type ViewMode = "month" | "week" | "day";
 
-export function CalendarView({ tasks, selectedTaskId, onTaskClick }: CalendarViewProps) {
+export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   
@@ -145,7 +148,226 @@ export function CalendarView({ tasks, selectedTaskId, onTaskClick }: CalendarVie
       <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch h-full">
         {/* Calendar Grid Side */}
         <div className="flex-1 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden shadow-sm flex flex-col">
-          {viewMode !== 'day' ? (
+          {viewMode === 'week' ? (
+            <div className="flex flex-col h-full">
+              {/* Week Day Header */}
+              <div className="grid grid-cols-7 bg-muted/20 border-b border-border/50 divide-x divide-border/30 shrink-0">
+                {calendarDays.map((day) => {
+                  const isToday = isSameDay(day, new Date());
+                  const dayTasks = getTasksForDay(day);
+                  return (
+                    <div
+                      key={day.toISOString()}
+                      className={`py-3 px-2 flex flex-col items-center justify-center gap-1 transition-colors ${
+                        isToday ? "bg-primary/10" : ""
+                      }`}
+                    >
+                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                        {format(day, "EEE")}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-sm font-black flex items-center justify-center w-7 h-7 rounded-full transition-transform ${
+                            isToday
+                              ? "bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30 font-bold"
+                              : "text-foreground hover:bg-muted"
+                          }`}
+                        >
+                          {format(day, "d")}
+                        </span>
+                        {isToday && (
+                          <span className="hidden xl:inline text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
+                            Today
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-semibold text-muted-foreground/70">
+                        {dayTasks.length === 0
+                          ? "No tasks"
+                          : `${dayTasks.length} ${dayTasks.length === 1 ? "task" : "tasks"}`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Week Columns Lane Grid */}
+              <div className="grid grid-cols-7 divide-x divide-border/30 min-h-[580px] flex-1 bg-muted/5">
+                {calendarDays.map((day) => {
+                  const dayTasks = getTasksForDay(day);
+                  const isToday = isSameDay(day, new Date());
+
+                  return (
+                    <div
+                      key={day.toISOString()}
+                      className={`p-2 flex flex-col gap-2.5 transition-colors ${
+                        isToday ? "bg-primary/[0.02]" : ""
+                      }`}
+                    >
+                      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-2.5">
+                        {dayTasks.length === 0 ? (
+                          <div className="h-28 rounded-xl border border-dashed border-border/40 flex flex-col items-center justify-center text-center p-2 text-muted-foreground/40 text-[11px] gap-1 select-none">
+                            <span>No tasks</span>
+                          </div>
+                        ) : (
+                          dayTasks.map((task) => {
+                            const column = columns.find((c) => c.id === task.status);
+                            const statusTitle = column?.title || task.status.replace(/_/g, " ");
+                            const statusEmoji = column?.emoji;
+                            const statusColor = column?.color;
+                            const assigneeName = task.assignee?.fullName || task.assignee?.email;
+                            const assigneeInitial = (assigneeName || "U").charAt(0).toUpperCase();
+
+                            const priorityBorderColor =
+                              task.priority === "urgent"
+                                ? "border-l-rose-500"
+                                : task.priority === "high"
+                                ? "border-l-orange-500"
+                                : task.priority === "medium"
+                                ? "border-l-amber-500"
+                                : "border-l-blue-500";
+
+                            return (
+                              <div
+                                key={task.id}
+                                onClick={() => onTaskClick(task)}
+                                className={`p-3 rounded-xl bg-card border border-border/70 border-l-[4px] ${priorityBorderColor} hover:border-primary/50 hover:border-l-[4px] ${priorityBorderColor} shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group/card flex flex-col gap-2`}
+                              >
+                                {/* Status & Priority Row */}
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span
+                                    className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground border border-border/50 flex items-center gap-1 truncate max-w-[125px]"
+                                    title={statusTitle}
+                                  >
+                                    {statusEmoji ? (
+                                      <span className="text-xs shrink-0">{statusEmoji}</span>
+                                    ) : (
+                                      <span
+                                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                                        style={{ backgroundColor: statusColor || "var(--primary)" }}
+                                      />
+                                    )}
+                                    <span className="truncate">{statusTitle}</span>
+                                  </span>
+
+                                  <span
+                                    className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full border shrink-0 ${
+                                      task.priority === "urgent"
+                                        ? "bg-rose-500/10 text-rose-600 border-rose-500/30"
+                                        : task.priority === "high"
+                                        ? "bg-orange-500/10 text-orange-600 border-orange-500/30"
+                                        : task.priority === "medium"
+                                        ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                                        : "bg-slate-500/10 text-slate-600 border-slate-500/30"
+                                    }`}
+                                  >
+                                    {task.priority}
+                                  </span>
+                                </div>
+
+                                {/* Task Emoji & Title */}
+                                <div className="flex items-start gap-2">
+                                  {task.emoji ? (
+                                    <span className="text-sm shrink-0 mt-0.5">{task.emoji}</span>
+                                  ) : (
+                                    <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 mt-0.5 group-hover/card:text-primary transition-colors" />
+                                  )}
+                                  <span className="font-bold text-xs text-foreground group-hover/card:text-primary transition-colors line-clamp-2 leading-snug">
+                                    {task.title}
+                                  </span>
+                                </div>
+
+                                {/* Task Description snippet */}
+                                {task.description && (
+                                  <p className="text-[10px] text-muted-foreground line-clamp-1 italic">
+                                    {task.description}
+                                  </p>
+                                )}
+
+                                {/* Tags */}
+                                {task.tags && task.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {task.tags.slice(0, 2).map((t) => (
+                                      <span
+                                        key={t.id}
+                                        style={{
+                                          backgroundColor: `${t.color}20`,
+                                          color: t.color,
+                                          borderColor: `${t.color}40`,
+                                        }}
+                                        className="text-[8px] font-bold px-1.5 py-0.2 rounded-full border truncate max-w-[70px]"
+                                      >
+                                        {t.name}
+                                      </span>
+                                    ))}
+                                    {task.tags.length > 2 && (
+                                      <span className="text-[8px] font-bold text-muted-foreground px-1 py-0.2">
+                                        +{task.tags.length - 2}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Progress bar */}
+                                <div className="space-y-1 pt-0.5">
+                                  <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full transition-all duration-300 ${getProgressColor(
+                                        task.progress
+                                      )}`}
+                                      style={{ width: `${task.progress}%` }}
+                                    />
+                                  </div>
+                                  <div className="flex items-center justify-between text-[9px] text-muted-foreground font-semibold">
+                                    <span>Progress</span>
+                                    <span>{task.progress}%</span>
+                                  </div>
+                                </div>
+
+                                {/* Card Footer: Metadata & Assignee */}
+                                <div className="pt-1.5 border-t border-border/40 flex items-center justify-between gap-1 text-[10px] text-muted-foreground">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {task.checklist && task.checklist.length > 0 && (
+                                      <span className="flex items-center gap-1 font-semibold" title="Checklist progress">
+                                        <CheckSquare className="h-3 w-3 text-primary" />
+                                        <span>
+                                          {task.checklist.filter((i) => i.completed).length}/{task.checklist.length}
+                                        </span>
+                                      </span>
+                                    )}
+                                    {task.attachments && task.attachments.length > 0 && (
+                                      <span className="flex items-center gap-1 font-semibold" title="Attachments">
+                                        <Paperclip className="h-3 w-3" />
+                                        <span>{task.attachments.length}</span>
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {task.assignee && (
+                                    <div className="flex items-center gap-1 shrink-0 ml-auto" title={`Assigned to: ${assigneeName}`}>
+                                      <span className="text-[9px] font-semibold truncate max-w-[60px] hidden xl:inline">
+                                        {assigneeName?.split(" ")[0]}
+                                      </span>
+                                      <Avatar className="h-5 w-5 border border-primary/20 shrink-0">
+                                        <AvatarImage src={task.assignee.avatarUrl} alt={assigneeName} />
+                                        <AvatarFallback className="text-[8px] font-black bg-primary/10 text-primary">
+                                          {assigneeInitial}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : viewMode === 'month' ? (
             <>
               <div className="grid grid-cols-7 bg-muted/30 border-b border-border/50">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
@@ -155,9 +377,7 @@ export function CalendarView({ tasks, selectedTaskId, onTaskClick }: CalendarVie
                 ))}
               </div>
               
-              <div className={`grid grid-cols-7 
-                ${viewMode === 'month' ? 'auto-rows-[100px] md:auto-rows-[115px]' : 'auto-rows-[400px]'}
-              `}>
+              <div className="grid grid-cols-7 auto-rows-[100px] md:auto-rows-[120px]">
                 {calendarDays.map((day) => {
                   const dayTasks = getTasksForDay(day);
                   const isToday = isSameDay(day, new Date());
@@ -166,8 +386,8 @@ export function CalendarView({ tasks, selectedTaskId, onTaskClick }: CalendarVie
                   return (
                     <div 
                       key={day.toISOString()} 
-                      className={`p-1.5 border-r border-b border-border/30 last:border-r-0 flex flex-col gap-0.5 transition-colors
-                        ${(viewMode === 'month' && !isCurrentMonth) ? "opacity-30 bg-muted/5" : "bg-card/20"}
+                      className={`p-1.5 border-r border-b border-border/30 last:border-r-0 flex flex-col gap-1 transition-colors
+                        ${(!isCurrentMonth) ? "opacity-30 bg-muted/5" : "bg-card/20"}
                         ${isToday ? "bg-primary/5" : ""}
                       `}
                     >
@@ -182,24 +402,21 @@ export function CalendarView({ tasks, selectedTaskId, onTaskClick }: CalendarVie
                           <div
                             key={task.id}
                             onClick={() => onTaskClick(task)}
-                            className={`px-1.5 py-1 rounded border border-border/50 shadow-sm cursor-pointer transition-all hover:scale-[1.01] 
-                              ${viewMode === 'week' ? 'text-sm py-3' : 'text-[9px]'}
-                            `}
+                            className="px-1.5 py-1 rounded-md border border-border/50 bg-card hover:bg-card/90 shadow-2xs cursor-pointer transition-all hover:scale-[1.02] flex items-center justify-between gap-1 text-[10px] group/m-task"
                             style={{ 
-                              backgroundColor: "hsl(var(--card))",
                               borderLeft: `3px solid ${
-                                task.priority === 'high' ? 'rgb(239, 68, 68)' : 
+                                task.priority === 'urgent' ? 'rgb(244, 63, 94)' :
+                                task.priority === 'high' ? 'rgb(249, 115, 22)' : 
                                 task.priority === 'medium' ? 'rgb(245, 158, 11)' : 'rgb(59, 130, 246)'
                               }`
                             }}
                           >
-                            <div className="font-bold truncate">{task.title}</div>
-                            {viewMode === 'week' && (
-                              <div className="text-[10px] opacity-60 mt-1 flex items-center gap-2">
-                                <span>{task.priority.toUpperCase()}</span>
-                                <span>•</span>
-                                <span>{task.progress}%</span>
-                              </div>
+                            <div className="flex items-center gap-1 min-w-0 flex-1">
+                              {task.emoji && <span className="text-xs shrink-0">{task.emoji}</span>}
+                              <span className="font-bold truncate group-hover/m-task:text-primary">{task.title}</span>
+                            </div>
+                            {task.progress === 100 && (
+                              <span className="text-[9px] text-emerald-500 font-bold shrink-0">✓</span>
                             )}
                           </div>
                         ))}
