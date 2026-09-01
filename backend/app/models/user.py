@@ -24,6 +24,8 @@ class User(db.Model):
     comments = db.relationship('Comment', back_populates='user', lazy=True, cascade="all, delete-orphan")
     notifications = db.relationship('Notification', back_populates='user', lazy=True, cascade="all, delete-orphan")
     preferences = db.relationship('UserPreference', back_populates='user', uselist=False, cascade="all, delete-orphan")
+    conversation_participations = db.relationship('ConversationParticipant', back_populates='user', lazy=True, cascade="all, delete-orphan")
+    sent_messages = db.relationship('Message', foreign_keys='Message.sender_id', back_populates='sender', lazy=True, cascade="all, delete-orphan")
 
     def __init__(self, email: str, full_name: str = "", avatar_url: str = None, **kwargs):
         super().__init__(**kwargs)

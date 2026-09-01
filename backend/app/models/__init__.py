@@ -7,5 +7,11 @@ from app.models.comment import Comment
 from app.models.notification import Notification
 from app.models.note import Note
 from app.models.user_preference import UserPreference
+from app.models.message import Conversation, ConversationParticipant, Message
 
-__all__ = ['Board', 'Task', 'Activity', 'User', 'BoardMember', 'Comment', 'Notification', 'Note', 'UserPreference']
+__all__ = [
+    'Board', 'Task', 'Activity', 'User', 'BoardMember',
+    'Comment', 'Notification', 'Note', 'UserPreference',
+    'Conversation', 'ConversationParticipant', 'Message'
+]
+
