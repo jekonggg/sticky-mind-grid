@@ -93,7 +93,7 @@ def mark_read(conversation_id):
         return jsonify({'error': error}), status_code
     return jsonify(res), 200
 
-@bp.route('/messages/<message_id>/reactions', methods=['POST'])
+@bp.route('/<message_id>/reactions', methods=['POST'])
 @jwt_required()
 def toggle_reaction(message_id):
     user_id = get_jwt_identity()
@@ -105,7 +105,7 @@ def toggle_reaction(message_id):
         return jsonify({'error': error}), status_code
     return jsonify(res), 200
 
-@bp.route('/messages/<message_id>', methods=['DELETE'])
+@bp.route('/<message_id>', methods=['DELETE'])
 @jwt_required()
 def delete_message(message_id):
     user_id = get_jwt_identity()
