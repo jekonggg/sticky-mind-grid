@@ -45,11 +45,13 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   StickyNote,
+  MessageSquare,
 } from "lucide-react";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { BoardModal } from "@/components/boards/BoardModal";
 import { NoteModal } from "@/components/documents/NoteModal";
 import { SettingsTab } from "@/types/settings";
+import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { toast } from "sonner";
 
 interface AppSidebarProps {
@@ -122,6 +124,9 @@ export function AppSidebar({
     enabled: !!activeBoardId,
   });
 
+  // Fetch unread messages count for sidebar badge
+  const { data: unreadMessagesCount = 0 } = useUnreadMessageCount();
+
   // Board creation mutation
   const createBoardMutation = useMutation({
     mutationFn: (data: CreateBoardData) => boardApi.createBoard(data),
@@ -168,6 +173,7 @@ export function AppSidebar({
 
   const isHomeActive = location.pathname === "/";
   const isDashboardActive = location.pathname === "/" && location.hash === "#dashboard";
+  const isMessagesActive = location.pathname.startsWith("/messages");
 
   return (
     <>
@@ -448,6 +454,46 @@ export function AppSidebar({
                 </button>
               </TooltipTrigger>
               {isCollapsed && <TooltipContent side="right">Teams ({invitations.length})</TooltipContent>}
+            </Tooltip>
+
+            {/* Messages */}
+            <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => navigate("/messages")}
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
+                    isMessagesActive
+                      ? "bg-primary/10 text-primary font-semibold border border-primary/20 shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  } ${isCollapsed ? "justify-center px-0" : ""}`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="relative shrink-0">
+                      <MessageSquare
+                        className={`h-4 w-4 shrink-0 ${
+                          isMessagesActive
+                            ? "text-primary"
+                            : "text-muted-foreground group-hover:text-foreground"
+                        }`}
+                      />
+                      {isCollapsed && unreadMessagesCount > 0 && (
+                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary ring-2 ring-card animate-pulse" />
+                      )}
+                    </div>
+                    {!isCollapsed && <span>Messages</span>}
+                  </div>
+                  {!isCollapsed && unreadMessagesCount > 0 && (
+                    <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0 h-4 font-bold shadow-2xs animate-pulse">
+                      {unreadMessagesCount}
+                    </Badge>
+                  )}
+                </button>
+              </TooltipTrigger>
+              {isCollapsed && (
+                <TooltipContent side="right">
+                  Messages {unreadMessagesCount > 0 ? `(${unreadMessagesCount} unread)` : ""}
+                </TooltipContent>
+              )}
             </Tooltip>
 
             {/* Settings */}

@@ -4,12 +4,18 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { renderWithProviders, mockUser } from "@/test/test-utils";
 import { boardApi } from "@/services/boardApi";
 
-// Mock boardApi
+// Mock boardApi & messageApi
 vi.mock("@/services/boardApi", () => ({
   boardApi: {
     getBoards: vi.fn(),
     getPendingInvitations: vi.fn(),
     createBoard: vi.fn(),
+  },
+}));
+
+vi.mock("@/services/messageApi", () => ({
+  messageApi: {
+    getUnreadCount: vi.fn().mockResolvedValue({ unreadCount: 3 }),
   },
 }));
 
@@ -55,7 +61,7 @@ describe("AppSidebar Component", () => {
     expect(screen.getByText(/workspace/i)).toBeInTheDocument();
   });
 
-  it("renders all PAGES navigation items", () => {
+  it("renders all PAGES navigation items including Messages", () => {
     renderWithProviders(
       <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />
     );
@@ -67,6 +73,7 @@ describe("AppSidebar Component", () => {
     expect(screen.getByText("Tasks")).toBeInTheDocument();
     expect(screen.getByText("Calendar")).toBeInTheDocument();
     expect(screen.getByText("Teams")).toBeInTheDocument();
+    expect(screen.getByText("Messages")).toBeInTheDocument();
     expect(screen.getByText("Settings")).toBeInTheDocument();
   });
 

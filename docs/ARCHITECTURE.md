@@ -25,7 +25,8 @@ Sticky Mind Grid is a full-stack task management application modeled after Trell
 ┌──────────────────────────┼──────────────────────────────────────┐
 │                     MySQL Database                               │
 │  users │ boards │ board_members │ tasks │ activities │ comments  │
-│              notifications │ notes                               │
+│  notifications │ notes │ conversations │ conversation_participants│
+│  messages                                                        │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -44,6 +45,9 @@ Sticky Mind Grid is a full-stack task management application modeled after Trell
 | `/register` | `Register.tsx` | No |
 | `/` | `BoardsOverview.tsx` | Yes (ProtectedRoute) |
 | `/boards/:boardId` | `KanbanBoard.tsx` | Yes (ProtectedRoute) |
+| `/boards/:boardId/tasks/:taskId` | `TaskDetailPage.tsx` | Yes (ProtectedRoute) |
+| `/messages` | `MessagesPage.tsx` | Yes (ProtectedRoute) |
+| `/messages/:conversationId` | `MessagesPage.tsx` | Yes (ProtectedRoute) |
 | `*` | `NotFound.tsx` | No |
 
 - `ProtectedRoute` (`src/components/auth/ProtectedRoute.tsx`) wraps authenticated routes. Redirects to `/login` if no user in AuthContext.

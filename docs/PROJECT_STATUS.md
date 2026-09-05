@@ -100,6 +100,15 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 - **Board-scoped** — notes belong to a board
 - **Documents view** — note cards with edit/delete
 
+### In-App Messaging & Team Chat
+- **Sidebar Integration** — "Messages" entry in sidebar with dynamic unread count badge & collapsed rail tooltip
+- **Direct Messages (1-on-1)** — start direct conversations with any registered teammate, idempotent conversation reuse
+- **Group Chats** — create named group conversations with multi-member selection
+- **Real-Time Delivery** — user-scoped SSE event stream (`/api/messages/stream`) for instant message synchronization
+- **Rich Message Timeline** — date separators, incoming/outgoing bubbles, sender avatars, and timestamps
+- **Attachments & Media** — send images (with lightbox preview) and documents (downloadable)
+- **Reply Threads & Emoji Reactions** — reply to specific messages with preview banner, toggle emoji reactions on any message
+
 ---
 
 ## Partially Implemented Features
