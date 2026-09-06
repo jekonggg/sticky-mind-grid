@@ -3,6 +3,7 @@ from app.models.task import Task
 from app.models.activity import Activity
 from app.models.user import User
 from app.models.board_member import BoardMember
+from app.models.board_invitation import BoardInvitation
 from app.models.comment import Comment
 from app.models.notification import Notification
 from app.models.note import Note
@@ -10,7 +11,7 @@ from app.models.user_preference import UserPreference
 from app.models.message import Conversation, ConversationParticipant, Message
 
 __all__ = [
-    'Board', 'Task', 'Activity', 'User', 'BoardMember',
+    'Board', 'Task', 'Activity', 'User', 'BoardMember', 'BoardInvitation',
     'Comment', 'Notification', 'Note', 'UserPreference',
     'Conversation', 'ConversationParticipant', 'Message'
 ]
