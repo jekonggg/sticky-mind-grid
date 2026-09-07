@@ -219,15 +219,15 @@ export function AppSidebar({
         }`}
       >
         {/* 1. TOP: Workspace & User Profile Section */}
-        <div className="p-3 border-b border-border/50 shrink-0">
+        <div className={`${isCollapsed ? "px-2 py-3" : "p-3"} border-b border-border/50 shrink-0`}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className={`w-full flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-muted/60 transition-colors group text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  isCollapsed ? "justify-center" : "justify-between"
+                className={`w-full h-12 flex items-center rounded-xl hover:bg-muted/60 transition-colors group text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  isCollapsed ? "justify-center px-0" : "justify-between gap-2.5 px-1.5"
                 }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
+                <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5 min-w-0"}`}>
                   <div className="relative shrink-0">
                     <Avatar className="h-9 w-9 border border-border/60 shadow-2xs">
                       <AvatarImage src={user?.avatarUrl} alt={userName} />
@@ -289,46 +289,61 @@ export function AppSidebar({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Quick Search trigger (Expanded only) */}
-          {!isCollapsed && (
-            <button
-              onClick={() => {
-                if (onOpenSearch) onOpenSearch();
-                else navigate("/");
-              }}
-              className="mt-2.5 w-full flex items-center justify-between px-2.5 py-1.5 text-xs text-muted-foreground bg-muted/40 hover:bg-muted/70 border border-border/50 rounded-lg transition-all cursor-pointer group"
-            >
-              <div className="flex items-center gap-2">
-                <Search className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                <span>Quick search...</span>
-              </div>
-              <kbd className="text-[10px] font-mono bg-background border border-border/70 rounded px-1.5 py-0.5 shadow-2xs">
-                ⌘K
-              </kbd>
-            </button>
-          )}
+          {/* Quick Search trigger (Always visible; expands sidebar when clicked while collapsed) */}
+          <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => {
+                  if (isCollapsed) {
+                    onToggleCollapse();
+                    return;
+                  }
+                  if (onOpenSearch) onOpenSearch();
+                  else navigate("/");
+                }}
+                aria-label="Quick search"
+                className={`mt-2.5 w-full h-8 flex items-center text-xs text-muted-foreground bg-muted/40 hover:bg-muted/70 border border-border/50 rounded-lg transition-all cursor-pointer group ${
+                  isCollapsed ? "justify-center px-0" : "justify-between px-2.5"
+                }`}
+              >
+                <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2"}`}>
+                  <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  {!isCollapsed && <span>Quick search...</span>}
+                </div>
+                {!isCollapsed && (
+                  <kbd className="text-[10px] font-mono bg-background border border-border/70 rounded px-1.5 py-0.5 shadow-2xs">
+                    ⌘K
+                  </kbd>
+                )}
+              </button>
+            </TooltipTrigger>
+            {isCollapsed && <TooltipContent side="right">Quick Search</TooltipContent>}
+          </Tooltip>
         </div>
 
         {/* 2. SCROLLABLE MIDDLE NAVIGATION */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-4 custom-scrollbar">
           {/* Section: PAGES */}
           <div className="space-y-1">
-            {!isCollapsed && (
-              <div className="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-muted-foreground/80 flex items-center justify-between">
-                <span>PAGES</span>
-              </div>
-            )}
+            <div
+              className={`h-6 px-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground/80 flex items-center justify-between transition-opacity duration-200 ${
+                isCollapsed ? "opacity-0 pointer-events-none select-none" : "opacity-100"
+              }`}
+              aria-hidden={isCollapsed}
+            >
+              <span>PAGES</span>
+            </div>
 
             {/* Home */}
             <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => navigate("/")}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
+                  className={`w-full h-9 flex items-center rounded-lg text-xs font-medium transition-all cursor-pointer group ${
                     isHomeActive
                       ? "bg-primary/10 text-primary font-semibold border border-primary/20 shadow-2xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  } ${isCollapsed ? "justify-center px-0" : ""}`}
+                  } ${isCollapsed ? "justify-center px-0" : "gap-2.5 px-2.5"}`}
                 >
                   <Home className={`h-4 w-4 shrink-0 ${isHomeActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                   {!isCollapsed && <span>Home</span>}
@@ -342,11 +357,11 @@ export function AppSidebar({
               <TooltipTrigger asChild>
                 <button
                   onClick={() => navigate("/dashboard")}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
+                  className={`w-full h-9 flex items-center rounded-lg text-xs font-medium transition-all cursor-pointer group ${
                     isDashboardActive
                       ? "bg-primary/10 text-primary font-semibold border border-primary/20 shadow-2xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  } ${isCollapsed ? "justify-center px-0" : ""}`}
+                  } ${isCollapsed ? "justify-center px-0" : "gap-2.5 px-2.5"}`}
                 >
                   <LayoutDashboard className={`h-4 w-4 shrink-0 ${isDashboardActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                   {!isCollapsed && <span>Dashboard</span>}
@@ -360,13 +375,13 @@ export function AppSidebar({
               <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
                 <TooltipTrigger asChild>
                   <div
-                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors group cursor-pointer ${
+                    className={`w-full h-9 flex items-center rounded-lg text-xs font-medium transition-colors group cursor-pointer ${
                       boardId ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                    } ${isCollapsed ? "justify-center px-0" : ""}`}
+                    } ${isCollapsed ? "justify-center px-0" : "justify-between px-2.5"}`}
                     onClick={() => !isCollapsed && setIsBoardsExpanded(!isBoardsExpanded)}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Kanban className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+                    <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5 min-w-0"}`}>
+                      <Kanban className={`h-4 w-4 shrink-0 ${boardId ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                       {!isCollapsed && <span className="truncate">Boards</span>}
                     </div>
 
@@ -449,13 +464,13 @@ export function AppSidebar({
               <TooltipTrigger asChild>
                 <button
                   onClick={() => navigate("/tasks")}
-                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
+                  className={`w-full h-9 flex items-center rounded-lg text-xs font-medium transition-all cursor-pointer group ${
                     isTasksActive
                       ? "bg-primary/10 text-primary font-semibold border border-primary/20 shadow-2xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  } ${isCollapsed ? "justify-center px-0" : ""}`}
+                  } ${isCollapsed ? "justify-center px-0" : "justify-between px-2.5"}`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5 min-w-0"}`}>
                     <CheckSquare className={`h-4 w-4 shrink-0 ${isTasksActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                     {!isCollapsed && <span>Tasks</span>}
                   </div>
@@ -474,11 +489,11 @@ export function AppSidebar({
               <TooltipTrigger asChild>
                 <button
                   onClick={() => navigate("/calendar")}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
+                  className={`w-full h-9 flex items-center rounded-lg text-xs font-medium transition-all cursor-pointer group ${
                     isCalendarActive
                       ? "bg-primary/10 text-primary font-semibold border border-primary/20 shadow-2xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  } ${isCollapsed ? "justify-center px-0" : ""}`}
+                  } ${isCollapsed ? "justify-center px-0" : "gap-2.5 px-2.5"}`}
                 >
                   <CalendarDays className={`h-4 w-4 shrink-0 ${isCalendarActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                   {!isCollapsed && <span>Calendar</span>}
@@ -492,13 +507,13 @@ export function AppSidebar({
               <TooltipTrigger asChild>
                 <button
                   onClick={() => navigate("/teams")}
-                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
+                  className={`w-full h-9 flex items-center rounded-lg text-xs font-medium transition-all cursor-pointer group ${
                     isTeamsActive
                       ? "bg-primary/10 text-primary font-semibold border border-primary/20 shadow-2xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  } ${isCollapsed ? "justify-center px-0" : ""}`}
+                  } ${isCollapsed ? "justify-center px-0" : "justify-between px-2.5"}`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5 min-w-0"}`}>
                     <Users className={`h-4 w-4 shrink-0 ${isTeamsActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                     {!isCollapsed && <span>Teams</span>}
                   </div>
@@ -517,14 +532,14 @@ export function AppSidebar({
               <TooltipTrigger asChild>
                 <div
                   onClick={() => navigate("/messages")}
-                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
+                  className={`w-full h-9 flex items-center rounded-lg text-xs font-medium transition-all cursor-pointer group ${
                     isMessagesActive
                       ? "bg-primary/10 text-primary font-semibold border border-primary/20 shadow-2xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  } ${isCollapsed ? "justify-center px-0" : ""}`}
+                  } ${isCollapsed ? "justify-center px-0" : "justify-between px-2.5"}`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="relative shrink-0">
+                  <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5 min-w-0"}`}>
+                    <div className="relative flex items-center justify-center shrink-0">
                       <MessageSquare
                         className={`h-4 w-4 shrink-0 ${
                           isMessagesActive
@@ -579,8 +594,8 @@ export function AppSidebar({
               <TooltipTrigger asChild>
                 <button
                   onClick={() => openSettingsTab("profile")}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
-                    isCollapsed ? "justify-center px-0" : ""
+                  className={`w-full h-9 flex items-center rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
+                    isCollapsed ? "justify-center px-0" : "gap-2.5 px-2.5"
                   }`}
                 >
                   <Settings className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
@@ -593,23 +608,26 @@ export function AppSidebar({
 
           {/* Section: FILES & DOCUMENTS */}
           <div className="space-y-1 pt-2 border-t border-border/40">
-            {!isCollapsed && (
-              <div className="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-muted-foreground/80 flex items-center justify-between">
-                <span>FILES</span>
-              </div>
-            )}
+            <div
+              className={`h-6 px-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground/80 flex items-center justify-between transition-opacity duration-200 ${
+                isCollapsed ? "opacity-0 pointer-events-none select-none" : "opacity-100"
+              }`}
+              aria-hidden={isCollapsed}
+            >
+              <span>FILES</span>
+            </div>
 
             {/* Board / Project Files */}
             <div>
               <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
                 <TooltipTrigger asChild>
                   <div
-                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
-                      isCollapsed ? "justify-center px-0" : ""
+                    className={`w-full h-9 flex items-center rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
+                      isCollapsed ? "justify-center px-0" : "justify-between px-2.5"
                     }`}
                     onClick={() => !isCollapsed && setIsBoardFilesExpanded(!isBoardFilesExpanded)}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5 min-w-0"}`}>
                       <FolderKanban className="h-4 w-4 shrink-0 text-primary/80" />
                       {!isCollapsed && <span className="truncate">Board Files</span>}
                     </div>
@@ -678,12 +696,12 @@ export function AppSidebar({
               <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
                 <TooltipTrigger asChild>
                   <div
-                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
-                      isCollapsed ? "justify-center px-0" : ""
+                    className={`w-full h-9 flex items-center rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
+                      isCollapsed ? "justify-center px-0" : "justify-between px-2.5"
                     }`}
                     onClick={() => !isCollapsed && setIsPersonalFilesExpanded(!isPersonalFilesExpanded)}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5 min-w-0"}`}>
                       <FolderLock className="h-4 w-4 shrink-0 text-amber-500/80" />
                       {!isCollapsed && <span className="truncate">Personal Files</span>}
                     </div>
@@ -745,11 +763,11 @@ export function AppSidebar({
             <TooltipTrigger asChild>
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer ${
-                  isCollapsed ? "justify-center px-0" : "justify-between"
+                className={`w-full h-9 flex items-center rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer ${
+                  isCollapsed ? "justify-center px-0" : "justify-between gap-2.5 px-2.5"
                 }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
+                <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5 min-w-0"}`}>
                   {theme === "dark" ? (
                     <Moon className="h-4 w-4 shrink-0 text-amber-400" />
                   ) : (
@@ -774,8 +792,8 @@ export function AppSidebar({
             <TooltipTrigger asChild>
               <button
                 onClick={onToggleCollapse}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer ${
-                  isCollapsed ? "justify-center px-0" : ""
+                className={`w-full h-9 flex items-center rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer ${
+                  isCollapsed ? "justify-center px-0" : "gap-2.5 px-2.5"
                 }`}
               >
                 {isCollapsed ? (

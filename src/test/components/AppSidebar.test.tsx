@@ -180,4 +180,44 @@ describe("AppSidebar Component", () => {
       expect(screen.getByText("New Conversation")).toBeInTheDocument();
     });
   });
+
+  it("centers all icons uniformly without conflicting justify-between or px-2.5 classes when collapsed", () => {
+    const { container } = renderWithProviders(
+      <AppSidebar isCollapsed={true} onToggleCollapse={vi.fn()} />
+    );
+
+    const aside = container.querySelector("aside");
+    expect(aside).toHaveClass("w-[68px]");
+
+    // Every interactive row with justify-center must not also have justify-between or px-2.5
+    const centeredElements = aside?.querySelectorAll(".justify-center") ?? [];
+    expect(centeredElements.length).toBeGreaterThan(0);
+    centeredElements.forEach((el) => {
+      expect(el).not.toHaveClass("justify-between");
+      expect(el).not.toHaveClass("px-2.5");
+    });
+  });
+
+  it("keeps the search button visible when collapsed and forces the sidebar to expand when clicked", () => {
+    const onToggleCollapse = vi.fn();
+    const onOpenSearch = vi.fn();
+
+    renderWithProviders(
+      <AppSidebar
+        isCollapsed={true}
+        onToggleCollapse={onToggleCollapse}
+        onOpenSearch={onOpenSearch}
+      />
+    );
+
+    const searchBtn = screen.getByRole("button", { name: /quick search/i });
+    expect(searchBtn).toBeInTheDocument();
+    expect(searchBtn).toHaveClass("h-8");
+
+    fireEvent.click(searchBtn);
+    expect(onToggleCollapse).toHaveBeenCalledTimes(1);
+    expect(onOpenSearch).not.toHaveBeenCalled();
+  });
 });
+
+
