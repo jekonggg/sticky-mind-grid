@@ -27,6 +27,12 @@ class Activity(db.Model):
         self.user_id = user_id
 
     def to_dict(self):
+        user_data = self.user.to_dict() if self.user else {
+            'id': self.user_id,
+            'fullName': 'Former member',
+            'email': '',
+            'avatarUrl': None
+        }
         return {
             'id': self.id,
             'boardId': self.board_id,
@@ -34,6 +40,6 @@ class Activity(db.Model):
             'taskTitle': self.task_title,
             'message': self.message,
             'userId': self.user_id,
-            'user': self.user.to_dict() if self.user else None,
+            'user': user_data,
             'timestamp': self.timestamp.isoformat() + 'Z' if self.timestamp else None
         }

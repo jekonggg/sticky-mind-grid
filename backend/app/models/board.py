@@ -18,6 +18,7 @@ class Board(db.Model):
     hero_image_url = db.Column(db.Text().with_variant(LONGTEXT, "mysql"), nullable=True)
     columns = db.Column(db.JSON, default=list)
     owner_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True) # Temporarily nullable for migration
+    workspace_id = db.Column(db.String(36), nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -25,7 +26,7 @@ class Board(db.Model):
     tasks = db.relationship('Task', back_populates='board', lazy=True, cascade="all, delete-orphan")
     memberships = db.relationship('BoardMember', back_populates='board', lazy=True, cascade="all, delete-orphan")
 
-    def __init__(self, name: str, emoji: str = None, description: str = None, color: str = 'hsl(220, 80%, 56%)', hero_image_url: str = None, columns: list = None, owner_id: str = None, **kwargs):
+    def __init__(self, name: str, emoji: str = None, description: str = None, color: str = 'hsl(220, 80%, 56%)', hero_image_url: str = None, columns: list = None, owner_id: str = None, workspace_id: str = None, **kwargs):
         super().__init__(**kwargs)
         self.name = name
         self.emoji = emoji
@@ -34,6 +35,7 @@ class Board(db.Model):
         self.hero_image_url = hero_image_url
         self.columns = columns if columns is not None else []
         self.owner_id = owner_id
+        self.workspace_id = workspace_id
 
     def touch(self):
         self.updated_at = datetime.utcnow()
@@ -50,6 +52,7 @@ class Board(db.Model):
             'heroImageUrl': self.hero_image_url,
             'columns': self.columns,
             'ownerId': self.owner_id,
+            'workspaceId': getattr(self, 'workspace_id', None),
             'taskCount': len(self.tasks),
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None,
             'updatedAt': self.updated_at.isoformat() + 'Z' if self.updated_at else None
