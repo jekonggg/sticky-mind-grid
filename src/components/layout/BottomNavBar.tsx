@@ -109,7 +109,7 @@ export function BottomNavBar() {
                 {/* Glowing Aura Effect when active or hovered */}
                 <div
                   className={cn(
-                    "absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary via-primary/80 to-violet-500 opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-75",
+                    "absolute -inset-1 rounded-2xl bg-primary/60 opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-75",
                     active && "opacity-80"
                   )}
                 />
@@ -119,7 +119,7 @@ export function BottomNavBar() {
                   className={cn(
                     "relative h-13 w-13 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 shadow-lg",
                     active
-                      ? "bg-gradient-to-tr from-primary to-violet-600 text-primary-foreground shadow-primary/40 ring-2 ring-background scale-105"
+                      ? "bg-primary text-primary-foreground shadow-primary/40 ring-2 ring-background scale-105"
                       : "bg-primary/90 text-primary-foreground hover:bg-primary shadow-primary/25"
                   )}
                 >

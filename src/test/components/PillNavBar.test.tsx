@@ -20,7 +20,6 @@ describe("PillNavBar Component", () => {
         items={mockItems}
         activeId="board"
         onChange={handleChange}
-        accentColor="violet"
       />
     );
 
@@ -33,7 +32,7 @@ describe("PillNavBar Component", () => {
     expect(screen.getByText("5")).toBeInTheDocument();
   });
 
-  it("sets active item with aria-selected true and tabIndex 0", () => {
+  it("sets active item with aria-selected true, tabIndex 0, and theme primary accent classes", () => {
     const handleChange = vi.fn();
     render(
       <PillNavBar
@@ -48,6 +47,7 @@ describe("PillNavBar Component", () => {
 
     expect(boardTab).toHaveAttribute("aria-selected", "true");
     expect(boardTab).toHaveAttribute("tabindex", "0");
+    expect(boardTab.querySelector("svg")).toHaveClass("text-primary");
     expect(listTab).toHaveAttribute("aria-selected", "false");
     expect(listTab).toHaveAttribute("tabindex", "-1");
   });

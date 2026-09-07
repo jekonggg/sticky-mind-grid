@@ -23,7 +23,7 @@ export function PillNavBar<T extends string = string>({
   items,
   activeId,
   onChange,
-  accentColor = "violet",
+  accentColor = "primary",
   size = "default",
   className,
   layoutId = "metaPillActiveBg",
@@ -38,7 +38,7 @@ export function PillNavBar<T extends string = string>({
         return "text-amber-600 dark:text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]";
       case "primary":
       default:
-        return "text-primary drop-shadow-[0_0_8px_rgba(var(--primary),0.45)]";
+        return "text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.45)]";
     }
   };
 
@@ -81,7 +81,7 @@ export function PillNavBar<T extends string = string>({
             {isActive && (
               <motion.div
                 layoutId={layoutId}
-                className="absolute inset-0 rounded-full bg-slate-100 dark:bg-[#1c1c20] border border-slate-300/80 dark:border-white/10 shadow-sm -z-10"
+                className="absolute inset-0 rounded-full bg-primary/10 dark:bg-primary/15 border border-primary/25 dark:border-primary/35 shadow-sm -z-10"
                 transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
               />
             )}
@@ -101,7 +101,7 @@ export function PillNavBar<T extends string = string>({
                 className={cn(
                   "ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono leading-tight",
                   isActive
-                    ? "bg-primary/15 text-primary dark:text-violet-300 font-bold"
+                    ? "bg-primary/15 text-primary font-bold"
                     : "bg-muted text-muted-foreground"
                 )}
               >
