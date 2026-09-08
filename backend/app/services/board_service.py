@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from app import db
 from app.models.board import Board
 from app.models.board_member import BoardMember
+from app.models.board_invitation import BoardInvitation
 from app.models.user import User
 from app.models.activity import Activity
 from app.models.notification import Notification
@@ -18,20 +19,75 @@ class BoardService:
 
     @staticmethod
     def get_user_invitations(user_id):
+        user = db.session.get(User, user_id)
+        if not user:
+            return []
+
+        now = datetime.utcnow()
+        user_email = (user.email or '').strip().lower()
+        active_invites = []
+        invitation_board_ids = set()
+
+        # 1. Fetch pending invitations matching user email
+        invitations = BoardInvitation.query.filter_by(email=user_email).all()
+        all_invitation_board_ids = {inv.board_id for inv in invitations}
+
+        for inv in invitations:
+            # Check 7-day expiration
+            if inv.status == 'pending' and inv.expires_at and now > inv.expires_at:
+                inv.status = 'expired'
+                # Also synchronize any matching BoardMember
+                bm = BoardMember.query.filter_by(board_id=inv.board_id, user_id=user_id, status='pending').first()
+                if bm:
+                    bm.status = 'expired'
+                continue
+
+            if inv.status == 'pending':
+                board = inv.board
+                if not board:
+                    continue
+                owner = board.owner
+                owner_name = (owner.full_name or owner.email) if owner else "Board Owner"
+                active_invites.append({
+                    'id': inv.id,
+                    'boardId': inv.board_id,
+                    'role': inv.role,
+                    'status': inv.status,
+                    'createdAt': inv.created_at.isoformat() + 'Z' if inv.created_at else None,
+                    'expiresAt': inv.expires_at.isoformat() + 'Z' if inv.expires_at else None,
+                    'board': {
+                        'id': board.id,
+                        'name': board.name,
+                        'emoji': board.emoji,
+                        'description': board.description,
+                        'color': board.color,
+                        'heroImageUrl': board.hero_image_url,
+                        'ownerName': owner_name
+                    }
+                })
+
+        # 2. Backward compatibility: check standalone BoardMember rows where no BoardInvitation exists
         memberships = BoardMember.query.filter_by(user_id=user_id, status='pending').all()
-        invites = []
         for m in memberships:
+            if m.board_id in all_invitation_board_ids:
+                continue
+            # Check 7-day expiration on standalone BoardMember
+            if m.created_at and now > (m.created_at + timedelta(days=7)):
+                m.status = 'expired'
+                continue
+
             board = m.board
             if not board:
                 continue
             owner = board.owner
             owner_name = (owner.full_name or owner.email) if owner else "Board Owner"
-            invites.append({
+            active_invites.append({
                 'id': m.id,
                 'boardId': m.board_id,
                 'role': m.role,
                 'status': m.status,
                 'createdAt': m.created_at.isoformat() + 'Z' if m.created_at else None,
+                'expiresAt': (m.created_at + timedelta(days=7)).isoformat() + 'Z' if m.created_at else None,
                 'board': {
                     'id': board.id,
                     'name': board.name,
@@ -42,7 +98,13 @@ class BoardService:
                     'ownerName': owner_name
                 }
             })
-        return invites
+
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        return active_invites
 
     @staticmethod
     def get_board_by_id(board_id):
@@ -171,53 +233,89 @@ class BoardService:
         if actor_level == ROLE_HIERARCHY['admin'] and role in ['owner', 'admin']:
             return None, "Admins cannot grant Admin or Owner roles. Only board owners can grant these roles."
 
-        user = User.query.filter_by(email=email).first()
-        if not user:
-            return None, "User not found"
-            
         board = db.session.get(Board, board_id)
         if not board:
             return None, "Board not found"
 
-        existing = BoardMember.query.filter_by(board_id=board_id, user_id=user.id).first()
-        if existing:
-            if existing.status == 'accepted':
+        clean_email = email.strip().lower()
+
+        # Spam protection: Rate-limit invites per user per day (max 20 per 24 hours)
+        if actor_id:
+            one_day_ago = datetime.utcnow() - timedelta(days=1)
+            recent_invites_count = BoardInvitation.query.filter(
+                BoardInvitation.inviter_id == actor_id,
+                BoardInvitation.created_at >= one_day_ago
+            ).count()
+            if recent_invites_count >= 20:
+                return None, "Daily invitation limit reached (maximum 20 invites per day). Please try again tomorrow."
+
+        user = User.query.filter_by(email=clean_email).first()
+
+        # Check if user is already an active accepted member
+        if user:
+            existing_m = BoardMember.query.filter_by(board_id=board_id, user_id=user.id).first()
+            if existing_m and existing_m.status == 'accepted':
                 return None, "User is already an active member of this board"
-            elif existing.status == 'pending':
-                return None, "An invitation is already pending for this user"
-            else:
-                # Re-invite if previously declined
-                existing.status = 'pending'
-                existing.role = role
-                membership = existing
+
+        now = datetime.utcnow()
+        expires_at = now + timedelta(days=7)
+
+        # Duplicate invites: One active invite per email per board; re-inviting updates the existing one
+        existing_invite = BoardInvitation.query.filter_by(board_id=board_id, email=clean_email).first()
+        if existing_invite:
+            existing_invite.role = role
+            existing_invite.status = 'pending'
+            existing_invite.created_at = now
+            existing_invite.expires_at = expires_at
+            existing_invite.revoked_at = None
+            invitation = existing_invite
         else:
-            membership = BoardMember(
+            invitation = BoardInvitation(
                 board_id=board_id,
-                user_id=user.id,
+                email=clean_email,
+                inviter_id=actor_id or board.owner_id,
                 role=role,
-                status='pending'
+                expires_at=expires_at
             )
-            db.session.add(membership)
+            db.session.add(invitation)
+
+        membership = None
+        if user:
+            existing_bm = BoardMember.query.filter_by(board_id=board_id, user_id=user.id).first()
+            if existing_bm:
+                existing_bm.status = 'pending'
+                existing_bm.role = role
+                membership = existing_bm
+            else:
+                membership = BoardMember(
+                    board_id=board_id,
+                    user_id=user.id,
+                    role=role,
+                    status='pending'
+                )
+                db.session.add(membership)
+
+            # In-App Notification to Invited Registered User
+            from app.services.notification_service import NotificationService
+            actor = db.session.get(User, actor_id) if actor_id else None
+            actor_name = (actor.full_name or actor.email) if actor else "Board Owner"
+            NotificationService.create_notification(
+                user_id=user.id,
+                type='board_invite',
+                title='Board Invitation',
+                message=f'{actor_name} invited you to join "{board.name}" as {role.capitalize()}',
+                link=f'/boards/{board_id}'
+            )
 
         actor = db.session.get(User, actor_id) if actor_id else None
         actor_name = (actor.full_name or actor.email) if actor else "Board Owner"
-        user_name = user.full_name or user.email
-
-        # In-App Notification to Invited User
-        from app.services.notification_service import NotificationService
-        NotificationService.create_notification(
-            user_id=user.id,
-            type='board_invite',
-            title='Board Invitation',
-            message=f'{actor_name} invited you to join "{board.name}" as {role.capitalize()}',
-            link=f'/boards/{board_id}'
-        )
+        display_name = (user.full_name or clean_email) if user else clean_email
 
         # Audit log
         activity = Activity(
             type='update',
-            task_title=user_name,
-            message=f'Invited {user_name} as {role} (Pending acceptance)',
+            task_title=display_name,
+            message=f'Invited {display_name} as {role} (Pending acceptance, expires in 7 days)',
             board_id=board_id,
             user_id=actor_id
         )
@@ -225,22 +323,75 @@ class BoardService:
 
         db.session.commit()
 
-        broadcaster.broadcast(board_id, "member:invited", membership.to_dict())
+        # Real-time broadcasts
+        broadcast_payload = membership.to_dict() if membership else invitation.to_dict()
+        broadcaster.broadcast(board_id, "member:invited", broadcast_payload)
         broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
 
-        return membership, None
+        return (membership or invitation), None
 
     @staticmethod
     def accept_invitation(board_id, user_id):
-        membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-        if not membership:
-            return None, "Invitation not found"
-        if membership.status == 'accepted':
-            return membership, None
-
-        membership.status = 'accepted'
         user = db.session.get(User, user_id)
-        user_name = (user.full_name or user.email) if user else "A user"
+        if not user:
+            return None, "User not found"
+
+        clean_user_email = (user.email or '').strip().lower()
+        now = datetime.utcnow()
+
+        # 1. Match by BoardInvitation
+        invitation = BoardInvitation.query.filter_by(
+            board_id=board_id,
+            email=clean_user_email
+        ).first()
+
+        # 2. Or fallback to matching BoardMember
+        membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
+
+        if not invitation and not membership:
+            # Check if there is an invitation for another email on this board
+            other_invite = BoardInvitation.query.filter_by(board_id=board_id).filter(
+                BoardInvitation.status == 'pending'
+            ).first()
+            if other_invite and other_invite.email != clean_user_email:
+                return None, "Email mismatch: This invitation was sent to another email address"
+            return None, "Invitation not found"
+
+        if invitation:
+            # Security Rule: The invite must be bound to a verified email matching the invite
+            if clean_user_email != invitation.email.strip().lower():
+                return None, "Email mismatch: This invitation was sent to another email address"
+
+            # Check expiration
+            if invitation.is_expired:
+                invitation.status = 'expired'
+                db.session.commit()
+                return None, "This invitation has expired. Please ask a board admin to resend it"
+
+            # Check revocation
+            if invitation.status == 'revoked':
+                return None, "This invitation has been revoked by an administrator"
+
+            invitation.status = 'accepted'
+            invitation.accepted_at = now
+            role_to_grant = invitation.role
+        else:
+            role_to_grant = membership.role if membership else 'member'
+
+        if not membership:
+            membership = BoardMember(
+                board_id=board_id,
+                user_id=user_id,
+                role=role_to_grant,
+                status='accepted'
+            )
+            db.session.add(membership)
+        else:
+            membership.status = 'accepted'
+            if invitation:
+                membership.role = invitation.role
+
+        user_name = (user.full_name or user.email)
         board = db.session.get(Board, board_id)
         board_name = board.name if board else "the board"
 
@@ -274,12 +425,21 @@ class BoardService:
 
     @staticmethod
     def decline_invitation(board_id, user_id):
+        user = db.session.get(User, user_id)
+        if not user:
+            return False, "User not found"
+
+        clean_user_email = (user.email or '').strip().lower()
+        invitation = BoardInvitation.query.filter_by(board_id=board_id, email=clean_user_email).first()
+        if invitation:
+            invitation.status = 'revoked'
+            invitation.revoked_at = datetime.utcnow()
+
         membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
-        if not membership:
+        if not membership and not invitation:
             return False, "Invitation not found"
 
-        user = db.session.get(User, user_id)
-        user_name = (user.full_name or user.email) if user else "A user"
+        user_name = user.full_name or user.email
         board = db.session.get(Board, board_id)
         board_name = board.name if board else "the board"
 
@@ -304,7 +464,8 @@ class BoardService:
         )
         db.session.add(activity)
 
-        db.session.delete(membership)
+        if membership:
+            db.session.delete(membership)
         db.session.commit()
 
         broadcaster.broadcast(board_id, "member:removed", {"userId": user_id})
@@ -313,41 +474,149 @@ class BoardService:
         return True, None
 
     @staticmethod
-    def resend_invitation(board_id, user_id, actor_id=None):
+    def resend_invitation(board_id, target_id_or_email, actor_id=None):
         actor_level = get_effective_role(board_id, actor_id) if actor_id else ROLE_HIERARCHY['owner']
         if actor_level < ROLE_HIERARCHY['admin']:
             return False, "Requires admin privileges to resend invitations"
 
-        membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id, status='pending').first()
-        if not membership:
-            return False, "Pending invitation not found"
+        board = db.session.get(Board, board_id)
+        if not board:
+            return False, "Board not found"
 
-        if actor_level == ROLE_HIERARCHY['admin'] and membership.role in ['owner', 'admin']:
+        invitation = db.session.get(BoardInvitation, target_id_or_email)
+        if not invitation:
+            if '@' in str(target_id_or_email):
+                invitation = BoardInvitation.query.filter_by(board_id=board_id, email=str(target_id_or_email).strip().lower()).first()
+            else:
+                user = db.session.get(User, target_id_or_email)
+                if user:
+                    invitation = BoardInvitation.query.filter_by(board_id=board_id, email=user.email.strip().lower()).first()
+
+        membership = None
+        user = None
+        if invitation:
+            user = User.query.filter_by(email=invitation.email).first()
+            if user:
+                membership = BoardMember.query.filter_by(board_id=board_id, user_id=user.id).first()
+        else:
+            user = db.session.get(User, target_id_or_email)
+            if user:
+                membership = BoardMember.query.filter_by(board_id=board_id, user_id=user.id, status='pending').first()
+
+        target_role = invitation.role if invitation else (membership.role if membership else 'editor')
+
+        if actor_level == ROLE_HIERARCHY['admin'] and target_role in ['owner', 'admin']:
             return False, "Admins cannot manage invitations for Admin or Owner roles"
 
-        board = db.session.get(Board, board_id)
-        user = db.session.get(User, user_id)
-        if not board or not user:
-            return False, "Board or user not found"
+        now = datetime.utcnow()
+        expires_at = now + timedelta(days=7)
+
+        if invitation:
+            # Transition: Expired to Pending or refresh Pending
+            invitation.status = 'pending'
+            invitation.expires_at = expires_at
+            invitation.revoked_at = None
+        elif membership and user:
+            invitation = BoardInvitation(
+                board_id=board_id,
+                email=user.email.strip().lower(),
+                inviter_id=actor_id or board.owner_id,
+                role=membership.role,
+                expires_at=expires_at
+            )
+            db.session.add(invitation)
+        else:
+            return False, "Pending invitation not found"
+
+        if membership:
+            membership.status = 'pending'
 
         actor = db.session.get(User, actor_id) if actor_id else None
         actor_name = (actor.full_name or actor.email) if actor else "Board Admin"
 
-        from app.services.notification_service import NotificationService
-        NotificationService.create_notification(
-            user_id=user.id,
-            type='board_invite',
-            title='Board Invitation Reminder',
-            message=f'{actor_name} reminded you to join "{board.name}" as {membership.role.capitalize()}',
-            link=f'/boards/{board_id}'
+        if user:
+            from app.services.notification_service import NotificationService
+            NotificationService.create_notification(
+                user_id=user.id,
+                type='board_invite',
+                title='Board Invitation Reminder',
+                message=f'{actor_name} reminded you to join "{board.name}" as {target_role.capitalize()}',
+                link=f'/boards/{board_id}'
+            )
+
+        db.session.commit()
+
+        broadcaster.broadcast(board_id, "member:invite_resent", invitation.to_dict())
+        return True, None
+
+    @staticmethod
+    def revoke_invitation(board_id, target_id_or_email, actor_id=None):
+        actor_level = get_effective_role(board_id, actor_id) if actor_id else ROLE_HIERARCHY['owner']
+        if actor_level < ROLE_HIERARCHY['admin']:
+            return False, "Requires admin privileges to revoke invitations"
+
+        board = db.session.get(Board, board_id)
+        if not board:
+            return False, "Board not found"
+
+        invitation = db.session.get(BoardInvitation, target_id_or_email)
+        if not invitation:
+            if '@' in str(target_id_or_email):
+                invitation = BoardInvitation.query.filter_by(board_id=board_id, email=str(target_id_or_email).strip().lower()).first()
+            else:
+                user = db.session.get(User, target_id_or_email)
+                if user:
+                    invitation = BoardInvitation.query.filter_by(board_id=board_id, email=user.email.strip().lower()).first()
+
+        target_role = invitation.role if invitation else 'editor'
+        if actor_level == ROLE_HIERARCHY['admin'] and target_role in ['owner', 'admin']:
+            return False, "Admins cannot manage invitations for Admin or Owner roles"
+
+        actor = db.session.get(User, actor_id) if actor_id else None
+        actor_name = (actor.full_name or actor.email) if actor else "Board Admin"
+        target_label = invitation.email if invitation else "invitee"
+
+        if invitation:
+            invitation.status = 'revoked'
+            invitation.revoked_at = datetime.utcnow()
+            user = User.query.filter_by(email=invitation.email).first()
+            if user:
+                bm = BoardMember.query.filter_by(board_id=board_id, user_id=user.id, status='pending').first()
+                if bm:
+                    db.session.delete(bm)
+        else:
+            user = db.session.get(User, target_id_or_email)
+            if user:
+                target_label = user.full_name or user.email
+                bm = BoardMember.query.filter_by(board_id=board_id, user_id=user.id, status='pending').first()
+                if bm:
+                    db.session.delete(bm)
+            else:
+                return False, "Invitation not found"
+
+        activity = Activity(
+            type='update',
+            task_title=target_label,
+            message=f'{actor_name} revoked invitation for {target_label}',
+            board_id=board_id,
+            user_id=actor_id
         )
-        broadcaster.broadcast(board_id, "member:invite_resent", membership.to_dict())
+        db.session.add(activity)
+        db.session.commit()
+
+        broadcaster.broadcast(board_id, "member:removed", {"invitationId": invitation.id if invitation else None, "email": target_label})
+        broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
+
         return True, None
 
     @staticmethod
     def remove_member(board_id, user_id, actor_id=None):
         membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
         if not membership:
+            # Check if this user_id is actually an invitation id to revoke
+            invitation = db.session.get(BoardInvitation, user_id)
+            if invitation and invitation.board_id == board_id:
+                return BoardService.revoke_invitation(board_id, user_id, actor_id=actor_id)
             return False, "Member not found on this board"
 
         board = db.session.get(Board, board_id)
@@ -372,6 +641,15 @@ class BoardService:
         if is_owner_target:
             if BoardService.count_owners(board_id) <= 1:
                 return False, "A board must always have at least one Owner. The last Owner cannot leave or be removed. You must transfer ownership or delete the board."
+
+        # If pending, also mark BoardInvitation revoked
+        if membership.status == 'pending':
+            user_obj = db.session.get(User, user_id)
+            if user_obj:
+                inv = BoardInvitation.query.filter_by(board_id=board_id, email=user_obj.email.strip().lower()).first()
+                if inv:
+                    inv.status = 'revoked'
+                    inv.revoked_at = datetime.utcnow()
 
 
         user_name = membership.user.full_name or membership.user.email if membership.user else "Member"
@@ -579,7 +857,42 @@ class BoardService:
         actor_level = get_effective_role(board_id, actor_id) if actor_id else ROLE_HIERARCHY['owner']
         # Commenters and Viewers receive name and avatar only (emails redacted)
         redact = actor_level <= ROLE_HIERARCHY['commenter']
-        return [member.to_dict(redact_user=redact) for member in members]
+        member_list = [member.to_dict(redact_user=redact) for member in members]
+
+        existing_user_emails = {
+            m.get('user', {}).get('email', '').strip().lower()
+            for m in member_list if m.get('user') and m.get('user', {}).get('email')
+        }
+
+        pending_invitations = BoardInvitation.query.filter_by(board_id=board_id, status='pending').all()
+        for inv in pending_invitations:
+            if inv.is_expired:
+                inv.status = 'expired'
+                continue
+            if inv.email.strip().lower() not in existing_user_emails:
+                member_list.append({
+                    'id': inv.id,
+                    'boardId': inv.board_id,
+                    'userId': inv.id,
+                    'role': inv.role,
+                    'status': 'pending',
+                    'user': {
+                        'id': None,
+                        'fullName': inv.email.split('@')[0] if not redact else 'Invited Guest',
+                        'email': inv.email if not redact else None,
+                        'avatarUrl': None
+                    },
+                    'createdAt': inv.created_at.isoformat() + 'Z' if inv.created_at else None,
+                    'expiresAt': inv.expires_at.isoformat() + 'Z' if inv.expires_at else None,
+                    'isInvitation': True
+                })
+
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        return member_list
 
     @staticmethod
     def export_board_data(board_id, actor_id=None):
