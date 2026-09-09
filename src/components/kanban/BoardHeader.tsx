@@ -39,10 +39,12 @@ import {
   ClockRewind as History,
   Sliders01 as Sliders,
   Menu01 as Menu,
+  Pin01 as Pin,
 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useBoardPermissions } from "@/hooks/useBoardPermissions";
+import { getPinnedBoardIds, isBoardPinned } from "@/utils/pinnedBoardsUtils";
 
 interface BoardHeaderProps {
   search?: string;
@@ -62,12 +64,24 @@ export function BoardHeader({
   const { user, logout } = useAuth();
 
   const [boards, setBoards] = useState<Board[]>([]);
+  const [pinnedIds, setPinnedIds] = useState<string[]>(() => getPinnedBoardIds(user?.id));
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const { settings, updateLocalSetting } = useSettings();
   const { devSettings, setIsDevModalOpen } = useDevMode();
   const { setIsMobileOpen } = useLayout();
+
+  useEffect(() => {
+    setPinnedIds(getPinnedBoardIds(user?.id));
+    const handlePinChange = () => setPinnedIds(getPinnedBoardIds(user?.id));
+    window.addEventListener("pinned_boards_updated", handlePinChange);
+    window.addEventListener("storage", handlePinChange);
+    return () => {
+      window.removeEventListener("pinned_boards_updated", handlePinChange);
+      window.removeEventListener("storage", handlePinChange);
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     // Load available boards for quick switcher
@@ -80,6 +94,13 @@ export function BoardHeader({
 
   const currentBoard = boards.find((b) => b.id === boardId);
   const permissions = useBoardPermissions(currentBoard);
+
+  const pinnedSwitcherBoards = boards.filter(
+    (b) => pinnedIds.includes(b.id) || isBoardPinned(b.id, user?.id, b.isPinned)
+  );
+  const unpinnedSwitcherBoards = boards.filter(
+    (b) => !pinnedIds.includes(b.id) && !isBoardPinned(b.id, user?.id, b.isPinned)
+  );
 
   const handleLogout = () => {
     logout();
@@ -128,6 +149,41 @@ export function BoardHeader({
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
+              {pinnedSwitcherBoards.length > 0 && (
+                <>
+                  <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1.5">
+                    <Pin className="h-3 w-3 fill-current" />
+                    Pinned Boards
+                  </DropdownMenuLabel>
+                  {pinnedSwitcherBoards.map((b) => {
+                    const isCurrent = b.id === boardId;
+                    return (
+                      <DropdownMenuItem
+                        key={`pinned-${b.id}`}
+                        onClick={() => navigate(`/boards/${b.id}`)}
+                        className={`cursor-pointer text-xs font-semibold py-2 px-2.5 flex items-center justify-between rounded-md transition-colors ${
+                          isCurrent
+                            ? "bg-primary/10 text-primary font-bold"
+                            : "hover:bg-muted/80"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          {!devSettings.disableEmojiCustomization && b.emoji && (
+                            <span className="text-sm shrink-0">{b.emoji}</span>
+                          )}
+                          <span className="truncate">{b.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          <Pin className="h-3 w-3 text-primary fill-current opacity-80" />
+                          {isCurrent && <Check className="h-4 w-4 text-primary" />}
+                        </div>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  <DropdownMenuSeparator />
+                </>
+              )}
+
               <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                 Your Boards
               </DropdownMenuLabel>
@@ -138,7 +194,7 @@ export function BoardHeader({
                   No boards found
                 </div>
               ) : (
-                boards.map((b) => {
+                (pinnedSwitcherBoards.length > 0 ? unpinnedSwitcherBoards : boards).map((b) => {
                   const isCurrent = b.id === boardId;
                   return (
                     <DropdownMenuItem

@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationApi } from "@/services/notificationApi";
+import { boardApi } from "@/services/boardApi";
 import { Notification } from "@/types/task";
+import { BoardInvitation } from "@/types/board";
 import {
   Popover,
   PopoverContent,
@@ -35,8 +37,38 @@ export function NotificationBell() {
     refetchInterval: 6000,
   });
 
+  const { data: pendingInvitations = [] } = useQuery<BoardInvitation[]>({
+    queryKey: ["pendingInvitations"],
+    queryFn: async () => {
+      try {
+        if (typeof boardApi?.getPendingInvitations === "function") {
+          const res = await boardApi.getPendingInvitations();
+          return Array.isArray(res) ? res : [];
+        }
+      } catch {
+        // Ignore in isolated notification tests
+      }
+      return [];
+    },
+    refetchInterval: 6000,
+  });
+
   const notifications = data?.notifications || [];
   const unreadCount = data?.unreadCount || 0;
+
+  // Pending invites that aren't already counted in unread board_invite notifications
+  const uncountedInvites = pendingInvitations.filter(
+    (inv) =>
+      !notifications.some(
+        (n) =>
+          !n.isRead &&
+          n.type === "board_invite" &&
+          (n.link === `/boards/${inv.boardId}` ||
+            (inv.board?.name && n.message?.includes(inv.board.name)))
+      )
+  );
+
+  const totalBadgeCount = unreadCount + uncountedInvites.length;
 
   const markReadMutation = useMutation({
     mutationFn: (id: string) => notificationApi.markAsRead(id),
@@ -96,9 +128,12 @@ export function NotificationBell() {
           title="Notifications"
         >
           <Bell className="h-4 w-4" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-black text-destructive-foreground animate-in zoom-in-50">
-              {unreadCount > 9 ? "9+" : unreadCount}
+          {totalBadgeCount > 0 && (
+            <span
+              data-testid="notification-bell-badge"
+              className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-black text-destructive-foreground animate-in zoom-in-50"
+            >
+              {totalBadgeCount > 9 ? "9+" : totalBadgeCount}
             </span>
           )}
         </Button>
@@ -110,9 +145,9 @@ export function NotificationBell() {
             <span className="text-xs font-black uppercase tracking-wider text-foreground">
               Notifications
             </span>
-            {unreadCount > 0 && (
+            {totalBadgeCount > 0 && (
               <Badge variant="secondary" className="text-[10px] font-bold px-1.5 py-0 h-4">
-                {unreadCount} new
+                {totalBadgeCount} new
               </Badge>
             )}
           </div>
@@ -129,13 +164,33 @@ export function NotificationBell() {
           )}
         </div>
 
+        {/* Pending Invitations Quick Banner */}
+        {pendingInvitations.length > 0 && (
+          <div
+            onClick={() => {
+              setOpen(false);
+              navigate("/");
+            }}
+            className="p-2.5 bg-primary/10 border-b border-primary/20 flex items-center justify-between gap-2 cursor-pointer hover:bg-primary/15 transition-colors"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <UserPlus className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="text-[11px] font-bold text-foreground truncate">
+                {pendingInvitations.length} pending board{" "}
+                {pendingInvitations.length === 1 ? "invitation" : "invitations"}
+              </span>
+            </div>
+            <span className="text-[10px] font-bold text-primary shrink-0">Review →</span>
+          </div>
+        )}
+
         {/* Notifications List */}
         <div className="max-h-80 overflow-y-auto divide-y divide-border/40">
           {isLoading ? (
             <div className="p-4 text-center text-xs text-muted-foreground animate-pulse">
               Loading notifications...
             </div>
-          ) : notifications.length === 0 ? (
+          ) : notifications.length === 0 && pendingInvitations.length === 0 ? (
             <div className="p-6 text-center text-xs text-muted-foreground flex flex-col items-center gap-2">
               <CheckCircle2 className="h-8 w-8 text-muted-foreground/40" />
               <span>You're all caught up! No notifications.</span>

@@ -3,6 +3,7 @@ import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { renderWithProviders } from "@/test/test-utils";
 import { notificationApi } from "@/services/notificationApi";
+import { boardApi } from "@/services/boardApi";
 
 vi.mock("@/services/notificationApi", () => ({
   notificationApi: {
@@ -12,9 +13,16 @@ vi.mock("@/services/notificationApi", () => ({
   },
 }));
 
+vi.mock("@/services/boardApi", () => ({
+  boardApi: {
+    getPendingInvitations: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 describe("NotificationBell Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(boardApi.getPendingInvitations).mockResolvedValue([]);
   });
 
   it("renders notification bell with badge counter for unread notifications", async () => {
@@ -49,6 +57,34 @@ describe("NotificationBell Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Board Invitation")).toBeInTheDocument();
       expect(screen.getByText("You were invited to Sprint Alpha")).toBeInTheDocument();
+    });
+  });
+
+  it("counts pending invitations toward the bell badge when not already counted in unread notifications", async () => {
+    vi.mocked(notificationApi.getNotifications).mockResolvedValue({
+      notifications: [],
+      unreadCount: 0,
+    });
+    vi.mocked(boardApi.getPendingInvitations).mockResolvedValue([
+      {
+        id: "inv-1",
+        boardId: "board-pending-1",
+        role: "editor",
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        board: {
+          id: "board-pending-1",
+          name: "Client Workspace",
+          color: "hsl(220, 80%, 56%)",
+          ownerName: "Bob Manager",
+        },
+      },
+    ]);
+
+    renderWithProviders(<NotificationBell />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("notification-bell-badge")).toHaveTextContent("1");
     });
   });
 
