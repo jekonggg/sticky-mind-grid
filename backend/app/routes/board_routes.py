@@ -27,7 +27,8 @@ def accept_invitation(board_id):
     user_id = get_jwt_identity()
     membership, error = BoardService.accept_invitation(board_id, user_id)
     if error:
-        return jsonify({'error': error}), 400
+        status_code = 403 if "Email mismatch" in error else 400
+        return jsonify({'error': error}), status_code
     return jsonify(membership.to_dict()), 200
 
 @bp.route('/<board_id>/invitations/decline', methods=['POST', 'PATCH', 'DELETE'])
@@ -225,4 +226,25 @@ def update_member_role(board_id, user_id):
         return jsonify({'error': error}), 400
         
     return jsonify(member.to_dict()), 200
+
+@bp.route('/<board_id>/invitations/<invitation_id>/revoke', methods=['POST', 'DELETE'])
+@jwt_required()
+@require_board_access('admin')
+def revoke_invitation(board_id, invitation_id):
+    actor_id = get_jwt_identity()
+    success, error = BoardService.revoke_invitation(board_id, invitation_id, actor_id=actor_id)
+    if not success:
+        return jsonify({'error': error}), 400
+    return jsonify({'message': 'Invitation revoked successfully'}), 200
+
+@bp.route('/<board_id>/invitations/<invitation_id>/resend', methods=['POST'])
+@jwt_required()
+@require_board_access('admin')
+def resend_board_invitation(board_id, invitation_id):
+    actor_id = get_jwt_identity()
+    success, error = BoardService.resend_invitation(board_id, invitation_id, actor_id=actor_id)
+    if not success:
+        return jsonify({'error': error}), 400
+    return jsonify({'message': 'Invitation resent successfully'}), 200
+
 
