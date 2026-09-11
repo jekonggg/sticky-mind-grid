@@ -247,7 +247,7 @@ export default function TasksPage() {
               ]}
               activeId={viewMode}
               onChange={(id) => setViewMode(id as "list" | "grid")}
-              accentColor="violet"
+              accentColor="primary"
               size="sm"
               layoutId="tasksViewActivePill"
             />
