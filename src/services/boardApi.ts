@@ -128,6 +128,16 @@ export const boardApi = {
     }
   },
 
+  async revokeInvitation(boardId: string, invitationId: string): Promise<void> {
+    const res = await authenticatedFetch(`/boards/${boardId}/invitations/${invitationId}/revoke`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || "Failed to revoke invitation");
+    }
+  },
+
   async transferOwnership(boardId: string, userId: string): Promise<void> {
     const res = await authenticatedFetch(`/boards/${boardId}/transfer-ownership`, {
       method: "POST",

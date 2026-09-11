@@ -11,6 +11,7 @@ export interface Board {
   heroImageUrl?: string;
   columns: Column[];
   ownerId?: string;
+  workspaceId?: string;
   role?: BoardRole;
   taskCount?: number;
   createdAt: Date;
@@ -24,6 +25,7 @@ export interface CreateBoardData {
   color?: string;
   heroImageUrl?: string;
   columns?: Column[];
+  workspaceId?: string;
 }
 
 export interface UpdateBoardData {
@@ -33,6 +35,7 @@ export interface UpdateBoardData {
   color?: string;
   heroImageUrl?: string;
   columns?: Column[];
+  workspaceId?: string;
 }
 
 export const BOARD_COLORS = [
@@ -46,7 +49,7 @@ export const BOARD_COLORS = [
 
 import { User } from "./user";
 
-export type BoardMemberStatus = 'pending' | 'accepted' | 'declined';
+export type BoardMemberStatus = 'pending' | 'accepted' | 'declined' | 'expired' | 'revoked';
 
 export interface BoardMember {
   id: string;
@@ -56,6 +59,8 @@ export interface BoardMember {
   status: BoardMemberStatus;
   user?: User;
   createdAt: string;
+  expiresAt?: string;
+  isInvitation?: boolean;
 }
 
 export interface BoardInvitation {
@@ -63,7 +68,9 @@ export interface BoardInvitation {
   boardId: string;
   role: BoardRole;
   status: BoardMemberStatus;
+  email?: string;
   createdAt: string;
+  expiresAt?: string;
   board: {
     id: string;
     name: string;
@@ -74,3 +81,4 @@ export interface BoardInvitation {
     ownerName?: string;
   };
 }
+
