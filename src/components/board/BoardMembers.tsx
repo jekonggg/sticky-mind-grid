@@ -225,6 +225,11 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                         Pending
                       </span>
                     )}
+                    {member.status === "expired" && (
+                      <span className="text-[9px] bg-destructive/15 text-destructive border border-destructive/30 px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider">
+                        Expired
+                      </span>
+                    )}
                   </span>
                   {/* Show email only if available (redacted for commenter and viewer) */}
                   {permissions.canViewFullMemberList && member.user?.email && (
@@ -238,7 +243,7 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                   <Select
                     value={member.role}
                     onValueChange={(newRole) =>
-                      updateRoleMutation.mutate({ userId: member.userId, role: newRole })
+                      updateRoleMutation.mutate({ userId: member.userId || member.id, role: newRole })
                     }
                     disabled={updateRoleMutation.isPending}
                   >
@@ -289,14 +294,14 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                   </Badge>
                 )}
 
-                {/* Resend invite for pending members */}
-                {member.status === "pending" && permissions.isAdmin && !isSelf && (
+                {/* Resend invite for pending or expired members */}
+                {(member.status === "pending" || member.status === "expired") && permissions.isAdmin && !isSelf && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-primary rounded-lg"
                     title="Resend invitation"
-                    onClick={() => resendInviteMutation.mutate(member.userId)}
+                    onClick={() => resendInviteMutation.mutate(member.userId || member.id)}
                     disabled={resendInviteMutation.isPending}
                   >
                     <Send className="h-3.5 w-3.5" />
@@ -313,7 +318,7 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                     onClick={() => {
                       const targetName = member.user?.fullName || member.user?.email || "this member";
                       if (confirm(`Transfer full board ownership to ${targetName}?`)) {
-                        transferOwnershipMutation.mutate(member.userId);
+                        transferOwnershipMutation.mutate(member.userId || member.id);
                       }
                     }}
                     disabled={transferOwnershipMutation.isPending}
@@ -323,16 +328,20 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                   </Button>
                 )}
 
-                {/* Remove member button */}
+                {/* Remove member / Revoke invite button */}
                 {canRemoveThisMember && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-                    title="Remove member from board"
+                    title={member.status === "pending" || member.status === "expired" ? "Revoke invitation" : "Remove member from board"}
                     onClick={() => {
-                      if (confirm(`Remove ${member.user?.fullName || member.user?.email || "this member"} from this board?`)) {
-                        removeMutation.mutate(member.userId);
+                      const isPendingOrExpired = member.status === "pending" || member.status === "expired";
+                      const promptMsg = isPendingOrExpired
+                        ? `Revoke invitation for ${member.user?.fullName || member.user?.email || "this invitee"}?`
+                        : `Remove ${member.user?.fullName || member.user?.email || "this member"} from this board?`;
+                      if (confirm(promptMsg)) {
+                        removeMutation.mutate(member.userId || member.id);
                       }
                     }}
                     disabled={removeMutation.isPending}

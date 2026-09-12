@@ -217,6 +217,11 @@ export default function TeamsPage() {
                       </div>
                       <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                         Invited by <span className="font-semibold text-foreground">{invite.board.ownerName || "Owner"}</span>
+                        {invite.expiresAt && (
+                          <span className="ml-1.5 opacity-80">
+                            • Expires {new Date(invite.expiresAt).toLocaleDateString()}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
