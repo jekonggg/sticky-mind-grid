@@ -55,6 +55,11 @@ class Task(db.Model):
 
     def to_dict(self):
         assignee_data = self.assignee.to_dict() if self.assignee else None
+        creator_data = self.creator.to_dict() if self.creator else {
+            'id': self.created_by,
+            'fullName': 'Former member',
+            'avatarUrl': None
+        }
         board_data = self.board
         return {
             'id': self.id,
@@ -75,6 +80,7 @@ class Task(db.Model):
             'assignedTo': self.assigned_to,
             'assignee': assignee_data,
             'createdBy': self.created_by,
+            'creator': creator_data,
             'attachments': self.attachments,
             'isDeleted': self.is_deleted,
             'deletedAt': self.deleted_at.isoformat() + 'Z' if self.deleted_at else None,
