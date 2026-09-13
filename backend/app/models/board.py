@@ -40,10 +40,31 @@ class Board(db.Model):
     def touch(self):
         self.updated_at = datetime.utcnow()
 
-    def to_dict(self):
+    def to_dict(self, user_id=None):
         # Ensure a valid HSL color is always returned
         safe_color = self.color if (self.color and self.color.startswith('hsl')) else 'hsl(220, 80%, 56%)'
-        return {
+        
+        # Calculate owners count
+        owners = set()
+        if self.owner_id:
+            owners.add(str(self.owner_id))
+        for m in (self.memberships or []):
+            if m.role == 'owner' and m.status == 'accepted':
+                owners.add(str(m.user_id))
+        owner_count = len(owners)
+
+        user_role = None
+        if user_id:
+            user_id_str = str(user_id)
+            if self.owner_id and str(self.owner_id) == user_id_str:
+                user_role = 'owner'
+            else:
+                for m in (self.memberships or []):
+                    if str(m.user_id) == user_id_str and m.status == 'accepted':
+                        user_role = m.role
+                        break
+
+        data = {
             'id': self.id,
             'name': self.name,
             'emoji': self.emoji,
@@ -54,6 +75,10 @@ class Board(db.Model):
             'ownerId': self.owner_id,
             'workspaceId': getattr(self, 'workspace_id', None),
             'taskCount': len(self.tasks),
+            'ownerCount': owner_count,
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None,
             'updatedAt': self.updated_at.isoformat() + 'Z' if self.updated_at else None
         }
+        if user_role:
+            data['role'] = user_role
+        return data

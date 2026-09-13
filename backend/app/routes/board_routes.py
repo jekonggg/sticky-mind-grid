@@ -12,7 +12,7 @@ bp = Blueprint('board_routes', __name__, url_prefix='/api/boards')
 def get_boards():
     user_id = get_jwt_identity()
     boards = BoardService.get_user_boards(user_id)
-    return jsonify([board.to_dict() for board in boards]), 200
+    return jsonify([board.to_dict(user_id=user_id) for board in boards]), 200
 
 @bp.route('/invitations', methods=['GET'])
 @jwt_required()
@@ -40,14 +40,24 @@ def decline_invitation(board_id):
         return jsonify({'error': error}), 400
     return jsonify({'message': 'Invitation declined'}), 200
 
+@bp.route('/<board_id>/invitations/report', methods=['POST'])
+@jwt_required()
+def report_invitation(board_id):
+    user_id = get_jwt_identity()
+    success, error = BoardService.report_invitation(board_id, user_id)
+    if error:
+        return jsonify({'error': error}), 400
+    return jsonify({'message': 'Inviter reported and blocked'}), 200
+
 @bp.route('/<board_id>', methods=['GET'])
 @jwt_required()
 @require_board_access('viewer')
 def get_board(board_id):
+    user_id = get_jwt_identity()
     board = BoardService.get_board_by_id(board_id)
     if not board:
         return jsonify({'error': 'Board not found'}), 404
-    return jsonify(board.to_dict()), 200
+    return jsonify(board.to_dict(user_id=user_id)), 200
 
 @bp.route('/<board_id>/events', methods=['GET'])
 def stream_board_events(board_id):
@@ -107,7 +117,7 @@ def create_board():
         return jsonify({'error': 'Board name is required'}), 400
     
     board = BoardService.create_board(data, owner_id=user_id)
-    return jsonify(board.to_dict()), 201
+    return jsonify(board.to_dict(user_id=user_id)), 201
 
 @bp.route('/<board_id>', methods=['PATCH', 'PUT'])
 @jwt_required()
@@ -119,7 +129,7 @@ def update_board(board_id):
         board = BoardService.update_board(board_id, data, user_id=user_id)
         if not board:
             return jsonify({'error': 'Board not found'}), 404
-        return jsonify(board.to_dict()), 200
+        return jsonify(board.to_dict(user_id=user_id)), 200
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
 
