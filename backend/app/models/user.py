@@ -23,7 +23,7 @@ class User(db.Model):
     assigned_tasks = db.relationship('Task', foreign_keys='Task.assigned_to', back_populates='assignee', lazy=True)
     activities = db.relationship('Activity', back_populates='user', lazy=True)
     board_memberships = db.relationship('BoardMember', back_populates='user', lazy=True, cascade="all, delete-orphan")
-    comments = db.relationship('Comment', back_populates='user', lazy=True, cascade="all, delete-orphan")
+    comments = db.relationship('Comment', back_populates='user', lazy=True)
     notifications = db.relationship('Notification', back_populates='user', lazy=True, cascade="all, delete-orphan")
     preferences = db.relationship('UserPreference', back_populates='user', uselist=False, cascade="all, delete-orphan")
     conversation_participations = db.relationship('ConversationParticipant', back_populates='user', lazy=True, cascade="all, delete-orphan")

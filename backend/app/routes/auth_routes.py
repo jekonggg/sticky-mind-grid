@@ -9,6 +9,48 @@ bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 SUPPORTED_OAUTH_PROVIDERS = {'google', 'github', 'microsoft'}
 
+def attach_pending_invitations(user):
+    try:
+        from app.models.board_invitation import BoardInvitation
+        from app.models.board_member import BoardMember
+        from app.models.notification import Notification
+        from datetime import datetime
+
+        now = datetime.utcnow()
+        clean_email = user.email.strip().lower()
+        pending_invites = BoardInvitation.query.filter_by(email=clean_email, status='pending').all()
+
+        for inv in pending_invites:
+            if inv.expires_at and now > inv.expires_at:
+                inv.status = 'expired'
+                continue
+
+            existing_m = BoardMember.query.filter_by(board_id=inv.board_id, user_id=user.id).first()
+            if not existing_m:
+                new_m = BoardMember(
+                    board_id=inv.board_id,
+                    user_id=user.id,
+                    role=inv.role,
+                    status='pending'
+                )
+                db.session.add(new_m)
+
+            # In-App Notification
+            board_name = inv.board.name if inv.board else "the board"
+            inviter_name = (inv.inviter.full_name or inv.inviter.email) if inv.inviter else "An admin"
+            notif = Notification(
+                user_id=user.id,
+                type='board_invite',
+                title='Board Invitation',
+                message=f'{inviter_name} invited you to join "{board_name}" as {inv.role.capitalize()}',
+                link=f'/boards/{inv.board_id}'
+            )
+            db.session.add(notif)
+
+        db.session.commit()
+    except Exception as e:
+        print(f"Error attaching pending invitations for {user.email}: {e}")
+
 def handle_oauth_flow(provider: str, data: dict):
     try:
         provider = provider.lower()
@@ -41,6 +83,7 @@ def handle_oauth_flow(provider: str, data: dict):
             user.set_password(str(uuid.uuid4()))
             db.session.add(user)
             db.session.commit()
+            attach_pending_invitations(user)
             status_code = 201
             print(f"DEBUG: New OAuth user created: {user.email} (id: {user.id})")
         else:
@@ -109,7 +152,9 @@ def register():
     
     db.session.add(user)
     db.session.commit()
-    
+
+    attach_pending_invitations(user)
+
     access_token = create_access_token(identity=user.id)
     return jsonify({
         'user': user.to_dict(),
