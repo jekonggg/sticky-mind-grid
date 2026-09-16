@@ -49,6 +49,7 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
   - **Progress field calculation:** Auto-calculated from checklist completion (`Math.round(completed / total * 100)`) when checklist items exist; manual slider is locked. When checklist is empty, manual slider is editable.
   - **Concurrent description edits:** Conflict warning banner when remote description changes while user has unsaved dirty draft, offering "Load Remote" and "Overwrite With Mine".
   - **Cross-board move tenancy:** Requires Editor or above on both source and target boards. Automatically removes assignees who are not members/Editors of the target board. Target board activity logs `"Card '{title}' moved from another board"` without exposing the source board name.
+- **Folder-Tab Task Card Silhouette** — Redesigned card container featuring an integrated top-left priority tab with S-curve fillet transition, inline assignee and due date metadata row, cover image header support, 24-tick equalizer progress visualizer, three-dots quick actions menu, and files/tags footer.
 - **Optimistic updates** — local state patched before API confirmation, rolled back on error
 - **4-second polling** — tasks auto-refresh when tab is visible
 - **Position-based ordering** — float positions with 1000-based indices
@@ -69,7 +70,8 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 ### Members & Roles (5-Role System)
 - **Role hierarchy** — owner > admin > editor > commenter > viewer (legacy `member` maps to `editor`)
 - **Invite by email** — email-first inviting for registered & non-registered users (Admin & Owner)
-- **Invite lifecycle** — 4-state machine (`pending`, `accepted`, `expired`, `revoked`):
+- **Invite lifecycle** — 5-state machine (`pending`, `accepted`, `declined`, `expired`, `revoked`):
+  - Declining an invite: invitee can decline; transitions to `declined`, notifies owner, and can be re-sent by Admin/Owner
   - Unregistered users: invite remains pending, auto-attaches upon signup with matching verified email
   - 7-Day expiration: automatically expires after 7 days; blocks acceptance until resent
   - Duplicate protection: re-inviting an email updates role and refreshes 7-day expiration

@@ -518,6 +518,7 @@ Decorators enforce access:
 | **Duplicate invites** | Exactly one active invite per email per board. Re-inviting an existing email updates the existing record (updates role if changed, refreshes expiration to `now + 7 days`, updates timestamp) instead of creating duplicate records. |
 | **Invite sent to wrong email** | Board Admins and Owners can revoke the invitation while it is pending (`status -> revoked`). |
 | **Invitee accepts with a different email** | Strictly rejected with HTTP 403. The authenticated user's verified email must match the invite's target email (case-insensitive). The invite remains `pending`. |
+| **Invitee declines invitation** | The invitee actively declines the invitation (`status -> declined`). The board owner receives an in-app notification. The declined invitation can be re-sent by an Admin or Owner (which resets status to `pending` with a fresh 7-day expiration). |
 | **Spam protection & Rate limiting** | Outgoing invitations are rate-limited per user per day (e.g., maximum 20 invites per 24 hours) to prevent platform abuse and spam. |
 | **Verified email security binding** | Board membership is granted only when the invitation is accepted by a verified email. This prevents account hijacking where an adversary registers an unverified account using a target's invited email. |
 
@@ -527,16 +528,20 @@ Decorators enforce access:
 stateDiagram-v2
     [*] --> Pending : Admin / Owner invites by email
     Pending --> Accepted : Invitee accepts with matching verified email
+    Pending --> Declined : Invitee declines invitation
     Pending --> Pending : Invitee attempts accept with different email (Rejected)
     Pending --> Expired : 7 days elapse without acceptance
     Pending --> Revoked : Admin / Owner revokes invite
     Expired --> Pending : Admin / Owner resends invite (+7 days expiry)
+    Declined --> Pending : Admin / Owner re-invites or resends (+7 days expiry)
     Accepted --> [*]
     Revoked --> [*]
+    Declined --> [*]
 ```
 
 - **`Pending`**: Invitation has been sent and is awaiting acceptance; active for 7 days.
 - **`Accepted`**: Invitee has accepted the invitation and joined the board (terminal state for invite; creates active `BoardMember` record).
+- **`Declined`**: Invitee actively rejected the invitation. Owner receives an in-app notification. An Admin or Owner can re-send or re-invite the user, resetting it to `Pending` with a fresh 7-day expiration.
 - **`Expired`**: 7 days passed without acceptance. Acceptance is disabled; Admin or Owner can resend to reset to `Pending`.
 - **`Revoked`**: Admin or Owner revoked the invitation (terminal state; access denied).
 
@@ -544,10 +549,12 @@ stateDiagram-v2
 
 1. **Admin/Owner sends invite by email (`[None] -> Pending`):** A new invitation is created with `status = pending` and `expires_at = now + 7 days`. If an invitation already exists for `(board_id, email)`, its role is updated, `expires_at` is extended by 7 days, and `status` is reset to `pending`.
 2. **Pending to Accepted:** Invitee signs in with a verified email matching the invitation and clicks Accept. The invite status changes to `accepted`, an active board membership is provisioned with the designated role, and real-time SSE event `member:joined` is broadcast.
-3. **Pending to Pending (Email Mismatch):** If a user tries to accept an invitation sent to a different email address, the API rejects the request (HTTP 403) and the invitation remains `pending`.
-4. **Pending to Expired:** If `datetime.utcnow() > expires_at`, the invitation is evaluated as expired. Attempts to accept return HTTP 400 (`"Invitation has expired"`).
-5. **Pending to Revoked:** An Admin or Owner cancels the invite. Status becomes `revoked`.
-6. **Expired to Pending:** An Admin or Owner resends the invitation. Status resets to `pending`, and `expires_at` is updated to `utcnow() + timedelta(days=7)`.
+3. **Pending to Declined:** Invitee signs in and clicks Decline on the invitation banner. The invite status transitions to `declined`, the board owner is notified via `invite_declined` notification, and any matching board membership is updated to `declined`.
+4. **Declined to Pending:** An Admin or Owner re-invites the same email or resends the invitation. The status resets to `pending`, and `expires_at` is extended to `utcnow() + timedelta(days=7)`.
+5. **Pending to Pending (Email Mismatch):** If a user tries to accept an invitation sent to a different email address, the API rejects the request (HTTP 403) and the invitation remains `pending`.
+6. **Pending to Expired:** If `datetime.utcnow() > expires_at`, the invitation is evaluated as expired. Attempts to accept return HTTP 400 (`"Invitation has expired"`).
+7. **Pending to Revoked:** An Admin or Owner cancels the invite. Status becomes `revoked`.
+8. **Expired to Pending:** An Admin or Owner resends the invitation. Status resets to `pending`, and `expires_at` is updated to `utcnow() + timedelta(days=7)`.
 
 ---
 
