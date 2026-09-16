@@ -12,7 +12,7 @@ class BoardInvitation(db.Model):
     board_id = db.Column(db.String(36), db.ForeignKey('boards.id', ondelete='CASCADE'), nullable=False)
     email = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='editor')
-    status = db.Column(db.String(20), nullable=False, default='pending') # 'pending', 'accepted', 'expired', 'revoked'
+    status = db.Column(db.String(20), nullable=False, default='pending') # 'pending', 'accepted', 'expired', 'revoked', 'declined'
     inviter_id = db.Column(db.String(36), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, nullable=False)
@@ -53,15 +53,13 @@ class BoardInvitation(db.Model):
 
         board_data = None
         if self.board:
-            owner = self.board.owner
-            owner_name = (owner.full_name or owner.email) if owner else "Board Owner"
+            inviter_user = self.inviter or self.board.owner
+            owner_name = (inviter_user.full_name or inviter_user.email) if inviter_user else "Board Owner"
             board_data = {
                 'id': self.board.id,
                 'name': self.board.name,
                 'emoji': self.board.emoji,
-                'description': self.board.description,
                 'color': self.board.color,
-                'heroImageUrl': self.board.hero_image_url,
                 'ownerName': owner_name
             }
 

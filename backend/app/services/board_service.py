@@ -46,22 +46,22 @@ class BoardService:
                 board = inv.board
                 if not board:
                     continue
-                owner = board.owner
-                owner_name = (owner.full_name or owner.email) if owner else "Board Owner"
+                inviter_user = inv.inviter or board.owner
+                owner_name = (inviter_user.full_name or inviter_user.email) if inviter_user else "Board Owner"
                 active_invites.append({
                     'id': inv.id,
                     'boardId': inv.board_id,
                     'role': inv.role,
                     'status': inv.status,
+                    'inviterId': inv.inviter_id,
+                    'inviterName': owner_name,
                     'createdAt': inv.created_at.isoformat() + 'Z' if inv.created_at else None,
                     'expiresAt': inv.expires_at.isoformat() + 'Z' if inv.expires_at else None,
                     'board': {
                         'id': board.id,
                         'name': board.name,
                         'emoji': board.emoji,
-                        'description': board.description,
                         'color': board.color,
-                        'heroImageUrl': board.hero_image_url,
                         'ownerName': owner_name
                     }
                 })
@@ -86,15 +86,15 @@ class BoardService:
                 'boardId': m.board_id,
                 'role': m.role,
                 'status': m.status,
+                'inviterId': board.owner_id,
+                'inviterName': owner_name,
                 'createdAt': m.created_at.isoformat() + 'Z' if m.created_at else None,
                 'expiresAt': (m.created_at + timedelta(days=7)).isoformat() + 'Z' if m.created_at else None,
                 'board': {
                     'id': board.id,
                     'name': board.name,
                     'emoji': board.emoji,
-                    'description': board.description,
                     'color': board.color,
-                    'heroImageUrl': board.hero_image_url,
                     'ownerName': owner_name
                 }
             })
@@ -177,6 +177,10 @@ class BoardService:
         if 'color' in data: board.color = data['color']
         if 'heroImageUrl' in data: board.hero_image_url = data['heroImageUrl']
         if 'columns' in data:
+            if user_id:
+                actor_level = get_effective_role(board_id, user_id)
+                if actor_level < ROLE_HIERARCHY['admin']:
+                    raise ValueError("Requires admin privileges to modify board columns")
             new_columns = data['columns']
             if isinstance(new_columns, list):
                 new_column_ids = {c.get('id') for c in new_columns if isinstance(c, dict) and 'id' in c}
@@ -432,7 +436,7 @@ class BoardService:
         clean_user_email = (user.email or '').strip().lower()
         invitation = BoardInvitation.query.filter_by(board_id=board_id, email=clean_user_email).first()
         if invitation:
-            invitation.status = 'revoked'
+            invitation.status = 'declined'
             invitation.revoked_at = datetime.utcnow()
 
         membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
@@ -465,12 +469,61 @@ class BoardService:
         db.session.add(activity)
 
         if membership:
-            db.session.delete(membership)
+            membership.status = 'declined'
         db.session.commit()
 
         broadcaster.broadcast(board_id, "member:removed", {"userId": user_id})
         broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
 
+        return True, None
+
+    @staticmethod
+    def report_invitation(board_id, user_id):
+        user = db.session.get(User, user_id)
+        if not user:
+            return False, "User not found"
+
+        clean_user_email = (user.email or '').strip().lower()
+        invitation = BoardInvitation.query.filter_by(board_id=board_id, email=clean_user_email).first()
+        inviter_id = invitation.inviter_id if invitation else None
+
+        if invitation:
+            invitation.status = 'declined'
+            invitation.revoked_at = datetime.utcnow()
+
+        # Also decline all other pending invitations from the same inviter to this user
+        if inviter_id:
+            other_spam_invites = BoardInvitation.query.filter_by(
+                inviter_id=inviter_id,
+                email=clean_user_email,
+                status='pending'
+            ).all()
+            for spam_inv in other_spam_invites:
+                spam_inv.status = 'declined'
+                spam_inv.revoked_at = datetime.utcnow()
+                spam_bm = BoardMember.query.filter_by(board_id=spam_inv.board_id, user_id=user_id, status='pending').first()
+                if spam_bm:
+                    spam_bm.status = 'declined'
+
+        membership = BoardMember.query.filter_by(board_id=board_id, user_id=user_id).first()
+        if not membership and not invitation:
+            return False, "Invitation not found"
+
+        if membership and membership.status == 'pending':
+            membership.status = 'declined'
+
+        user_name = user.full_name or user.email
+        activity = Activity(
+            type='update',
+            task_title=user_name,
+            message=f'{user_name} declined and reported the invitation as spam',
+            board_id=board_id,
+            user_id=user_id
+        )
+        db.session.add(activity)
+        db.session.commit()
+
+        broadcaster.broadcast(board_id, "member:removed", {"userId": user_id})
         return True, None
 
     @staticmethod
@@ -853,7 +906,7 @@ class BoardService:
 
     @staticmethod
     def get_board_members(board_id, actor_id=None):
-        members = BoardMember.query.filter_by(board_id=board_id).all()
+        members = BoardMember.query.filter(BoardMember.board_id == board_id, BoardMember.status != 'declined').all()
         actor_level = get_effective_role(board_id, actor_id) if actor_id else ROLE_HIERARCHY['owner']
         # Commenters and Viewers receive name and avatar only (emails redacted)
         redact = actor_level <= ROLE_HIERARCHY['commenter']

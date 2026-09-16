@@ -1,6 +1,7 @@
 import json
 from app import db
 from app.models.board_member import BoardMember
+from app.models.board_invitation import BoardInvitation
 from app.models.notification import Notification
 
 def test_invitation_lifecycle(client, create_test_user, create_test_board, auth_headers):
@@ -74,6 +75,20 @@ def test_decline_invitation(client, create_test_user, create_test_board, auth_he
     # 4. Owner received invite_declined notification
     owner_notif = Notification.query.filter_by(user_id=owner.id, type="invite_declined").first()
     assert owner_notif is not None
+
+    # 5. Check BoardInvitation record is 'declined'
+    inv = BoardInvitation.query.filter_by(board_id=board.id, email=declinee.email).first()
+    assert inv is not None
+    assert inv.status == 'declined'
+
+    # 6. Resend invite transitions from 'declined' back to 'pending'
+    resend_res = client.post(
+        f"/api/boards/{board.id}/invitations/{inv.id}/resend",
+        headers=owner_headers
+    )
+    assert resend_res.status_code == 200
+    db.session.refresh(inv)
+    assert inv.status == 'pending'
 
 def test_voluntary_leave_and_owner_guard(client, create_test_user, create_test_board, auth_headers):
     board, owner = create_test_board(name="Leave Board Test")
@@ -345,4 +360,58 @@ def test_spam_protection_daily_invitation_rate_limit(client, create_test_board, 
     )
     assert blocked_res.status_code == 400
     assert "Daily invitation limit reached" in blocked_res.get_json()["error"]
+
+
+def test_pending_invite_tenancy_redacts_description_and_report_blocks_inviter(
+    client, create_test_user, create_test_board, auth_headers
+):
+    board1, spammer = create_test_board(name="Spam Board 1")
+    board1.description = "Private internal board description that must not leak"
+    db.session.commit()
+
+    # Create a second board owned by the same inviter
+    from app.services.board_service import BoardService
+    board2 = BoardService.create_board({"name": "Spam Board 2", "description": "Another secret"}, spammer.id)
+
+    recipient = create_test_user(email="recipient_tenancy@example.com", full_name="Recipient User")
+    spammer_headers = auth_headers(spammer.id)
+    recipient_headers = auth_headers(recipient.id)
+
+    # Spammer invites recipient to both boards
+    client.post(
+        f"/api/boards/{board1.id}/members",
+        headers=spammer_headers,
+        data=json.dumps({"email": recipient.email, "role": "viewer"}),
+        content_type="application/json",
+    )
+    client.post(
+        f"/api/boards/{board2.id}/members",
+        headers=spammer_headers,
+        data=json.dumps({"email": recipient.email, "role": "editor"}),
+        content_type="application/json",
+    )
+
+    # 1. Verify pending invitations expose board name, role, inviter, and expiresAt,
+    #    and NEVER expose description or members before acceptance.
+    invites_res = client.get("/api/boards/invitations", headers=recipient_headers)
+    assert invites_res.status_code == 200
+    invites = invites_res.get_json()
+    assert len(invites) == 2
+    for inv in invites:
+        assert "description" not in inv["board"]
+        assert "members" not in inv["board"]
+        assert inv["board"]["name"] in ["Spam Board 1", "Spam Board 2"]
+        assert inv.get("expiresAt") is not None
+
+    # 2. Recipient reports/blocks the inviter via board1's invitation
+    report_res = client.post(
+        f"/api/boards/{board1.id}/invitations/report",
+        headers=recipient_headers,
+    )
+    assert report_res.status_code == 200
+
+    # 3. Both pending invitations from that inviter are now declined/removed from pending list
+    invites_after = client.get("/api/boards/invitations", headers=recipient_headers).get_json()
+    assert len(invites_after) == 0
+
 
