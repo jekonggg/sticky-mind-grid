@@ -127,23 +127,15 @@ def export_user_data():
 def get_teammates():
     user_id = get_jwt_identity()
     
-    # 1. Get all boards current user is a member of
+    # 1. Get all boards current user is an accepted member of
     user_memberships = BoardMember.query.filter_by(user_id=user_id, status='accepted').all()
     user_board_ids = [m.board_id for m in user_memberships]
     
     if not user_board_ids:
-        # Also include all registered users as potential teammates if no boards yet
-        other_users = User.query.filter(User.id != user_id).limit(20).all()
-        return jsonify([{
-            'id': u.id,
-            'email': u.email,
-            'fullName': u.full_name,
-            'avatarUrl': u.avatar_url,
-            'sharedBoards': [],
-            'role': 'collaborator'
-        } for u in other_users]), 200
+        # Strict board isolation: No common boards means no visible teammates
+        return jsonify([]), 200
 
-    # 2. Get all accepted members across these boards
+    # 2. Get all accepted members across these shared boards
     all_members = BoardMember.query.filter(
         BoardMember.board_id.in_(user_board_ids),
         BoardMember.status == 'accepted',
@@ -174,20 +166,15 @@ def get_teammates():
                 'role': m.role
             })
 
-    # Also include any other registered users not yet in boards to easily start chats or invites
-    other_users = User.query.filter(
-        User.id != user_id,
-        ~User.id.in_(list(teammates_map.keys()))
-    ).limit(10).all() if len(teammates_map) < 20 else []
-
-    for u in other_users:
-        teammates_map[u.id] = {
-            'id': u.id,
-            'email': u.email,
-            'fullName': u.full_name,
-            'avatarUrl': u.avatar_url,
-            'sharedBoards': [],
-            'role': 'member'
-        }
-
     return jsonify(list(teammates_map.values())), 200
+
+@bp.route('/me', methods=['DELETE'])
+@jwt_required()
+def delete_account():
+    user_id = get_jwt_identity()
+    from app.services.user_service import UserService
+    success, error = UserService.delete_account(user_id)
+    if not success:
+        return jsonify({'error': error}), 400
+    return jsonify({'message': 'Account deleted successfully'}), 200
+
