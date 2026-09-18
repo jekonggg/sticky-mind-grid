@@ -14,6 +14,8 @@ export interface Board {
   workspaceId?: string;
   role?: BoardRole;
   taskCount?: number;
+  ownerCount?: number;
+  isPinned?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -69,6 +71,8 @@ export interface BoardInvitation {
   role: BoardRole;
   status: BoardMemberStatus;
   email?: string;
+  inviterId?: string;
+  inviterName?: string;
   createdAt: string;
   expiresAt?: string;
   board: {

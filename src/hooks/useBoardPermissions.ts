@@ -66,7 +66,7 @@ export function useBoardPermissions(
         acceptedOwners.add(String(m.userId));
       }
     });
-    const ownerCount = acceptedOwners.size || (board?.ownerId ? 1 : 0);
+    const ownerCount = board?.ownerCount ?? (acceptedOwners.size || (board?.ownerId ? 1 : 0));
 
     // Dev Mode Role Spoofing
     if (devSettings.simulatedRole && devSettings.simulatedRole !== "none") {
@@ -166,10 +166,12 @@ export function useBoardPermissions(
     const membership = members.find((m) => Boolean(m.userId && user?.id && String(m.userId) === String(user.id)));
 
     let role: BoardRole = "viewer";
-    if (isDirectOwner || membership?.role === "owner") {
+    if (isDirectOwner || membership?.role === "owner" || board.role === "owner") {
       role = "owner";
     } else if (membership?.role) {
       role = membership.role;
+    } else if (board.role) {
+      role = board.role;
     }
 
     const isOwner = role === "owner";
