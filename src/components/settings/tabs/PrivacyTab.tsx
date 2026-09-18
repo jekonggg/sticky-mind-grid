@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { userApi } from "@/services/userApi";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -13,11 +14,14 @@ import {
   Loading01 as Loader2,
   FileCode01 as FileJson,
   CheckCircle as CheckCircle2,
+  AlertTriangle as AlertTriangleIcon,
 } from "@untitledui/icons";
 
 export function PrivacyTab() {
   const { resetLocalSettings } = useSettings();
+  const { logout } = useAuth();
   const [exporting, setExporting] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const handleExportData = async () => {
     try {
@@ -35,6 +39,24 @@ export function PrivacyTab() {
   const handleClearCache = () => {
     resetLocalSettings();
     toast.success("Local preferences and application cache reset to default");
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to permanently delete your account?\n\n• Boards you own with other members will automatically transfer to the oldest administrator.\n• Your created cards and comments will remain intact under 'Former member'.\n• This action cannot be undone."
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeletingAccount(true);
+      await userApi.deleteAccount();
+      toast.success("Account successfully deleted");
+      logout();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to delete account";
+      toast.error(message);
+      setDeletingAccount(false);
+    }
   };
 
   return (
@@ -148,6 +170,41 @@ export function PrivacyTab() {
             <Trash2 className="h-3.5 w-3.5" />
             Clear Cache
           </Button>
+        </div>
+      </div>
+
+      {/* Danger Zone: Account Deletion */}
+      <div className="space-y-3 pt-4 border-t border-destructive/20">
+        <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="h-9 w-9 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center shrink-0 mt-0.5">
+              <AlertTriangleIcon className="h-4.5 w-4.5" />
+            </div>
+            <div className="space-y-1 flex-1">
+              <h4 className="text-xs font-bold text-destructive">Danger Zone: Delete Account</h4>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Permanently close your account. Owned boards will automatically transfer to the oldest administrator or team member, and authored cards and discussion comments will be preserved as "Former member".
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-1 flex justify-end">
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount}
+              className="h-8 text-xs font-bold gap-2"
+            >
+              {deletingAccount ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+              Delete My Account
+            </Button>
+          </div>
         </div>
       </div>
     </div>
