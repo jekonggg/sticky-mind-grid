@@ -21,6 +21,7 @@ import {
   Shield01 as Shield,
   User01 as User,
   Eye,
+  Edit01 as Edit,
   MessageChatSquare as MessageSquare,
   Plus,
   SearchLg as Search,
@@ -105,7 +106,7 @@ export default function TeamsPage() {
   });
 
   const getRoleBadge = (role: string) => {
-    switch (role) {
+    switch (role?.toLowerCase()) {
       case "owner":
         return (
           <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[10px] font-bold">
@@ -118,6 +119,19 @@ export default function TeamsPage() {
             <Shield className="h-3 w-3 mr-1" /> Admin
           </Badge>
         );
+      case "editor":
+      case "member":
+        return (
+          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] font-bold">
+            <Edit className="h-3 w-3 mr-1" /> Editor
+          </Badge>
+        );
+      case "commenter":
+        return (
+          <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] font-bold">
+            <MessageSquare className="h-3 w-3 mr-1" /> Commenter
+          </Badge>
+        );
       case "viewer":
         return (
           <Badge variant="outline" className="bg-slate-500/10 text-slate-600 border-slate-500/30 text-[10px] font-bold">
@@ -127,7 +141,7 @@ export default function TeamsPage() {
       default:
         return (
           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] font-bold">
-            <User className="h-3 w-3 mr-1" /> Member
+            <Edit className="h-3 w-3 mr-1" /> Editor
           </Badge>
         );
     }

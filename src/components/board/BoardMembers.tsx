@@ -290,7 +290,7 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                     )}`}
                   >
                     {getRoleIcon(member.role)}
-                    {member.role}
+                    {member.role === "member" ? "editor" : member.role}
                   </Badge>
                 )}
 
