@@ -41,11 +41,15 @@ export const ActivityItem: React.FC<ActivityItemProps> = ({ activity }) => {
           <span className="text-[10px] text-muted-foreground block font-medium">
             {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
           </span>
-          {activity.user && (
+          {activity.user ? (
             <span className="text-[10px] text-primary/70 font-bold truncate max-w-[100px]">
-              • {activity.user.fullName || activity.user.email.split('@')[0]}
+              • {activity.user.fullName || (activity.user.email ? activity.user.email.split('@')[0] : 'Former member')}
             </span>
-          )}
+          ) : activity.userId ? (
+            <span className="text-[10px] text-muted-foreground font-bold truncate max-w-[100px]">
+              • Former member
+            </span>
+          ) : null}
         </div>
       </div>
     </div>

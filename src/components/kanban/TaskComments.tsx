@@ -210,8 +210,8 @@ export function TaskComments({ taskId, boardMembers, readOnly, canDeleteAnyComme
           </div>
         ) : (
           comments.map((c) => {
-            const authorName = c.user?.fullName || c.user?.email || "User";
-            const initial = (c.user?.fullName || c.user?.email || "U").charAt(0).toUpperCase();
+            const authorName = c.user?.fullName || c.user?.email || "Former member";
+            const initial = authorName.charAt(0).toUpperCase();
             const isOwn = c.userId === currentUser?.id;
 
             return (
