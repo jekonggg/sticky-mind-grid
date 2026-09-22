@@ -3,14 +3,25 @@ import { Board, CreateBoardData, UpdateBoardData } from "@/types/board";
 import { boardApi } from "@/services/boardApi";
 import { toast } from "sonner";
 import { useActivity } from "./useActivity";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type SortOption = "updated" | "name" | "created";
+export type BoardFilterOption = "all" | "owned" | "shared";
+
+export function isBoardOwnedByUser(board: Board, userId?: string): boolean {
+  if (board.role) {
+    return board.role === "owner";
+  }
+  return Boolean(userId && board.ownerId && String(board.ownerId) === String(userId));
+}
 
 export function useBoards() {
+  const { user } = useAuth();
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("updated");
+  const [filter, setFilter] = useState<BoardFilterOption>("all");
   const { addActivity } = useActivity();
 
   const fetchBoards = useCallback(async () => {
@@ -48,8 +59,9 @@ export function useBoards() {
       addActivity("update", board.name, `Board settings updated for "${board.name}"`);
       toast.success(`Board "${board.name}" updated`);
       return board;
-    } catch {
-      toast.error("Failed to update board");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update board");
+      throw err;
     }
   }, [addActivity]);
 
@@ -70,6 +82,11 @@ export function useBoards() {
 
   const filteredBoards = useMemo(() => {
     let result = boards;
+    if (filter === "owned") {
+      result = result.filter((b) => isBoardOwnedByUser(b, user?.id));
+    } else if (filter === "shared") {
+      result = result.filter((b) => !isBoardOwnedByUser(b, user?.id));
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -90,15 +107,18 @@ export function useBoards() {
       }
     });
     return result;
-  }, [boards, search, sort]);
+  }, [boards, filter, search, sort, user?.id]);
 
   return {
     boards: filteredBoards,
+    allBoards: boards,
     loading,
     search,
     setSearch,
     sort,
     setSort,
+    filter,
+    setFilter,
     createBoard,
     updateBoard,
     deleteBoard,

@@ -10,6 +10,7 @@ interface EmojiSelectorProps {
   onChange?: (emoji: string) => void;
   className?: string;
   size?: "sm" | "md" | "lg" | string;
+  disabled?: boolean;
 }
 
 const COMMON_EMOJIS = [
@@ -18,7 +19,7 @@ const COMMON_EMOJIS = [
   "📱", "💻", "🌐", "🔒", "🔑", "📅", "🏷️", "📎", "📌", "💬"
 ];
 
-export function EmojiSelector({ currentEmoji, selectedEmoji, value, onSelect, onChange, className, size = "md" }: EmojiSelectorProps) {
+export function EmojiSelector({ currentEmoji, selectedEmoji, value, onSelect, onChange, className, size = "md", disabled }: EmojiSelectorProps) {
   const selected = value ?? selectedEmoji ?? currentEmoji;
   const handleSelect = (emoji: string) => {
     onSelect?.(emoji);
@@ -35,6 +36,7 @@ export function EmojiSelector({ currentEmoji, selectedEmoji, value, onSelect, on
           type="button" 
           variant="ghost" 
           size="icon" 
+          disabled={disabled}
           className={`${sizeClass} rounded-xl shrink-0 border border-border/50 shadow-sm transition-all
             ${selected ? "bg-primary/5 text-primary" : "bg-muted/30 text-muted-foreground"} 
             hover:bg-primary/10 hover:text-primary hover:border-primary/30 ${className}`}

@@ -37,7 +37,10 @@ export const boardApi = {
       method: "PATCH",
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error("Failed to update board");
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to update board");
+    }
     const board = await res.json();
     return mapBoard(board);
   },
@@ -115,6 +118,16 @@ export const boardApi = {
     if (!res.ok) {
       const error = await res.json();
       throw new Error(error.error || "Failed to decline invitation");
+    }
+  },
+
+  async reportInvitation(boardId: string): Promise<void> {
+    const res = await authenticatedFetch(`/boards/${boardId}/invitations/report`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to report invitation");
     }
   },
 
