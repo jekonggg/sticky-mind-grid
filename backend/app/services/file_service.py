@@ -52,6 +52,82 @@ class FileService:
         }, None
 
     @staticmethod
+    def verify_file_access(filename, user_id):
+        safe_name = secure_filename(filename)
+        from app.models.user import User
+
+        # 0. User avatars are public profile pictures - accessible without authentication
+        if User.query.filter(User.avatar_url.like(f"%{safe_name}%")).first():
+            return True, None, 200
+
+        if not user_id:
+            return False, "Authentication required to access attachments", 401
+
+        from app.models.task import Task
+        from app.models.board import Board
+        from app.utils.decorators import get_effective_role
+
+        # 1. Check if the file is attached to any task
+        # Search active and deleted tasks for attachment record
+        all_tasks = Task.query.filter(Task.attachments.isnot(None)).all()
+        matched_tasks = []
+        for t in all_tasks:
+            if not t.attachments or not isinstance(t.attachments, list):
+                continue
+            for att in t.attachments:
+                if isinstance(att, dict) and (
+                    att.get('storedName') == safe_name or
+                    att.get('id') == safe_name or
+                    (att.get('url') and safe_name in att.get('url'))
+                ):
+                    matched_tasks.append(t)
+                    break
+
+        if matched_tasks:
+            # User must have active membership on at least one board containing this task
+            has_access = any(get_effective_role(t.board_id, user_id) > 0 for t in matched_tasks)
+            if not has_access:
+                return False, "You do not have permission to access attachments from this board", 403
+            return True, None, 200
+
+        # 2. Check if the file is in a chat message
+        from app.models.message import Message, ConversationParticipant
+        all_messages = Message.query.filter(Message.attachments.isnot(None)).all()
+        matched_conv_ids = set()
+        for m in all_messages:
+            if not m.attachments or not isinstance(m.attachments, list):
+                continue
+            for att in m.attachments:
+                if isinstance(att, dict) and (
+                    att.get('storedName') == safe_name or
+                    att.get('id') == safe_name or
+                    (att.get('url') and safe_name in att.get('url'))
+                ):
+                    matched_conv_ids.add(m.conversation_id)
+                    break
+
+        if matched_conv_ids:
+            is_participant = ConversationParticipant.query.filter(
+                ConversationParticipant.conversation_id.in_(list(matched_conv_ids)),
+                ConversationParticipant.user_id == user_id
+            ).first() is not None
+            if not is_participant:
+                return False, "You do not have permission to access message attachments from this conversation", 403
+            return True, None, 200
+
+        # 3. Check if file is a board hero image
+        hero_boards = Board.query.filter(Board.hero_image_url.isnot(None)).all()
+        matched_hero_boards = [b for b in hero_boards if b.hero_image_url and safe_name in b.hero_image_url]
+        if matched_hero_boards:
+            has_hero_access = any(get_effective_role(b.id, user_id) > 0 for b in matched_hero_boards)
+            if not has_hero_access:
+                return False, "You do not have permission to access board assets", 403
+            return True, None, 200
+
+        # 4. User avatars and newly uploaded staging files: permitted for authenticated users
+        return True, None, 200
+
+    @staticmethod
     def get_file(filename, as_attachment=False, download_name=None):
         safe_name = secure_filename(filename)
         if not os.path.exists(os.path.join(UPLOAD_FOLDER, safe_name)):
