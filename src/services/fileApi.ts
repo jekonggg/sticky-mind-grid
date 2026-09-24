@@ -54,6 +54,7 @@ export const fileApi = {
       }
 
       // If it's our backend API file URL
+      const token = getStoredToken();
       let downloadUrl = url;
       if (url.includes("/api/files/")) {
         const storedName = url.split("/api/files/")[1];
@@ -62,8 +63,13 @@ export const fileApi = {
         }
       }
 
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       // Fetch blob and trigger programmatic download to prevent browser navigation issues
-      const res = await fetch(downloadUrl);
+      const res = await fetch(downloadUrl, { headers });
       if (!res.ok) throw new Error("File download failed");
       const blob = await res.blob();
       const blobUrl = window.URL.createObjectURL(blob);
@@ -77,8 +83,12 @@ export const fileApi = {
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       console.error("Download failed:", err);
-      // Fallback: window open
-      window.open(url, "_blank");
+      // Fallback: window open with query token if available
+      const token = getStoredToken();
+      const fallbackUrl = token
+        ? `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`
+        : url;
+      window.open(fallbackUrl, "_blank");
     }
   },
 };
