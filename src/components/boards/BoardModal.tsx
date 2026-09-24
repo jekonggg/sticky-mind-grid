@@ -15,6 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Check, ImagePlus, XClose as X, Plus, Stars01 as Sparkles, Link01 as LinkIcon, Upload01 as Upload } from "@untitledui/icons";
 import { EmojiSelector } from "../common/EmojiSelector";
 import { useDevMode } from "@/contexts/DevModeContext";
+import { useBoardPermissions } from "@/hooks/useBoardPermissions";
+import { useQuery } from "@tanstack/react-query";
+import { taskApi } from "@/services/api";
+import { toast } from "sonner";
 
 interface BoardModalProps {
   open: boolean;
@@ -88,6 +92,7 @@ export const sanitizeImageUrl = (rawUrl: string) => {
 
 export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) {
   const { devSettings } = useDevMode();
+  const permissions = useBoardPermissions(board);
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("");
   const [description, setDescription] = useState("");
@@ -97,6 +102,14 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!board;
+  const canEditBoard = !isEditing || permissions.canEditBoard;
+  const canManageColumns = !isEditing || permissions.canManageColumns;
+
+  const { data: boardTasks = [] } = useQuery({
+    queryKey: ["boardTasks", board?.id],
+    queryFn: () => (board?.id ? taskApi.getTasks(board.id) : Promise.resolve([])),
+    enabled: open && !!board?.id,
+  });
 
   useEffect(() => {
     if (board) {
@@ -121,16 +134,31 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
   }, [board, open]);
 
   const handleAddColumn = () => {
+    if (!canManageColumns) {
+      toast.error("Only Admins and Owners can modify workflow states");
+      return;
+    }
     const id = `col_${Date.now()}`;
     setColumns([...columns, { id, title: "New State", emoji: "📌" }]);
   };
 
   const handleRemoveColumn = (id: string) => {
+    if (!canManageColumns) {
+      toast.error("Only Admins and Owners can modify workflow states");
+      return;
+    }
     if (columns.length <= 3) return;
+    const cardCount = boardTasks.filter((t) => !t.isDeleted && t.status === id).length;
+    if (cardCount > 0) {
+      const colTitle = columns.find((c) => c.id === id)?.title || id;
+      toast.error(`Cannot delete column "${colTitle}" because it contains ${cardCount} active card${cardCount > 1 ? "s" : ""}. Move or delete cards first.`);
+      return;
+    }
     setColumns(columns.filter((c) => c.id !== id));
   };
 
   const handleColumnRename = (id: string, title: string, emoji?: string) => {
+    if (!canManageColumns) return;
     setColumns(columns.map((c) => (c.id === id ? { ...c, title, emoji } : c)));
   };
 
@@ -201,6 +229,24 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
 
   const previewUrl = sanitizeImageUrl(heroImageUrl);
 
+  if (isEditing && !canEditBoard) {
+    return (
+      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="w-full max-w-none sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-destructive">Permission Denied</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-muted-foreground">
+            Only board Owners and Admins have permission to edit board settings and workflow states.
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="w-full max-w-none sm:max-w-lg h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[95vh] rounded-none sm:rounded-lg overflow-y-auto">
@@ -248,50 +294,71 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Board States (Workflow)
+                Board States (Workflow) {!canManageColumns && "(Admin & Owner Only)"}
               </Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleAddColumn}
-                className="h-7 text-xs font-bold gap-1 text-primary hover:text-primary hover:bg-primary/10"
-              >
-                <Plus className="h-3 w-3" /> Add State
-              </Button>
+              {canManageColumns && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleAddColumn}
+                  className="h-7 text-xs font-bold gap-1 text-primary hover:text-primary hover:bg-primary/10"
+                >
+                  <Plus className="h-3 w-3" /> Add State
+                </Button>
+              )}
             </div>
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {columns
                 .filter((c) => c.id !== "archive")
-                .map((col, idx) => (
-                  <div key={col.id} className="flex gap-2 group/col">
-                    {!devSettings.disableEmojiCustomization && (
-                      <EmojiSelector
-                        value={col.emoji || "📌"}
-                        onChange={(e) => handleColumnRename(col.id, col.title, e)}
+                .map((col, idx) => {
+                  const cardCount = boardTasks.filter((t) => !t.isDeleted && t.status === col.id).length;
+                  const isBlocked = cardCount > 0;
+                  return (
+                    <div key={col.id} className="flex gap-2 group/col items-center">
+                      {!devSettings.disableEmojiCustomization && (
+                        <EmojiSelector
+                          value={col.emoji || "📌"}
+                          onChange={(e) => handleColumnRename(col.id, col.title, e)}
+                          disabled={!canManageColumns}
+                        />
+                      )}
+                      <Input
+                        value={col.title}
+                        onChange={(e) => handleColumnRename(col.id, e.target.value, col.emoji)}
+                        placeholder={`State ${idx + 1}`}
+                        className="h-9 flex-1 text-xs font-medium"
+                        disabled={!canManageColumns}
                       />
-                    )}
-                    <Input
-                      value={col.title}
-                      onChange={(e) => handleColumnRename(col.id, e.target.value, col.emoji)}
-                      placeholder={`State ${idx + 1}`}
-                      className="h-9 flex-1 text-xs font-medium"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      disabled={columns.length <= 3}
-                      onClick={() => handleRemoveColumn(col.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                      {canManageColumns && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className={`h-9 w-9 shrink-0 ${
+                            isBlocked
+                              ? "opacity-40 cursor-not-allowed text-muted-foreground"
+                              : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          }`}
+                          disabled={columns.length <= 3 || isBlocked}
+                          title={
+                            isBlocked
+                              ? `Cannot delete column: contains ${cardCount} active card${cardCount > 1 ? "s" : ""}`
+                              : columns.length <= 3
+                              ? "Minimum 3 states required"
+                              : "Remove column"
+                          }
+                          onClick={() => handleRemoveColumn(col.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
             <p className="text-[10px] text-muted-foreground font-medium italic">
-              Minimum 3 states required.
+              Minimum 3 states required. {!canManageColumns && "Only Admins and Owners can modify workflow states."}
             </p>
           </div>
 
