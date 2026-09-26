@@ -2,23 +2,26 @@ import * as React from "react";
 import * as AvatarPrimitive from "@radix-ui/react-avatar";
 
 import { cn } from "@/lib/utils";
-import { API_BASE } from "@/config/api";
+import { API_BASE, getStoredToken } from "@/config/api";
 
 export function getMediaUrl(url?: string | null): string | undefined {
   if (!url) return undefined;
-  if (
-    url.startsWith("http://") ||
-    url.startsWith("https://") ||
-    url.startsWith("data:") ||
-    url.startsWith("blob:")
-  ) {
+  if (url.startsWith("data:") || url.startsWith("blob:")) {
     return url;
   }
+  let fullUrl = url;
   if (url.startsWith("/api/")) {
     const backendOrigin = API_BASE.replace(/\/api\/?$/, "");
-    return `${backendOrigin}${url}`;
+    fullUrl = `${backendOrigin}${url}`;
   }
-  return url;
+  if (fullUrl.includes("/api/files/")) {
+    const token = getStoredToken();
+    if (token && !fullUrl.includes("token=")) {
+      const separator = fullUrl.includes("?") ? "&" : "?";
+      fullUrl = `${fullUrl}${separator}token=${encodeURIComponent(token)}`;
+    }
+  }
+  return fullUrl;
 }
 
 const Avatar = React.forwardRef<
