@@ -44,6 +44,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useParams, useNavigate } from "react-router-dom";
 import { boardApi } from "@/services/boardApi";
 import { Board, BoardMember } from "@/types/board";
@@ -714,35 +720,92 @@ export function KanbanBoard() {
                     Unassigned ({tasks.filter((t) => !t.assignedTo).length})
                   </button>
 
-                  {members.length > 0 && (
-                    <div className="flex items-center gap-1 pl-1.5 border-l border-border/60 shrink-0">
-                      {members.map((m) => {
-                        const isSelected = assigneeFilter === m.userId;
-                        const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
-                        const name = m.user?.fullName?.split(" ")[0] || m.user?.email?.split("@")[0] || "Member";
-                        return (
-                          <button
-                            key={m.userId}
-                            onClick={() => setAssigneeFilter(isSelected ? "all" : m.userId)}
-                            title={`Filter by ${m.user?.fullName || m.user?.email}`}
-                            className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-all border cursor-pointer ${
-                              isSelected
-                                ? "bg-primary text-primary-foreground border-primary shadow-2xs font-bold"
-                                : "bg-background/80 text-muted-foreground border-border/50 hover:border-primary/40 hover:text-foreground"
-                            }`}
-                          >
-                            <Avatar className="h-4 w-4 shrink-0">
-                              <AvatarImage src={m.user?.avatarUrl} alt={name} />
-                              <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">
-                                {initial}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-[11px]">{name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {members.length > 0 && (() => {
+                    const MAX_VISIBLE = 4;
+                    const hasOverflow = members.length > MAX_VISIBLE;
+                    const visibleMembers = hasOverflow ? members.slice(0, MAX_VISIBLE - 1) : members;
+                    const overflowMembers = hasOverflow ? members.slice(MAX_VISIBLE - 1) : [];
+                    const isOverflowSelected = overflowMembers.some((m) => m.userId === assigneeFilter);
+
+                    return (
+                      <div className="flex items-center pl-2 border-l border-border/60 shrink-0">
+                        <div className="flex items-center -space-x-2 overflow-visible">
+                          {visibleMembers.map((m) => {
+                            const isSelected = assigneeFilter === m.userId;
+                            const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
+                            const fullName = m.user?.fullName || m.user?.email || "Member";
+
+                            return (
+                              <button
+                                key={m.userId}
+                                onClick={() => setAssigneeFilter(isSelected ? "all" : m.userId)}
+                                title={`Filter by ${fullName}`}
+                                aria-label={`Filter by ${fullName}`}
+                                className={`relative rounded-full transition-transform cursor-pointer focus:outline-none ${
+                                  isSelected
+                                    ? "ring-2 ring-primary scale-110 z-20 shadow-xs"
+                                    : "ring-2 ring-background hover:scale-110 hover:z-10"
+                                }`}
+                              >
+                                <Avatar className={`${isCompact ? "h-6 w-6" : "h-7 w-7"} border-0`}>
+                                  <AvatarImage src={m.user?.avatarUrl} alt={fullName} />
+                                  <AvatarFallback className="text-[9px] font-bold bg-primary/10 text-primary">
+                                    {initial}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </button>
+                            );
+                          })}
+
+                          {hasOverflow && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className={`relative flex items-center justify-center ${
+                                    isCompact ? "h-6 w-6 text-[10px]" : "h-7 w-7 text-xs"
+                                  } rounded-full bg-slate-200/90 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold transition-transform cursor-pointer focus:outline-none ${
+                                    isOverflowSelected
+                                      ? "ring-2 ring-primary text-primary scale-110 z-20 shadow-xs"
+                                      : "ring-2 ring-background hover:bg-slate-300 dark:hover:bg-slate-700 hover:scale-110 hover:z-10"
+                                  }`}
+                                  title={`+${overflowMembers.length} more members`}
+                                  aria-label={`+${overflowMembers.length} more members`}
+                                >
+                                  +{overflowMembers.length}
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="w-48 max-h-56 overflow-y-auto">
+                                {overflowMembers.map((m) => {
+                                  const isSelected = assigneeFilter === m.userId;
+                                  const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
+                                  const fullName = m.user?.fullName || m.user?.email || "Member";
+
+                                  return (
+                                    <DropdownMenuItem
+                                      key={m.userId}
+                                      onClick={() => setAssigneeFilter(isSelected ? "all" : m.userId)}
+                                      className="flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Avatar className="h-5 w-5">
+                                        <AvatarImage src={m.user?.avatarUrl} alt={fullName} />
+                                        <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">
+                                          {initial}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className={`text-xs truncate ${isSelected ? "font-bold text-primary" : ""}`}>
+                                        {fullName}
+                                      </span>
+                                    </DropdownMenuItem>
+                                  );
+                                })}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Tag Filters */}
                   {availableTags.length > 0 && (
@@ -796,7 +859,7 @@ export function KanbanBoard() {
             items={views}
             activeId={activeView}
             onChange={(id) => setActiveView(id as any)}
-            accentColor="violet"
+            accentColor="primary"
             layoutId="metaFloatingBottomDock"
           />
 

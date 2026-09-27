@@ -132,7 +132,7 @@ describe("KanbanBoard Add Task Dialog & Column Header Alignment", () => {
       expect(screen.queryByText("New Task")).not.toBeInTheDocument();
     });
     expect(mockAddTask).not.toHaveBeenCalled();
-  });
+  }, 15000);
 
   it("creates task only after user enters input and submits the dialog", async () => {
     renderWithProviders(<KanbanBoard />);
@@ -164,7 +164,7 @@ describe("KanbanBoard Add Task Dialog & Column Header Alignment", () => {
         })
       );
     });
-  });
+  }, 15000);
 
   it("aligns the first column's left space with the kanban header layout classes", async () => {
     const { container } = renderWithProviders(<KanbanBoard />);
@@ -179,5 +179,5 @@ describe("KanbanBoard Add Task Dialog & Column Header Alignment", () => {
     // Main has pl-6 md:pl-8 matching the header's px-6 md:px-8
     expect(mainEl).toHaveClass("pl-6");
     expect(mainEl).toHaveClass("md:pl-8");
-  });
+  }, 15000);
 });

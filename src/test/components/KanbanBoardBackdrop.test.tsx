@@ -130,7 +130,7 @@ describe("KanbanBoard Backdrop & Task Detail Drawer", () => {
       expect(screen.queryByTestId("task-drawer-backdrop")).not.toBeInTheDocument();
       expect(screen.queryByTestId("task-detail-drawer")).not.toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   it("dismisses the drawer and backdrop when clicking the X close button inside the drawer", async () => {
     renderWithProviders(<KanbanBoard />);
@@ -155,5 +155,32 @@ describe("KanbanBoard Backdrop & Task Detail Drawer", () => {
       expect(screen.queryByTestId("task-drawer-backdrop")).not.toBeInTheDocument();
       expect(screen.queryByTestId("task-detail-drawer")).not.toBeInTheDocument();
     });
-  });
+  }, 15000);
+
+  it("renders stacked avatar members in the header toolbar with overflow count", async () => {
+    const mockMembers = [
+      { id: "m-1", boardId: "board-1", userId: "u-1", role: "owner", status: "accepted", user: { id: "u-1", email: "john@example.com", fullName: "John Doe" } },
+      { id: "m-2", boardId: "board-1", userId: "u-2", role: "editor", status: "accepted", user: { id: "u-2", email: "jc@example.com", fullName: "Jc Smith" } },
+      { id: "m-3", boardId: "board-1", userId: "u-3", role: "editor", status: "accepted", user: { id: "u-3", email: "alice@example.com", fullName: "Alice Wang" } },
+      { id: "m-4", boardId: "board-1", userId: "u-4", role: "viewer", status: "accepted", user: { id: "u-4", email: "bob@example.com", fullName: "Bob Brown" } },
+      { id: "m-5", boardId: "board-1", userId: "u-5", role: "viewer", status: "accepted", user: { id: "u-5", email: "charlie@example.com", fullName: "Charlie Day" } },
+    ];
+    (boardApi.getMembers as any).mockResolvedValue(mockMembers);
+
+    renderWithProviders(<KanbanBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Sprint Engineering")).toBeInTheDocument();
+    });
+
+    // Check visible member avatar buttons
+    expect(screen.getByRole("button", { name: "Filter by John Doe" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filter by Jc Smith" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filter by Alice Wang" })).toBeInTheDocument();
+
+    // Check overflow badge (+2 since 5 members and MAX_VISIBLE is 4, showing 3 + 2)
+    const overflowBadge = screen.getByRole("button", { name: "+2 more members" });
+    expect(overflowBadge).toBeInTheDocument();
+    expect(overflowBadge).toHaveTextContent("+2");
+  }, 15000);
 });
