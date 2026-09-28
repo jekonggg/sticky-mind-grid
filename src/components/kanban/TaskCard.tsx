@@ -11,7 +11,7 @@ import {
   AlignLeft01 as AlignLeft,
 } from "@untitledui/icons";
 import { format } from "date-fns";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage, getMediaUrl } from "@/components/ui/avatar";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { getContainerGeometry } from "@/utils/geometryUtils";
@@ -111,11 +111,7 @@ export function TaskCard({ task, isSelected = false, onClick, isDragDisabled = f
             >
               {primaryTag.name}
             </span>
-          ) : (
-            <span className={`font-bold text-foreground truncate ${isCompact ? "text-[11px]" : "text-xs"}`}>
-              Task
-            </span>
-          )}
+          ) : null}
         </div>
 
         {/* Priority Badge with Signal Bars */}
@@ -173,7 +169,7 @@ export function TaskCard({ task, isSelected = false, onClick, isDragDisabled = f
           } border border-border/50 bg-muted/40`}
         >
           <img
-            src={firstAttachment.url}
+            src={getMediaUrl(firstAttachment.url)}
             alt={firstAttachment.name}
             className="w-full h-full object-cover"
           />
