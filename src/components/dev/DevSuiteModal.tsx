@@ -49,6 +49,8 @@ import {
   Type01,
   Check,
   Square,
+  Edit01 as Edit,
+  MessageChatSquare as MessageSquare,
 } from "@untitledui/icons";
 
 export function DevSuiteModal() {
@@ -812,7 +814,7 @@ export function DevSuiteModal() {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                     {[
                       {
                         role: "none",
@@ -833,10 +835,16 @@ export function DevSuiteModal() {
                         icon: Shield,
                       },
                       {
-                        role: "member",
-                        title: devSettings.disableEmojiCustomization ? "Member" : "Member 👤",
-                        desc: "Create, move & edit own tasks",
-                        icon: CheckCircle2,
+                        role: "editor",
+                        title: devSettings.disableEmojiCustomization ? "Editor" : "Editor ✏️",
+                        desc: "Create, move & edit tasks",
+                        icon: Edit,
+                      },
+                      {
+                        role: "commenter",
+                        title: devSettings.disableEmojiCustomization ? "Commenter" : "Commenter 💬",
+                        desc: "View & comment on tasks",
+                        icon: MessageSquare,
                       },
                       {
                         role: "viewer",
@@ -877,7 +885,7 @@ export function DevSuiteModal() {
                     </span>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="flex items-center gap-1.5">
-                        {devSettings.simulatedRole === "viewer" ? (
+                        {devSettings.simulatedRole === "viewer" || devSettings.simulatedRole === "commenter" ? (
                           <XCircle className="h-3.5 w-3.5 text-destructive" />
                         ) : (
                           <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
@@ -885,12 +893,30 @@ export function DevSuiteModal() {
                         <span>Drag & Drop Task Movement</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        {devSettings.simulatedRole === "viewer" ? (
+                        {devSettings.simulatedRole === "viewer" || devSettings.simulatedRole === "commenter" ? (
                           <XCircle className="h-3.5 w-3.5 text-destructive" />
                         ) : (
                           <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
                         )}
                         <span>Create & Edit Tasks</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {devSettings.simulatedRole === "viewer" ? (
+                          <XCircle className="h-3.5 w-3.5 text-destructive" />
+                        ) : (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                        )}
+                        <span>Comment on Tasks</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {devSettings.simulatedRole === "owner" ||
+                        devSettings.simulatedRole === "admin" ||
+                        devSettings.simulatedRole === "none" ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                        ) : (
+                          <XCircle className="h-3.5 w-3.5 text-destructive" />
+                        )}
+                        <span>Edit Board Details & Columns</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         {devSettings.simulatedRole === "owner" ||
