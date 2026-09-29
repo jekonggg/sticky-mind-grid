@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage, getMediaUrl } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -788,7 +788,7 @@ export function TaskModal({
                 >
                   {file.url ? (
                     <img
-                      src={file.url}
+                      src={getMediaUrl(file.url)}
                       alt={file.name}
                       className="absolute inset-0 w-full h-full object-cover"
                     />
@@ -796,7 +796,7 @@ export function TaskModal({
                     <FileText className="h-6 w-6 text-muted-foreground mb-1" />
                   )}
                   <a
-                    href={file.url}
+                    href={getMediaUrl(file.url)}
                     download={file.name}
                     target="_blank"
                     rel="noreferrer"

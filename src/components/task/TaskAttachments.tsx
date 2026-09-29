@@ -16,6 +16,7 @@ import { fileApi } from "@/services/fileApi";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
+import { getMediaUrl } from "@/components/ui/avatar";
 
 interface TaskAttachmentsProps {
   attachments: Attachment[];
@@ -141,7 +142,7 @@ export function TaskAttachments({
                 {/* Thumbnail / Icon */}
                 <div className="w-12 h-12 rounded-md bg-muted/80 border border-border/40 flex items-center justify-center shrink-0 overflow-hidden">
                   {isImage ? (
-                    <img src={att.url} alt={att.name} className="w-full h-full object-cover" />
+                    <img src={getMediaUrl(att.url)} alt={att.name} className="w-full h-full object-cover" />
                   ) : (
                     <FileText className="h-5 w-5 text-muted-foreground" />
                   )}
