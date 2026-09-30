@@ -26,7 +26,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, getMediaUrl } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -334,7 +334,7 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
                     <div className="aspect-video bg-muted/30 relative flex items-center justify-center overflow-hidden border-b border-border/10">
                       {isImage ? (
                         <img
-                          src={doc.url}
+                          src={getMediaUrl(doc.url)}
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                           alt={doc.name}
                         />
