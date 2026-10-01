@@ -98,11 +98,11 @@ export function KanbanColumn({
   return (
     <div
       style={geom.isCustom ? { borderRadius: `${geom.outerRadius}px` } : undefined}
-      className={`flex flex-col w-full max-w-sm group/column density-kanban-column ${
-        isCompact ? "rounded-[18px]" : "rounded-[24px]"
-      } border transition-all duration-200 overflow-hidden h-full max-h-full ${
-        isCompact ? "min-w-[250px] sm:min-w-[260px]" : "min-w-[290px] sm:min-w-[315px]"
-      } ${
+      className={`flex flex-col group/column density-kanban-column ${
+        isCompact
+          ? "rounded-[18px] w-[260px] min-w-[260px] max-w-[260px]"
+          : "rounded-[24px] w-[315px] min-w-[315px] max-w-[315px]"
+      } shrink-0 border transition-all duration-200 overflow-hidden h-full max-h-full ${
         isOver
           ? "bg-primary/5 border-primary/40 ring-2 ring-primary/20 shadow-md"
           : "bg-slate-100/75 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800/80 shadow-xs"
