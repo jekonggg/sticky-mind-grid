@@ -564,7 +564,13 @@ export function KanbanBoard() {
                   ))}
 
                 {permissions.canEditBoard && (
-                  <div className={`${isCompact ? "w-60" : "w-72"} shrink-0 h-full min-h-[220px]`}>
+                  <div
+                    className={`${
+                      isCompact
+                        ? "w-[260px] min-w-[260px] max-w-[260px]"
+                        : "w-[315px] min-w-[315px] max-w-[315px]"
+                    } shrink-0 h-full min-h-[220px]`}
+                  >
                     <button
                       onClick={handleAddNewState}
                       style={geom.isCustom ? { borderRadius: `${geom.outerRadius}px` } : undefined}
