@@ -41,7 +41,7 @@ None — these are independent security improvements.
 - [ ] **Remove dead code** — Delete `src/pages/Index.tsx`, remove `USE_MOCK` branches from `src/services/api.ts`
 - [ ] **Fix CORS duplication** — Remove duplicate CORS initialization in `backend/app/__init__.py`
 - [ ] **Add pytest to requirements.txt** — Backend tests depend on pytest but it's not declared as a dependency
-- [ ] **Expand backend tests:** (currently 34: auth=9, tasks=1, RBAC=19, invitations=5)
+- [ ] **Expand backend tests:** (currently 87: auth=9, boards=5, tasks=1, RBAC=33, invitations=11, privacy_and_tenancy=8, messages=5, notes=1, user_preferences=13, system=1)
   - [ ] Board CRUD endpoints (create, update, list, delete)
   - [ ] Board member management (remove, update role)
   - [ ] Trash/restore flow (create → soft-delete → list trash → restore → verify)

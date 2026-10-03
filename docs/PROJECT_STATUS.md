@@ -68,8 +68,15 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ### Members & Roles (5-Role System)
 - **Role hierarchy** — owner > admin > editor > commenter > viewer (legacy `member` maps to `editor`)
-- **Invite by email** — search registered users, send invitation (Admin & Owner)
-- **Accept/decline invitations** — invitation cards on dashboard
+- **Invite by email** — email-first inviting for registered & non-registered users (Admin & Owner)
+- **Invite lifecycle** — 4-state machine (`pending`, `accepted`, `expired`, `revoked`):
+  - Unregistered users: invite remains pending, auto-attaches upon signup with matching verified email
+  - 7-Day expiration: automatically expires after 7 days; blocks acceptance until resent
+  - Duplicate protection: re-inviting an email updates role and refreshes 7-day expiration
+  - Security check: acceptance strictly requires authenticated email to match invite target (mismatch rejected with 403)
+  - Admin controls: Admin/Owner can resend expired/pending invites (+7 days) or revoke pending invites
+  - Spam rate limit: capped at 20 outgoing invitations per user per 24 hours
+- **Accept/decline invitations** — invitation cards on Teams page & dashboard with expiration indicators
 - **Role management** — admin can manage editor and below; owner manages any role except sole owner demotion/removal
 - **Remove members** — admin can remove; members can leave (sole-owner protection)
 - **Pending invitations** — polling every 6s on dashboard
@@ -257,13 +264,13 @@ Backend routes do manual validation. No use of marshmallow, pydantic, or similar
 **Severity:** Medium
 `JWT_SECRET_KEY` defaults to a hardcoded string. If `JWT_SECRET_KEY` env var is not set in production, all tokens use the same known secret.
 
-### File Serving Without Auth
-**Severity:** Medium
-`GET /api/files/<filename>` and download endpoint require no authentication. Anyone with a file URL can access uploaded files.
+### File Serving Security (Resolved)
+**Status:** Secured
+`GET /api/files/<filename>` and `/api/files/<filename>/download` are strictly permission-checked. Requests require JWT authentication and verify that the user holds active membership on the board containing the file's task or message. Unauthorized or removed members receive HTTP 403 Forbidden.
 
 ### No Rate Limiting
-**Severity:** Medium
-Login, registration, and API endpoints have no rate limiting, making them vulnerable to brute-force attacks.
+**Severity:** Low
+Global endpoint rate limiting is pending, but outgoing invitations are protected with a 20 invites/day rate limit per user.
 
 ### No CSRF Protection
 **Severity:** Low
@@ -291,8 +298,8 @@ Large base64 strings stored in LONGTEXT columns can cause database bloat and slo
 
 ### Framework & Workflow
 - **Strategy:** Tiered testing with fast targeted tests during development, automated full verification checkpoints, and user-triggered Playwright E2E suite (see [`AGENTS.md`](../AGENTS.md)).
-- **Frontend:** Vitest 3.2.4 + React Testing Library 16 + jsdom + `@vitest/coverage-v8`
-- **Backend:** pytest + `pytest-cov` (configured with SQLite in-memory test database, 73% coverage)
+- **Frontend:** Vitest 3.2.4 + React Testing Library 16 + jsdom + `@vitest/coverage-v8` (165 passed tests across 37 test files)
+- **Backend:** pytest + `pytest-cov` (configured with SQLite in-memory test database, 87 passed tests)
 - **E2E:** Playwright 1.57.0 (12 spec suites covering 117 tests, isolated against `sticky_mind_grid_test`)
 - **CI:** GitHub Actions runs backend pytest + coverage, frontend typecheck + vitest coverage, and full-stack Playwright E2E
 
@@ -304,11 +311,13 @@ Large base64 strings stored in LONGTEXT columns can cause database bloat and slo
 | Tasks (CRUD lifecycle) | pytest | 1 test | Single integration test |
 | Boards (CRUD lifecycle & cascade) | pytest | 5 tests | Good — create, get, list, update, cascade delete |
 | Notes (CRUD lifecycle) | pytest | 1 test | Good — create, list, update, delete |
-| RBAC (role matrix) | pytest | 24 tests | Excellent — 5-role hierarchy + column deletion, member redaction, last owner guard, data export |
-| Invitations (invite/accept/decline) | pytest | 5 tests | Good — lifecycle + notifications |
-| System & User Preferences | pytest | 5 tests | Good — health check, preferences, export |
+| RBAC (role matrix) | pytest | 33 tests | Excellent — 5-role hierarchy + column deletion, member redaction, last owner guard, data export, task modal permissions |
+| Invitations (lifecycle, expiration, resend, revoke, rate limit, mismatch) | pytest | 11 tests | Excellent — 4-state lifecycle, 7-day expiration, signup auto-attachment, email security guard, duplicate updates, rate limiting |
+| Privacy & Tenancy (isolation, profile redaction, ownership auto-promote, former member, file auth, workspace) | pytest | 8 tests | Excellent — guest visibility, profile redaction, account deletion auto-promotion, former member attribution, attachment 403, workspace schema |
+| Messages & Conversations | pytest | 5 tests | Good — direct, group, reactions, forwarding, pin/unpin |
+| System & User Preferences | pytest | 15 tests | Good — health check, preferences, export |
 | BoardCard component | Vitest | 3 tests | Partial — renders, owner vs non-owner menu |
-| BoardMembers component | Vitest | 2 tests | Partial — renders members, leave action |
+| BoardMembers component | Vitest | 3 tests | Good — renders members, leave action, pending badge |
 | NotificationBell component | Vitest | 2 tests | Partial — badge, mark all read |
 | BoardsOverview invitations | Vitest | 2 tests | Partial — banner, accept invitation |
 | SettingsModal component & tabs | Vitest | 6 tests | Good — rendering, tabs, theme, data export |

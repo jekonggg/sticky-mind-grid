@@ -506,6 +506,90 @@ Decorators enforce access:
 
 ---
 
+## Board Invite Lifecycle Architecture
+
+### Scenario & Business Rules Matrix
+
+| Scenario | Explicit Business & Security Rule |
+|---|---|
+| **Invitee has no account yet** | The invite remains in `pending` state. When the user signs up and verifies their email, pending invites automatically attach to that verified email and appear in their invitations dashboard. |
+| **Invite expiry** | Invites expire in 7 days (`expires_at = created_at + 7 days`). Expired invites cannot be accepted, but can be resent by an Admin or Owner (which resets expiration to `now + 7 days`). |
+| **Invite by username vs. email** | Strict email-first policy. Usernames can be guessed or spammed. Invitee must explicitly accept the invitation before any board data, columns, tasks, or member lists become accessible. |
+| **Duplicate invites** | Exactly one active invite per email per board. Re-inviting an existing email updates the existing record (updates role if changed, refreshes expiration to `now + 7 days`, updates timestamp) instead of creating duplicate records. |
+| **Invite sent to wrong email** | Board Admins and Owners can revoke the invitation while it is pending (`status -> revoked`). |
+| **Invitee accepts with a different email** | Strictly rejected with HTTP 403. The authenticated user's verified email must match the invite's target email (case-insensitive). The invite remains `pending`. |
+| **Spam protection & Rate limiting** | Outgoing invitations are rate-limited per user per day (e.g., maximum 20 invites per 24 hours) to prevent platform abuse and spam. |
+| **Verified email security binding** | Board membership is granted only when the invitation is accepted by a verified email. This prevents account hijacking where an adversary registers an unverified account using a target's invited email. |
+
+### Lifecycle States
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending : Admin / Owner invites by email
+    Pending --> Accepted : Invitee accepts with matching verified email
+    Pending --> Pending : Invitee attempts accept with different email (Rejected)
+    Pending --> Expired : 7 days elapse without acceptance
+    Pending --> Revoked : Admin / Owner revokes invite
+    Expired --> Pending : Admin / Owner resends invite (+7 days expiry)
+    Accepted --> [*]
+    Revoked --> [*]
+```
+
+- **`Pending`**: Invitation has been sent and is awaiting acceptance; active for 7 days.
+- **`Accepted`**: Invitee has accepted the invitation and joined the board (terminal state for invite; creates active `BoardMember` record).
+- **`Expired`**: 7 days passed without acceptance. Acceptance is disabled; Admin or Owner can resend to reset to `Pending`.
+- **`Revoked`**: Admin or Owner revoked the invitation (terminal state; access denied).
+
+### State Transitions & Edge Cases
+
+1. **Admin/Owner sends invite by email (`[None] -> Pending`):** A new invitation is created with `status = pending` and `expires_at = now + 7 days`. If an invitation already exists for `(board_id, email)`, its role is updated, `expires_at` is extended by 7 days, and `status` is reset to `pending`.
+2. **Pending to Accepted:** Invitee signs in with a verified email matching the invitation and clicks Accept. The invite status changes to `accepted`, an active board membership is provisioned with the designated role, and real-time SSE event `member:joined` is broadcast.
+3. **Pending to Pending (Email Mismatch):** If a user tries to accept an invitation sent to a different email address, the API rejects the request (HTTP 403) and the invitation remains `pending`.
+4. **Pending to Expired:** If `datetime.utcnow() > expires_at`, the invitation is evaluated as expired. Attempts to accept return HTTP 400 (`"Invitation has expired"`).
+5. **Pending to Revoked:** An Admin or Owner cancels the invite. Status becomes `revoked`.
+6. **Expired to Pending:** An Admin or Owner resends the invitation. Status resets to `pending`, and `expires_at` is updated to `utcnow() + timedelta(days=7)`.
+
+---
+
+## Member Privacy and Tenancy Architecture
+
+Sticky Mind Grid implements a strict "locked room" tenancy model ensuring privacy across users, boards, and organization structures.
+
+### 1. Guest Visibility & Board Isolation
+- **Locked Room Boundary**: Board members (including guests and viewers) can see other members assigned to that same board.
+- **Cross-Board Secrecy**: Users never see another user's boards unless they are explicitly invited and accepted onto those boards.
+- **Teammate & Discovery Protection**: Teammate lookups (`/api/users/teammates`) only return users with whom the requesting user shares at least one common board. Global user directory dumping is strictly disallowed.
+
+### 2. User Profile Leakage Prevention
+- **Role-Based Profile Masking**: When members are retrieved via `/api/boards/<board_id>/members` or suggested in `@mentions`:
+  - **Admins & Owners**: Can see member email addresses to manage invitations, roles, and administrative workflows.
+  - **Viewers & Commenters (Guests)**: Receive only `fullName` and `avatarUrl`. Email addresses are redacted (`email = None`) to prevent user profile and personal contact harvesting.
+  - **Pending Guest Invites**: Unregistered pending invitees display as `"Invited Guest"` with redacted email when viewed by viewers or commenters.
+
+### 3. Account Deletion vs. Board Ownership
+- **Ownership Resilience**: If a board owner deletes their account:
+  1. The system locates the oldest active Admin (`role = 'admin'` ordered by `created_at ASC`) and auto-promotes them to `Owner`.
+  2. If no Admin exists, the system locates the oldest active Member/Editor (`role IN ('editor', 'member')` ordered by `created_at ASC`) and auto-promotes them to `Owner`.
+  3. If no other members exist (sole owner board), the orphaned board is cleanly removed.
+- **Self-Account Deletion Endpoint**: `DELETE /api/users/me` handles complete cleanup, auto-promoting successor owners, unlinking memberships, setting authorship references, and purging personal profile data.
+
+### 4. Preserved Content of Removed & Former Members
+- **Authorship Preservation**: Cards and comments authored by removed members or deleted accounts are **never** cascade-deleted. Removing an author must never break team conversation threads or project boards.
+- **Display Fallback**: Any card creator, comment author, or activity performer whose user record is missing or who is no longer on the board is rendered as **"Former member"** with a neutral avatar.
+- **Audit Log Continuity**: Audit activities in the `activities` table remain immutable, attributing past historical events to "Former member" if the account is subsequently closed.
+
+### 5. Permission-Checked File Attachments
+- **Guarded File Serving**: File URLs (`/api/files/<filename>` and `/api/files/<filename>/download`) are not public unauthenticated assets.
+- **Access Verification**: Every file download requires JWT authentication (Bearer token or `?token=` parameter) and verifies that the requesting user currently has active access (`role > 0`) to the board containing the task with the attachment.
+- **Immediate Revocation**: If a member is removed from a board, any cached or copied direct links to attachments immediately yield **HTTP 403 Forbidden**.
+
+### 6. Workspace / Multi-Tenancy Scalability
+- **Hierarchy Readiness**: The data model supports `Workspace → Boards → Columns → Cards`.
+- **Isolation Key**: `board_id` remains the primary isolation key, while `boards.workspace_id` (nullable `String(36)`) provides forward compatibility for enterprise organizations managing dozens of boards and hundreds of users without requiring database re-architecting.
+
+---
+
+
 ## Board Architecture
 
 - Boards have a `columns` JSON array defining kanban columns (e.g., `[{id: "todo", title: "To Do"}, ...]`)
