@@ -19,12 +19,8 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
 
   const fetchActivities = useCallback(async (boardId: string | null) => {
-    if (!boardId) {
-      setActivities([]);
-      return;
-    }
     try {
-      const url = `/activities?boardId=${boardId}`;
+      const url = boardId ? `/activities?boardId=${boardId}` : `/activities`;
       const res = await authenticatedFetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -41,7 +37,7 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   useEffect(() => {
-    if (user && currentBoardId) {
+    if (user) {
       fetchActivities(currentBoardId);
       const interval = setInterval(() => {
         if (document.visibilityState === "visible") {
@@ -124,7 +120,13 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 export const useActivity = () => {
   const context = useContext(ActivityContext);
   if (context === undefined) {
-    throw new Error("useActivity must be used within an ActivityProvider");
+    return {
+      activities: [],
+      addActivity: async () => {},
+      clearActivities: async () => {},
+      setBoardId: () => {},
+      refreshActivities: async () => {},
+    };
   }
   return context;
 };

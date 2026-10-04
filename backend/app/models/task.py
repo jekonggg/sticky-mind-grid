@@ -55,9 +55,13 @@ class Task(db.Model):
 
     def to_dict(self):
         assignee_data = self.assignee.to_dict() if self.assignee else None
+        board_data = self.board
         return {
             'id': self.id,
             'boardId': self.board_id,
+            'boardName': board_data.name if board_data else None,
+            'boardEmoji': board_data.emoji if board_data else None,
+            'boardColor': board_data.color if board_data else None,
             'title': self.title,
             'emoji': self.emoji,
             'description': self.description,

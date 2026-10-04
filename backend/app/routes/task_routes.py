@@ -13,9 +13,11 @@ bp = Blueprint('task_routes', __name__, url_prefix='/api')
 def get_tasks():
     board_id = request.args.get('boardId')
     user_id = get_jwt_identity()
+    assigned_only = request.args.get('assignedToMe', 'false').lower() == 'true'
     
-    if not board_id:
-        return jsonify({'error': 'boardId query parameter is required'}), 400
+    if not board_id or board_id == 'all':
+        tasks = TaskService.get_user_tasks(user_id, assigned_to_me=assigned_only)
+        return jsonify([task.to_dict() for task in tasks]), 200
 
     if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['viewer']:
         return jsonify({'error': 'Unauthorized to view tasks for this board'}), 403

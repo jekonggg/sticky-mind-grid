@@ -12,6 +12,10 @@ import { SettingsProvider } from "./contexts/SettingsContext";
 import { ActivityProvider } from "./hooks/useActivity";
 import { KanbanBoard } from "./components/kanban/KanbanBoard";
 import TaskDetailPage from "./pages/TaskDetailPage";
+import DashboardPage from "./pages/DashboardPage";
+import TasksPage from "./pages/TasksPage";
+import CalendarPage from "./pages/CalendarPage";
+import TeamsPage from "./pages/TeamsPage";
 import MessagesPage from "./pages/MessagesPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -36,6 +40,10 @@ const App = () => (
                   <Route element={<ProtectedRoute />}>
                     <Route element={<AppLayout />}>
                       <Route path="/" element={<BoardsOverview />} />
+                      <Route path="/dashboard" element={<DashboardPage />} />
+                      <Route path="/tasks" element={<TasksPage />} />
+                      <Route path="/calendar" element={<CalendarPage />} />
+                      <Route path="/teams" element={<TeamsPage />} />
                       <Route path="/boards/:boardId" element={<KanbanBoard />} />
                       <Route path="/boards/:boardId/tasks/:taskId" element={<TaskDetailPage />} />
                       <Route path="/messages" element={<MessagesPage />} />

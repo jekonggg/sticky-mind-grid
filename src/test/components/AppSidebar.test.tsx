@@ -111,4 +111,24 @@ describe("AppSidebar Component", () => {
     fireEvent.click(collapseBtn);
     expect(onToggleCollapse).toHaveBeenCalledTimes(1);
   });
+
+  it("opens personal scratchpad when clicking Personal Scratchpad", async () => {
+    renderWithProviders(
+      <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />
+    );
+
+    // Expand Personal Files section if collapsed
+    const personalFilesHeader = screen.getByText("Personal Files");
+    fireEvent.click(personalFilesHeader);
+
+    await waitFor(() => {
+      const scratchpadBtn = screen.getByText("Personal Scratchpad");
+      expect(scratchpadBtn).toBeInTheDocument();
+      fireEvent.click(scratchpadBtn);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Personal Files & Scratchpad")).toBeInTheDocument();
+    });
+  });
 });

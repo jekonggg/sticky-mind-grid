@@ -15,6 +15,21 @@ class TaskService:
         return Task.query.filter_by(board_id=board_id, is_deleted=False).order_by(Task.position.asc(), Task.created_at.asc()).all()
 
     @staticmethod
+    def get_user_tasks(user_id, assigned_to_me=False):
+        from app.models.board_member import BoardMember
+        board_ids_query = db.session.query(BoardMember.board_id).filter(
+            BoardMember.user_id == user_id,
+            BoardMember.status == 'accepted'
+        )
+        query = Task.query.filter(
+            Task.board_id.in_(board_ids_query),
+            Task.is_deleted == False
+        )
+        if assigned_to_me:
+            query = query.filter(Task.assigned_to == user_id)
+        return query.order_by(Task.due_date.asc(), Task.created_at.desc()).all()
+
+    @staticmethod
     def get_deleted_tasks(board_id):
         if not board_id:
             return []

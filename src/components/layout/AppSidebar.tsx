@@ -50,6 +50,7 @@ import {
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { BoardModal } from "@/components/boards/BoardModal";
 import { NoteModal } from "@/components/documents/NoteModal";
+import { PersonalScratchpadModal } from "@/components/documents/PersonalScratchpadModal";
 import { SettingsTab } from "@/types/settings";
 import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { toast } from "sonner";
@@ -88,6 +89,7 @@ export function AppSidebar({
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [isScratchpadOpen, setIsScratchpadOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
   // Sync section expansion with localStorage
@@ -171,8 +173,11 @@ export function AppSidebar({
   const userInitial = user?.fullName?.charAt(0) || user?.email?.charAt(0) || "U";
   const userName = user?.fullName || user?.email?.split("@")[0] || "User";
 
-  const isHomeActive = location.pathname === "/";
-  const isDashboardActive = location.pathname === "/" && location.hash === "#dashboard";
+  const isHomeActive = location.pathname === "/" && !boardId;
+  const isDashboardActive = location.pathname === "/dashboard";
+  const isTasksActive = location.pathname === "/tasks";
+  const isCalendarActive = location.pathname === "/calendar";
+  const isTeamsActive = location.pathname === "/teams";
   const isMessagesActive = location.pathname.startsWith("/messages");
 
   return (
@@ -289,12 +294,12 @@ export function AppSidebar({
                 <button
                   onClick={() => navigate("/")}
                   className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
-                    isHomeActive && !boardId
+                    isHomeActive
                       ? "bg-primary/10 text-primary font-semibold border border-primary/20 shadow-2xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   } ${isCollapsed ? "justify-center px-0" : ""}`}
                 >
-                  <Home className={`h-4 w-4 shrink-0 ${isHomeActive && !boardId ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
+                  <Home className={`h-4 w-4 shrink-0 ${isHomeActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                   {!isCollapsed && <span>Home</span>}
                 </button>
               </TooltipTrigger>
@@ -305,14 +310,14 @@ export function AppSidebar({
             <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => navigate("/")}
+                  onClick={() => navigate("/dashboard")}
                   className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
                     isDashboardActive
                       ? "bg-primary/10 text-primary font-semibold border border-primary/20 shadow-2xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   } ${isCollapsed ? "justify-center px-0" : ""}`}
                 >
-                  <LayoutDashboard className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+                  <LayoutDashboard className={`h-4 w-4 shrink-0 ${isDashboardActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                   {!isCollapsed && <span>Dashboard</span>}
                 </button>
               </TooltipTrigger>
@@ -398,13 +403,15 @@ export function AppSidebar({
             <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => navigate("/")}
-                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
-                    isCollapsed ? "justify-center px-0" : ""
-                  }`}
+                  onClick={() => navigate("/tasks")}
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
+                    isTasksActive
+                      ? "bg-primary/10 text-primary font-semibold border border-primary/20 shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  } ${isCollapsed ? "justify-center px-0" : ""}`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <CheckSquare className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+                    <CheckSquare className={`h-4 w-4 shrink-0 ${isTasksActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                     {!isCollapsed && <span>Tasks</span>}
                   </div>
                   {!isCollapsed && (
@@ -421,12 +428,14 @@ export function AppSidebar({
             <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => navigate("/")}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
-                    isCollapsed ? "justify-center px-0" : ""
-                  }`}
+                  onClick={() => navigate("/calendar")}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
+                    isCalendarActive
+                      ? "bg-primary/10 text-primary font-semibold border border-primary/20 shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  } ${isCollapsed ? "justify-center px-0" : ""}`}
                 >
-                  <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+                  <CalendarDays className={`h-4 w-4 shrink-0 ${isCalendarActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                   {!isCollapsed && <span>Calendar</span>}
                 </button>
               </TooltipTrigger>
@@ -437,13 +446,15 @@ export function AppSidebar({
             <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => navigate("/")}
-                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
-                    isCollapsed ? "justify-center px-0" : ""
-                  }`}
+                  onClick={() => navigate("/teams")}
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
+                    isTeamsActive
+                      ? "bg-primary/10 text-primary font-semibold border border-primary/20 shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  } ${isCollapsed ? "justify-center px-0" : ""}`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <Users className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+                    <Users className={`h-4 w-4 shrink-0 ${isTeamsActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                     {!isCollapsed && <span>Teams</span>}
                   </div>
                   {!isCollapsed && invitations.length > 0 && (
@@ -500,7 +511,7 @@ export function AppSidebar({
             <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => openSettingsTab("appearance")}
+                  onClick={() => openSettingsTab("profile")}
                   className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
                     isCollapsed ? "justify-center px-0" : ""
                   }`}
@@ -598,6 +609,17 @@ export function AppSidebar({
 
                 {!isCollapsed && (
                   <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsScratchpadOpen(true);
+                      }}
+                      className="h-5 w-5 flex items-center justify-center rounded hover:bg-background text-muted-foreground hover:text-amber-500 transition-colors"
+                      title="New Personal Scratchpad Note"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
                     {isPersonalFilesExpanded ? (
                       <ChevronDown className="h-3 w-3 text-muted-foreground" />
                     ) : (
@@ -610,10 +632,7 @@ export function AppSidebar({
               {!isCollapsed && isPersonalFilesExpanded && (
                 <div className="pl-4 pr-1 py-1 space-y-0.5 border-l border-border/40 ml-4 my-1">
                   <button
-                    onClick={() => {
-                      setSelectedNote(null);
-                      setIsNoteModalOpen(true);
-                    }}
+                    onClick={() => setIsScratchpadOpen(true)}
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors group cursor-pointer text-left"
                   >
                     <StickyNote className="h-3.5 w-3.5 shrink-0 text-amber-500" />
@@ -699,6 +718,11 @@ export function AppSidebar({
         }}
         note={selectedNote}
         onSubmit={(data) => createNoteMutation.mutate(data as CreateNoteData)}
+      />
+
+      <PersonalScratchpadModal
+        open={isScratchpadOpen}
+        onClose={() => setIsScratchpadOpen(false)}
       />
     </>
   );

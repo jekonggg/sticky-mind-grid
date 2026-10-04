@@ -70,4 +70,37 @@ export const userApi = {
     }
     return res.json();
   },
+
+  async getTeammates(): Promise<Array<{
+    id: string;
+    email: string;
+    fullName?: string;
+    avatarUrl?: string;
+    role: string;
+    sharedBoards: Array<{ id: string; name: string; emoji?: string; color?: string; role: string }>;
+  }>> {
+    const token = getStoredToken();
+    const res = await fetch(`${API_BASE}/users/teammates`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) {
+      throw new Error("Failed to fetch teammates");
+    }
+    return res.json();
+  },
+
+  async searchUsers(query: string): Promise<Array<{ id: string; email: string; fullName?: string; avatarUrl?: string }>> {
+    const token = getStoredToken();
+    const res = await fetch(`${API_BASE}/users/search?q=${encodeURIComponent(query)}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) {
+      throw new Error("Failed to search users");
+    }
+    return res.json();
+  },
 };

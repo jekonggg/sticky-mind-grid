@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import { AuthContext, AuthContextType } from "@/contexts/AuthContext";
 import { ThemeProvider } from "next-themes";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { ActivityProvider } from "@/hooks/useActivity";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { User } from "@/types/user";
 
@@ -53,7 +54,9 @@ export function renderWithProviders(
           <TooltipProvider>
             <AuthContext.Provider value={authValue}>
               <SettingsProvider>
-                <BrowserRouter>{children}</BrowserRouter>
+                <ActivityProvider>
+                  <BrowserRouter>{children}</BrowserRouter>
+                </ActivityProvider>
               </SettingsProvider>
             </AuthContext.Provider>
           </TooltipProvider>

@@ -1,0 +1,585 @@
+import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { taskApi } from "@/services/api";
+import { boardApi } from "@/services/boardApi";
+import { useAuth } from "@/contexts/AuthContext";
+import { BoardHeader } from "@/components/kanban/BoardHeader";
+import { Task, Priority, CreateTaskData } from "@/types/task";
+import { Board } from "@/types/board";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  CheckSquare,
+  Search,
+  Filter,
+  Plus,
+  Clock,
+  CheckCircle2,
+  Calendar,
+  AlertCircle,
+  LayoutGrid,
+  List as ListIcon,
+  Layers,
+  ArrowUpDown,
+  Tag as TagIcon,
+  Sparkles,
+} from "lucide-react";
+import { TaskModal } from "@/components/kanban/TaskModal";
+import { toast } from "sonner";
+
+type FilterTab = "all" | "assigned" | "created" | "completed" | "overdue";
+type SortOption = "dueDate" | "priority" | "title" | "created";
+
+export default function TasksPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const [activeTab, setActiveTab] = useState<FilterTab>("all");
+  const [search, setSearch] = useState("");
+  const [selectedBoardId, setSelectedBoardId] = useState<string>("all");
+  const [selectedPriority, setSelectedPriority] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<SortOption>("dueDate");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+
+  const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
+  const [targetBoardForNewTask, setTargetBoardForNewTask] = useState<string>("");
+
+  // Fetch all user boards
+  const { data: boards = [] } = useQuery<Board[]>({
+    queryKey: ["boards"],
+    queryFn: () => boardApi.getBoards(),
+  });
+
+  // Fetch all user tasks
+  const { data: tasks = [], isLoading } = useQuery<Task[]>({
+    queryKey: ["globalTasks"],
+    queryFn: () => taskApi.getTasks(),
+  });
+
+  // Task mutation
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      taskApi.updateTask(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
+      toast.success("Task updated");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to update task");
+    },
+  });
+
+  const createTaskMutation = useMutation({
+    mutationFn: (data: CreateTaskData & { boardId: string }) =>
+      taskApi.createTask(data),
+    onSuccess: (newTask) => {
+      queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
+      toast.success(`Task "${newTask.title}" created!`);
+      setIsNewTaskModalOpen(false);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to create task");
+    },
+  });
+
+  // Filter & Sort Tasks
+  const filteredTasks = useMemo(() => {
+    const currentTime = new Date();
+    return tasks
+      .filter((task) => {
+        // Tab Filter
+        if (activeTab === "assigned" && task.assignedTo !== user?.id) return false;
+        if (activeTab === "created" && task.createdBy !== user?.id) return false;
+        if (activeTab === "completed" && task.status !== "done" && task.progress !== 100) return false;
+        if (activeTab === "overdue") {
+          if (!task.dueDate || task.status === "done" || task.progress === 100) return false;
+          if (new Date(task.dueDate) >= currentTime) return false;
+        }
+
+        // Board Filter
+        if (selectedBoardId !== "all" && task.boardId !== selectedBoardId) return false;
+
+        // Priority Filter
+        if (selectedPriority !== "all" && task.priority !== selectedPriority) return false;
+
+        // Search Query
+        if (search.trim()) {
+          const q = search.toLowerCase();
+          const matchesTitle = task.title.toLowerCase().includes(q);
+          const matchesDesc = task.description?.toLowerCase().includes(q);
+          const matchesBoard = task.boardName?.toLowerCase().includes(q);
+          if (!matchesTitle && !matchesDesc && !matchesBoard) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === "dueDate") {
+          if (!a.dueDate) return 1;
+          if (!b.dueDate) return -1;
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        }
+        if (sortBy === "priority") {
+          const pOrder: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
+          return (pOrder[b.priority] || 0) - (pOrder[a.priority] || 0);
+        }
+        if (sortBy === "title") {
+          return a.title.localeCompare(b.title);
+        }
+        if (sortBy === "created") {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        return 0;
+      });
+  }, [tasks, activeTab, selectedBoardId, selectedPriority, search, sortBy, user]);
+
+  const handleToggleComplete = (task: Task, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const isNowDone = task.status !== "done" && task.progress !== 100;
+    updateTaskMutation.mutate({
+      id: task.id,
+      data: {
+        status: isNowDone ? "done" : "todo",
+        progress: isNowDone ? 100 : 0,
+      },
+    });
+  };
+
+  const handleOpenNewTask = () => {
+    if (boards.length === 0) {
+      toast.error("Please create a board first before adding tasks.");
+      return;
+    }
+    setTargetBoardForNewTask(selectedBoardId !== "all" ? selectedBoardId : boards[0].id);
+    setIsNewTaskModalOpen(true);
+  };
+
+  const activeTargetBoard = boards.find((b) => b.id === targetBoardForNewTask) || boards[0];
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <BoardHeader showSearch={false} />
+
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Header Title & Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+                <CheckSquare className="h-4 w-4" />
+              </div>
+              <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">
+                All Workspace Tasks
+              </h1>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Manage and track all tasks across your collaborative boards
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="flex items-center bg-muted/50 p-1 rounded-xl border border-border/60">
+              <Button
+                size="sm"
+                variant={viewMode === "list" ? "default" : "ghost"}
+                onClick={() => setViewMode("list")}
+                className="h-7 px-2.5 text-xs font-semibold"
+              >
+                <ListIcon className="h-3.5 w-3.5 mr-1" />
+                List
+              </Button>
+              <Button
+                size="sm"
+                variant={viewMode === "grid" ? "default" : "ghost"}
+                onClick={() => setViewMode("grid")}
+                className="h-7 px-2.5 text-xs font-semibold"
+              >
+                <LayoutGrid className="h-3.5 w-3.5 mr-1" />
+                Grid
+              </Button>
+            </div>
+
+            <Button onClick={handleOpenNewTask} className="gap-1.5 font-semibold text-xs h-9">
+              <Plus className="h-4 w-4" />
+              <span>Create Task</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Tab Filters */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
+          {[
+            { id: "all", label: "All Tasks", count: tasks.length },
+            {
+              id: "assigned",
+              label: "Assigned to Me",
+              count: tasks.filter((t) => t.assignedTo === user?.id).length,
+            },
+            {
+              id: "created",
+              label: "Created by Me",
+              count: tasks.filter((t) => t.createdBy === user?.id).length,
+            },
+            {
+              id: "overdue",
+              label: "Overdue",
+              count: tasks.filter(
+                (t) => t.dueDate && t.status !== "done" && t.progress !== 100 && new Date(t.dueDate) < now
+              ).length,
+            },
+            {
+              id: "completed",
+              label: "Completed",
+              count: tasks.filter((t) => t.status === "done" || t.progress === 100).length,
+            },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as FilterTab)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === tab.id
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "bg-muted/40 text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+              }`}
+            >
+              <span>{tab.label}</span>
+              <Badge
+                variant="outline"
+                className={`text-[10px] px-1.5 py-0 h-4 border-0 font-mono ${
+                  activeTab === tab.id
+                    ? "bg-primary-foreground/20 text-primary-foreground font-bold"
+                    : "bg-background text-muted-foreground"
+                }`}
+              >
+                {tab.count}
+              </Badge>
+            </button>
+          ))}
+        </div>
+
+        {/* Search & Select Filters */}
+        <div className="flex flex-wrap items-center gap-3 bg-card p-3.5 rounded-2xl border border-border/60 shadow-xs">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Filter tasks by name, description, board..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-9 text-xs bg-background/60 border-border/60"
+            />
+          </div>
+
+          <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
+            <SelectTrigger className="w-[160px] h-9 text-xs bg-background/60 border-border/60">
+              <SelectValue placeholder="All Boards" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Boards</SelectItem>
+              {boards.map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {b.emoji || "📋"} {b.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+            <SelectTrigger className="w-[130px] h-9 text-xs bg-background/60 border-border/60">
+              <SelectValue placeholder="All Priorities" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Priorities</SelectItem>
+              <SelectItem value="urgent">Urgent</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+            <SelectTrigger className="w-[140px] h-9 text-xs bg-background/60 border-border/60">
+              <SelectValue placeholder="Sort By" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dueDate">Due Date</SelectItem>
+              <SelectItem value="priority">Priority</SelectItem>
+              <SelectItem value="title">Title (A-Z)</SelectItem>
+              <SelectItem value="created">Created Date</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Task List / Grid Display */}
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-16 rounded-xl bg-muted/40 animate-pulse" />
+            ))}
+          </div>
+        ) : filteredTasks.length === 0 ? (
+          <div className="py-20 text-center rounded-3xl bg-card border border-border/60 p-8 space-y-3">
+            <CheckSquare className="h-12 w-12 text-muted-foreground/30 mx-auto" />
+            <h3 className="text-base font-bold text-foreground">No tasks found</h3>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              No tasks match your current filter settings. Try adjusting search or create a new task.
+            </p>
+            <Button size="sm" onClick={handleOpenNewTask} className="gap-1.5 font-semibold">
+              <Plus className="h-4 w-4" />
+              Create Task
+            </Button>
+          </div>
+        ) : viewMode === "list" ? (
+          /* List Table View */
+          <div className="bg-card rounded-2xl border border-border/60 overflow-hidden shadow-xs">
+            <div className="divide-y divide-border/50">
+              {filteredTasks.map((task) => {
+                const isDone = task.status === "done" || task.progress === 100;
+                const isOverdue =
+                  task.dueDate && !isDone && new Date(task.dueDate) < now;
+
+                return (
+                  <div
+                    key={task.id}
+                    onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
+                    className="p-4 flex items-center justify-between gap-4 hover:bg-muted/30 transition-colors cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleComplete(task, e)}
+                        className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
+                          isDone
+                            ? "bg-emerald-500 border-emerald-500 text-white"
+                            : "border-border/80 hover:border-primary bg-background"
+                        }`}
+                      >
+                        {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
+                      </button>
+
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          {task.emoji && <span className="text-sm">{task.emoji}</span>}
+                          <span
+                            className={`text-sm font-semibold truncate ${
+                              isDone
+                                ? "line-through text-muted-foreground"
+                                : "text-foreground group-hover:text-primary transition-colors"
+                            }`}
+                          >
+                            {task.title}
+                          </span>
+                        </div>
+
+                        {task.description && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                            {task.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      {/* Board Badge */}
+                      {task.boardName && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/boards/${task.boardId}`);
+                          }}
+                          className="hover:opacity-80"
+                        >
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-2 py-0.5 bg-primary/5 text-primary border-primary/20 font-medium"
+                          >
+                            {task.boardEmoji || "📋"} {task.boardName}
+                          </Badge>
+                        </button>
+                      )}
+
+                      {/* Priority */}
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] uppercase font-mono px-2 py-0.5 ${
+                          task.priority === "high" || task.priority === "urgent"
+                            ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
+                            : task.priority === "medium"
+                            ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                            : "bg-slate-500/10 text-slate-600 border-slate-500/20"
+                        }`}
+                      >
+                        {task.priority}
+                      </Badge>
+
+                      {/* Assignee Avatar */}
+                      {task.assignee ? (
+                        <Avatar className="h-6 w-6 border border-border/60" title={task.assignee.fullName || task.assignee.email}>
+                          <AvatarImage src={task.assignee.avatarUrl} />
+                          <AvatarFallback className="text-[9px] font-bold">
+                            {task.assignee.fullName?.charAt(0) || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground/60 italic hidden md:inline">Unassigned</span>
+                      )}
+
+                      {/* Due Date */}
+                      {task.dueDate && (
+                        <span
+                          className={`text-xs font-medium flex items-center gap-1 min-w-[75px] justify-end ${
+                            isOverdue ? "text-rose-500 font-bold" : "text-muted-foreground"
+                          }`}
+                        >
+                          <Clock className="h-3 w-3" />
+                          {new Date(task.dueDate).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          /* Grid Cards View */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredTasks.map((task) => {
+              const isDone = task.status === "done" || task.progress === 100;
+              const isOverdue =
+                task.dueDate && !isDone && new Date(task.dueDate) < now;
+
+              return (
+                <div
+                  key={task.id}
+                  onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
+                  className="p-5 rounded-2xl bg-card border border-border/60 hover:border-primary/40 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-4 cursor-pointer group"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      {task.boardName && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1.5 py-0 bg-primary/5 text-primary border-primary/20"
+                        >
+                          {task.boardEmoji || "📋"} {task.boardName}
+                        </Badge>
+                      )}
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] uppercase font-mono px-1.5 py-0 ${
+                          task.priority === "high" || task.priority === "urgent"
+                            ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
+                            : task.priority === "medium"
+                            ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                            : "bg-slate-500/10 text-slate-600 border-slate-500/20"
+                        }`}
+                      >
+                        {task.priority}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleComplete(task, e)}
+                        className={`h-5 w-5 mt-0.5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
+                          isDone
+                            ? "bg-emerald-500 border-emerald-500 text-white"
+                            : "border-border/80 hover:border-primary bg-background"
+                        }`}
+                      >
+                        {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
+                      </button>
+
+                      <div className="min-w-0 flex-1">
+                        <h4
+                          className={`text-sm font-bold truncate ${
+                            isDone
+                              ? "line-through text-muted-foreground"
+                              : "text-foreground group-hover:text-primary transition-colors"
+                          }`}
+                        >
+                          {task.emoji && <span className="mr-1.5">{task.emoji}</span>}
+                          {task.title}
+                        </h4>
+                        {task.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                            {task.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground">
+                    {task.assignee ? (
+                      <div className="flex items-center gap-1.5">
+                        <Avatar className="h-5 w-5 border border-border/50">
+                          <AvatarImage src={task.assignee.avatarUrl} />
+                          <AvatarFallback className="text-[9px] font-bold">
+                            {task.assignee.fullName?.charAt(0) || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-[11px] font-medium truncate max-w-[100px]">
+                          {task.assignee.fullName || task.assignee.email}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="italic text-[11px]">Unassigned</span>
+                    )}
+
+                    {task.dueDate && (
+                      <span
+                        className={`font-semibold flex items-center gap-1 ${
+                          isOverdue ? "text-rose-500" : ""
+                        }`}
+                      >
+                        <Clock className="h-3 w-3" />
+                        {new Date(task.dueDate).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+
+      {/* Task Creation Modal */}
+      {activeTargetBoard && (
+        <TaskModal
+          isOpen={isNewTaskModalOpen}
+          onClose={() => setIsNewTaskModalOpen(false)}
+          task={null}
+          boardId={activeTargetBoard.id}
+          columns={activeTargetBoard.columns || [{ id: "todo", title: "To Do" }]}
+          onSave={async (data) => {
+            await createTaskMutation.mutateAsync({
+              ...data,
+              boardId: activeTargetBoard.id,
+            });
+          }}
+        />
+      )}
+    </div>
+  );
+}

@@ -109,6 +109,15 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 - **Attachments & Media** — send images (with lightbox preview) and documents (downloadable)
 - **Reply Threads & Emoji Reactions** — reply to specific messages with preview banner, toggle emoji reactions on any message
 
+### Global Workspace Hub & Navigation
+- **Workspace Dashboard (`/dashboard`)** — Welcome hero header, real-time KPI metric cards (Total Boards, Active Tasks, Completed Tasks, Overdue/Urgent Count), assigned priority tasks with quick completion checkboxes, upcoming deadlines agenda, and live workspace activity stream.
+- **Global Tasks Manager (`/tasks`)** — Unified cross-board task view with filter tabs ("All", "Assigned to Me", "Created by Me", "Completed", "Overdue"), board dropdown filter, priority filter, multi-criteria sorting (due date, priority, title, created), search query, and list/grid switchable views.
+- **Global Workspace Calendar (`/calendar`)** — 7-day month matrix displaying scheduled task deadlines across all boards with day inspection, timezone-safe date matching, day agenda sidebar, overdue tasks list, and direct task scheduling modal.
+- **Teams & Collaborators Directory (`/teams`)** — Workspace collaborator directory across shared boards, pending invitation cards with 1-click Accept/Decline, board roles & permissions overview, and direct message shortcuts.
+- **Personal Files & Scratchpad (`PersonalScratchpadModal`)** — User-scoped private sticky notes & markdown scratchpad modal with color presets (amber, emerald, blue, purple, rose), pinned notes, instant persistence, and quick action bar.
+- **Quick Search Command Palette (`CommandSearchDialog`)** — Global `⌘K` / `Ctrl+K` command dialog searching boards, tasks, teammates, and system actions with keyboard navigation.
+- **Unified App Layout & Sidebar (`AppSidebar`, `AppLayout`)** — Consistent layout wrapping all authenticated routes with responsive collapsed icon rail, active route indicators, tooltips, notification counters, and modal triggers.
+
 ---
 
 ## Partially Implemented Features

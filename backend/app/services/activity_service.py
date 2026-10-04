@@ -11,6 +11,17 @@ class ActivityService:
         return query.order_by(Activity.timestamp.desc()).limit(limit).all()
 
     @staticmethod
+    def get_user_activities(user_id, limit=50):
+        from app.models.board_member import BoardMember
+        board_ids_query = db.session.query(BoardMember.board_id).filter(
+            BoardMember.user_id == user_id,
+            BoardMember.status == 'accepted'
+        )
+        return Activity.query.filter(
+            Activity.board_id.in_(board_ids_query)
+        ).order_by(Activity.timestamp.desc()).limit(limit).all()
+
+    @staticmethod
     def add_activity(data):
         new_activity = Activity(
             board_id=data.get('boardId'),

@@ -26,6 +26,9 @@ export interface Tag {
 export interface Task {
   id: string;
   boardId: string;
+  boardName?: string;
+  boardEmoji?: string;
+  boardColor?: string;
   title: string;
   emoji?: string;
   description?: string;

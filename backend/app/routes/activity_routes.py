@@ -10,14 +10,15 @@ bp = Blueprint('activity_routes', __name__, url_prefix='/api/activities')
 def get_activities():
     board_id = request.args.get('boardId')
     user_id = get_jwt_identity()
+    limit = request.args.get('limit', 50, type=int)
 
-    if not board_id:
-        return jsonify({'error': 'boardId query parameter is required'}), 400
+    if not board_id or board_id == 'all':
+        activities = ActivityService.get_user_activities(user_id, limit)
+        return jsonify([activity.to_dict() for activity in activities]), 200
 
     if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['viewer']:
         return jsonify({'error': 'Unauthorized to view activities for this board'}), 403
 
-    limit = request.args.get('limit', 50, type=int)
     activities = ActivityService.get_activities(board_id, limit)
     return jsonify([activity.to_dict() for activity in activities]), 200
 

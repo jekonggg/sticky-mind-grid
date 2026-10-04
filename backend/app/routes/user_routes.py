@@ -121,3 +121,73 @@ def export_user_data():
         mimetype='application/json',
         headers={'Content-Disposition': f'attachment;filename=sticky_mind_grid_export_{user_id[:8]}.json'}
     )
+
+@bp.route('/teammates', methods=['GET'])
+@jwt_required()
+def get_teammates():
+    user_id = get_jwt_identity()
+    
+    # 1. Get all boards current user is a member of
+    user_memberships = BoardMember.query.filter_by(user_id=user_id, status='accepted').all()
+    user_board_ids = [m.board_id for m in user_memberships]
+    
+    if not user_board_ids:
+        # Also include all registered users as potential teammates if no boards yet
+        other_users = User.query.filter(User.id != user_id).limit(20).all()
+        return jsonify([{
+            'id': u.id,
+            'email': u.email,
+            'fullName': u.full_name,
+            'avatarUrl': u.avatar_url,
+            'sharedBoards': [],
+            'role': 'collaborator'
+        } for u in other_users]), 200
+
+    # 2. Get all accepted members across these boards
+    all_members = BoardMember.query.filter(
+        BoardMember.board_id.in_(user_board_ids),
+        BoardMember.status == 'accepted',
+        BoardMember.user_id != user_id
+    ).all()
+
+    teammates_map = {}
+    for m in all_members:
+        u = m.user
+        b = m.board
+        if not u:
+            continue
+        if u.id not in teammates_map:
+            teammates_map[u.id] = {
+                'id': u.id,
+                'email': u.email,
+                'fullName': u.full_name,
+                'avatarUrl': u.avatar_url,
+                'sharedBoards': [],
+                'role': m.role
+            }
+        if b:
+            teammates_map[u.id]['sharedBoards'].append({
+                'id': b.id,
+                'name': b.name,
+                'emoji': b.emoji,
+                'color': b.color,
+                'role': m.role
+            })
+
+    # Also include any other registered users not yet in boards to easily start chats or invites
+    other_users = User.query.filter(
+        User.id != user_id,
+        ~User.id.in_(list(teammates_map.keys()))
+    ).limit(10).all() if len(teammates_map) < 20 else []
+
+    for u in other_users:
+        teammates_map[u.id] = {
+            'id': u.id,
+            'email': u.email,
+            'fullName': u.full_name,
+            'avatarUrl': u.avatar_url,
+            'sharedBoards': [],
+            'role': 'member'
+        }
+
+    return jsonify(list(teammates_map.values())), 200
