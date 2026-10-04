@@ -240,7 +240,7 @@ export default function TaskDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary/20">
+    <div className="h-full bg-background text-foreground flex flex-col overflow-hidden selection:bg-primary/20">
       <TaskDetailWorkspace
         task={task}
         board={board}

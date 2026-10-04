@@ -101,8 +101,25 @@ describe("TaskDetailWorkspace Component", () => {
       />
     );
 
-    const closeBtn = screen.getByTitle(/close task/i);
-    fireEvent.click(closeBtn);
+    const backBtn = screen.getByTitle(/back to board/i);
+    fireEvent.click(backBtn);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onClose when clicking the top-right X close button", () => {
+    renderWithProviders(
+      <TaskDetailWorkspace
+        task={mockTask}
+        board={mockBoard}
+        members={[]}
+        onClose={onClose}
+        onUpdateTask={onUpdateTask}
+        onDeleteTask={onDeleteTask}
+      />
+    );
+
+    const xCloseBtn = screen.getByRole("button", { name: /^close task$/i });
+    fireEvent.click(xCloseBtn);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

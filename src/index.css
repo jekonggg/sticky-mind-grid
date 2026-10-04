@@ -142,8 +142,8 @@ All colors MUST be HSL.
   }
 
   .custom-scrollbar::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 7px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
@@ -151,6 +151,6 @@ All colors MUST be HSL.
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
+    @apply bg-muted-foreground/25 rounded-full hover:bg-muted-foreground/50 transition-colors;
   }
 }

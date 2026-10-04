@@ -118,7 +118,7 @@ export default function BoardsOverview() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background pb-20">
       <BoardHeader showSearch={false} />
       <BoardsHeroBanner />
 

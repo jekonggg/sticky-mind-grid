@@ -44,6 +44,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TaskModal } from "@/components/kanban/TaskModal";
+import { PillNavBar } from "@/components/common/PillNavBar";
 import { toast } from "sonner";
 
 type FilterTab = "all" | "assigned" | "created" | "completed" | "overdue";
@@ -179,10 +180,10 @@ export default function TasksPage() {
   const activeTargetBoard = boards.find((b) => b.id === targetBoardForNewTask) || boards[0];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background">
       <BoardHeader showSearch={false} />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20 space-y-6">
         {/* Header Title & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1">
@@ -200,26 +201,17 @@ export default function TasksPage() {
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
-            <div className="flex items-center bg-muted/50 p-1 rounded-xl border border-border/60">
-              <Button
-                size="sm"
-                variant={viewMode === "list" ? "default" : "ghost"}
-                onClick={() => setViewMode("list")}
-                className="h-7 px-2.5 text-xs font-semibold"
-              >
-                <ListIcon className="h-3.5 w-3.5 mr-1" />
-                List
-              </Button>
-              <Button
-                size="sm"
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                onClick={() => setViewMode("grid")}
-                className="h-7 px-2.5 text-xs font-semibold"
-              >
-                <LayoutGrid className="h-3.5 w-3.5 mr-1" />
-                Grid
-              </Button>
-            </div>
+            <PillNavBar
+              items={[
+                { id: "list", label: "List", icon: ListIcon },
+                { id: "grid", label: "Grid", icon: LayoutGrid },
+              ]}
+              activeId={viewMode}
+              onChange={(id) => setViewMode(id as "list" | "grid")}
+              accentColor="violet"
+              size="sm"
+              layoutId="tasksViewActivePill"
+            />
 
             <Button onClick={handleOpenNewTask} className="gap-1.5 font-semibold text-xs h-9">
               <Plus className="h-4 w-4" />

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Trash2, Copy, Check, Sparkles, Image as ImageIcon, Smile, Share2, MoreHorizontal, Loader2 } from "lucide-react";
+import { ArrowLeft, Trash2, Copy, Check, Sparkles, Image as ImageIcon, Smile, Share2, MoreHorizontal, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmojiSelector } from "../common/EmojiSelector";
@@ -94,7 +94,7 @@ export function TaskHeader({
             size="sm"
             onClick={handleBack}
             className="gap-1.5 text-xs font-semibold px-2.5 h-8 hover:text-foreground text-muted-foreground"
-            title="Close task (Esc)"
+            title="Back to board"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Board</span>
@@ -134,6 +134,19 @@ export function TaskHeader({
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Delete Task</span>
+            </Button>
+          )}
+
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 ml-0.5"
+              title="Close task (Esc)"
+              aria-label="Close task"
+            >
+              <X className="h-4 w-4" />
             </Button>
           )}
         </div>

@@ -60,6 +60,7 @@ import { InviteMemberDialog } from "../board/InviteMemberDialog";
 
 import { useActivity } from "@/hooks/useActivity";
 import { useSettings } from "@/contexts/SettingsContext";
+import { PillNavBar } from "@/components/common/PillNavBar";
 
 export function KanbanBoard() {
   const { boardId } = useParams<{ boardId: string }>();
@@ -162,6 +163,40 @@ export function KanbanBoard() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
+
+  // Enable smooth horizontal scrolling with mouse wheel over board canvas
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || activeView !== "board") return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // If user is scrolling mostly vertically on mouse wheel
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        // Check if the event target is inside an element that handles vertical scrolling
+        let target = e.target as HTMLElement | null;
+        let isInnerScrollable = false;
+        while (target && target !== el) {
+          if (
+            target.scrollHeight > target.clientHeight &&
+            (getComputedStyle(target).overflowY === "auto" || getComputedStyle(target).overflowY === "scroll")
+          ) {
+            isInnerScrollable = true;
+            break;
+          }
+          target = target.parentElement;
+        }
+
+        // If not inside an inner scrollable container and board has horizontal overflow
+        if (!isInnerScrollable && el.scrollWidth > el.clientWidth) {
+          el.scrollLeft += e.deltaY;
+          e.preventDefault();
+        }
+      }
+    };
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, [activeView]);
 
   const handleBoardUpdate = async (data: any) => {
     if (!boardId) return;
@@ -388,16 +423,32 @@ export function KanbanBoard() {
   const renderActiveView = () => {
     switch (activeView) {
       case "overview":
-        return <BoardOverview board={board} tasks={tasks} />;
+        return (
+          <div className="p-6 md:p-8 flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28">
+            <BoardOverview board={board} tasks={tasks} />
+          </div>
+        );
       case "list":
-        return <TaskListView tasks={filteredAllTasks} columns={board?.columns} selectedTaskId={selectedTaskId} onTaskClick={handleTaskClick} />;
+        return (
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28">
+            <TaskListView tasks={filteredAllTasks} columns={board?.columns} selectedTaskId={selectedTaskId} onTaskClick={handleTaskClick} />
+          </div>
+        );
       case "calendar":
-        return <CalendarView tasks={filteredAllTasks} columns={board?.columns} selectedTaskId={selectedTaskId} onTaskClick={handleTaskClick} />;
+        return (
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28">
+            <CalendarView tasks={filteredAllTasks} columns={board?.columns} selectedTaskId={selectedTaskId} onTaskClick={handleTaskClick} />
+          </div>
+        );
       case "documents":
-        return <DocumentsView tasks={filteredAllTasks} boardId={board.id} readOnly={permissions.isReadOnly} onTaskClick={handleTaskClick} />;
+        return (
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28">
+            <DocumentsView tasks={filteredAllTasks} boardId={board.id} readOnly={permissions.isReadOnly} onTaskClick={handleTaskClick} />
+          </div>
+        );
       case "members":
         return (
-          <div className="p-6 md:p-8 max-w-4xl mx-auto w-full">
+          <div className="p-6 md:p-8 max-w-4xl mx-auto w-full flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-3xl font-black tracking-tight text-foreground">Board Members</h2>
@@ -413,7 +464,7 @@ export function KanbanBoard() {
       case "board":
       default:
         return (
-          <main ref={scrollRef} className="p-6 md:p-8 overflow-x-auto h-full">
+          <main ref={scrollRef} className="p-6 md:p-8 flex-1 min-h-0 overflow-x-auto overflow-y-auto custom-scrollbar h-full">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCorners}
@@ -421,7 +472,7 @@ export function KanbanBoard() {
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
             >
-              <div className="flex gap-6 md:gap-8 h-full min-w-max pb-4">
+              <div className="flex gap-6 md:gap-8 h-full min-w-max pb-28 items-start">
                 {columns
                   .filter((col) => col.id !== "archive")
                   .map((col) => (
@@ -473,242 +524,244 @@ export function KanbanBoard() {
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* Main Board Viewport Screen */}
-        <div className={`flex-1 h-full min-w-0 relative flex flex-col overflow-hidden transition-all duration-200 ${selectedTask ? 'hidden md:flex' : 'flex'}`}>
-          <div className="flex-1 overflow-y-scroll overflow-x-hidden min-h-0 custom-scrollbar flex flex-col [scrollbar-gutter:stable]">
-            <div className="bg-background border-b border-border/50 shrink-0">
-              {/* Row 1: Board Name, Emoji, Badges, & Edit */}
-              <div className="px-6 pt-3.5 pb-2 md:px-8 flex items-center justify-between gap-4 w-full">
-                <div className="flex items-center gap-3 min-w-0">
-                  {board.emoji && (
-                    <div className="h-10 w-10 md:h-11 md:w-11 bg-primary/10 flex items-center justify-center rounded-xl border border-primary/20 shadow-2xs shrink-0">
-                      <span className="text-xl md:text-2xl">{board.emoji}</span>
-                    </div>
-                  )}
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2 group/title flex-wrap">
-                      <h1 className="text-lg md:text-2xl font-black text-foreground tracking-tight truncate">
-                        {board.name}
-                      </h1>
-                      {permissions.isReadOnly ? (
-                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 gap-1 text-[11px] font-bold py-0.5 px-2.5 shrink-0">
-                          <Eye className="h-3 w-3" /> View Only
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 capitalize text-[10px] font-bold py-0.5 px-2 shrink-0">
-                          {permissions.role === "owner" ? "👑 Owner" : permissions.role === "admin" ? "🛡️ Admin" : "👤 Member"}
-                        </Badge>
-                      )}
-                      {isConnected && (
-                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 gap-1 text-[10px] font-bold py-0.5 px-2 shrink-0">
-                          <Radio className="h-3 w-3 animate-pulse text-emerald-500" /> Live
-                        </Badge>
-                      )}
-                      {permissions.canEditBoard && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0 text-muted-foreground hover:text-foreground" 
-                          onClick={() => setIsBoardModalOpen(true)} 
-                          title="Edit Board & Icon"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                    {board.description && (
-                      <p className="text-xs text-muted-foreground font-medium line-clamp-1 opacity-80">
-                        {board.description}
-                      </p>
+        <div className="flex-1 h-full min-w-0 relative flex flex-col overflow-hidden">
+          {/* Pinned Board Header */}
+          <div className="bg-background border-b border-border/50 shrink-0">
+            {/* Row 1: Board Name, Emoji, Badges, & Edit */}
+            <div className="px-6 pt-3.5 pb-2 md:px-8 flex items-center justify-between gap-4 w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                {board.emoji && (
+                  <div className="h-10 w-10 md:h-11 md:w-11 bg-primary/10 flex items-center justify-center rounded-xl border border-primary/20 shadow-2xs shrink-0">
+                    <span className="text-xl md:text-2xl">{board.emoji}</span>
+                  </div>
+                )}
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-2 group/title flex-wrap">
+                    <h1 className="text-lg md:text-2xl font-black text-foreground tracking-tight truncate">
+                      {board.name}
+                    </h1>
+                    {permissions.isReadOnly ? (
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 gap-1 text-[11px] font-bold py-0.5 px-2.5 shrink-0">
+                        <Eye className="h-3 w-3" /> View Only
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 capitalize text-[10px] font-bold py-0.5 px-2 shrink-0">
+                        {permissions.role === "owner" ? "👑 Owner" : permissions.role === "admin" ? "🛡️ Admin" : "👤 Member"}
+                      </Badge>
+                    )}
+                    {isConnected && (
+                      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 gap-1 text-[10px] font-bold py-0.5 px-2 shrink-0">
+                        <Radio className="h-3 w-3 animate-pulse text-emerald-500" /> Live
+                      </Badge>
+                    )}
+                    {permissions.canEditBoard && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0 text-muted-foreground hover:text-foreground" 
+                        onClick={() => setIsBoardModalOpen(true)} 
+                        title="Edit Board & Icon"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
                     )}
                   </div>
+                  {board.description && (
+                    <p className="text-xs text-muted-foreground font-medium line-clamp-1 opacity-80">
+                      {board.description}
+                    </p>
+                  )}
                 </div>
               </div>
+            </div>
 
-              {/* Row 2: Unified Linear-Style View Switcher & Filter Toolbar */}
+            {/* Row 2: Left-Aligned Minimalist Filter Toolbar */}
+            {(activeView === "board" || activeView === "list" || activeView === "calendar") && (
               <div className="px-6 pb-2.5 md:px-8 w-full flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-3 flex-wrap min-w-0">
-                  {/* Left: Sleek Segmented View Switcher */}
-                  <div className="flex items-center p-0.5 bg-muted/60 dark:bg-muted/40 rounded-lg border border-border/50 shadow-2xs shrink-0 gap-0.5 overflow-x-auto max-w-full custom-scrollbar">
-                    {views.map((view) => {
-                      const Icon = view.icon;
-                      const isActive = activeView === view.id;
-                      return (
-                        <button 
-                          key={view.id} 
-                          aria-selected={isActive}
-                          onClick={() => setActiveView(view.id)} 
-                          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-all rounded-md shrink-0 cursor-pointer ${
-                            isActive 
-                              ? "bg-background text-foreground shadow-xs font-bold ring-1 ring-border/50" 
-                              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                          }`}
-                        >
-                          <Icon className={`h-3.5 w-3.5 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
-                          <span>{view.label}</span>
-                        </button>
-                      );
-                    })}
+                <div className="flex items-center gap-1.5 overflow-x-auto max-w-full custom-scrollbar shrink-0 py-0.5">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground font-semibold shrink-0 mr-0.5">
+                    <Filter className="h-3.5 w-3.5" />
                   </div>
 
-                  {/* Filter Bar placed leftwise immediately next to View Switcher */}
-                  {(activeView === "board" || activeView === "list" || activeView === "calendar") && (
-                    <div className="flex items-center gap-1.5 overflow-x-auto max-w-full custom-scrollbar shrink-0 py-0.5 md:pl-2 md:border-l md:border-border/60">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground font-semibold shrink-0 mr-0.5">
-                        <Filter className="h-3.5 w-3.5" />
-                      </div>
+                  <button
+                    onClick={() => setAssigneeFilter("all")}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                      assigneeFilter === "all"
+                        ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40"
+                    }`}
+                  >
+                    All ({tasks.length})
+                  </button>
 
-                      <button
-                        onClick={() => setAssigneeFilter("all")}
-                        className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all shrink-0 cursor-pointer ${
-                          assigneeFilter === "all"
-                            ? "bg-primary text-primary-foreground shadow-2xs font-bold"
-                            : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40"
-                        }`}
-                      >
-                        All ({tasks.length})
-                      </button>
+                  <button
+                    onClick={() => setAssigneeFilter("me")}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                      assigneeFilter === "me"
+                        ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40"
+                    }`}
+                  >
+                    <User className="h-3 w-3" />
+                    <span>Me ({tasks.filter((t) => t.assignedTo === currentUser?.id).length})</span>
+                  </button>
 
-                      <button
-                        onClick={() => setAssigneeFilter("me")}
-                        className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
-                          assigneeFilter === "me"
-                            ? "bg-primary text-primary-foreground shadow-2xs font-bold"
-                            : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40"
-                        }`}
-                      >
-                        <User className="h-3 w-3" />
-                        <span>Me ({tasks.filter((t) => t.assignedTo === currentUser?.id).length})</span>
-                      </button>
+                  <button
+                    onClick={() => setAssigneeFilter("unassigned")}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                      assigneeFilter === "unassigned"
+                        ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40"
+                    }`}
+                  >
+                    Unassigned ({tasks.filter((t) => !t.assignedTo).length})
+                  </button>
 
-                      <button
-                        onClick={() => setAssigneeFilter("unassigned")}
-                        className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all shrink-0 cursor-pointer ${
-                          assigneeFilter === "unassigned"
-                            ? "bg-primary text-primary-foreground shadow-2xs font-bold"
-                            : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40"
-                        }`}
-                      >
-                        Unassigned ({tasks.filter((t) => !t.assignedTo).length})
-                      </button>
+                  {members.length > 0 && (
+                    <div className="flex items-center gap-1 pl-1.5 border-l border-border/60 shrink-0">
+                      {members.map((m) => {
+                        const isSelected = assigneeFilter === m.userId;
+                        const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
+                        const name = m.user?.fullName?.split(" ")[0] || m.user?.email?.split("@")[0] || "Member";
+                        return (
+                          <button
+                            key={m.userId}
+                            onClick={() => setAssigneeFilter(isSelected ? "all" : m.userId)}
+                            title={`Filter by ${m.user?.fullName || m.user?.email}`}
+                            className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-all border cursor-pointer ${
+                              isSelected
+                                ? "bg-primary text-primary-foreground border-primary shadow-2xs font-bold"
+                                : "bg-background/80 text-muted-foreground border-border/50 hover:border-primary/40 hover:text-foreground"
+                            }`}
+                          >
+                            <Avatar className="h-4 w-4 shrink-0">
+                              <AvatarImage src={m.user?.avatarUrl} alt={name} />
+                              <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">
+                                {initial}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-[11px]">{name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                      {members.length > 0 && (
-                        <div className="flex items-center gap-1 pl-1.5 border-l border-border/60 shrink-0">
-                          {members.map((m) => {
-                            const isSelected = assigneeFilter === m.userId;
-                            const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
-                            const name = m.user?.fullName?.split(" ")[0] || m.user?.email?.split("@")[0] || "Member";
-                            return (
-                              <button
-                                key={m.userId}
-                                onClick={() => setAssigneeFilter(isSelected ? "all" : m.userId)}
-                                title={`Filter by ${m.user?.fullName || m.user?.email}`}
-                                className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium transition-all border cursor-pointer ${
-                                  isSelected
-                                    ? "bg-primary text-primary-foreground border-primary shadow-2xs font-bold"
-                                    : "bg-background/80 text-muted-foreground border-border/50 hover:border-primary/40 hover:text-foreground"
-                                }`}
-                              >
-                                <Avatar className="h-4 w-4 shrink-0">
-                                  <AvatarImage src={m.user?.avatarUrl} alt={name} />
-                                  <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">
-                                    {initial}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="text-[11px]">{name}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Tag Filters */}
-                      {availableTags.length > 0 && (
-                        <div className="flex items-center gap-1 pl-1.5 border-l border-border/60 shrink-0">
-                          <TagIcon className="h-3 w-3 text-muted-foreground mr-0.5" />
-                          {availableTags.map((tag) => {
-                            const isSelected = tagFilter.toLowerCase() === tag.name.toLowerCase();
-                            return (
-                              <button
-                                key={tag.id}
-                                onClick={() => setTagFilter(isSelected ? "all" : tag.name)}
-                                style={{
-                                  backgroundColor: isSelected ? tag.color : `${tag.color}15`,
-                                  color: isSelected ? "#ffffff" : tag.color,
-                                  borderColor: `${tag.color}40`,
-                                }}
-                                className="px-2 py-0.5 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer"
-                              >
-                                {tag.name}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                  {/* Tag Filters */}
+                  {availableTags.length > 0 && (
+                    <div className="flex items-center gap-1 pl-1.5 border-l border-border/60 shrink-0">
+                      <TagIcon className="h-3 w-3 text-muted-foreground mr-0.5" />
+                      {availableTags.map((tag) => {
+                        const isSelected = tagFilter.toLowerCase() === tag.name.toLowerCase();
+                        return (
+                          <button
+                            key={tag.id}
+                            onClick={() => setTagFilter(isSelected ? "all" : tag.name)}
+                            style={{
+                              backgroundColor: isSelected ? tag.color : `${tag.color}15`,
+                              color: isSelected ? "#ffffff" : tag.color,
+                              borderColor: `${tag.color}40`,
+                            }}
+                            className="px-2.5 py-0.5 rounded-full text-xs font-semibold transition-all border shadow-2xs cursor-pointer"
+                          >
+                            {tag.name}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
 
                 {/* Trash Bin Trigger on the right */}
-                {(activeView === "board" || activeView === "list" || activeView === "calendar") && (
-                  <button
-                    onClick={() => setIsTrashOpen(true)}
-                    className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all border border-border/50 bg-background/80 text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 shrink-0 cursor-pointer"
-                    title="View Trash Bin"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span>Trash</span>
-                  </button>
-                )}
+                <button
+                  onClick={() => setIsTrashOpen(true)}
+                  className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border border-border/50 bg-background/80 text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 shrink-0 cursor-pointer"
+                  title="View Trash Bin"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Trash</span>
+                </button>
               </div>
-            </div>
+            )}
+          </div>
 
-          <div className="flex-1 bg-muted/20 min-h-[500px]">
+          {/* Active View Container */}
+          <div className="flex-1 min-h-0 relative overflow-hidden flex flex-col bg-muted/20">
             {renderActiveView()}
           </div>
         </div>
 
-        {/* Floating Add Task FAB anchored to the actual board area screen */}
-        {permissions.canCreateTask && (
-          <Button
-            onClick={() => openNewModal()}
-            className="absolute bottom-8 right-8 h-14 w-14 hover:w-40 rounded-full shadow-2xl shadow-primary/20 flex items-center justify-center group/fab hover:scale-105 active:scale-95 transition-all duration-500 ease-out z-20 bg-primary hover:bg-primary/90 overflow-hidden px-0 border-4 border-background"
-            title="Create New Task"
+        {/* Meta Floating Dock Pill Navigation Bar + Adjacent Add Task Button (Fixed Bottom Center) */}
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-2.5 max-w-[calc(100vw-2rem)]">
+          <PillNavBar
+            items={views}
+            activeId={activeView}
+            onChange={(id) => setActiveView(id as any)}
+            accentColor="violet"
+            layoutId="metaFloatingBottomDock"
+          />
+
+          {/* Adjacent Add Task Button: Left-to-Right Expansion */}
+          {permissions.canCreateTask && (
+            <button
+              type="button"
+              onClick={() => openNewModal()}
+              className="group/add relative h-11 w-11 hover:w-[124px] rounded-full bg-primary hover:bg-primary/95 text-primary-foreground shadow-xl shadow-primary/30 border border-white/20 dark:border-white/15 flex items-center overflow-hidden transition-all duration-300 ease-out cursor-pointer shrink-0 select-none pl-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              title="Create New Task"
+              aria-label="Create New Task"
+            >
+              {/* Plus Icon: stays on the left and rotates 90° on hover */}
+              <Plus className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover/add:rotate-90" />
+
+              {/* Label: reveals smoothly from left to right */}
+              <span className="text-xs font-bold whitespace-nowrap opacity-0 -translate-x-2 group-hover/add:opacity-100 group-hover/add:translate-x-0 transition-all duration-300 ease-out ml-2">
+                Add Task
+              </span>
+            </button>
+          )}
+        </div>
+
+        {/* Screen-Wide Backdrop Dimming Overlay when Task Drawer is Open */}
+        {selectedTask && board && (
+          <div
+            data-testid="task-drawer-backdrop"
+            aria-label="Close task details"
+            onClick={() => {
+              setSelectedTaskId(null);
+              setCreatedDraftTask(null);
+            }}
+            className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-[1.5px] z-40 transition-opacity animate-in fade-in duration-200 cursor-pointer"
+          />
+        )}
+
+        {/* Notion-Style Right-Side Task Detail Workspace */}
+        {selectedTask && board && (
+          <aside
+            data-testid="task-detail-drawer"
+            className="fixed inset-y-0 right-0 w-full sm:w-[540px] md:w-[620px] lg:w-[720px] xl:w-[780px] border-l border-border bg-background shadow-2xl h-full overflow-hidden flex flex-col z-50 transition-all duration-200 animate-in slide-in-from-right duration-250 ease-out"
           >
-            <div className="pointer-events-none flex items-center justify-center w-full h-full relative">
-               <Plus className="h-6 w-6 text-primary-foreground absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 group-hover/fab:rotate-90 group-hover/fab:left-6" />
-               <span className="text-primary-foreground font-black uppercase text-[10px] tracking-[0.2em] whitespace-nowrap absolute left-14 opacity-0 group-hover/fab:opacity-100 translate-x-4 group-hover/fab:translate-x-0 transition-all duration-500 ease-out delay-75">
-                 Add Task
-               </span>
-            </div>
-          </Button>
+            <TaskDetailWorkspace
+              task={selectedTask}
+              board={board}
+              members={members}
+              readOnly={permissions.isReadOnly}
+              onClose={() => {
+                setSelectedTaskId(null);
+                setCreatedDraftTask(null);
+              }}
+              onUpdateTask={async (updates) => {
+                lastLocalEditTimeRef.current = Date.now();
+                await updateTask(selectedTask.id, updates);
+              }}
+              onDeleteTask={(id) => {
+                deleteTask(id);
+                setSelectedTaskId(null);
+                setCreatedDraftTask(null);
+              }}
+            />
+          </aside>
         )}
       </div>
-
-      {/* Notion-Style Right-Side Task Detail Workspace */}
-      {selectedTask && board && (
-        <aside className="w-full md:w-[580px] lg:w-[680px] xl:w-[740px] shrink-0 border-l border-border bg-background shadow-2xl h-full overflow-hidden flex flex-col z-30 transition-all duration-200 animate-in slide-in-from-right duration-200">
-          <TaskDetailWorkspace
-            task={selectedTask}
-            board={board}
-            members={members}
-            readOnly={permissions.isReadOnly}
-            onClose={() => {
-              setSelectedTaskId(null);
-              setCreatedDraftTask(null);
-            }}
-            onUpdateTask={async (updates) => {
-              lastLocalEditTimeRef.current = Date.now();
-              await updateTask(selectedTask.id, updates);
-            }}
-            onDeleteTask={(id) => {
-              deleteTask(id);
-              setSelectedTaskId(null);
-              setCreatedDraftTask(null);
-            }}
-          />
-        </aside>
-      )}
-    </div>
 
       <BoardModal
         open={isBoardModalOpen}

@@ -12,21 +12,10 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   LayoutGrid,
-  CheckSquare,
   Clock,
-  AlertCircle,
   CheckCircle2,
-  Calendar,
-  Sparkles,
-  ArrowUpRight,
   Plus,
-  MessageSquare,
   FolderLock,
-  TrendingUp,
-  Activity as ActivityIcon,
-  ChevronRight,
-  Flame,
-  ListTodo,
 } from "lucide-react";
 import { BoardModal } from "@/components/boards/BoardModal";
 import { TaskModal } from "@/components/kanban/TaskModal";
@@ -121,207 +110,182 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background">
       <BoardHeader showSearch={false} />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* 1. HERO GREETING & QUICK ACTIONS */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-primary/10 to-card border border-primary/20 p-6 md:p-8 shadow-lg">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Badge className="bg-primary/20 text-primary hover:bg-primary/30 border-primary/30 font-semibold px-2.5 py-0.5">
-                  <Sparkles className="h-3.5 w-3.5 mr-1" />
-                  Workspace Dashboard
-                </Badge>
-                <span className="text-xs text-muted-foreground font-mono">
-                  {new Date().toLocaleDateString(undefined, {
-                    weekday: "long",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
-              </div>
-              <h1 className="text-2xl md:text-4xl font-black text-foreground tracking-tight">
-                Welcome back,{" "}
-                <span className="bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">
-                  {user?.fullName || user?.email?.split("@")[0] || "Explorer"}
-                </span>
-                ! 👋
-              </h1>
-              <p className="text-sm text-muted-foreground max-w-xl">
-                Here is your daily workspace pulse. You have{" "}
-                <span className="font-bold text-foreground">{myTasks.length}</span> assigned
-                tasks, <span className="font-bold text-amber-500">{overdueTasks.length}</span> overdue,
-                and an overall completion rate of{" "}
-                <span className="font-bold text-emerald-500">{overallCompletionRate}%</span>.
-              </p>
-            </div>
-
-            {/* Quick Action Buttons */}
-            <div className="flex flex-wrap gap-2.5 shrink-0">
-              <Button
-                onClick={() => {
-                  if (boards.length > 0) {
-                    setIsTaskModalOpen(true);
-                  } else {
-                    setIsBoardModalOpen(true);
-                  }
-                }}
-                className="gap-2 font-semibold shadow-sm"
-              >
-                <Plus className="h-4 w-4" />
-                New Task
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setIsBoardModalOpen(true)}
-                className="gap-2 font-semibold bg-background/60 backdrop-blur-sm"
-              >
-                <LayoutGrid className="h-4 w-4 text-primary" />
-                New Board
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => setIsScratchpadOpen(true)}
-                className="gap-2 font-semibold"
-              >
-                <FolderLock className="h-4 w-4 text-amber-500" />
-                Scratchpad
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. STATS KPI CARDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Total Boards */}
-          <div
-            onClick={() => navigate("/")}
-            className="p-5 rounded-2xl bg-card border border-border/60 hover:border-primary/40 shadow-xs hover:shadow-md transition-all cursor-pointer group"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Total Boards
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 space-y-6">
+        {/* 1. CLEAN HEADER & QUICK ACTIONS (No Gradients) */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-2 border-b border-border/50">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-muted/50 text-foreground border-border/60 font-semibold px-2.5 py-0.5 text-xs">
+                Workspace Dashboard
+              </Badge>
+              <span className="text-xs text-muted-foreground font-mono">
+                {new Date().toLocaleDateString(undefined, {
+                  weekday: "long",
+                  month: "short",
+                  day: "numeric",
+                })}
               </span>
-              <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
-                <LayoutGrid className="h-4 w-4" />
-              </div>
             </div>
-            <div className="text-2xl font-black text-foreground mb-1">{boards.length}</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <span>View all boards</span>
-              <ArrowUpRight className="h-3.5 w-3.5 text-primary" />
+            <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">
+              Welcome back, {user?.fullName || user?.email?.split("@")[0] || "Explorer"}! 👋
+            </h1>
+            <p className="text-xs md:text-sm text-muted-foreground max-w-2xl">
+              Here is your daily workspace pulse. You have{" "}
+              <span className="font-bold text-foreground">{myTasks.length}</span> assigned
+              tasks, <span className="font-bold text-destructive">{overdueTasks.length}</span> overdue,
+              and an overall completion rate of{" "}
+              <span className="font-bold text-foreground">{overallCompletionRate}%</span>.
             </p>
           </div>
 
-          {/* Card 2: Active / In Progress */}
+          {/* Quick Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Button
+              onClick={() => {
+                if (boards.length > 0) {
+                  setIsTaskModalOpen(true);
+                } else {
+                  setIsBoardModalOpen(true);
+                }
+              }}
+              className="gap-1.5 font-semibold text-xs h-9 shadow-xs"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>New Task</span>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsBoardModalOpen(true)}
+              className="gap-1.5 font-semibold text-xs h-9 bg-card border-border/60 hover:bg-muted/60"
+            >
+              <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>New Board</span>
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setIsScratchpadOpen(true)}
+              className="gap-1.5 font-semibold text-xs h-9"
+            >
+              <FolderLock className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>Scratchpad</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* 2. STATS KPI: 1 BIG (ACTIVE TASKS) + 3 SMALL (TOTAL BOARDS, COMPLETED, OVERDUE) - NO ICONS */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Big Card: Active Tasks (Most Important Figure) */}
           <div
             onClick={() => navigate("/tasks")}
-            className="p-5 rounded-2xl bg-card border border-border/60 hover:border-blue-500/40 shadow-xs hover:shadow-md transition-all cursor-pointer group"
+            className="lg:col-span-5 p-5 rounded-2xl bg-card border border-border/60 hover:border-primary/40 shadow-xs transition-all cursor-pointer flex flex-col justify-between"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div>
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Active Tasks
               </span>
-              <div className="h-9 w-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <ListTodo className="h-4 w-4" />
+              <div className="text-3xl md:text-4xl font-black text-foreground mt-2">
+                {inProgressTasks.length + todoTasks.length}
               </div>
             </div>
-            <div className="text-2xl font-black text-foreground mb-1">
-              {inProgressTasks.length + todoTasks.length}
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Progress value={overallCompletionRate} className="h-1.5 flex-1" />
-              <span className="font-semibold text-foreground">{overallCompletionRate}%</span>
+
+            <div className="mt-4 pt-3 border-t border-border/40">
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="text-muted-foreground font-medium">Completion Rate</span>
+                <span className="font-bold text-foreground">{overallCompletionRate}% Completed</span>
+              </div>
+              <Progress value={overallCompletionRate} className="h-2" />
             </div>
           </div>
 
-          {/* Card 3: Completed */}
-          <div
-            onClick={() => navigate("/tasks")}
-            className="p-5 rounded-2xl bg-card border border-border/60 hover:border-emerald-500/40 shadow-xs hover:shadow-md transition-all cursor-pointer group"
-          >
-            <div className="flex items-center justify-between mb-3">
+          {/* 3 Small Cards on the right */}
+          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Small Card 1: Total Boards */}
+            <div
+              onClick={() => navigate("/")}
+              className="p-5 rounded-2xl bg-card border border-border/60 hover:border-primary/40 shadow-xs transition-all cursor-pointer flex flex-col justify-between"
+            >
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Total Boards
+              </span>
+              <div className="text-2xl font-black text-foreground my-2">
+                {boards.length}
+              </div>
+              <p className="text-xs text-primary font-medium hover:underline">
+                View all boards →
+              </p>
+            </div>
+
+            {/* Small Card 2: Completed */}
+            <div
+              onClick={() => navigate("/tasks")}
+              className="p-5 rounded-2xl bg-card border border-border/60 hover:border-primary/40 shadow-xs transition-all cursor-pointer flex flex-col justify-between"
+            >
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Completed
               </span>
-              <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <CheckCircle2 className="h-4 w-4" />
+              <div className="text-2xl font-black text-foreground my-2">
+                {completedTasks.length}
               </div>
+              <p className="text-xs text-muted-foreground font-medium">
+                Tasks closed
+              </p>
             </div>
-            <div className="text-2xl font-black text-foreground mb-1">
-              {completedTasks.length}
-            </div>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-              <TrendingUp className="h-3.5 w-3.5" />
-              <span>{completedTasks.length} tasks closed</span>
-            </p>
-          </div>
 
-          {/* Card 4: Overdue & Deadlines */}
-          <div
-            onClick={() => navigate("/calendar")}
-            className="p-5 rounded-2xl bg-card border border-border/60 hover:border-rose-500/40 shadow-xs hover:shadow-md transition-all cursor-pointer group"
-          >
-            <div className="flex items-center justify-between mb-3">
+            {/* Small Card 3: Overdue */}
+            <div
+              onClick={() => navigate("/calendar")}
+              className="p-5 rounded-2xl bg-card border border-border/60 hover:border-destructive/40 shadow-xs transition-all cursor-pointer flex flex-col justify-between"
+            >
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Overdue / Urgent
+                Overdue
               </span>
-              <div className="h-9 w-9 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <AlertCircle className="h-4 w-4" />
+              <div className="text-2xl font-black text-destructive my-2">
+                {overdueTasks.length}
               </div>
+              <p className="text-xs text-muted-foreground font-medium">
+                {highPriorityTasks.length} high priority
+              </p>
             </div>
-            <div className="text-2xl font-black text-rose-600 dark:text-rose-400 mb-1">
-              {overdueTasks.length}
-            </div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <span>{highPriorityTasks.length} high priority tasks</span>
-            </p>
           </div>
         </div>
 
-        {/* 3. MAIN WORKSPACE GRID: PRIORITY TASKS & RECENT ACTIVITY */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left 2 Cols: My Priority & Urgent Tasks */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Flame className="h-5 w-5 text-amber-500" />
-                <h2 className="text-lg font-bold text-foreground">
-                  My Priority Tasks ({myTasks.length})
-                </h2>
-              </div>
+        {/* 3. PARALLEL 3-COLUMN WORKSPACE: PRIORITY TASKS | DEADLINES | AUDIT STREAM (SIDE-BY-SIDE) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+          {/* Column 1: My Priority Tasks */}
+          <div className="p-5 rounded-2xl bg-card border border-border/60 shadow-xs flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-border/50 mb-3">
+              <h2 className="text-sm font-bold text-foreground">
+                My Priority Tasks ({myTasks.length})
+              </h2>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate("/tasks")}
-                className="text-xs font-semibold text-primary gap-1"
+                className="h-7 text-xs font-semibold text-primary px-1.5"
               >
-                <span>View all tasks</span>
-                <ChevronRight className="h-3.5 w-3.5" />
+                View all
               </Button>
             </div>
 
             {myTasks.length === 0 ? (
-              <div className="p-8 rounded-2xl bg-card border border-border/60 text-center space-y-3">
-                <CheckSquare className="h-10 w-10 text-muted-foreground/40 mx-auto" />
-                <h3 className="font-bold text-foreground text-sm">All caught up!</h3>
-                <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                  You don't have any pending tasks assigned. Enjoy your day or create a new task.
-                </p>
+              <div className="py-10 text-center space-y-2">
+                <p className="font-bold text-foreground text-xs">All caught up!</p>
+                <p className="text-[11px] text-muted-foreground">No pending tasks assigned.</p>
                 <Button
                   size="sm"
+                  variant="outline"
                   onClick={() => setIsTaskModalOpen(true)}
-                  className="gap-1.5 text-xs font-semibold"
+                  className="h-7 text-xs font-semibold mt-2"
                 >
-                  <Plus className="h-3.5 w-3.5" />
-                  Create Task
+                  <Plus className="h-3 w-3 mr-1" /> Create Task
                 </Button>
               </div>
             ) : (
-              <div className="space-y-2.5">
-                {myTasks.slice(0, 6).map((task) => {
+              <div className="space-y-2 max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
+                {myTasks.slice(0, 8).map((task) => {
                   const isDone = task.status === "done" || task.progress === 100;
                   const isOverdue =
                     task.dueDate && !isDone && new Date(task.dueDate) < new Date();
@@ -330,27 +294,27 @@ export default function DashboardPage() {
                     <div
                       key={task.id}
                       onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
-                      className="p-4 rounded-xl bg-card border border-border/60 hover:border-primary/40 shadow-xs hover:shadow-sm transition-all flex items-center justify-between gap-4 cursor-pointer group"
+                      className="p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-all flex items-center justify-between gap-3 cursor-pointer group"
                     >
-                      <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
                         {/* 1-click Checkbox */}
                         <button
                           type="button"
                           onClick={(e) => handleToggleTaskComplete(task, e)}
-                          className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
+                          className={`h-4 w-4 rounded border flex items-center justify-center transition-colors shrink-0 ${
                             isDone
-                              ? "bg-emerald-500 border-emerald-500 text-white"
-                              : "border-border/80 hover:border-primary bg-background"
+                              ? "bg-primary border-primary text-primary-foreground"
+                              : "border-border hover:border-primary bg-background"
                           }`}
                         >
-                          {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
+                          {isDone && <CheckCircle2 className="h-3 w-3" />}
                         </button>
 
                         <div className="flex flex-col min-w-0">
-                          <div className="flex items-center gap-2">
-                            {task.emoji && <span className="text-sm">{task.emoji}</span>}
+                          <div className="flex items-center gap-1.5">
+                            {task.emoji && <span className="text-xs">{task.emoji}</span>}
                             <span
-                              className={`text-sm font-semibold truncate ${
+                              className={`text-xs font-semibold truncate ${
                                 isDone
                                   ? "line-through text-muted-foreground"
                                   : "text-foreground group-hover:text-primary transition-colors"
@@ -360,36 +324,23 @@ export default function DashboardPage() {
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-1.5 mt-0.5">
                             {task.boardName && (
                               <Badge
                                 variant="outline"
-                                className="text-[10px] px-1.5 py-0 font-medium bg-primary/5 text-primary border-primary/20"
+                                className="text-[9px] px-1 py-0 font-medium bg-muted/50 text-muted-foreground border-border/50"
                               >
-                                {task.boardEmoji || "📋"} {task.boardName}
+                                {task.boardName}
                               </Badge>
                             )}
 
-                            <Badge
-                              variant="outline"
-                              className={`text-[10px] px-1.5 py-0 uppercase font-mono ${
-                                task.priority === "high" || task.priority === "urgent"
-                                  ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
-                                  : task.priority === "medium"
-                                  ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                                  : "bg-slate-500/10 text-slate-600 border-slate-500/20"
-                              }`}
-                            >
-                              {task.priority}
-                            </Badge>
-
                             {task.dueDate && (
                               <span
-                                className={`text-[11px] font-medium flex items-center gap-1 ${
-                                  isOverdue ? "text-rose-500 font-bold" : "text-muted-foreground"
+                                className={`text-[10px] font-medium flex items-center gap-0.5 ${
+                                  isOverdue ? "text-destructive font-bold" : "text-muted-foreground"
                                 }`}
                               >
-                                <Clock className="h-3 w-3" />
+                                <Clock className="h-2.5 w-2.5" />
                                 {new Date(task.dueDate).toLocaleDateString(undefined, {
                                   month: "short",
                                   day: "numeric",
@@ -400,12 +351,9 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-xs font-mono font-bold text-muted-foreground">
-                          {task.progress}%
-                        </span>
-                        <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
+                      <span className="text-[11px] font-mono font-bold text-muted-foreground shrink-0">
+                        {task.progress}%
+                      </span>
                     </div>
                   );
                 })}
@@ -413,91 +361,85 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Right Col: Deadlines & Live Activity Stream */}
-          <div className="space-y-6">
-            {/* Upcoming Deadlines Widget */}
-            <div className="p-5 rounded-2xl bg-card border border-border/60 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-bold text-foreground">Upcoming Deadlines</h3>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate("/calendar")}
-                  className="h-7 text-[11px] text-primary px-1.5"
-                >
-                  Calendar
-                </Button>
-              </div>
+          {/* Column 2: Upcoming Deadlines */}
+          <div className="p-5 rounded-2xl bg-card border border-border/60 shadow-xs flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-border/50 mb-3">
+              <h3 className="text-sm font-bold text-foreground">Upcoming Deadlines</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/calendar")}
+                className="h-7 text-xs font-semibold text-primary px-1.5"
+              >
+                Calendar
+              </Button>
+            </div>
 
-              {upcomingDeadlines.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic py-3">No upcoming deadlines.</p>
-              ) : (
-                <div className="space-y-2">
-                  {upcomingDeadlines.map((task) => (
-                    <div
-                      key={task.id}
-                      onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
-                      className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors cursor-pointer text-xs"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span>{task.emoji || "📌"}</span>
-                        <span className="font-medium text-foreground truncate max-w-[140px]">
-                          {task.title}
-                        </span>
-                      </div>
-                      <span className="text-[11px] font-mono font-bold text-primary shrink-0">
-                        {new Date(task.dueDate!).toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
+            {upcomingDeadlines.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic py-10 text-center">No upcoming deadlines.</p>
+            ) : (
+              <div className="space-y-2 max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
+                {upcomingDeadlines.map((task) => (
+                  <div
+                    key={task.id}
+                    onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-colors cursor-pointer text-xs"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span>{task.emoji || "📌"}</span>
+                      <span className="font-medium text-foreground truncate max-w-[130px]">
+                        {task.title}
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-mono font-bold text-primary shrink-0">
+                      {new Date(task.dueDate!).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Column 3: Workspace Audit Stream (Side-by-Side) */}
+          <div className="p-5 rounded-2xl bg-card border border-border/60 shadow-xs flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-border/50 mb-3">
+              <h3 className="text-sm font-bold text-foreground">Workspace Audit Stream</h3>
+              <span className="text-[10px] text-muted-foreground font-mono">Live</span>
+            </div>
+
+            {activities.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic py-10 text-center">No recent activities recorded.</p>
+            ) : (
+              <div className="space-y-3 max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
+                {activities.slice(0, 10).map((act) => (
+                  <div key={act.id} className="flex items-start gap-2.5 text-xs">
+                    <Avatar className="h-6 w-6 mt-0.5 shrink-0 border border-border/50">
+                      <AvatarImage src={act.user?.avatarUrl} />
+                      <AvatarFallback className="text-[9px] font-bold">
+                        {act.user?.fullName?.charAt(0) || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-muted-foreground leading-snug">
+                        <span className="font-semibold text-foreground">
+                          {act.user?.fullName || act.user?.email?.split("@")[0] || "Someone"}
+                        </span>{" "}
+                        {act.message}
+                      </p>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        {new Date(act.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
                         })}
                       </span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Recent Activity Audit Stream */}
-            <div className="p-5 rounded-2xl bg-card border border-border/60 shadow-xs space-y-3">
-              <div className="flex items-center gap-2">
-                <ActivityIcon className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-bold text-foreground">Workspace Audit Stream</h3>
+                  </div>
+                ))}
               </div>
-
-              {activities.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic py-3">No recent activities recorded.</p>
-              ) : (
-                <div className="space-y-3 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
-                  {activities.slice(0, 8).map((act) => (
-                    <div key={act.id} className="flex items-start gap-2.5 text-xs">
-                      <Avatar className="h-6 w-6 mt-0.5 shrink-0 border border-border/50">
-                        <AvatarImage src={act.user?.avatarUrl} />
-                        <AvatarFallback className="text-[9px] font-bold">
-                          {act.user?.fullName?.charAt(0) || "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-muted-foreground leading-snug">
-                          <span className="font-semibold text-foreground">
-                            {act.user?.fullName || act.user?.email?.split("@")[0] || "Someone"}
-                          </span>{" "}
-                          {act.message}
-                        </p>
-                        <span className="text-[10px] text-muted-foreground font-mono">
-                          {new Date(act.timestamp).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </main>
