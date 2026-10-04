@@ -50,8 +50,8 @@ class Config:
         if origin.strip()
     ]
 
-    # Upload limits
-    MAX_CONTENT_LENGTH = int(os.environ.get('MAX_UPLOAD_MB', '10')) * 1024 * 1024
+    # Upload limits (25MB default)
+    MAX_CONTENT_LENGTH = int(os.environ.get('MAX_UPLOAD_MB', '25')) * 1024 * 1024
     ALLOWED_UPLOAD_EXTENSIONS = [
         ext.strip().lower()
         for ext in os.environ.get(

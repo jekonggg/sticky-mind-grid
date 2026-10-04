@@ -7,6 +7,7 @@ import {
   useMarkAsRead,
   useToggleReaction,
   useDeleteMessage,
+  useTogglePinMessage,
   useMessageRealtime,
 } from "@/hooks/useMessages";
 import { ConversationList } from "@/components/messages/ConversationList";
@@ -37,6 +38,7 @@ export default function MessagesPage() {
   const markAsReadMutation = useMarkAsRead();
   const toggleReactionMutation = useToggleReaction(selectedConvId || "");
   const deleteMessageMutation = useDeleteMessage(selectedConvId || "");
+  const togglePinMutation = useTogglePinMessage(selectedConvId || "");
 
   // Auto-mark conversation as read when selected
   useEffect(() => {
@@ -74,6 +76,10 @@ export default function MessagesPage() {
     return deleteMessageMutation.mutateAsync(messageId);
   };
 
+  const handleTogglePin = async (messageId: string) => {
+    return togglePinMutation.mutateAsync(messageId);
+  };
+
   return (
     <div className="flex-1 flex h-full w-full overflow-hidden bg-background">
       {/* 1. LEFT CONVERSATION LIST (Desktop persistent, mobile toggleable) */}
@@ -99,11 +105,14 @@ export default function MessagesPage() {
       >
         <ChatArea
           conversation={activeConversation}
+          conversations={conversations}
           messages={messages}
           isLoadingMessages={isLoadingMessages}
           onSendMessage={handleSendMessage}
           onToggleReaction={handleToggleReaction}
           onDeleteMessage={handleDeleteMessage}
+          onTogglePin={handleTogglePin}
+          onForwardSuccess={handleSelectConversation}
           onToggleMobileSidebar={() => setMobileShowList(true)}
         />
       </div>

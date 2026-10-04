@@ -25,6 +25,8 @@ export interface Message {
   replyToId?: string | null;
   replyTo?: MessageReplySnippet | null;
   reactions: Record<string, string[]>; // { "👍": ["userId1", "userId2"] }
+  isForwarded?: boolean;
+  isPinned?: boolean;
   isDeleted: boolean;
   createdAt: string;
   updatedAt?: string;
@@ -74,4 +76,5 @@ export interface SendMessageData {
   content?: string;
   attachments?: MessageAttachment[];
   replyToId?: string | null;
+  isForwarded?: boolean;
 }

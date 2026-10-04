@@ -6,8 +6,10 @@ import { useTheme } from "next-themes";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { boardApi } from "@/services/boardApi";
 import { noteApi } from "@/services/noteApi";
+import { taskApi } from "@/services/api";
 import { Board, CreateBoardData } from "@/types/board";
 import { Note, CreateNoteData } from "@/types/note";
+import { Task } from "@/types/task";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +90,7 @@ export function AppSidebar({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
+  const [isAddBoardVisible, setIsAddBoardVisible] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isScratchpadOpen, setIsScratchpadOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -124,6 +127,12 @@ export function AppSidebar({
     queryKey: ["notes", activeBoardId],
     queryFn: () => (activeBoardId ? noteApi.getNotes(activeBoardId) : Promise.resolve([])),
     enabled: !!activeBoardId,
+  });
+
+  // Fetch all tasks for task badge
+  const { data: allTasks = [] } = useQuery<Task[]>({
+    queryKey: ["tasks"],
+    queryFn: () => taskApi.getTasks(),
   });
 
   // Fetch unread messages count for sidebar badge
@@ -326,38 +335,61 @@ export function AppSidebar({
 
             {/* Expandable Boards Tree */}
             <div>
-              <div
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors group cursor-pointer ${
-                  boardId ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                } ${isCollapsed ? "justify-center px-0" : ""}`}
-                onClick={() => !isCollapsed && setIsBoardsExpanded(!isBoardsExpanded)}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Kanban className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
-                  {!isCollapsed && <span className="truncate">Boards</span>}
-                </div>
+              <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
+                <TooltipTrigger asChild>
+                  <div
+                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors group cursor-pointer ${
+                      boardId ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    } ${isCollapsed ? "justify-center px-0" : ""}`}
+                    onClick={() => !isCollapsed && setIsBoardsExpanded(!isBoardsExpanded)}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Kanban className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+                      {!isCollapsed && <span className="truncate">Boards</span>}
+                    </div>
 
-                {!isCollapsed && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsBoardModalOpen(true);
-                      }}
-                      className="h-5 w-5 flex items-center justify-center rounded hover:bg-background text-muted-foreground hover:text-primary transition-colors"
-                      title="Create new board"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                    {isBoardsExpanded ? (
-                      <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                    {!isCollapsed && (
+                      <div className="flex items-center gap-1 ml-auto">
+                        {/* Smooth slide-in Add Board button */}
+                        <div
+                          className={`flex items-center overflow-hidden transition-all duration-300 ease-out ${
+                            isAddBoardVisible
+                              ? "max-w-[28px] opacity-100 translate-x-0"
+                              : "max-w-0 opacity-0 translate-x-2 pointer-events-none"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsBoardModalOpen(true);
+                            }}
+                            className="h-5 w-5 flex items-center justify-center rounded bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground transition-colors cursor-pointer shadow-2xs shrink-0"
+                            title="Create new board"
+                            aria-label="Create new board"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+
+                        {/* Number Notification Badge (Clicking toggles add button slide-out) */}
+                        <Badge
+                          variant="secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsAddBoardVisible((prev) => !prev);
+                          }}
+                          className="text-[10px] px-1.5 py-0 h-4 font-bold cursor-pointer hover:bg-muted/80 transition-colors select-none shrink-0"
+                          title="Click to toggle add board button"
+                        >
+                          {boards.length}
+                        </Badge>
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
+                </TooltipTrigger>
+                {isCollapsed && <TooltipContent side="right">Boards ({boards.length})</TooltipContent>}
+              </Tooltip>
 
               {/* Nested Board Items */}
               {!isCollapsed && isBoardsExpanded && (
@@ -416,12 +448,12 @@ export function AppSidebar({
                   </div>
                   {!isCollapsed && (
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-bold">
-                      All
+                      {allTasks.length}
                     </Badge>
                   )}
                 </button>
               </TooltipTrigger>
-              {isCollapsed && <TooltipContent side="right">Tasks</TooltipContent>}
+              {isCollapsed && <TooltipContent side="right">Tasks ({allTasks.length})</TooltipContent>}
             </Tooltip>
 
             {/* Calendar */}
@@ -502,7 +534,7 @@ export function AppSidebar({
               </TooltipTrigger>
               {isCollapsed && (
                 <TooltipContent side="right">
-                  Messages {unreadMessagesCount > 0 ? `(${unreadMessagesCount} unread)` : ""}
+                  Messages{unreadMessagesCount > 0 ? ` (${unreadMessagesCount} unread)` : ""}
                 </TooltipContent>
               )}
             </Tooltip>
@@ -534,39 +566,47 @@ export function AppSidebar({
 
             {/* Board / Project Files */}
             <div>
-              <div
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
-                  isCollapsed ? "justify-center px-0" : ""
-                }`}
-                onClick={() => !isCollapsed && setIsBoardFilesExpanded(!isBoardFilesExpanded)}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <FolderKanban className="h-4 w-4 shrink-0 text-primary/80" />
-                  {!isCollapsed && <span className="truncate">Board Files</span>}
-                </div>
+              <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
+                <TooltipTrigger asChild>
+                  <div
+                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
+                      isCollapsed ? "justify-center px-0" : ""
+                    }`}
+                    onClick={() => !isCollapsed && setIsBoardFilesExpanded(!isBoardFilesExpanded)}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <FolderKanban className="h-4 w-4 shrink-0 text-primary/80" />
+                      {!isCollapsed && <span className="truncate">Board Files</span>}
+                    </div>
 
-                {!isCollapsed && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedNote(null);
-                        setIsNoteModalOpen(true);
-                      }}
-                      className="h-5 w-5 flex items-center justify-center rounded hover:bg-background text-muted-foreground hover:text-primary transition-colors"
-                      title="New Note / Document"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                    {isBoardFilesExpanded ? (
-                      <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                    {!isCollapsed && (
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-bold">
+                          {notes.length}
+                        </Badge>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedNote(null);
+                            setIsNoteModalOpen(true);
+                          }}
+                          className="h-5 w-5 flex items-center justify-center rounded hover:bg-background text-muted-foreground hover:text-primary transition-colors"
+                          title="New Note / Document"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                        {isBoardFilesExpanded ? (
+                          <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
+                </TooltipTrigger>
+                {isCollapsed && <TooltipContent side="right">Board Files ({notes.length})</TooltipContent>}
+              </Tooltip>
 
               {/* Nested Board Files */}
               {!isCollapsed && isBoardFilesExpanded && (

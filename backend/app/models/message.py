@@ -144,6 +144,8 @@ class Message(db.Model):
     attachments = db.Column(db.JSON, default=list) # [{ name, url, size, mimeType }]
     reply_to_id = db.Column(db.String(36), db.ForeignKey('messages.id', ondelete='SET NULL'), nullable=True)
     reactions = db.Column(db.JSON, default=dict) # { "👍": ["userId1", "userId2"] }
+    is_forwarded = db.Column(db.Boolean, default=False, nullable=False)
+    is_pinned = db.Column(db.Boolean, default=False, nullable=False)
     is_deleted = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -153,13 +155,15 @@ class Message(db.Model):
     sender = db.relationship('User', foreign_keys=[sender_id], back_populates='sent_messages')
     reply_to = db.relationship('Message', remote_side=[id], lazy=True)
 
-    def __init__(self, conversation_id: str, sender_id: str, content: str = '', attachments: list = None, reply_to_id: str = None, **kwargs):
+    def __init__(self, conversation_id: str, sender_id: str, content: str = '', attachments: list = None, reply_to_id: str = None, is_forwarded: bool = False, is_pinned: bool = False, **kwargs):
         super().__init__(**kwargs)
         self.conversation_id = conversation_id
         self.sender_id = sender_id
         self.content = content or ''
         self.attachments = attachments if attachments is not None else []
         self.reply_to_id = reply_to_id
+        self.is_forwarded = is_forwarded
+        self.is_pinned = is_pinned
         self.reactions = {}
         self.is_deleted = False
 
@@ -180,11 +184,13 @@ class Message(db.Model):
             'conversationId': self.conversation_id,
             'senderId': self.sender_id,
             'sender': sender_data,
-            'content': 'This message was deleted' if self.is_deleted else self.content,
+            'content': 'This message was unsent' if self.is_deleted else self.content,
             'attachments': [] if self.is_deleted else (self.attachments or []),
             'replyToId': self.reply_to_id,
             'replyTo': reply_to_data,
-            'reactions': self.reactions or {},
+            'reactions': {} if self.is_deleted else (self.reactions or {}),
+            'isForwarded': bool(self.is_forwarded) if not self.is_deleted else False,
+            'isPinned': bool(self.is_pinned) if not self.is_deleted else False,
             'isDeleted': self.is_deleted,
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None,
             'updatedAt': self.updated_at.isoformat() + 'Z' if self.updated_at else None

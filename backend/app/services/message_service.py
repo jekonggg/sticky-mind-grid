@@ -141,7 +141,7 @@ class MessageService:
         return [m.to_dict() for m in messages], None, 200
 
     @staticmethod
-    def send_message(sender_id: str, conversation_id: str, content: str = "", attachments: list = None, reply_to_id: str = None):
+    def send_message(sender_id: str, conversation_id: str, content: str = "", attachments: list = None, reply_to_id: str = None, is_forwarded: bool = False):
         participant = (
             ConversationParticipant.query
             .filter_by(conversation_id=conversation_id, user_id=sender_id)
@@ -171,7 +171,8 @@ class MessageService:
             sender_id=sender_id,
             content=content_clean,
             attachments=attachments_list,
-            reply_to_id=reply_to_id
+            reply_to_id=reply_to_id,
+            is_forwarded=is_forwarded
         )
         db.session.add(message)
 
@@ -202,6 +203,49 @@ class MessageService:
             })
 
         return message_dict, None, 201
+
+    @staticmethod
+    def forward_message(user_id: str, message_id: str, target_conversation_ids: list):
+        source_message = db.session.get(Message, message_id)
+        if not source_message or source_message.is_deleted:
+            return None, "Source message not found or unsent", 404
+
+        # Verify user has access to source conversation
+        src_participant = (
+            ConversationParticipant.query
+            .filter_by(conversation_id=source_message.conversation_id, user_id=user_id)
+            .first()
+        )
+        if not src_participant:
+            return None, "Unauthorized to forward this message", 403
+
+        if not target_conversation_ids:
+            return None, "Target conversation IDs required", 400
+
+        results = []
+        for target_conv_id in target_conversation_ids:
+            target_part = (
+                ConversationParticipant.query
+                .filter_by(conversation_id=target_conv_id, user_id=user_id)
+                .first()
+            )
+            if not target_part:
+                continue
+
+            msg_dict, err, code = MessageService.send_message(
+                sender_id=user_id,
+                conversation_id=target_conv_id,
+                content=source_message.content,
+                attachments=source_message.attachments,
+                is_forwarded=True
+            )
+            if msg_dict:
+                results.append(msg_dict)
+
+        if not results:
+            return None, "Failed to forward message to selected conversations", 400
+
+        return results, None, 200
 
     @staticmethod
     def mark_as_read(user_id: str, conversation_id: str):
@@ -241,19 +285,22 @@ class MessageService:
             return None, "Emoji is required", 400
 
         current_reactions = dict(message.reactions or {})
-        user_list = list(current_reactions.get(emoji, []))
+        already_had_emoji = user_id in current_reactions.get(emoji, [])
 
-        if user_id in user_list:
-            user_list.remove(user_id)
-            if user_list:
-                current_reactions[emoji] = user_list
-            else:
-                current_reactions.pop(emoji, None)
-        else:
+        # Enforce single reaction per user: remove user from all existing emoji reactions
+        cleaned_reactions = {}
+        for em, uids in current_reactions.items():
+            filtered = [u for u in uids if u != user_id]
+            if filtered:
+                cleaned_reactions[em] = filtered
+
+        # If user did not already have this specific emoji, add it
+        if not already_had_emoji:
+            user_list = list(cleaned_reactions.get(emoji, []))
             user_list.append(user_id)
-            current_reactions[emoji] = user_list
+            cleaned_reactions[emoji] = user_list
 
-        message.reactions = current_reactions
+        message.reactions = cleaned_reactions
         db.session.commit()
 
         msg_dict = message.to_dict()
@@ -274,15 +321,37 @@ class MessageService:
         if not participant:
             return None, "Unauthorized", 403
 
-        # Allow sender or group admin to delete message
+        # Allow sender or group admin to unsend/delete message
         if message.sender_id != user_id and participant.role != 'admin':
-            return None, "Cannot delete message sent by another user", 403
+            return None, "Cannot unsend message sent by another user", 403
 
         message.is_deleted = True
+        message.reactions = {}
         db.session.commit()
 
         msg_dict = message.to_dict()
         broadcaster.broadcast(f"conv:{message.conversation_id}", "message:deleted", msg_dict)
+        return msg_dict, None, 200
+
+    @staticmethod
+    def toggle_pin(user_id: str, message_id: str):
+        message = db.session.get(Message, message_id)
+        if not message or message.is_deleted:
+            return None, "Message not found or unsent", 404
+
+        participant = (
+            ConversationParticipant.query
+            .filter_by(conversation_id=message.conversation_id, user_id=user_id)
+            .first()
+        )
+        if not participant:
+            return None, "Unauthorized", 403
+
+        message.is_pinned = not message.is_pinned
+        db.session.commit()
+
+        msg_dict = message.to_dict()
+        broadcaster.broadcast(f"conv:{message.conversation_id}", "message:pinned_updated", msg_dict)
         return msg_dict, None, 200
 
     @staticmethod

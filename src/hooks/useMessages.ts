@@ -149,7 +149,7 @@ export function useToggleReaction(conversationId: string) {
 }
 
 /**
- * Hook to delete (soft-delete) a message.
+ * Hook to unsend (soft-delete) a message with unsent trail.
  */
 export function useDeleteMessage(conversationId: string) {
   const queryClient = useQueryClient();
@@ -160,10 +160,58 @@ export function useDeleteMessage(conversationId: string) {
       queryClient.setQueryData<Message[]>(messagesQueryKey(conversationId), (old = []) =>
         old.map((m) => (m.id === deletedMessage.id ? deletedMessage : m))
       );
-      toast.success("Message deleted");
+      queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY });
+      toast.success("Message unsent");
     },
     onError: (err: any) => {
-      toast.error(err.message || "Failed to delete message");
+      toast.error(err.message || "Failed to unsend message");
+    },
+  });
+}
+
+/**
+ * Hook to pin or unpin a message.
+ */
+export function useTogglePinMessage(conversationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (messageId: string) => messageApi.togglePin(messageId),
+    onSuccess: (updatedMessage) => {
+      queryClient.setQueryData<Message[]>(messagesQueryKey(conversationId), (old = []) =>
+        old.map((m) => (m.id === updatedMessage.id ? updatedMessage : m))
+      );
+      toast.success(updatedMessage.isPinned ? "Message pinned" : "Message unpinned");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to update pin status");
+    },
+  });
+}
+
+/**
+ * Hook to forward a message to target conversations.
+ */
+export function useForwardMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      messageId,
+      targetConversationIds,
+    }: {
+      messageId: string;
+      targetConversationIds: string[];
+    }) => messageApi.forwardMessage(messageId, targetConversationIds),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY });
+      data.forwarded?.forEach((msg) => {
+        queryClient.invalidateQueries({ queryKey: messagesQueryKey(msg.conversationId) });
+      });
+      toast.success("Message forwarded successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to forward message");
     },
   });
 }
@@ -198,7 +246,11 @@ export function useMessageRealtime() {
         } else if (payload.type === "conversation:created" || payload.type === "conversation:read") {
           queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY });
           queryClient.invalidateQueries({ queryKey: UNREAD_COUNT_QUERY_KEY });
-        } else if (payload.type === "message:reaction_updated" || payload.type === "message:deleted") {
+        } else if (
+          payload.type === "message:reaction_updated" ||
+          payload.type === "message:deleted" ||
+          payload.type === "message:pinned_updated"
+        ) {
           const convId = payload.data?.conversationId;
           if (convId) {
             queryClient.invalidateQueries({ queryKey: messagesQueryKey(convId) });

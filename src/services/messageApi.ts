@@ -90,7 +90,33 @@ export const messageApi = {
     });
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
-      throw new Error(error.error || "Failed to delete message");
+      throw new Error(error.error || "Failed to unsend message");
+    }
+    return res.json();
+  },
+
+  async togglePin(messageId: string): Promise<Message> {
+    const res = await authenticatedFetch(`/messages/${messageId}/pin`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to toggle pin");
+    }
+    return res.json();
+  },
+
+  async forwardMessage(
+    messageId: string,
+    targetConversationIds: string[]
+  ): Promise<{ forwarded: Message[] }> {
+    const res = await authenticatedFetch(`/messages/${messageId}/forward`, {
+      method: "POST",
+      body: JSON.stringify({ targetConversationIds }),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to forward message");
     }
     return res.json();
   },

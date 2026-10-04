@@ -72,6 +72,9 @@ export function MessageComposer({
     }
   };
 
+const MAX_FILE_SIZE_MB = 25;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -80,8 +83,8 @@ export function MessageComposer({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (file.size > 15 * 1024 * 1024) {
-          toast.error(`File "${file.name}" exceeds 15MB upload limit.`);
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          toast.error(`File "${file.name}" exceeds the ${MAX_FILE_SIZE_MB}MB size limit.`);
           continue;
         }
         const uploaded = await fileApi.uploadFile(file);
@@ -151,6 +154,11 @@ export function MessageComposer({
     return /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(name || "");
   };
 
+  const isVideoFile = (mime?: string, name?: string) => {
+    if (mime?.startsWith("video/")) return true;
+    return /\.(mp4|webm|mov|ogg|mkv|avi)$/i.test(name || "");
+  };
+
   return (
     <div className="p-3 bg-card/95 backdrop-blur-md border-t border-border/60 transition-all">
       {/* Active Reply Banner */}
@@ -197,6 +205,10 @@ export function MessageComposer({
                     className="h-full w-full object-cover"
                   />
                 </div>
+              ) : isVideoFile(att.mimeType, att.name) ? (
+                <div className="h-8 w-8 rounded-lg overflow-hidden bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
+                  <span className="text-[9px] font-bold">VID</span>
+                </div>
               ) : (
                 <FileText className="h-5 w-5 text-primary shrink-0 ml-1" />
               )}
@@ -206,14 +218,14 @@ export function MessageComposer({
                 </span>
                 {att.size && (
                   <span className="text-[10px] text-muted-foreground">
-                    {(att.size / 1024).toFixed(0)} KB
+                    {(att.size / (1024 * 1024)).toFixed(1)} MB
                   </span>
                 )}
               </div>
               <button
                 type="button"
                 onClick={() => removeAttachment(idx)}
-                className="h-4 w-4 rounded-full bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground flex items-center justify-center transition-colors shrink-0 mr-1"
+                className="h-4 w-4 rounded-full bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground flex items-center justify-center transition-colors shrink-0 mr-1 cursor-pointer"
                 title="Remove attachment"
               >
                 <X className="h-2.5 w-2.5" />
@@ -233,6 +245,7 @@ export function MessageComposer({
           ref={fileInputRef}
           type="file"
           multiple
+          accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.csv,.json"
           className="hidden"
           onChange={handleFileUpload}
         />
@@ -244,8 +257,8 @@ export function MessageComposer({
           size="icon"
           disabled={disabled || isUploading || isSending}
           onClick={() => fileInputRef.current?.click()}
-          className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
-          title="Attach files or images"
+          className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 cursor-pointer"
+          title="Attach files, images, or videos (max 25MB)"
         >
           {isUploading ? (
             <Loader2 className="h-4 w-4 text-primary animate-spin" />

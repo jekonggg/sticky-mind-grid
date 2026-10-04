@@ -142,21 +142,82 @@ def test_group_conversation_and_reactions(client, create_test_user, auth_headers
     assert "👍" in react_resp.get_json()["reactions"]
     assert user2.id in react_resp.get_json()["reactions"]["👍"]
 
-    # 4. User2 toggles 👍 again (removes it)
+    # 4. User2 switches reaction to ❤️ (replaces 👍, only one reaction allowed)
+    react_switch = client.post(
+        f"/api/messages/{msg_id}/reactions",
+        headers=auth_headers(user2.id),
+        data=json.dumps({"emoji": "❤️"}),
+        content_type="application/json"
+    )
+    assert react_switch.status_code == 200
+    assert "👍" not in react_switch.get_json()["reactions"]
+    assert "❤️" in react_switch.get_json()["reactions"]
+    assert user2.id in react_switch.get_json()["reactions"]["❤️"]
+
+    # 5. User2 toggles ❤️ again (removes it)
     react_remove = client.post(
         f"/api/messages/{msg_id}/reactions",
         headers=auth_headers(user2.id),
-        data=json.dumps({"emoji": "👍"}),
+        data=json.dumps({"emoji": "❤️"}),
         content_type="application/json"
     )
     assert react_remove.status_code == 200
-    assert "👍" not in react_remove.get_json()["reactions"]
+    assert "❤️" not in react_remove.get_json()["reactions"]
 
-    # 5. User1 deletes the message (soft delete)
+    # 6. User1 unsends the message (soft delete with unsent trail)
     del_resp = client.delete(f"/api/messages/{msg_id}", headers=auth_headers(user1.id))
     assert del_resp.status_code == 200
     assert del_resp.get_json()["isDeleted"] is True
-    assert del_resp.get_json()["content"] == "This message was deleted"
+    assert del_resp.get_json()["content"] == "This message was unsent"
+    assert del_resp.get_json()["reactions"] == {}
+    assert del_resp.get_json()["attachments"] == []
+
+def test_forward_message(client, create_test_user, auth_headers):
+    user1 = create_test_user(email="forw1@example.com", full_name="Forwarder One")
+    user2 = create_test_user(email="forw2@example.com", full_name="Forwarder Two")
+    user3 = create_test_user(email="forw3@example.com", full_name="Forwarder Three")
+
+    # Create conv A (user1 & user2)
+    resp_a = client.post(
+        "/api/messages/conversations",
+        headers=auth_headers(user1.id),
+        data=json.dumps({"type": "direct", "recipientId": user2.id}),
+        content_type="application/json"
+    )
+    conv_a_id = resp_a.get_json()["id"]
+
+    # Create conv B (user1 & user3)
+    resp_b = client.post(
+        "/api/messages/conversations",
+        headers=auth_headers(user1.id),
+        data=json.dumps({"type": "direct", "recipientId": user3.id}),
+        content_type="application/json"
+    )
+    conv_b_id = resp_b.get_json()["id"]
+
+    # User2 sends message in conv A
+    msg_resp = client.post(
+        f"/api/messages/conversations/{conv_a_id}/messages",
+        headers=auth_headers(user2.id),
+        data=json.dumps({"content": "Important quarterly updates!"}),
+        content_type="application/json"
+    )
+    msg_id = msg_resp.get_json()["id"]
+
+    # User1 forwards message to conv B
+    fwd_resp = client.post(
+        f"/api/messages/{msg_id}/forward",
+        headers=auth_headers(user1.id),
+        data=json.dumps({"targetConversationIds": [conv_b_id]}),
+        content_type="application/json"
+    )
+    assert fwd_resp.status_code == 200
+    fwd_data = fwd_resp.get_json()["forwarded"]
+    assert len(fwd_data) == 1
+    assert fwd_data[0]["conversationId"] == conv_b_id
+    assert fwd_data[0]["content"] == "Important quarterly updates!"
+    assert fwd_data[0]["isForwarded"] is True
+    assert fwd_data[0]["senderId"] == user1.id
 
 def test_unauthorized_conversation_access(client, create_test_user, auth_headers):
     user1 = create_test_user(email="frank@example.com")
@@ -190,3 +251,59 @@ def test_unauthorized_conversation_access(client, create_test_user, auth_headers
         content_type="application/json"
     )
     assert unauth_post.status_code == 403
+
+def test_pin_unpin_message(client, create_test_user, auth_headers):
+    user1 = create_test_user(email="pinner1@example.com", full_name="Pinner One")
+    user2 = create_test_user(email="pinner2@example.com", full_name="Pinner Two")
+    intruder = create_test_user(email="pin_intruder@example.com")
+
+    # 1. Create direct conversation
+    resp = client.post(
+        "/api/messages/conversations",
+        headers=auth_headers(user1.id),
+        data=json.dumps({"type": "direct", "recipientId": user2.id}),
+        content_type="application/json"
+    )
+    conv_id = resp.get_json()["id"]
+
+    # 2. User1 sends a message
+    msg_resp = client.post(
+        f"/api/messages/conversations/{conv_id}/messages",
+        headers=auth_headers(user1.id),
+        data=json.dumps({"content": "Important announcement: Meeting at 3pm"}),
+        content_type="application/json"
+    )
+    msg_id = msg_resp.get_json()["id"]
+    assert msg_resp.get_json()["isPinned"] is False
+
+    # 3. User2 pins the message
+    pin_resp = client.post(
+        f"/api/messages/{msg_id}/pin",
+        headers=auth_headers(user2.id)
+    )
+    assert pin_resp.status_code == 200
+    assert pin_resp.get_json()["isPinned"] is True
+
+    # 4. User1 fetches messages and sees it's pinned
+    get_msgs = client.get(
+        f"/api/messages/conversations/{conv_id}/messages",
+        headers=auth_headers(user1.id)
+    )
+    assert get_msgs.status_code == 200
+    assert get_msgs.get_json()[0]["isPinned"] is True
+
+    # 5. User1 unpins the message
+    unpin_resp = client.post(
+        f"/api/messages/{msg_id}/pin",
+        headers=auth_headers(user1.id)
+    )
+    assert unpin_resp.status_code == 200
+    assert unpin_resp.get_json()["isPinned"] is False
+
+    # 6. Intruder tries to pin
+    intruder_resp = client.post(
+        f"/api/messages/{msg_id}/pin",
+        headers=auth_headers(intruder.id)
+    )
+    assert intruder_resp.status_code == 403
+

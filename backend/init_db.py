@@ -22,10 +22,25 @@ def init_database():
         db.create_all()
         print("[OK] All tables verified and created successfully!")
         
-        # Verify tables in database
+        # Verify tables and columns in database
         inspector = sa_inspect(db.engine)
         tables = inspector.get_table_names()
         print(f"Tables currently in database ({len(tables)}): {', '.join(tables)}")
+
+        # Ensure is_forwarded and is_pinned columns exist in messages table
+        if 'messages' in tables:
+            cols = [c['name'] for c in inspector.get_columns('messages')]
+            from sqlalchemy import text
+            if 'is_forwarded' not in cols:
+                print("Adding missing column 'is_forwarded' to messages table...")
+                db.session.execute(text("ALTER TABLE messages ADD COLUMN is_forwarded BOOLEAN DEFAULT FALSE NOT NULL"))
+                db.session.commit()
+                print("Column 'is_forwarded' added successfully.")
+            if 'is_pinned' not in cols:
+                print("Adding missing column 'is_pinned' to messages table...")
+                db.session.execute(text("ALTER TABLE messages ADD COLUMN is_pinned BOOLEAN DEFAULT FALSE NOT NULL"))
+                db.session.commit()
+                print("Column 'is_pinned' added successfully.")
 
 if __name__ == "__main__":
     init_database()

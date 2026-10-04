@@ -3,13 +3,20 @@ import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { renderWithProviders, mockUser } from "@/test/test-utils";
 import { boardApi } from "@/services/boardApi";
+import { taskApi } from "@/services/api";
 
-// Mock boardApi & messageApi
+// Mock boardApi, taskApi, messageApi
 vi.mock("@/services/boardApi", () => ({
   boardApi: {
     getBoards: vi.fn(),
     getPendingInvitations: vi.fn(),
     createBoard: vi.fn(),
+  },
+}));
+
+vi.mock("@/services/api", () => ({
+  taskApi: {
+    getTasks: vi.fn(),
   },
 }));
 
@@ -46,6 +53,12 @@ describe("AppSidebar Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (boardApi.getBoards as any).mockResolvedValue(mockBoards);
+    (taskApi.getTasks as any).mockResolvedValue([
+      { id: "t-1", title: "Task 1", status: "todo" },
+      { id: "t-2", title: "Task 2", status: "in_progress" },
+      { id: "t-3", title: "Task 3", status: "done" },
+      { id: "t-4", title: "Task 4", status: "todo" },
+    ]);
     (boardApi.getPendingInvitations as any).mockResolvedValue([
       { id: "invite-1", boardId: "board-3", boardName: "Marketing", inviterName: "Alice", role: "member", status: "pending", createdAt: new Date().toISOString() }
     ]);
@@ -129,6 +142,27 @@ describe("AppSidebar Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Personal Files & Scratchpad")).toBeInTheDocument();
+    });
+  });
+
+  it("renders numerical notification badges for Boards, Tasks, and Messages", async () => {
+    renderWithProviders(
+      <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />
+    );
+
+    // Wait for boards count badge (mockBoards length is 2)
+    await waitFor(() => {
+      expect(screen.getByText("2")).toBeInTheDocument();
+    });
+
+    // Tasks count badge (mockTasks length is 4)
+    await waitFor(() => {
+      expect(screen.getByText("4")).toBeInTheDocument();
+    });
+
+    // Unread messages count badge (unreadCount is 3)
+    await waitFor(() => {
+      expect(screen.getByText("3")).toBeInTheDocument();
     });
   });
 });

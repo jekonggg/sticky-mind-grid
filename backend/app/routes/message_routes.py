@@ -72,17 +72,31 @@ def send_message(conversation_id):
     content = data.get('content', '')
     attachments = data.get('attachments', [])
     reply_to_id = data.get('replyToId')
+    is_forwarded = data.get('isForwarded', False)
 
     message, error, status_code = MessageService.send_message(
         sender_id=user_id,
         conversation_id=conversation_id,
         content=content,
         attachments=attachments,
-        reply_to_id=reply_to_id
+        reply_to_id=reply_to_id,
+        is_forwarded=is_forwarded
     )
     if error:
         return jsonify({'error': error}), status_code
     return jsonify(message), status_code
+
+@bp.route('/<message_id>/forward', methods=['POST'])
+@jwt_required()
+def forward_message(message_id):
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    target_ids = data.get('targetConversationIds') or ([data.get('targetConversationId')] if data.get('targetConversationId') else [])
+
+    results, error, status_code = MessageService.forward_message(user_id, message_id, target_ids)
+    if error:
+        return jsonify({'error': error}), status_code
+    return jsonify({'forwarded': results}), 200
 
 @bp.route('/conversations/<conversation_id>/read', methods=['POST'])
 @jwt_required()
@@ -110,6 +124,15 @@ def toggle_reaction(message_id):
 def delete_message(message_id):
     user_id = get_jwt_identity()
     res, error, status_code = MessageService.delete_message(user_id, message_id)
+    if error:
+        return jsonify({'error': error}), status_code
+    return jsonify(res), 200
+
+@bp.route('/<message_id>/pin', methods=['POST'])
+@jwt_required()
+def toggle_pin(message_id):
+    user_id = get_jwt_identity()
+    res, error, status_code = MessageService.toggle_pin(user_id, message_id)
     if error:
         return jsonify({'error': error}), status_code
     return jsonify(res), 200

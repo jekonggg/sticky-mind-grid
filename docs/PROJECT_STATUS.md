@@ -101,13 +101,15 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 - **Documents view** — note cards with edit/delete
 
 ### In-App Messaging & Team Chat
-- **Sidebar Integration** — "Messages" entry in sidebar with dynamic unread count badge & collapsed rail tooltip
+- **Sidebar Integration** — "Messages" entry in sidebar with dynamic unread count badge & collapsed rail tooltip; Boards entry with consistent right-aligned count badge and slide-in Add Board button on click
 - **Direct Messages (1-on-1)** — start direct conversations with any registered teammate, idempotent conversation reuse
 - **Group Chats** — create named group conversations with multi-member selection
 - **Real-Time Delivery** — user-scoped SSE event stream (`/api/messages/stream`) for instant message synchronization
-- **Rich Message Timeline** — date separators, incoming/outgoing bubbles, sender avatars, and timestamps
-- **Attachments & Media** — send images (with lightbox preview) and documents (downloadable)
-- **Reply Threads & Emoji Reactions** — reply to specific messages with preview banner, toggle emoji reactions on any message
+- **Rich Message Timeline** — bottom-anchored conversation flow, date separators, incoming/outgoing bubbles, hover timestamps, and sender avatars
+- **Attachments & Media** — send images (with lightbox preview), video files (inline player with download), and documents (downloadable) with 25MB file size limits
+- **Scoped Hover Action Toolbar** — react button with multi-emoji picker, quick reply button, and 3-dot dropdown with Pin, Forward, and Unsend
+- **Pin & Reply Functionality** — pin/unpin messages with top pinned banner and jump-to highlights; quoted reply preview with composer banner and jump-to scroll
+- **Forward & Soft Unsend** — multi-chat message forwarding with preview; soft unsend with persistent unsent audit trail
 
 ### Global Workspace Hub & Navigation
 - **Workspace Dashboard (`/dashboard`)** — Welcome hero header, real-time KPI metric cards (Total Boards, Active Tasks, Completed Tasks, Overdue/Urgent Count), assigned priority tasks with quick completion checkboxes, upcoming deadlines agenda, and live workspace activity stream.
