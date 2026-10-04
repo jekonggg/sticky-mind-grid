@@ -15,7 +15,8 @@ import {
 const LOCAL_PREFS_KEY = "sticky_mind_grid_local_settings";
 
 const defaultLocalPreferences: LocalPreferences = {
-  theme: "system",
+  theme: "light",
+  darkColorway: "mast",
   uiDensity: "comfortable",
   soundEffectsEnabled: true,
   soundVolume: 0.3,
@@ -82,6 +83,15 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setLocalPrefs((prev) => (prev.theme !== theme ? { ...prev, theme: theme as ThemeMode } : prev));
     }
   }, [theme]);
+
+  // Sync dark colorway class to root documentElement
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("colorway-mast", "colorway-neon", "colorway-midnight");
+    if (localPrefs.darkColorway) {
+      root.classList.add(`colorway-${localPrefs.darkColorway}`);
+    }
+  }, [localPrefs.darkColorway]);
 
   // Fetch user synced preferences when authenticated
   useEffect(() => {

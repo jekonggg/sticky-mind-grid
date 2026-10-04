@@ -31,7 +31,12 @@ import {
   ShieldAlert,
   Radio,
   Trash2,
-  Tag as TagIcon
+  Tag as TagIcon,
+  LayoutGrid,
+  List,
+  Calendar,
+  FileText,
+  BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +44,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useParams, useNavigate } from "react-router-dom";
 import { boardApi } from "@/services/boardApi";
 import { Board, BoardMember } from "@/types/board";
-import { BoardHeroImage } from "../boards/BoardHeroImage";
 import { BoardModal } from "../boards/BoardModal";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -373,12 +377,12 @@ export function KanbanBoard() {
   }
 
   const views = [
-    { id: "board", label: "Board View" },
-    { id: "list", label: "List View" },
-    { id: "calendar", label: "Calendar" },
-    { id: "documents", label: "Documents" },
-    { id: "overview", label: "Analytics" },
-    { id: "members", label: "Team" },
+    { id: "board", label: "Board", icon: LayoutGrid },
+    { id: "list", label: "List", icon: List },
+    { id: "calendar", label: "Calendar", icon: Calendar },
+    { id: "documents", label: "Docs", icon: FileText },
+    { id: "overview", label: "Analytics", icon: BarChart3 },
+    { id: "members", label: "Team", icon: Users },
   ] as const;
 
   const renderActiveView = () => {
@@ -471,22 +475,18 @@ export function KanbanBoard() {
         {/* Main Board Viewport Screen */}
         <div className={`flex-1 h-full min-w-0 relative flex flex-col overflow-hidden transition-all duration-200 ${selectedTask ? 'hidden md:flex' : 'flex'}`}>
           <div className="flex-1 overflow-y-scroll overflow-x-hidden min-h-0 custom-scrollbar flex flex-col [scrollbar-gutter:stable]">
-            <div className="relative h-48 md:h-56 shrink-0 overflow-hidden">
-              <BoardHeroImage src={board.heroImageUrl} alt={board.name} color={board.color} className="h-full w-full" aspectRatio="auto" />
-            </div>
-
-          <div className="bg-background border-b border-border/50 shrink-0">
-            <div className="px-6 py-5 md:px-10 flex flex-col md:flex-row items-center justify-between gap-6 max-w-[1600px] mx-auto w-full">
-              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                <div className="flex items-center gap-3">
+            <div className="bg-background border-b border-border/50 shrink-0">
+              {/* Row 1: Board Name, Emoji, Badges, & Edit */}
+              <div className="px-6 pt-3.5 pb-2 md:px-8 flex items-center justify-between gap-4 w-full">
+                <div className="flex items-center gap-3 min-w-0">
                   {board.emoji && (
-                    <div className="h-10 w-10 md:h-12 md:w-12 bg-primary/10 flex items-center justify-center rounded-2xl border border-primary/20 shadow-sm shrink-0">
+                    <div className="h-10 w-10 md:h-11 md:w-11 bg-primary/10 flex items-center justify-center rounded-xl border border-primary/20 shadow-2xs shrink-0">
                       <span className="text-xl md:text-2xl">{board.emoji}</span>
                     </div>
                   )}
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2 group/title flex-wrap">
-                      <h1 className="text-xl md:text-3xl font-black text-foreground tracking-tight truncate">
+                      <h1 className="text-lg md:text-2xl font-black text-foreground tracking-tight truncate">
                         {board.name}
                       </h1>
                       {permissions.isReadOnly ? (
@@ -507,16 +507,16 @@ export function KanbanBoard() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8 rounded-full hover:bg-muted transition-colors shrink-0 text-primary bg-primary/5" 
+                          className="h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0 text-muted-foreground hover:text-foreground" 
                           onClick={() => setIsBoardModalOpen(true)} 
                           title="Edit Board & Icon"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                       )}
                     </div>
                     {board.description && (
-                      <p className="text-xs md:text-sm text-muted-foreground font-medium line-clamp-1 opacity-80">
+                      <p className="text-xs text-muted-foreground font-medium line-clamp-1 opacity-80">
                         {board.description}
                       </p>
                     )}
@@ -524,136 +524,143 @@ export function KanbanBoard() {
                 </div>
               </div>
 
-              {/* View Switcher Tabs */}
-              <div className="flex items-center p-1 bg-muted/40 backdrop-blur-sm rounded-full border border-border/40 shadow-inner group/tabs shrink-0">
-                {views.map((view) => (
-                  <button 
-                    key={view.id} 
-                    aria-selected={activeView === view.id}
-                    onClick={() => setActiveView(view.id)} 
-                    className={`px-5 py-2 text-xs font-black uppercase tracking-widest transition-all rounded-full relative z-10 
-                      ${activeView === view.id 
-                        ? "text-primary-foreground shadow-lg scale-105" 
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
-                      }`}
-                  >
-                    {activeView === view.id && (
-                      <div className="absolute inset-0 bg-primary rounded-full -z-10 shadow-[0_0_15px_rgba(var(--primary),0.3)] animate-in zoom-in-95 duration-200" />
-                    )}
-                    {view.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Quick Member Filter Bar (Visible in Board and List views) */}
-            {(activeView === "board" || activeView === "list" || activeView === "calendar") && (
-              <div className="px-6 pb-3 md:px-10 max-w-[1600px] mx-auto w-full flex items-center gap-2 overflow-x-auto">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-bold shrink-0 mr-1">
-                  <Filter className="h-3.5 w-3.5" />
-                  <span className="text-[10px] uppercase tracking-wider">Filter:</span>
-                </div>
-
-                <button
-                  onClick={() => setAssigneeFilter("all")}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 ${
-                    assigneeFilter === "all"
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  All Tasks ({tasks.length})
-                </button>
-
-                <button
-                  onClick={() => setAssigneeFilter("me")}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
-                    assigneeFilter === "me"
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  <User className="h-3 w-3" />
-                  <span>Assigned to Me ({tasks.filter((t) => t.assignedTo === currentUser?.id).length})</span>
-                </button>
-
-                <button
-                  onClick={() => setAssigneeFilter("unassigned")}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 ${
-                    assigneeFilter === "unassigned"
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  Unassigned ({tasks.filter((t) => !t.assignedTo).length})
-                </button>
-
-                {members.length > 0 && (
-                  <div className="flex items-center gap-1 pl-2 border-l border-border/60 shrink-0">
-                    {members.map((m) => {
-                      const isSelected = assigneeFilter === m.userId;
-                      const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
-                      const name = m.user?.fullName?.split(" ")[0] || m.user?.email?.split("@")[0] || "Member";
+              {/* Row 2: Unified Linear-Style View Switcher & Filter Toolbar */}
+              <div className="px-6 pb-2.5 md:px-8 w-full flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3 flex-wrap min-w-0">
+                  {/* Left: Sleek Segmented View Switcher */}
+                  <div className="flex items-center p-0.5 bg-muted/60 dark:bg-muted/40 rounded-lg border border-border/50 shadow-2xs shrink-0 gap-0.5 overflow-x-auto max-w-full custom-scrollbar">
+                    {views.map((view) => {
+                      const Icon = view.icon;
+                      const isActive = activeView === view.id;
                       return (
-                        <button
-                          key={m.userId}
-                          onClick={() => setAssigneeFilter(isSelected ? "all" : m.userId)}
-                          title={`Filter by ${m.user?.fullName || m.user?.email}`}
-                          className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold transition-all border ${
-                            isSelected
-                              ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                              : "bg-background text-muted-foreground border-border/60 hover:border-primary/40 hover:text-foreground"
+                        <button 
+                          key={view.id} 
+                          aria-selected={isActive}
+                          onClick={() => setActiveView(view.id)} 
+                          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-all rounded-md shrink-0 cursor-pointer ${
+                            isActive 
+                              ? "bg-background text-foreground shadow-xs font-bold ring-1 ring-border/50" 
+                              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                           }`}
                         >
-                          <Avatar className="h-5 w-5 shrink-0">
-                            <AvatarImage src={m.user?.avatarUrl} alt={name} />
-                            <AvatarFallback className="text-[9px] font-black bg-primary/10 text-primary">
-                              {initial}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-[11px]">{name}</span>
+                          <Icon className={`h-3.5 w-3.5 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                          <span>{view.label}</span>
                         </button>
                       );
                     })}
                   </div>
-                )}
 
-                {/* Tag Filters */}
-                {availableTags.length > 0 && (
-                  <div className="flex items-center gap-1 pl-2 border-l border-border/60 shrink-0">
-                    <TagIcon className="h-3 w-3 text-muted-foreground mr-0.5" />
-                    {availableTags.map((tag) => {
-                      const isSelected = tagFilter.toLowerCase() === tag.name.toLowerCase();
-                      return (
-                        <button
-                          key={tag.id}
-                          onClick={() => setTagFilter(isSelected ? "all" : tag.name)}
-                          style={{
-                            backgroundColor: isSelected ? tag.color : `${tag.color}15`,
-                            color: isSelected ? "#ffffff" : tag.color,
-                            borderColor: `${tag.color}40`,
-                          }}
-                          className="px-2.5 py-0.5 rounded-full text-xs font-bold transition-all border shadow-2xs cursor-pointer"
-                        >
-                          {tag.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                  {/* Filter Bar placed leftwise immediately next to View Switcher */}
+                  {(activeView === "board" || activeView === "list" || activeView === "calendar") && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto max-w-full custom-scrollbar shrink-0 py-0.5 md:pl-2 md:border-l md:border-border/60">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground font-semibold shrink-0 mr-0.5">
+                        <Filter className="h-3.5 w-3.5" />
+                      </div>
 
-                {/* Trash Bin Trigger */}
-                <button
-                  onClick={() => setIsTrashOpen(true)}
-                  className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all border border-border/60 bg-background text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 shrink-0 cursor-pointer"
-                  title="View Trash Bin"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span>Trash</span>
-                </button>
+                      <button
+                        onClick={() => setAssigneeFilter("all")}
+                        className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                          assigneeFilter === "all"
+                            ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                            : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40"
+                        }`}
+                      >
+                        All ({tasks.length})
+                      </button>
+
+                      <button
+                        onClick={() => setAssigneeFilter("me")}
+                        className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                          assigneeFilter === "me"
+                            ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                            : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40"
+                        }`}
+                      >
+                        <User className="h-3 w-3" />
+                        <span>Me ({tasks.filter((t) => t.assignedTo === currentUser?.id).length})</span>
+                      </button>
+
+                      <button
+                        onClick={() => setAssigneeFilter("unassigned")}
+                        className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                          assigneeFilter === "unassigned"
+                            ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                            : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40"
+                        }`}
+                      >
+                        Unassigned ({tasks.filter((t) => !t.assignedTo).length})
+                      </button>
+
+                      {members.length > 0 && (
+                        <div className="flex items-center gap-1 pl-1.5 border-l border-border/60 shrink-0">
+                          {members.map((m) => {
+                            const isSelected = assigneeFilter === m.userId;
+                            const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
+                            const name = m.user?.fullName?.split(" ")[0] || m.user?.email?.split("@")[0] || "Member";
+                            return (
+                              <button
+                                key={m.userId}
+                                onClick={() => setAssigneeFilter(isSelected ? "all" : m.userId)}
+                                title={`Filter by ${m.user?.fullName || m.user?.email}`}
+                                className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium transition-all border cursor-pointer ${
+                                  isSelected
+                                    ? "bg-primary text-primary-foreground border-primary shadow-2xs font-bold"
+                                    : "bg-background/80 text-muted-foreground border-border/50 hover:border-primary/40 hover:text-foreground"
+                                }`}
+                              >
+                                <Avatar className="h-4 w-4 shrink-0">
+                                  <AvatarImage src={m.user?.avatarUrl} alt={name} />
+                                  <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">
+                                    {initial}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-[11px]">{name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Tag Filters */}
+                      {availableTags.length > 0 && (
+                        <div className="flex items-center gap-1 pl-1.5 border-l border-border/60 shrink-0">
+                          <TagIcon className="h-3 w-3 text-muted-foreground mr-0.5" />
+                          {availableTags.map((tag) => {
+                            const isSelected = tagFilter.toLowerCase() === tag.name.toLowerCase();
+                            return (
+                              <button
+                                key={tag.id}
+                                onClick={() => setTagFilter(isSelected ? "all" : tag.name)}
+                                style={{
+                                  backgroundColor: isSelected ? tag.color : `${tag.color}15`,
+                                  color: isSelected ? "#ffffff" : tag.color,
+                                  borderColor: `${tag.color}40`,
+                                }}
+                                className="px-2 py-0.5 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer"
+                              >
+                                {tag.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Trash Bin Trigger on the right */}
+                {(activeView === "board" || activeView === "list" || activeView === "calendar") && (
+                  <button
+                    onClick={() => setIsTrashOpen(true)}
+                    className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all border border-border/50 bg-background/80 text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 shrink-0 cursor-pointer"
+                    title="View Trash Bin"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Trash</span>
+                  </button>
+                )}
               </div>
-            )}
-          </div>
+            </div>
 
           <div className="flex-1 bg-muted/20 min-h-[500px]">
             {renderActiveView()}

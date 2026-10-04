@@ -71,13 +71,13 @@ export function TaskCard({ task, isSelected = false, onClick, isDragDisabled = f
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <span
-                className={`text-[9px] uppercase font-black px-1.5 py-0.5 rounded tracking-wider
+                className={`text-[9px] uppercase font-black px-2 py-0.5 rounded-full tracking-wider transition-colors
                   ${
                     task.priority === "high"
-                      ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
+                      ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
                       : task.priority === "medium"
                       ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                      : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                      : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                   }`}
               >
                 {task.priority}

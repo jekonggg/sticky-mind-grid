@@ -1,10 +1,12 @@
 export type ThemeMode = "light" | "dark" | "system";
+export type DarkColorway = "mast" | "neon" | "midnight";
 export type UIDensity = "comfortable" | "compact";
 export type BoardViewMode = "board" | "list" | "calendar" | "documents" | "overview";
 export type DateFormatOption = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD";
 
 export interface LocalPreferences {
   theme: ThemeMode;
+  darkColorway: DarkColorway;
   uiDensity: UIDensity;
   soundEffectsEnabled: boolean;
   soundVolume: number; // 0 to 1

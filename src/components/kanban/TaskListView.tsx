@@ -36,7 +36,7 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
   };
 
   return (
-    <div className="p-6 md:p-10 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="p-6 md:p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
         <Table>
           <TableHeader className="bg-muted/30">

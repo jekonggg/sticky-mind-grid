@@ -33,7 +33,16 @@ import {
   ArrowUpDown,
   Tag as TagIcon,
   Sparkles,
+  User,
 } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { TaskModal } from "@/components/kanban/TaskModal";
 import { toast } from "sonner";
 
@@ -54,6 +63,8 @@ export default function TasksPage() {
 
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [targetBoardForNewTask, setTargetBoardForNewTask] = useState<string>("");
+
+  const now = useMemo(() => new Date(), []);
 
   // Fetch all user boards
   const { data: boards = [] } = useQuery<Board[]>({
@@ -340,119 +351,180 @@ export default function TasksPage() {
             </Button>
           </div>
         ) : viewMode === "list" ? (
-          /* List Table View */
+          /* Structured Table View */
           <div className="bg-card rounded-2xl border border-border/60 overflow-hidden shadow-xs">
-            <div className="divide-y divide-border/50">
-              {filteredTasks.map((task) => {
-                const isDone = task.status === "done" || task.progress === 100;
-                const isOverdue =
-                  task.dueDate && !isDone && new Date(task.dueDate) < now;
+            <div className="overflow-x-auto">
+              <Table className="min-w-[760px] w-full">
+                <TableHeader className="bg-muted/40">
+                  <TableRow className="border-border/50 hover:bg-transparent">
+                    <TableHead className="w-[38%] py-3.5 pl-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                      Task
+                    </TableHead>
+                    <TableHead className="w-[18%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                      Board
+                    </TableHead>
+                    <TableHead className="w-[14%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                      Priority
+                    </TableHead>
+                    <TableHead className="w-[18%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                      Assigned
+                    </TableHead>
+                    <TableHead className="w-[12%] py-3.5 pr-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                      Due Date
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTasks.map((task) => {
+                    const isDone = task.status === "done" || task.progress === 100;
+                    const isOverdue =
+                      task.dueDate && !isDone && new Date(task.dueDate) < now;
 
-                return (
-                  <div
-                    key={task.id}
-                    onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
-                    className="p-4 flex items-center justify-between gap-4 hover:bg-muted/30 transition-colors cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                      <button
-                        type="button"
-                        onClick={(e) => handleToggleComplete(task, e)}
-                        className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
-                          isDone
-                            ? "bg-emerald-500 border-emerald-500 text-white"
-                            : "border-border/80 hover:border-primary bg-background"
-                        }`}
+                    return (
+                      <TableRow
+                        key={task.id}
+                        onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
+                        className="group/row cursor-pointer border-border/50 hover:bg-muted/30 transition-colors"
                       >
-                        {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
-                      </button>
+                        {/* Task Column */}
+                        <TableCell className="py-3.5 pl-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleComplete(task, e)}
+                              className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
+                                isDone
+                                  ? "bg-emerald-500 border-emerald-500 text-white"
+                                  : "border-border/80 hover:border-primary bg-background"
+                              }`}
+                              title={isDone ? "Mark as incomplete" : "Mark as complete"}
+                            >
+                              {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
+                            </button>
 
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          {task.emoji && <span className="text-sm">{task.emoji}</span>}
-                          <span
-                            className={`text-sm font-semibold truncate ${
-                              isDone
-                                ? "line-through text-muted-foreground"
-                                : "text-foreground group-hover:text-primary transition-colors"
-                            }`}
-                          >
-                            {task.title}
-                          </span>
-                        </div>
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                {task.emoji && (
+                                  <span className="text-sm shrink-0 leading-none">
+                                    {task.emoji}
+                                  </span>
+                                )}
+                                <span
+                                  className={`text-sm font-semibold truncate ${
+                                    isDone
+                                      ? "line-through text-muted-foreground"
+                                      : "text-foreground group-hover/row:text-primary transition-colors"
+                                  }`}
+                                >
+                                  {task.title}
+                                </span>
+                              </div>
 
-                        {task.description && (
-                          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                            {task.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                              {task.description && (
+                                <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                                  {task.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      {/* Board Badge */}
-                      {task.boardName && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/boards/${task.boardId}`);
-                          }}
-                          className="hover:opacity-80"
-                        >
+                        {/* Board Column */}
+                        <TableCell className="py-3.5">
+                          {task.boardName ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/boards/${task.boardId}`);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 text-xs font-semibold max-w-[170px] truncate transition-all group-hover/row:border-primary/40"
+                              title={`Open ${task.boardName}`}
+                            >
+                              <span className="shrink-0">{task.boardEmoji || "📋"}</span>
+                              <span className="truncate">{task.boardName}</span>
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/40 italic">—</span>
+                          )}
+                        </TableCell>
+
+                        {/* Priority Column */}
+                        <TableCell className="py-3.5">
                           <Badge
                             variant="outline"
-                            className="text-[10px] px-2 py-0.5 bg-primary/5 text-primary border-primary/20 font-medium"
+                            className={`text-[10px] uppercase font-mono px-2 py-0.5 font-bold tracking-tight ${
+                              task.priority === "urgent" || task.priority === "high"
+                                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
+                                : task.priority === "medium"
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                                : "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30"
+                            }`}
                           >
-                            {task.boardEmoji || "📋"} {task.boardName}
+                            {task.priority || "none"}
                           </Badge>
-                        </button>
-                      )}
+                        </TableCell>
 
-                      {/* Priority */}
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] uppercase font-mono px-2 py-0.5 ${
-                          task.priority === "high" || task.priority === "urgent"
-                            ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
-                            : task.priority === "medium"
-                            ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                            : "bg-slate-500/10 text-slate-600 border-slate-500/20"
-                        }`}
-                      >
-                        {task.priority}
-                      </Badge>
+                        {/* Assigned Column */}
+                        <TableCell className="py-3.5">
+                          {task.assignee ? (
+                            <div className="flex items-center gap-2 max-w-[160px]">
+                              <Avatar className="h-6 w-6 border border-border/80 shrink-0">
+                                <AvatarImage
+                                  src={task.assignee.avatarUrl}
+                                  alt={task.assignee.fullName || task.assignee.email}
+                                />
+                                <AvatarFallback className="text-[9px] font-bold bg-primary/10 text-primary">
+                                  {(task.assignee.fullName || task.assignee.email || "U")
+                                    .charAt(0)
+                                    .toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-xs font-medium text-foreground truncate">
+                                {task.assignee.fullName || task.assignee.email}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/50 italic flex items-center gap-1">
+                              <User className="h-3 w-3 opacity-50" />
+                              Unassigned
+                            </span>
+                          )}
+                        </TableCell>
 
-                      {/* Assignee Avatar */}
-                      {task.assignee ? (
-                        <Avatar className="h-6 w-6 border border-border/60" title={task.assignee.fullName || task.assignee.email}>
-                          <AvatarImage src={task.assignee.avatarUrl} />
-                          <AvatarFallback className="text-[9px] font-bold">
-                            {task.assignee.fullName?.charAt(0) || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground/60 italic hidden md:inline">Unassigned</span>
-                      )}
-
-                      {/* Due Date */}
-                      {task.dueDate && (
-                        <span
-                          className={`text-xs font-medium flex items-center gap-1 min-w-[75px] justify-end ${
-                            isOverdue ? "text-rose-500 font-bold" : "text-muted-foreground"
-                          }`}
-                        >
-                          <Clock className="h-3 w-3" />
-                          {new Date(task.dueDate).toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                        {/* Due Date Column */}
+                        <TableCell className="py-3.5 pr-4">
+                          {task.dueDate ? (
+                            <span
+                              className={`text-xs font-medium flex items-center gap-1.5 whitespace-nowrap ${
+                                isOverdue
+                                  ? "text-rose-500 dark:text-rose-400 font-bold"
+                                  : isDone
+                                  ? "text-muted-foreground line-through"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              <Clock className="h-3.5 w-3.5 shrink-0" />
+                              {new Date(task.dueDate).toLocaleDateString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                                year:
+                                  new Date(task.dueDate).getFullYear() !== now.getFullYear()
+                                    ? "numeric"
+                                    : undefined,
+                              })}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/40 italic">
+                              No date
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           </div>
         ) : (

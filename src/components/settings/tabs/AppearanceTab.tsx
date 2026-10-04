@@ -1,9 +1,9 @@
 import { useSettings } from "@/contexts/SettingsContext";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Sun, Moon, Laptop, Sparkles, Check, RotateCcw, LucideIcon } from "lucide-react";
+import { Sun, Moon, Laptop, Sparkles, Check, RotateCcw, LucideIcon, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ThemeMode, UIDensity } from "@/types/settings";
+import { ThemeMode, UIDensity, DarkColorway } from "@/types/settings";
 
 export function AppearanceTab() {
   const { settings, updateLocalSetting, resetLocalSettings } = useSettings();
@@ -12,20 +12,41 @@ export function AppearanceTab() {
     {
       mode: "light",
       label: "Light",
-      desc: "Clean & bright interface",
+      desc: "Scopeboard clean white & floating cards (Default)",
       icon: Sun,
     },
     {
       mode: "dark",
       label: "Dark",
-      desc: "Sleek & comfortable at night",
+      desc: "Multi-tiered obsidian & rich accents",
       icon: Moon,
     },
     {
       mode: "system",
       label: "System",
-      desc: "Syncs with OS preferences",
+      desc: "Syncs with OS display preferences",
       icon: Laptop,
+    },
+  ];
+
+  const darkColorwayOptions: { id: DarkColorway; label: string; desc: string; previewClass: string }[] = [
+    {
+      id: "mast",
+      label: "Pitch Black & Pastel",
+      desc: "Jet pitch black with electric lilac & candy pills (Mast style)",
+      previewClass: "bg-[#0F0F10] text-[#C084FC] border-[#303038]",
+    },
+    {
+      id: "neon",
+      label: "Obsidian & Neon Lime",
+      desc: "Matte obsidian with electric chartreuse accent (One Agency style)",
+      previewClass: "bg-[#0D0E11] text-[#A3E635] border-[#2A2C37]",
+    },
+    {
+      id: "midnight",
+      label: "Midnight Sapphire",
+      desc: "Deep sapphire slate with vibrant royal indigo (Linear style)",
+      previewClass: "bg-[#030712] text-[#6366F1] border-[#1E293B]",
     },
   ];
 
@@ -87,6 +108,53 @@ export function AppearanceTab() {
                 </div>
                 <span className="font-bold text-xs text-foreground">{opt.label}</span>
                 <span className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+                  {opt.desc}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Dark Mode Colorway Selection */}
+      <div className="space-y-3 pt-4 border-t border-border/50">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Palette className="h-3.5 w-3.5 text-primary" />
+            Dark Mode Colorway
+          </Label>
+          <span className="text-[10px] text-muted-foreground font-medium">
+            Active in Dark & System Modes
+          </span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {darkColorwayOptions.map((opt) => {
+            const isSelected = (settings.darkColorway || "mast") === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => updateLocalSetting("darkColorway", opt.id)}
+                className={`relative flex flex-col items-start p-3.5 rounded-xl border text-left transition-all ${
+                  isSelected
+                    ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-sm"
+                    : "border-border/60 bg-card hover:bg-muted/50 hover:border-border"
+                }`}
+              >
+                {isSelected && (
+                  <div className="absolute top-2.5 right-2.5 h-4 w-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                    <Check className="h-2.5 w-2.5 stroke-[3]" />
+                  </div>
+                )}
+                <div className={`h-7 w-full rounded-md border flex items-center justify-between px-2 mb-2.5 ${opt.previewClass}`}>
+                  <span className="text-[10px] font-bold">Aa</span>
+                  <div className="flex gap-1">
+                    <div className="h-2 w-2 rounded-full bg-current opacity-80" />
+                    <div className="h-2 w-2 rounded-full bg-current opacity-40" />
+                  </div>
+                </div>
+                <span className="font-bold text-xs text-foreground">{opt.label}</span>
+                <span className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
                   {opt.desc}
                 </span>
               </button>

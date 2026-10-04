@@ -102,4 +102,43 @@ describe("TasksPage", () => {
       expect(screen.queryByText("Refactor Navbar")).not.toBeInTheDocument();
     });
   });
+
+  it("filters overdue tasks when clicking overdue tab", async () => {
+    const overdueDate = new Date(Date.now() - 86400000).toISOString();
+    const tasksWithOverdue = [
+      ...mockTasks,
+      {
+        id: "task-3",
+        boardId: "board-1",
+        boardName: "Engineering Sprint",
+        title: "Overdue Critical Bugfix",
+        emoji: "🔥",
+        status: "todo",
+        priority: "high",
+        progress: 0,
+        dueDate: overdueDate,
+        assignedTo: mockUser.id,
+        checklist: [],
+        tags: [],
+        attachments: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+    (taskApi.getTasks as any).mockResolvedValue(tasksWithOverdue);
+
+    renderWithProviders(<TasksPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Overdue Critical Bugfix")).toBeInTheDocument();
+    });
+
+    const overdueTab = screen.getByText("Overdue");
+    fireEvent.click(overdueTab);
+
+    await waitFor(() => {
+      expect(screen.getByText("Overdue Critical Bugfix")).toBeInTheDocument();
+      expect(screen.queryByText("Refactor Navbar")).not.toBeInTheDocument();
+    });
+  });
 });

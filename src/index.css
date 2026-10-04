@@ -8,94 +8,120 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 220 14% 96%;
-    --foreground: 224 20% 14%;
+    --background: 210 20% 98%;
+    --foreground: 222.2 47.4% 11.2%;
 
     --card: 0 0% 100%;
-    --card-foreground: 224 20% 14%;
+    --card-foreground: 222.2 47.4% 11.2%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 224 20% 14%;
+    --popover-foreground: 222.2 47.4% 11.2%;
 
-    --primary: 220 80% 56%;
+    --primary: 226 70% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 92%;
-    --secondary-foreground: 224 20% 14%;
+    --secondary: 210 20% 95%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 220 14% 94%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 210 20% 95%;
+    --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 220 14% 92%;
-    --accent-foreground: 224 20% 14%;
+    --accent: 210 20% 95%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 226 70% 55%;
+
+    --radius: 0.75rem;
+
+    --column-todo: 210 20% 95%;
+    --column-progress: 210 20% 95%;
+    --column-done: 210 20% 95%;
+    --column-count-bg: 214.3 31.8% 88%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222.2 47.4% 11.2%;
+    --sidebar-primary: 226 70% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 20% 96%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 226 70% 55%;
+  }
+
+  /* Dark Mode: Pitch Black & Pastel Glow (withmast.com style) */
+  .dark {
+    --background: 0 0% 6%;
+    --foreground: 210 20% 96%;
+
+    --card: 240 5% 12.5%;
+    --card-foreground: 210 20% 96%;
+
+    --popover: 240 5% 14%;
+    --popover-foreground: 210 20% 96%;
+
+    --primary: 268 95% 72%;
+    --primary-foreground: 240 10% 6%;
+
+    --secondary: 240 4% 18%;
+    --secondary-foreground: 210 20% 96%;
+
+    --muted: 240 5% 10%;
+    --muted-foreground: 240 5% 62%;
+
+    --accent: 240 4% 18%;
+    --accent-foreground: 210 20% 96%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 90%;
-    --input: 220 13% 90%;
-    --ring: 220 80% 56%;
+    --border: 240 4% 20%;
+    --input: 240 4% 20%;
+    --ring: 268 95% 72%;
 
-    --radius: 0.5rem;
+    --column-todo: 240 5% 10%;
+    --column-progress: 240 5% 10%;
+    --column-done: 240 5% 10%;
+    --column-count-bg: 240 5% 18%;
 
-    --column-todo: 220 14% 94%;
-    --column-progress: 220 14% 94%;
-    --column-done: 220 14% 94%;
-    --column-count-bg: 220 14% 88%;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 0 0% 4.5%;
+    --sidebar-foreground: 210 20% 96%;
+    --sidebar-primary: 268 95% 72%;
+    --sidebar-primary-foreground: 240 10% 6%;
+    --sidebar-accent: 240 4% 12%;
+    --sidebar-accent-foreground: 210 20% 96%;
+    --sidebar-border: 240 4% 16%;
+    --sidebar-ring: 268 95% 72%;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+  /* Dark Colorway: Obsidian & Neon Lime (One Agency style) */
+  .colorway-neon.dark, .dark.colorway-neon, .dark .colorway-neon {
+    --background: 240 10% 5%;
+    --card: 240 8% 11.5%;
+    --border: 240 7% 18%;
+    --primary: 84 81% 55%;
+    --primary-foreground: 240 10% 6%;
+    --ring: 84 81% 55%;
+    --sidebar-primary: 84 81% 55%;
+    --sidebar-primary-foreground: 240 10% 6%;
+    --sidebar-ring: 84 81% 55%;
+  }
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+  /* Dark Colorway: Midnight Sapphire & Indigo (Linear style) */
+  .colorway-midnight.dark, .dark.colorway-midnight, .dark .colorway-midnight {
+    --background: 224 71% 4%;
+    --card: 222 47% 11%;
+    --border: 217 33% 20%;
+    --primary: 226 100% 64%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 226 100% 64%;
+    --sidebar-primary: 226 100% 64%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 226 100% 64%;
   }
 }
 

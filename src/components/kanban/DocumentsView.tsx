@@ -164,7 +164,7 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
   };
 
   return (
-    <div className="p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-screen">
+    <div className="p-6 md:p-8 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-screen">
       {/* Header Bar */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="flex items-center gap-3">
