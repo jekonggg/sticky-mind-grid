@@ -7,5 +7,6 @@ PyMySQL==1.1.0
 cryptography>=42.0.0
 Flask-JWT-Extended==4.6.0
 flask-bcrypt==1.0.1
+gunicorn>=21.2.0
 pytest>=8.0.0
 pytest-cov>=5.0.0

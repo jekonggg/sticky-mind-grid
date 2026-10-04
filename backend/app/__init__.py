@@ -33,24 +33,6 @@ def create_app(config_class=Config):
         allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials", "X-Requested-With", "Accept", "Origin"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     )
-    
-    # CORS: Flask-CORS is the single source of truth. Only origins listed in
-    # Config.CORS_ORIGINS receive Access-Control headers; preflights for other
-    # origins are rejected by flask-cors itself.
-    cors_origins = app.config.get('CORS_ORIGINS') or [
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000"
-    ]
-    CORS(
-        app,
-        resources={r"/*": {"origins": cors_origins}},
-        supports_credentials=True,
-        allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials", "X-Requested-With", "Accept", "Origin"],
-        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    )
 
     jwt.init_app(app)
     bcrypt.init_app(app)
