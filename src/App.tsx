@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Analytics } from "@vercel/analytics/react";
 import BoardsOverview from "./pages/BoardsOverview";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
@@ -53,6 +54,7 @@ const App = () => (
 
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                <Analytics />
               </ActivityProvider>
             </SettingsProvider>
           </AuthProvider>
