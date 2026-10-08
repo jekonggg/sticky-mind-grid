@@ -15,32 +15,26 @@ export function KanbanColumnSkeleton({
   return (
     <div
       className={cn(
-        "flex flex-col w-80 shrink-0 bg-muted/40 dark:bg-card/40 rounded-3xl border border-border/60 p-3 max-h-full space-y-3",
+        "flex flex-col min-w-[280px] w-80 shrink-0 group/column",
         className
       )}
     >
       {/* Column Header */}
-      <div className="flex items-center justify-between px-1.5 py-1">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-2.5 w-2.5 rounded-full" />
-          <Skeleton className="h-4 w-24 rounded-sm" />
-          <Skeleton className="h-5 w-6 rounded-full" />
-        </div>
-        <div className="flex items-center gap-1">
-          <Skeleton className="h-6 w-6 rounded-lg" />
-          <Skeleton className="h-6 w-6 rounded-lg" />
-        </div>
+      <div className="flex items-center gap-2.5 px-1 mb-3 h-10">
+        <Skeleton className="h-8 w-8 rounded-xl shrink-0" />
+        <Skeleton className="h-4 w-28 rounded-sm" />
+        <Skeleton className="h-5 w-6 rounded-full shrink-0 ml-auto" />
       </div>
 
-      {/* Cards container */}
-      <div className="flex-1 space-y-3 overflow-hidden py-0.5">
+      {/* Column Body Container */}
+      <div className="flex-1 rounded-xl p-2 space-y-2 min-h-[120px] bg-muted/30 border border-transparent">
         {Array.from({ length: cardCount }).map((_, i) => (
           <TaskCardSkeleton key={i} hasCover={i === 0} />
         ))}
-      </div>
 
-      {/* Add Task Button placeholder */}
-      <Skeleton className="h-9 w-full rounded-2xl" />
+        {/* Add Task Button placeholder */}
+        <Skeleton className="h-8 w-full rounded-lg mt-1" />
+      </div>
     </div>
   );
 }

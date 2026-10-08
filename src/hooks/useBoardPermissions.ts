@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Board, BoardMember, BoardRole } from "@/types/board";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDevMode } from "@/contexts/DevModeContext";
 
 export interface BoardPermissions {
   role: BoardRole;
@@ -16,6 +17,7 @@ export interface BoardPermissions {
   canDeleteTask: boolean;
   canMoveTask: boolean;
   isReadOnly: boolean;
+  isSimulated?: boolean;
 }
 
 export function useBoardPermissions(
@@ -23,8 +25,34 @@ export function useBoardPermissions(
   members: BoardMember[] = []
 ): BoardPermissions {
   const { user } = useAuth();
+  const { devSettings } = useDevMode();
 
   return useMemo(() => {
+    // Dev Mode Role Spoofing
+    if (devSettings.simulatedRole && devSettings.simulatedRole !== "none") {
+      const role = devSettings.simulatedRole as BoardRole;
+      const isOwner = role === "owner";
+      const isAdmin = role === "admin" || isOwner;
+      const isMember = role === "member" || isAdmin;
+      const isViewer = role === "viewer";
+
+      return {
+        role,
+        isOwner,
+        isAdmin,
+        isMember,
+        isViewer,
+        canEditBoard: isAdmin,
+        canDeleteBoard: isOwner,
+        canManageMembers: isAdmin,
+        canCreateTask: isMember,
+        canEditTask: isMember,
+        canDeleteTask: isMember,
+        canMoveTask: isMember,
+        isReadOnly: isViewer,
+        isSimulated: true,
+      };
+    }
     if (!user || !board) {
       return {
         role: "viewer",
@@ -73,6 +101,7 @@ export function useBoardPermissions(
       canDeleteTask: isMember,
       canMoveTask: isMember,
       isReadOnly: isViewer,
+      isSimulated: false,
     };
-  }, [user, board, members]);
+  }, [user, board, members, devSettings.simulatedRole]);
 }

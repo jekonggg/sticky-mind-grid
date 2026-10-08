@@ -1,6 +1,7 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { renderWithProviders } from "@/test/test-utils";
 import {
   Skeleton,
   StatCardSkeleton,
@@ -10,6 +11,7 @@ import {
   KanbanColumnSkeleton,
   BoardViewSkeleton,
   BoardCardSkeleton,
+  BoardsOverviewSkeleton,
   TaskDetailSkeleton,
   TaskCommentsSkeleton,
   TasksPageSkeleton,
@@ -82,7 +84,7 @@ describe("Skeleton Loading System", () => {
     });
 
     it("renders BoardViewSkeleton with accessible role and label", () => {
-      render(<BoardViewSkeleton />);
+      renderWithProviders(<BoardViewSkeleton />);
       expect(screen.getByRole("status", { name: "Loading board" })).toBeInTheDocument();
     });
 
@@ -91,25 +93,30 @@ describe("Skeleton Loading System", () => {
       expect(container.firstChild).toBeInTheDocument();
     });
 
+    it("renders BoardsOverviewSkeleton with accessible role and label", () => {
+      renderWithProviders(<BoardsOverviewSkeleton />);
+      expect(screen.getByRole("status", { name: "Loading boards" })).toBeInTheDocument();
+    });
+
     it("renders TaskDetailSkeleton with accessible role and label", () => {
-      render(<TaskDetailSkeleton />);
+      renderWithProviders(<TaskDetailSkeleton />);
       expect(screen.getByRole("status", { name: "Loading task details" })).toBeInTheDocument();
     });
 
     it("renders TaskCommentsSkeleton", () => {
-      const { container } = render(<TaskCommentsSkeleton count={3} />);
+      const { container } = renderWithProviders(<TaskCommentsSkeleton count={3} />);
       expect(container.firstChild).toBeInTheDocument();
     });
   });
 
   describe("Dashboard, Global Tasks & Calendar Skeletons", () => {
     it("renders DashboardSkeleton with accessible role and label", () => {
-      render(<DashboardSkeleton />);
+      renderWithProviders(<DashboardSkeleton />);
       expect(screen.getByRole("status", { name: "Loading dashboard" })).toBeInTheDocument();
     });
 
     it("renders TasksPageSkeleton in list and grid mode", () => {
-      const { rerender } = render(<TasksPageSkeleton viewMode="list" />);
+      const { rerender } = renderWithProviders(<TasksPageSkeleton viewMode="list" />);
       expect(screen.getByRole("status", { name: "Loading tasks" })).toBeInTheDocument();
 
       rerender(<TasksPageSkeleton viewMode="grid" />);
@@ -117,34 +124,34 @@ describe("Skeleton Loading System", () => {
     });
 
     it("renders CalendarPageSkeleton with accessible role and label", () => {
-      render(<CalendarPageSkeleton />);
+      renderWithProviders(<CalendarPageSkeleton />);
       expect(screen.getByRole("status", { name: "Loading calendar" })).toBeInTheDocument();
     });
   });
 
   describe("Teams & Messaging Skeletons", () => {
     it("renders TeamsPageSkeleton with accessible role and label", () => {
-      render(<TeamsPageSkeleton />);
+      renderWithProviders(<TeamsPageSkeleton />);
       expect(screen.getByRole("status", { name: "Loading team directory" })).toBeInTheDocument();
     });
 
     it("renders ConversationListSkeleton and ChatAreaSkeleton", () => {
-      render(<ConversationListSkeleton />);
+      renderWithProviders(<ConversationListSkeleton />);
       expect(screen.getByRole("status", { name: "Loading conversations" })).toBeInTheDocument();
 
-      render(<ChatAreaSkeleton />);
+      renderWithProviders(<ChatAreaSkeleton />);
       expect(screen.getByRole("status", { name: "Loading chat" })).toBeInTheDocument();
     });
   });
 
   describe("Layout & Shell Skeletons", () => {
     it("renders SidebarNavSkeleton", () => {
-      const { container } = render(<SidebarNavSkeleton />);
+      const { container } = renderWithProviders(<SidebarNavSkeleton />);
       expect(container.firstChild).toBeInTheDocument();
     });
 
     it("renders AppLayoutSkeleton with accessible role and label", () => {
-      render(<AppLayoutSkeleton />);
+      renderWithProviders(<AppLayoutSkeleton />);
       expect(screen.getByRole("status", { name: "Loading application" })).toBeInTheDocument();
     });
   });

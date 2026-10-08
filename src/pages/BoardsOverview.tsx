@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BoardCardSkeleton } from "@/components/skeletons";
+import { BoardCardSkeleton, BoardsOverviewSkeleton } from "@/components/skeletons";
 import { Plus, Search, LayoutGrid, Mail, Check, X, Shield, User, Eye, Loader2, Sparkles } from "lucide-react";
 import { BoardsHeroBanner } from "@/components/boards/BoardsHeroBanner";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
@@ -119,6 +119,15 @@ export default function BoardsOverview() {
         return <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30 text-[10px]"><User className="h-3 w-3 mr-1" /> Member</Badge>;
     }
   };
+
+  if (loading || settings.simulateSkeletonLoading) {
+    return (
+      <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background pb-20">
+        <BoardHeader showSearch={false} />
+        <BoardsOverviewSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background pb-20">
@@ -242,13 +251,7 @@ export default function BoardsOverview() {
           </div>
         )}
 
-        {loading || settings.simulateSkeletonLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <BoardCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : boards.length === 0 && !search ? (
+        {boards.length === 0 && !search ? (
           /* Empty state */
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">

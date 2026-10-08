@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { toast } from "sonner";
 import { API_BASE, getStoredToken } from "@/config/api";
 
@@ -30,6 +31,7 @@ export function useBoardRealtime({
   onBoardChange,
 }: UseBoardRealtimeOptions) {
   const { user } = useAuth();
+  const { devSettings } = useDevMode();
   const [isConnected, setIsConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -58,6 +60,16 @@ export function useBoardRealtime({
   const userId = user?.id;
 
   useEffect(() => {
+    // Check if SSE disconnect is simulated via Developer Mode
+    if (devSettings.simulateSseDisconnect) {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      setIsConnected(false);
+      return;
+    }
+
     if (!boardId || !userId) {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
@@ -89,6 +101,14 @@ export function useBoardRealtime({
         try {
           const payload: RealtimeEvent = JSON.parse(e.data);
           if (!payload || !payload.type) return;
+
+          if (import.meta.env.DEV && typeof window !== "undefined") {
+            window.dispatchEvent(
+              new CustomEvent("smg-dev-sse-log", {
+                detail: { event: payload.type, payload: payload.data || payload },
+              })
+            );
+          }
 
           switch (payload.type) {
             case "connected":
@@ -156,7 +176,7 @@ export function useBoardRealtime({
       }
       setIsConnected(false);
     };
-  }, [boardId, userId]);
+  }, [boardId, userId, devSettings.simulateSseDisconnect]);
 
   return { isConnected };
 }

@@ -17,9 +17,11 @@ import {
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { SettingsTab } from "@/types/settings";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { LatestChangesPanel } from "./LatestChangesPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 import {
   Home,
   Search,
@@ -36,6 +38,7 @@ import {
   Sun,
   Palette,
   History,
+  Sliders,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -61,6 +64,7 @@ export function BoardHeader({
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const { settings, updateLocalSetting } = useSettings();
+  const { setIsDevModalOpen } = useDevMode();
 
   useEffect(() => {
     // Load available boards for quick switcher
@@ -337,6 +341,28 @@ export function BoardHeader({
                 <LayoutGrid className="h-4 w-4 text-muted-foreground" />
                 <span>My Boards</span>
               </DropdownMenuItem>
+
+              {/* Developer Mode Suite Quick Access */}
+              {import.meta.env.DEV && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setIsDevModalOpen(true)}
+                    className="cursor-pointer text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 focus:bg-amber-500/10 py-2 flex items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sliders className="h-4 w-4 text-amber-500" />
+                      <span>Developer Suite</span>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] font-mono font-bold bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400"
+                    >
+                      DEV
+                    </Badge>
+                  </DropdownMenuItem>
+                </>
+              )}
 
               <DropdownMenuSeparator />
 

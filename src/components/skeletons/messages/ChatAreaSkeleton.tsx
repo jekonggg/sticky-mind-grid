@@ -9,9 +9,9 @@ export function ChatAreaSkeleton() {
       className="flex-1 h-full flex flex-col bg-background select-none overflow-hidden"
     >
       {/* 1. Header Toolbar */}
-      <div className="h-16 px-4 border-b border-border/60 bg-card/60 backdrop-blur-md flex items-center justify-between shrink-0">
+      <div className="h-14 px-4 border-b border-border/60 bg-card/60 backdrop-blur-md flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-2xl" />
+          <Skeleton className="h-10 w-10 rounded-xl" />
           <div className="space-y-1.5">
             <Skeleton className="h-4 w-32 rounded-sm" />
             <Skeleton className="h-2.5 w-20 rounded-sm" />

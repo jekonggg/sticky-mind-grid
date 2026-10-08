@@ -11,6 +11,7 @@ export * from "./board/TaskCardSkeleton";
 export * from "./board/KanbanColumnSkeleton";
 export * from "./board/BoardViewSkeleton";
 export * from "./board/BoardCardSkeleton";
+export * from "./board/BoardsOverviewSkeleton";
 
 // Task Detail & Workspace
 export * from "./task/TaskDetailSkeleton";

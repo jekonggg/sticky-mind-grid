@@ -1,60 +1,61 @@
 import React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KanbanColumnSkeleton } from "./KanbanColumnSkeleton";
-import { AvatarGroupSkeleton } from "../common/AvatarGroupSkeleton";
+import { BoardHeader } from "@/components/kanban/BoardHeader";
 
 export function BoardViewSkeleton() {
   return (
     <div
       role="status"
       aria-label="Loading board"
-      className="flex flex-col h-screen bg-background overflow-hidden"
+      className="flex flex-col h-screen bg-background overflow-hidden font-sans"
     >
-      {/* 1. Header Toolbar Skeleton */}
-      <div className="border-b border-border/60 bg-card/60 backdrop-blur-md px-6 py-3.5 space-y-3">
-        {/* Top row: Title + Actions */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-9 w-9 rounded-2xl" />
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-5 w-36 rounded-md" />
-                <Skeleton className="h-5 w-16 rounded-full" />
+      {/* 1. Global Navigation Header */}
+      <BoardHeader showSearch={false} />
+
+      {/* 2. Main Board Viewport Screen */}
+      <div className="flex flex-1 overflow-hidden relative">
+        <div className="flex-1 h-full min-w-0 relative flex flex-col overflow-hidden">
+          {/* Pinned Board Header */}
+          <div className="bg-background border-b border-border/50 shrink-0">
+            {/* Row 1: Board Name, Emoji, Badges, & Actions */}
+            <div className="px-6 pt-3.5 pb-2 md:px-8 flex items-center justify-between gap-4 w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <Skeleton className="h-10 w-10 md:h-11 md:w-11 rounded-xl shrink-0" />
+                <div className="flex flex-col min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Skeleton className="h-6 md:h-7 w-44 rounded-lg" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                  </div>
+                  <Skeleton className="h-3.5 w-64 max-w-full rounded-sm" />
+                </div>
               </div>
-              <Skeleton className="h-3 w-48 rounded-sm" />
+            </div>
+
+            {/* Row 2: Filter Toolbar */}
+            <div className="px-6 pb-2.5 md:px-8 w-full flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5 overflow-x-auto">
+                <Skeleton className="h-7 w-16 rounded-full" />
+                <Skeleton className="h-7 w-20 rounded-full" />
+                <Skeleton className="h-7 w-24 rounded-full" />
+              </div>
+              <Skeleton className="h-7 w-16 rounded-full ml-auto" />
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <AvatarGroupSkeleton count={4} size="sm" />
-            <Skeleton className="h-9 w-24 rounded-xl" />
-            <Skeleton className="h-9 w-9 rounded-xl" />
+          {/* 3. Columns Canvas */}
+          <div className="flex-1 min-h-0 relative overflow-hidden flex flex-col bg-muted/20">
+            <main className="p-6 md:p-8 flex-1 min-h-0 overflow-x-auto overflow-y-auto custom-scrollbar h-full">
+              <div className="flex gap-6 md:gap-8 h-full min-w-max pb-28 items-start">
+                <KanbanColumnSkeleton cardCount={3} />
+                <KanbanColumnSkeleton cardCount={2} />
+                <KanbanColumnSkeleton cardCount={3} />
+                <KanbanColumnSkeleton cardCount={1} />
+              </div>
+            </main>
           </div>
         </div>
-
-        {/* Bottom row: View Switcher Tabs + Search/Filter */}
-        <div className="flex items-center justify-between gap-4 pt-1">
-          <div className="flex items-center gap-1.5">
-            <Skeleton className="h-8 w-20 rounded-xl" />
-            <Skeleton className="h-8 w-16 rounded-xl" />
-            <Skeleton className="h-8 w-20 rounded-xl" />
-            <Skeleton className="h-8 w-16 rounded-xl" />
-            <Skeleton className="h-8 w-20 rounded-xl" />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-44 rounded-xl" />
-            <Skeleton className="h-8 w-8 rounded-xl" />
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Kanban Columns Canvas Skeleton */}
-      <div className="flex-1 overflow-x-auto p-6 flex gap-6 items-start">
-        <KanbanColumnSkeleton cardCount={3} />
-        <KanbanColumnSkeleton cardCount={2} />
-        <KanbanColumnSkeleton cardCount={3} />
-        <KanbanColumnSkeleton cardCount={1} />
       </div>
     </div>
   );

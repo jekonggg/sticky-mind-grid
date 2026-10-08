@@ -5,6 +5,8 @@ import { renderWithProviders, mockUser } from "@/test/test-utils";
 import { boardApi } from "@/services/boardApi";
 import { BoardInvitation } from "@/types/board";
 
+import { useBoards } from "@/hooks/useBoards";
+
 vi.mock("@/services/boardApi", () => ({
   boardApi: {
     getBoards: vi.fn().mockResolvedValue([]),
@@ -24,7 +26,7 @@ vi.mock("@/services/notificationApi", () => ({
 }));
 
 vi.mock("@/hooks/useBoards", () => ({
-  useBoards: () => ({
+  useBoards: vi.fn(() => ({
     boards: [
       {
         id: "board-1",
@@ -44,7 +46,7 @@ vi.mock("@/hooks/useBoards", () => ({
     createBoard: vi.fn(),
     updateBoard: vi.fn(),
     deleteBoard: vi.fn(),
-  }),
+  })),
 }));
 
 const mockInvitations: BoardInvitation[] = [
@@ -100,5 +102,22 @@ describe("BoardsOverview Page", () => {
     await waitFor(() => {
       expect(boardApi.acceptInvitation).toHaveBeenCalledWith("board-collab");
     });
+  });
+
+  it("renders BoardsOverviewSkeleton when boards are loading", () => {
+    vi.mocked(useBoards).mockReturnValue({
+      boards: [],
+      loading: true,
+      search: "",
+      setSearch: vi.fn(),
+      sort: "updated",
+      setSort: vi.fn(),
+      createBoard: vi.fn(),
+      updateBoard: vi.fn(),
+      deleteBoard: vi.fn(),
+    });
+
+    renderWithProviders(<BoardsOverview />);
+    expect(screen.getByRole("status", { name: "Loading boards" })).toBeInTheDocument();
   });
 });

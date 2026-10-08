@@ -153,4 +153,12 @@ All colors MUST be HSL.
   .custom-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-muted-foreground/25 rounded-full hover:bg-muted-foreground/50 transition-colors;
   }
+
+  .force-reduced-motion *,
+  .force-reduced-motion *::before,
+  .force-reduced-motion *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

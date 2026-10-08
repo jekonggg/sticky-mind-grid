@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import { ThemeProvider } from "next-themes";
 import { SettingsProvider } from "./contexts/SettingsContext";
+import { DevModeProvider } from "./contexts/DevModeContext";
 import { ActivityProvider } from "./hooks/useActivity";
 import { KanbanBoard } from "./components/kanban/KanbanBoard";
 import TaskDetailPage from "./pages/TaskDetailPage";
@@ -33,7 +34,8 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <SettingsProvider>
-              <ActivityProvider>
+              <DevModeProvider>
+                <ActivityProvider>
                 <Toaster />
                 <Sonner />
                 <Routes>
@@ -59,7 +61,8 @@ const App = () => (
                 <Analytics />
                 <DevSkeletonToolbar />
               </ActivityProvider>
-            </SettingsProvider>
+            </DevModeProvider>
+          </SettingsProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

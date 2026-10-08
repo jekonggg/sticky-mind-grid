@@ -3,37 +3,52 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TableRow, TableCell } from "@/components/ui/table";
 
 interface TableRowSkeletonProps {
-  columns?: number;
-  showCheckbox?: boolean;
+  className?: string;
 }
 
-export function TableRowSkeleton({ columns = 5, showCheckbox = true }: TableRowSkeletonProps) {
+export function TableRowSkeleton({ className }: TableRowSkeletonProps) {
   return (
-    <TableRow className="hover:bg-transparent">
-      {showCheckbox && (
-        <TableCell className="w-10">
-          <Skeleton className="h-4 w-4 rounded-sm" />
-        </TableCell>
-      )}
-      <TableCell className="w-[30%]">
-        <div className="flex items-center gap-2.5">
-          <Skeleton className="h-4 w-4 rounded-sm shrink-0" />
-          <Skeleton className="h-4 w-3/4 rounded-sm" />
+    <TableRow className="hover:bg-transparent border-border/50">
+      {/* 1. Task Column (38% pl-4) */}
+      <TableCell className="w-[38%] py-3.5 pl-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <Skeleton className="h-5 w-5 rounded-md shrink-0" />
+          <div className="flex flex-col min-w-0 flex-1 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-4 rounded-sm shrink-0" />
+              <Skeleton className="h-4 w-3/4 rounded-sm" />
+            </div>
+            <Skeleton className="h-3 w-1/2 rounded-sm" />
+          </div>
         </div>
       </TableCell>
-      <TableCell>
-        <Skeleton className="h-5 w-20 rounded-full" />
+
+      {/* 2. Board Column (18%) */}
+      <TableCell className="w-[18%] py-3.5">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/40">
+          <Skeleton className="h-3.5 w-3.5 rounded-sm shrink-0" />
+          <Skeleton className="h-3.5 w-20 rounded-sm" />
+        </div>
       </TableCell>
-      <TableCell>
-        <Skeleton className="h-5 w-16 rounded-md" />
+
+      {/* 3. Priority Column (14%) */}
+      <TableCell className="w-[14%] py-3.5">
+        <Skeleton className="h-5 w-16 rounded-full" />
       </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-24 rounded-sm" />
+
+      {/* 4. Assigned Column (18%) */}
+      <TableCell className="w-[18%] py-3.5">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-6 w-6 rounded-full shrink-0" />
+          <Skeleton className="h-3.5 w-20 rounded-sm" />
+        </div>
       </TableCell>
-      <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-2">
-          <Skeleton className="h-6 w-6 rounded-full" />
-          <Skeleton className="h-7 w-7 rounded-md" />
+
+      {/* 5. Due Date Column (12% pr-4) */}
+      <TableCell className="w-[12%] py-3.5 pr-4">
+        <div className="flex items-center gap-1.5">
+          <Skeleton className="h-3.5 w-3.5 rounded-sm shrink-0" />
+          <Skeleton className="h-3.5 w-16 rounded-sm" />
         </div>
       </TableCell>
     </TableRow>

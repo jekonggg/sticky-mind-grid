@@ -15,7 +15,7 @@ export const BoardsHeroBanner: React.FC<BoardsHeroBannerProps> = ({
   gradientTo = "hsl(var(--accent))",
 }) => {
   return (
-    <div className="relative w-full h-[240px] md:h-[320px] overflow-hidden bg-background">
+    <div className="relative w-full h-[280px] md:h-[340px] overflow-hidden bg-background">
       {/* Base Gradient Layer */}
       <div 
         className="absolute inset-0 transition-opacity duration-700"
@@ -81,18 +81,18 @@ export const BoardsHeroBanner: React.FC<BoardsHeroBannerProps> = ({
       />
 
       {/* Content Overlay */}
-      <div className="relative h-full max-w-6xl mx-auto px-4 sm:px-6 flex flex-col justify-center text-white">
+      <div className="relative h-full max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-12 md:pt-14 pb-20 flex flex-col justify-start text-white">
         <motion.div 
           className="z-10"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.5 }}
         >
-          <h1 className="text-4xl md:text-5xl lg:text-7xl font-black tracking-tighter mb-4 drop-shadow-2xl uppercase italic">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-3 drop-shadow-md uppercase italic leading-tight">
             Sticky Mind <span className="text-white not-italic opacity-90">Grid</span>
           </h1>
-          <div className="h-1.5 w-24 bg-white/40 rounded-full mb-6" />
-          <p className="text-lg md:text-xl font-medium text-white/80 max-w-lg leading-relaxed">
+          <div className="h-1.5 w-20 bg-white/40 rounded-full mb-3" />
+          <p className="text-sm sm:text-base md:text-lg font-medium text-white/90 max-w-lg leading-relaxed">
             {subtitle}
           </p>
         </motion.div>
@@ -102,7 +102,7 @@ export const BoardsHeroBanner: React.FC<BoardsHeroBannerProps> = ({
       <div className="absolute top-0 left-0 right-0 h-px bg-white/10" />
 
       {/* Ambient bottom transition */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-background to-transparent pointer-events-none" />
     </div>
   );
 };
