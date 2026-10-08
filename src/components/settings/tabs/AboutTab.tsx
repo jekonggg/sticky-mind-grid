@@ -4,6 +4,8 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { useDevMode } from "@/contexts/DevModeContext";
 import {
   Activity,
   CheckCircle2,
@@ -15,10 +17,12 @@ import {
   Loader2,
   Code2,
   Sparkles,
+  Sliders,
 } from "lucide-react";
 
 export function AboutTab() {
   const { settings, updateLocalSetting } = useSettings();
+  const { setIsDevModalOpen, activeDevModesCount } = useDevMode();
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -170,17 +174,61 @@ export function AboutTab() {
         </div>
       </div>
 
-      {/* Developer & Simulation Tools */}
-      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5 pr-4">
-            <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-              Dev Mode: Simulate Skeleton Loading
-            </Label>
+      {/* Developer Mode Suite */}
+      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Sliders className="h-3.5 w-3.5 text-amber-500" />
+                Developer Mode Suite
+              </Label>
+              <Badge variant="outline" className="text-[9px] font-mono uppercase bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                Dev Only
+              </Badge>
+              {activeDevModesCount > 0 && (
+                <Badge variant="default" className="text-[9px] bg-amber-500 text-white hover:bg-amber-600">
+                  {activeDevModesCount} Active
+                </Badge>
+              )}
+            </div>
             <p className="text-[11px] text-muted-foreground">
-              Locks all views, boards, workspaces, and cards into skeleton loading state for UI/UX testing. Shortcut: <kbd className="font-mono text-[9px] bg-background px-1 py-0.5 rounded border border-border/60">Ctrl + Alt + S</kbd>
+              Simulate network latency, chaos error injection (500/403/401), RBAC role spoofing, SSE connection drops, and skeleton loading freezes.
             </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px] text-muted-foreground">
+              <span>Shortcuts:</span>
+              <span className="inline-flex items-center gap-1">
+                <kbd className="font-mono text-[9px] bg-background px-1 py-0.5 rounded border border-border/60">Ctrl + Alt + D</kbd>
+                <span>(Suite)</span>
+              </span>
+              <span>·</span>
+              <span className="inline-flex items-center gap-1">
+                <kbd className="font-mono text-[9px] bg-background px-1 py-0.5 rounded border border-border/60">Ctrl + Alt + S</kbd>
+                <span>(Freeze Skeletons)</span>
+              </span>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setIsDevModalOpen(true)}
+            className="h-8 text-xs font-medium bg-amber-600 hover:bg-amber-700 text-white shrink-0 gap-1.5 shadow-sm shadow-amber-600/20"
+          >
+            <Sliders className="h-3.5 w-3.5" />
+            Open Suite
+          </Button>
+        </div>
+
+        {/* Quick Skeleton Freeze Toggle */}
+        <div className="pt-2 border-t border-amber-500/20 flex items-center justify-between">
+          <div className="space-y-0.5">
+            <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3 text-amber-500" />
+              Quick Freeze Skeleton Loading
+            </span>
+            <span className="text-[10px] text-muted-foreground block">
+              Locks all views, boards, and cards into skeleton loading state
+            </span>
           </div>
           <Switch
             checked={settings.simulateSkeletonLoading}
