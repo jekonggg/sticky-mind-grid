@@ -131,3 +131,98 @@ def test_change_password_with_correct_current(client, create_test_user, auth_hea
         content_type="application/json"
     )
     assert old_login.status_code == 401
+
+def test_oauth_providers_endpoint(client):
+    response = client.get("/api/auth/oauth/providers")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "google" in data
+    assert "github" in data
+    assert "microsoft" in data
+
+def test_oauth_google_signup_new_user(client):
+    response = client.post(
+        "/api/auth/oauth/google",
+        data=json.dumps({
+            "profile": {
+                "email": "googleuser@gmail.com",
+                "fullName": "Google User",
+                "avatarUrl": "https://lh3.googleusercontent.com/a/test-avatar",
+                "providerId": "google-123456"
+            }
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 201
+    data = response.get_json()
+    assert data["user"]["email"] == "googleuser@gmail.com"
+    assert data["user"]["fullName"] == "Google User"
+    assert data["user"]["avatarUrl"] == "https://lh3.googleusercontent.com/a/test-avatar"
+    assert data["user"]["authProvider"] == "google"
+    assert "token" in data
+
+def test_oauth_github_existing_user_link_and_login(client, create_test_user):
+    user = create_test_user(email="octocat@github.com", full_name="Octo Cat")
+    
+    response = client.post(
+        "/api/auth/oauth",
+        data=json.dumps({
+            "provider": "github",
+            "profile": {
+                "email": "octocat@github.com",
+                "fullName": "Octo Cat Updated",
+                "avatarUrl": "https://avatars.githubusercontent.com/u/583231",
+                "providerId": "gh-583231"
+            }
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["user"]["email"] == "octocat@github.com"
+    assert data["user"]["avatarUrl"] == "https://avatars.githubusercontent.com/u/583231"
+    assert data["user"]["authProvider"] == "github"
+    assert "token" in data
+
+def test_oauth_microsoft_signup(client):
+    response = client.post(
+        "/api/auth/oauth/microsoft",
+        data=json.dumps({
+            "profile": {
+                "email": "msftuser@outlook.com",
+                "fullName": "Microsoft User",
+                "providerId": "ms-987654"
+            }
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 201
+    data = response.get_json()
+    assert data["user"]["email"] == "msftuser@outlook.com"
+    assert data["user"]["authProvider"] == "microsoft"
+    assert "token" in data
+
+def test_oauth_missing_email(client):
+    response = client.post(
+        "/api/auth/oauth/google",
+        data=json.dumps({
+            "profile": {
+                "fullName": "No Email User"
+            }
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 400
+
+def test_oauth_unsupported_provider(client):
+    response = client.post(
+        "/api/auth/oauth/unknownprovider",
+        data=json.dumps({
+            "profile": {
+                "email": "unknown@example.com"
+            }
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 400
+

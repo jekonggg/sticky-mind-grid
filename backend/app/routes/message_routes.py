@@ -21,7 +21,12 @@ def create_conversation():
 
     conv_type = data.get('type', 'direct')
     if conv_type == 'direct':
-        target_user_id = data.get('recipientId') or data.get('targetUserId')
+        target_user_id = (
+            data.get('recipientId')
+            or data.get('targetUserId')
+            or data.get('participantId')
+            or (data.get('participantIds', [])[0] if isinstance(data.get('participantIds'), list) and len(data.get('participantIds')) > 0 else None)
+        )
         if not target_user_id:
             return jsonify({'error': 'recipientId is required for direct conversation'}), 400
 

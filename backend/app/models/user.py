@@ -13,6 +13,8 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     full_name = db.Column(db.String(255), nullable=True)
     avatar_url = db.Column(db.String(500), nullable=True)
+    auth_provider = db.Column(db.String(50), default='local', nullable=True)
+    auth_provider_id = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -27,11 +29,13 @@ class User(db.Model):
     conversation_participations = db.relationship('ConversationParticipant', back_populates='user', lazy=True, cascade="all, delete-orphan")
     sent_messages = db.relationship('Message', foreign_keys='Message.sender_id', back_populates='sender', lazy=True, cascade="all, delete-orphan")
 
-    def __init__(self, email: str, full_name: str = "", avatar_url: str = None, **kwargs):
+    def __init__(self, email: str, full_name: str = "", avatar_url: str = None, auth_provider: str = 'local', auth_provider_id: str = None, **kwargs):
         super().__init__(**kwargs)
         self.email = email
         self.full_name = full_name
         self.avatar_url = avatar_url
+        self.auth_provider = auth_provider
+        self.auth_provider_id = auth_provider_id
 
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
@@ -45,5 +49,6 @@ class User(db.Model):
             'email': self.email,
             'fullName': self.full_name,
             'avatarUrl': self.avatar_url,
+            'authProvider': self.auth_provider or 'local',
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None
         }

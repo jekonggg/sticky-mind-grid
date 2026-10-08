@@ -1,4 +1,4 @@
-import { AuthResponse } from "@/types/user";
+import { AuthResponse, OAuthLoginPayload } from "@/types/user";
 import { API_AUTH_BASE, getStoredToken } from "@/config/api";
 
 export const authApi = {
@@ -12,6 +12,29 @@ export const authApi = {
       const error = await res.json();
       throw new Error(error.message || "Failed to login");
     }
+    return res.json();
+  },
+
+  async oauthLogin(payload: OAuthLoginPayload): Promise<AuthResponse> {
+    const res = await fetch(`${API_AUTH_BASE}/oauth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || `Failed to sign in with ${payload.provider}`);
+    }
+    return res.json();
+  },
+
+  async getOAuthProviders(): Promise<Record<string, { name: string; enabled: boolean }>> {
+    const res = await fetch(`${API_AUTH_BASE}/oauth/providers`);
+    if (!res.ok) return {
+      google: { name: "Google", enabled: true },
+      github: { name: "GitHub", enabled: true },
+      microsoft: { name: "Microsoft", enabled: true }
+    };
     return res.json();
   },
 

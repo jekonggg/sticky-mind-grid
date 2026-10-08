@@ -92,7 +92,7 @@ export default function TeamsPage() {
     mutationFn: (participantId: string) =>
       messageApi.createConversation({
         type: "direct",
-        participantIds: [participantId],
+        recipientId: participantId,
       }),
     onSuccess: (conversation) => {
       navigate(`/messages/${conversation.id}`);

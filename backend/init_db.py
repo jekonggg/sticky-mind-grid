@@ -42,5 +42,20 @@ def init_database():
                 db.session.commit()
                 print("Column 'is_pinned' added successfully.")
 
+        # Ensure auth_provider and auth_provider_id columns exist in users table
+        if 'users' in tables:
+            user_cols = [c['name'] for c in inspector.get_columns('users')]
+            from sqlalchemy import text
+            if 'auth_provider' not in user_cols:
+                print("Adding missing column 'auth_provider' to users table...")
+                db.session.execute(text("ALTER TABLE users ADD COLUMN auth_provider VARCHAR(50) DEFAULT 'local'"))
+                db.session.commit()
+                print("Column 'auth_provider' added successfully.")
+            if 'auth_provider_id' not in user_cols:
+                print("Adding missing column 'auth_provider_id' to users table...")
+                db.session.execute(text("ALTER TABLE users ADD COLUMN auth_provider_id VARCHAR(255) NULL"))
+                db.session.commit()
+                print("Column 'auth_provider_id' added successfully.")
+
 if __name__ == "__main__":
     init_database()

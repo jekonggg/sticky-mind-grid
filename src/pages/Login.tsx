@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { Loader2, LayoutGrid, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 
+import { OAuthButtons } from "@/components/auth/OAuthButtons";
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,7 +56,7 @@ export default function Login() {
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold">Sign in</CardTitle>
             <CardDescription>
-              Enter your email and password to access your boards
+              Enter your email and password or use social account to sign in
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
@@ -112,6 +114,9 @@ export default function Login() {
                   "Sign In"
                 )}
               </Button>
+
+              <OAuthButtons mode="login" />
+
               <div className="text-center text-sm text-muted-foreground">
                 Don&apos;t have an account?{" "}
                 <Link to="/register" className="text-primary hover:underline font-semibold">
