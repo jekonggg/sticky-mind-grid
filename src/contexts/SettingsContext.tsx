@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useTheme } from "next-themes";
 import { useAuth } from "@/contexts/AuthContext";
 import { userApi } from "@/services/userApi";
+import { toast } from "sonner";
 import {
   LocalPreferences,
   UserSyncedPreferences,
@@ -23,6 +24,7 @@ const defaultLocalPreferences: LocalPreferences = {
   reducedMotion: false,
   autoProgressSnapping: true,
   confirmOnDelete: true,
+  simulateSkeletonLoading: false,
 };
 
 const defaultSyncedPreferences: UserSyncedPreferences = {
@@ -92,6 +94,39 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       root.classList.add(`colorway-${localPrefs.darkColorway}`);
     }
   }, [localPrefs.darkColorway]);
+
+  // Global Keyboard Shortcut: Ctrl + Alt + S (or Cmd + Alt + S) to toggle skeleton simulation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        setLocalPrefs((prev) => {
+          const nextVal = !prev.simulateSkeletonLoading;
+          try {
+            localStorage.setItem(
+              LOCAL_PREFS_KEY,
+              JSON.stringify({ ...prev, simulateSkeletonLoading: nextVal })
+            );
+          } catch {
+            // Ignore write error
+          }
+          if (nextVal) {
+            toast.info("⚡ Dev Mode: Skeleton Loading Simulation ENABLED", {
+              description: "All views will stay in skeleton mode for visual testing.",
+            });
+          } else {
+            toast.success("Dev Mode: Skeleton Loading Simulation DISABLED", {
+              description: "Real data views restored.",
+            });
+          }
+          return { ...prev, simulateSkeletonLoading: nextVal };
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Fetch user synced preferences when authenticated
   useEffect(() => {

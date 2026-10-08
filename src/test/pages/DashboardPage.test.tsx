@@ -63,10 +63,13 @@ describe("DashboardPage", () => {
   it("renders welcome greeting and KPI metric cards", async () => {
     renderWithProviders(<DashboardPage />);
 
-    expect(screen.getByText(/workspace dashboard/i)).toBeInTheDocument();
-    expect(screen.getByText(/welcome back/i)).toBeInTheDocument();
+    // Initially displays skeleton
+    expect(screen.getByRole("status", { name: "Loading dashboard" })).toBeInTheDocument();
 
+    // Resolves to dashboard content
     await waitFor(() => {
+      expect(screen.getByText(/workspace dashboard/i)).toBeInTheDocument();
+      expect(screen.getByText(/welcome back/i)).toBeInTheDocument();
       expect(screen.getByText("Total Boards")).toBeInTheDocument();
       expect(screen.getByText("Active Tasks")).toBeInTheDocument();
       expect(screen.getByText("Completed")).toBeInTheDocument();

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSettings } from "@/contexts/SettingsContext";
 import {
   Search,
   Plus,
@@ -13,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -29,6 +31,7 @@ export function ConversationList({
   onOpenNewChat,
   isLoading,
 }: ConversationListProps) {
+  const { settings } = useSettings();
   const [search, setSearch] = useState("");
   const [filterTab, setFilterTab] = useState<"all" | "direct" | "group">("all");
 
@@ -107,9 +110,23 @@ export function ConversationList({
 
       {/* 2. CONVERSATION LIST */}
       <div className="flex-1 overflow-y-auto p-1.5 space-y-1 custom-scrollbar">
-        {isLoading && conversations.length === 0 ? (
-          <div className="p-6 text-center text-xs text-muted-foreground">
-            Loading conversations...
+        {(isLoading && conversations.length === 0) || settings.simulateSkeletonLoading ? (
+          <div className="space-y-2 p-1">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 p-2.5 rounded-2xl bg-muted/20 border border-transparent"
+              >
+                <Skeleton className="h-10 w-10 rounded-2xl shrink-0" />
+                <div className="flex-1 space-y-1.5 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-3.5 w-24 rounded-sm" />
+                    <Skeleton className="h-2.5 w-10 rounded-sm" />
+                  </div>
+                  <Skeleton className="h-3 w-40 rounded-sm" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : filteredConversations.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center text-muted-foreground space-y-2">

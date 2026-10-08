@@ -5,6 +5,7 @@ import { boardApi } from "@/services/boardApi";
 import { userApi } from "@/services/userApi";
 import { messageApi } from "@/services/messageApi";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSettings } from "@/contexts/SettingsContext";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
 import { Board, BoardInvitation } from "@/types/board";
 import { Button } from "@/components/ui/button";
@@ -29,11 +30,13 @@ import {
 } from "lucide-react";
 import { InviteMemberDialog } from "@/components/board/InviteMemberDialog";
 import { toast } from "sonner";
+import { TeamsPageSkeleton } from "@/components/skeletons";
 
 export default function TeamsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { settings } = useSettings();
 
   const [search, setSearch] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
@@ -142,6 +145,15 @@ export default function TeamsPage() {
     setSelectedBoardForInvite(boardId || boards[0].id);
     setIsInviteDialogOpen(true);
   };
+
+  if (isTeammatesLoading || settings.simulateSkeletonLoading) {
+    return (
+      <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background">
+        <BoardHeader showSearch={false} />
+        <TeamsPageSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background">

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { taskApi } from "@/services/api";
 import { boardApi } from "@/services/boardApi";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSettings } from "@/contexts/SettingsContext";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
 import { Task, Priority, CreateTaskData } from "@/types/task";
 import { Board } from "@/types/board";
@@ -46,6 +47,7 @@ import {
 import { TaskModal } from "@/components/kanban/TaskModal";
 import { PillNavBar } from "@/components/common/PillNavBar";
 import { toast } from "sonner";
+import { TableRowSkeleton, TaskCardSkeleton } from "@/components/skeletons";
 
 type FilterTab = "all" | "assigned" | "created" | "completed" | "overdue";
 type SortOption = "dueDate" | "priority" | "title" | "created";
@@ -54,6 +56,7 @@ export default function TasksPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { settings } = useSettings();
 
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [search, setSearch] = useState("");
@@ -324,12 +327,43 @@ export default function TasksPage() {
         </div>
 
         {/* Task List / Grid Display */}
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-16 rounded-xl bg-muted/40 animate-pulse" />
-            ))}
-          </div>
+        {isLoading || settings.simulateSkeletonLoading ? (
+          viewMode === "list" ? (
+            <div className="bg-card rounded-2xl border border-border/60 overflow-hidden shadow-xs">
+              <Table className="min-w-[760px] w-full">
+                <TableHeader className="bg-muted/40">
+                  <TableRow className="border-border/50 hover:bg-transparent">
+                    <TableHead className="w-[38%] py-3.5 pl-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                      Task
+                    </TableHead>
+                    <TableHead className="w-[18%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                      Board
+                    </TableHead>
+                    <TableHead className="w-[14%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                      Priority
+                    </TableHead>
+                    <TableHead className="w-[18%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                      Assigned
+                    </TableHead>
+                    <TableHead className="w-[12%] py-3.5 pr-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                      Due Date
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <TableRowSkeleton key={i} />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <TaskCardSkeleton key={i} />
+              ))}
+            </div>
+          )
         ) : filteredTasks.length === 0 ? (
           <div className="py-20 text-center rounded-3xl bg-card border border-border/60 p-8 space-y-3">
             <CheckSquare className="h-12 w-12 text-muted-foreground/30 mx-auto" />

@@ -5,6 +5,7 @@ import { boardApi } from "@/services/boardApi";
 import { taskApi } from "@/services/api";
 import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSettings } from "@/contexts/SettingsContext";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,12 +23,14 @@ import { TaskModal } from "@/components/kanban/TaskModal";
 import { PersonalScratchpadModal } from "@/components/documents/PersonalScratchpadModal";
 import { Task, CreateTaskData } from "@/types/task";
 import { toast } from "sonner";
+import { DashboardSkeleton } from "@/components/skeletons";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { activities } = useActivity();
+  const { settings } = useSettings();
 
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -108,6 +111,15 @@ export default function DashboardPage() {
       },
     });
   };
+
+  if (isBoardsLoading || isTasksLoading || settings.simulateSkeletonLoading) {
+    return (
+      <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background">
+        <BoardHeader showSearch={false} />
+        <DashboardSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background">

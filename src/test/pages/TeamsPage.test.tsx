@@ -59,10 +59,12 @@ describe("TeamsPage", () => {
   it("renders teams directory and shared boards", async () => {
     renderWithProviders(<TeamsPage />);
 
-    expect(screen.getByText("Teams & Collaborators")).toBeInTheDocument();
-    expect(screen.getByText(/workspace boards/i)).toBeInTheDocument();
+    // Initially displays skeleton
+    expect(screen.getByRole("status", { name: "Loading team directory" })).toBeInTheDocument();
 
     await waitFor(() => {
+      expect(screen.getByText("Teams & Collaborators")).toBeInTheDocument();
+      expect(screen.getByText(/workspace boards/i)).toBeInTheDocument();
       expect(screen.getByText("Sarah Connor")).toBeInTheDocument();
       expect(screen.getByText("sarah@example.com")).toBeInTheDocument();
     });

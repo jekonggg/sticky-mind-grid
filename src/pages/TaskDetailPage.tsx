@@ -11,16 +11,17 @@ import { useBoardRealtime } from "@/hooks/useBoardRealtime";
 import { useActivity } from "@/hooks/useActivity";
 import { useSettings } from "@/contexts/SettingsContext";
 import { TaskDetailWorkspace } from "@/components/task/TaskDetailWorkspace";
-import { Loader2, ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { TaskDetailSkeleton } from "@/components/skeletons";
 
 export default function TaskDetailPage() {
   const { boardId, taskId } = useParams<{ boardId: string; taskId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
-  const { playSound } = useSettings();
+  const { settings, playSound } = useSettings();
   const { addActivity, setBoardId } = useActivity();
 
   const [task, setTask] = useState<Task | null>(null);
@@ -212,13 +213,8 @@ export default function TaskDetailPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm font-medium text-muted-foreground">Loading task details...</p>
-      </div>
-    );
+  if (isLoading || settings.simulateSkeletonLoading) {
+    return <TaskDetailSkeleton />;
   }
 
   if (error || !task || !board) {

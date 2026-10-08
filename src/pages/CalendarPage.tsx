@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { taskApi } from "@/services/api";
 import { boardApi } from "@/services/boardApi";
+import { useSettings } from "@/contexts/SettingsContext";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
 import { Task, CreateTaskData } from "@/types/task";
 import { Board } from "@/types/board";
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 import { TaskModal } from "@/components/kanban/TaskModal";
 import { toast } from "sonner";
+import { CalendarPageSkeleton } from "@/components/skeletons";
 
 const formatLocalDate = (d: Date | string | null | undefined): string => {
   if (!d) return "";
@@ -34,6 +36,7 @@ const formatLocalDate = (d: Date | string | null | undefined): string => {
 export default function CalendarPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { settings } = useSettings();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(new Date());
@@ -144,6 +147,15 @@ export default function CalendarPage() {
   };
 
   const activeTargetBoard = boards[0];
+
+  if (isLoading || settings.simulateSkeletonLoading) {
+    return (
+      <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background">
+        <BoardHeader showSearch={false} />
+        <CalendarPageSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background">

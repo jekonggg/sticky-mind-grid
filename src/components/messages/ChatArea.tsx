@@ -43,6 +43,8 @@ import {
 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSettings } from "@/contexts/SettingsContext";
+import { Skeleton } from "@/components/ui/skeleton";
 import { MessageComposer } from "./MessageComposer";
 import { ForwardMessageModal } from "./ForwardMessageModal";
 import { fileApi } from "@/services/fileApi";
@@ -84,6 +86,7 @@ export function ChatArea({
   onToggleMobileSidebar,
 }: ChatAreaProps) {
   const { user: currentUser } = useAuth();
+  const { settings } = useSettings();
   const [replyingTo, setReplyingTo] = useState<MessageReplySnippet | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
@@ -330,9 +333,37 @@ export function ChatArea({
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto p-4 custom-scrollbar"
       >
-        {isLoadingMessages && messages.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
-            Loading messages...
+        {(isLoadingMessages && messages.length === 0) || settings.simulateSkeletonLoading ? (
+          <div className="space-y-4 py-2">
+            {/* Received message 1 */}
+            <div className="flex items-start gap-2.5 max-w-[70%]">
+              <Skeleton className="h-8 w-8 rounded-full shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <Skeleton className="h-16 w-56 rounded-2xl rounded-tl-sm" />
+                <Skeleton className="h-2.5 w-12 rounded-sm" />
+              </div>
+            </div>
+
+            {/* Sent message 1 */}
+            <div className="flex flex-col items-end ml-auto max-w-[70%] space-y-1">
+              <Skeleton className="h-12 w-48 rounded-2xl rounded-tr-sm bg-primary/20" />
+              <Skeleton className="h-2.5 w-12 rounded-sm" />
+            </div>
+
+            {/* Received message 2 */}
+            <div className="flex items-start gap-2.5 max-w-[70%]">
+              <Skeleton className="h-8 w-8 rounded-full shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <Skeleton className="h-20 w-72 rounded-2xl rounded-tl-sm" />
+                <Skeleton className="h-2.5 w-12 rounded-sm" />
+              </div>
+            </div>
+
+            {/* Sent message 2 */}
+            <div className="flex flex-col items-end ml-auto max-w-[70%] space-y-1">
+              <Skeleton className="h-14 w-64 rounded-2xl rounded-tr-sm bg-primary/20" />
+              <Skeleton className="h-2.5 w-12 rounded-sm" />
+            </div>
           </div>
         ) : messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground space-y-2">

@@ -13,6 +13,7 @@ export interface LocalPreferences {
   reducedMotion: boolean;
   autoProgressSnapping: boolean;
   confirmOnDelete: boolean;
+  simulateSkeletonLoading: boolean;
 }
 
 export interface UserSyncedPreferences {

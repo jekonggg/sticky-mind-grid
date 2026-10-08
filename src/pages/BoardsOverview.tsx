@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BoardCardSkeleton } from "@/components/skeletons";
 import { Plus, Search, LayoutGrid, Mail, Check, X, Shield, User, Eye, Loader2, Sparkles } from "lucide-react";
 import { BoardsHeroBanner } from "@/components/boards/BoardsHeroBanner";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
@@ -33,11 +34,13 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useSettings } from "@/contexts/SettingsContext";
 
 export default function BoardsOverview() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { settings } = useSettings();
   const { boards, loading, search, setSearch, sort, setSort, createBoard, updateBoard, deleteBoard } = useBoards();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBoard, setEditingBoard] = useState<Board | null>(null);
@@ -239,10 +242,10 @@ export default function BoardsOverview() {
           </div>
         )}
 
-        {loading ? (
+        {loading || settings.simulateSkeletonLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-[120px] rounded-lg" />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <BoardCardSkeleton key={i} />
             ))}
           </div>
         ) : boards.length === 0 && !search ? (

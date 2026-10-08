@@ -22,6 +22,8 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AppLayout } from "./components/layout/AppLayout";
 
+import { DevSkeletonToolbar } from "./components/common/DevSkeletonToolbar";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -55,6 +57,7 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <Analytics />
+                <DevSkeletonToolbar />
               </ActivityProvider>
             </SettingsProvider>
           </AuthProvider>

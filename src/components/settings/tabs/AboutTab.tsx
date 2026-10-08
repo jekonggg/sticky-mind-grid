@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { userApi, SystemHealth } from "@/services/userApi";
+import { useSettings } from "@/contexts/SettingsContext";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Activity,
   CheckCircle2,
@@ -16,6 +18,7 @@ import {
 } from "lucide-react";
 
 export function AboutTab() {
+  const { settings, updateLocalSetting } = useSettings();
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -164,6 +167,27 @@ export function AboutTab() {
               </span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Developer & Simulation Tools */}
+      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5 pr-4">
+            <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              Dev Mode: Simulate Skeleton Loading
+            </Label>
+            <p className="text-[11px] text-muted-foreground">
+              Locks all views, boards, workspaces, and cards into skeleton loading state for UI/UX testing. Shortcut: <kbd className="font-mono text-[9px] bg-background px-1 py-0.5 rounded border border-border/60">Ctrl + Alt + S</kbd>
+            </p>
+          </div>
+          <Switch
+            checked={settings.simulateSkeletonLoading}
+            onCheckedChange={(checked) =>
+              updateLocalSetting("simulateSkeletonLoading", checked)
+            }
+          />
         </div>
       </div>
 

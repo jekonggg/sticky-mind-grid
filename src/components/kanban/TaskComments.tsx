@@ -4,12 +4,14 @@ import { commentApi } from "@/services/commentApi";
 import { Comment } from "@/types/task";
 import { BoardMember } from "@/types/board";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSettings } from "@/contexts/SettingsContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageSquare, Send, Trash2, AtSign, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { TaskCommentsSkeleton } from "@/components/skeletons";
 
 interface TaskCommentsProps {
   taskId: string;
@@ -23,6 +25,7 @@ function escapeRegExp(string: string) {
 
 export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsProps) {
   const { user: currentUser } = useAuth();
+  const { settings } = useSettings();
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -173,10 +176,8 @@ export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsPro
 
       {/* Comments List */}
       <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-        {isLoading ? (
-          <div className="text-center py-4 text-xs text-muted-foreground animate-pulse">
-            Loading comments...
-          </div>
+        {isLoading || settings.simulateSkeletonLoading ? (
+          <TaskCommentsSkeleton count={2} />
         ) : comments.length === 0 ? (
           <div className="text-center py-4 text-xs text-muted-foreground border border-dashed border-border/50 rounded-lg">
             No comments yet. Start the discussion below!

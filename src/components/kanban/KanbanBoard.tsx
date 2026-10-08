@@ -62,6 +62,8 @@ import { useActivity } from "@/hooks/useActivity";
 import { useSettings } from "@/contexts/SettingsContext";
 import { PillNavBar } from "@/components/common/PillNavBar";
 
+import { BoardViewSkeleton } from "@/components/skeletons";
+
 export function KanbanBoard() {
   const { boardId } = useParams<{ boardId: string }>();
   const navigate = useNavigate();
@@ -400,15 +402,8 @@ export function KanbanBoard() {
     return tasks.filter(isTaskMatchingFilters);
   }, [tasks, isTaskMatchingFilters]);
 
-  if (loading || !board) {
-    return (
-      <div className="flex flex-col h-screen bg-background">
-        <BoardHeader search={searchTerm} onSearchChange={setSearchTerm} />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    );
+  if (loading || !board || settings.simulateSkeletonLoading) {
+    return <BoardViewSkeleton />;
   }
 
   const views = [

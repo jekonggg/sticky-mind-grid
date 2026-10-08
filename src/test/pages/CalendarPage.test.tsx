@@ -61,12 +61,14 @@ describe("CalendarPage", () => {
   it("renders global calendar title, month header, and weekdays", async () => {
     renderWithProviders(<CalendarPage />);
 
-    expect(screen.getByText("Global Calendar")).toBeInTheDocument();
-    expect(screen.getByText("Sun")).toBeInTheDocument();
-    expect(screen.getByText("Mon")).toBeInTheDocument();
-    expect(screen.getByText("Schedule Task")).toBeInTheDocument();
+    // Initially displays skeleton
+    expect(screen.getByRole("status", { name: "Loading calendar" })).toBeInTheDocument();
 
     await waitFor(() => {
+      expect(screen.getByText("Global Calendar")).toBeInTheDocument();
+      expect(screen.getByText("Sun")).toBeInTheDocument();
+      expect(screen.getByText("Mon")).toBeInTheDocument();
+      expect(screen.getByText("Schedule Task")).toBeInTheDocument();
       expect(screen.getAllByText("Sprint Review Deadline").length).toBeGreaterThanOrEqual(1);
     });
   });
