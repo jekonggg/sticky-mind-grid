@@ -49,6 +49,6 @@ class User(db.Model):
             'email': self.email,
             'fullName': self.full_name,
             'avatarUrl': self.avatar_url,
-            'authProvider': self.auth_provider or 'local',
+            'authProvider': getattr(self, 'auth_provider', None) or 'local',
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None
         }

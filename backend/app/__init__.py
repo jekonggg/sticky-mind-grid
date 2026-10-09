@@ -74,4 +74,52 @@ def create_app(config_class=Config):
     app.register_blueprint(user_routes.bp)
     app.register_blueprint(message_routes.bp)
 
+    # Automatically sync missing tables/columns in non-testing mode
+    if not app.config.get('TESTING', False):
+        _auto_sync_schema(app)
+
     return app
+
+def _auto_sync_schema(app):
+    """Safely and idempotently ensure all tables and missing columns exist on startup."""
+    with app.app_context():
+        try:
+            from sqlalchemy import inspect as sa_inspect, text
+            db.create_all()
+            inspector = sa_inspect(db.engine)
+            tables = inspector.get_table_names()
+
+            # Ensure missing columns in users table
+            if 'users' in tables:
+                user_cols = {c['name'] for c in inspector.get_columns('users')}
+                if 'auth_provider' not in user_cols:
+                    try:
+                        db.session.execute(text("ALTER TABLE users ADD COLUMN auth_provider VARCHAR(50) DEFAULT 'local'"))
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+                if 'auth_provider_id' not in user_cols:
+                    try:
+                        db.session.execute(text("ALTER TABLE users ADD COLUMN auth_provider_id VARCHAR(255) NULL"))
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+
+            # Ensure missing columns in messages table
+            if 'messages' in tables:
+                msg_cols = {c['name'] for c in inspector.get_columns('messages')}
+                if 'is_forwarded' not in msg_cols:
+                    try:
+                        db.session.execute(text("ALTER TABLE messages ADD COLUMN is_forwarded BOOLEAN DEFAULT FALSE NOT NULL"))
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+                if 'is_pinned' not in msg_cols:
+                    try:
+                        db.session.execute(text("ALTER TABLE messages ADD COLUMN is_pinned BOOLEAN DEFAULT FALSE NOT NULL"))
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+        except Exception:
+            # Non-blocking schema check
+            pass
