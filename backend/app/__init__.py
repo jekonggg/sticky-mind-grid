@@ -112,6 +112,17 @@ def _auto_sync_schema(app):
                     except Exception:
                         db.session.rollback()
 
+            # Ensure missing columns in board_members table
+            if 'board_members' in tables:
+                bm_cols = {c['name'] for c in inspector.get_columns('board_members')}
+                if 'status' not in bm_cols:
+                    try:
+                        db.session.execute(text("ALTER TABLE board_members ADD COLUMN status VARCHAR(20) DEFAULT 'accepted' NOT NULL"))
+                        db.session.execute(text("UPDATE board_members SET status = 'accepted' WHERE status IS NULL OR status = ''"))
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+
             # Ensure missing columns in messages table
             if 'messages' in tables:
                 msg_cols = {c['name'] for c in inspector.get_columns('messages')}
