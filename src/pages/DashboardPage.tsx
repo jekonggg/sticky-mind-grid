@@ -26,7 +26,6 @@ import { Task, CreateTaskData } from "@/types/task";
 import { BoardMember } from "@/types/board";
 import { toast } from "sonner";
 import { DashboardSkeleton } from "@/components/skeletons";
-import { queryKeys } from "@/config/queryKeys";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -42,13 +41,13 @@ export default function DashboardPage() {
 
   // Fetch Boards
   const { data: boards = [], isLoading: isBoardsLoading } = useQuery({
-    queryKey: queryKeys.boards.all,
+    queryKey: ["boards"],
     queryFn: () => boardApi.getBoards(),
   });
 
   // Fetch Global Tasks
   const { data: tasks = [], isLoading: isTasksLoading } = useQuery({
-    queryKey: queryKeys.tasks.global(),
+    queryKey: ["globalTasks"],
     queryFn: () => taskApi.getTasks(),
   });
 
@@ -69,7 +68,7 @@ export default function DashboardPage() {
   }, [boards, selectedTask]);
 
   const { data: activeTaskBoardMembers = [] } = useQuery<BoardMember[]>({
-    queryKey: queryKeys.boards.members(activeTaskBoard?.id || ""),
+    queryKey: ["boardMembers", activeTaskBoard?.id],
     queryFn: () =>
       activeTaskBoard?.id ? boardApi.getMembers(activeTaskBoard.id) : Promise.resolve([]),
     enabled: !!activeTaskBoard?.id,
@@ -80,7 +79,7 @@ export default function DashboardPage() {
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       taskApi.updateTask(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
+      queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
       toast.success("Task updated");
     },
     onError: (err: any) => {
@@ -93,8 +92,8 @@ export default function DashboardPage() {
     mutationFn: (data: CreateTaskData & { boardId: string }) =>
       taskApi.createTask(data),
     onSuccess: (newTask) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
+      queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
       toast.success(`Task "${newTask.title}" created!`);
       setIsTaskModalOpen(false);
     },

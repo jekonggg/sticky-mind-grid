@@ -40,7 +40,7 @@ class Conversation(db.Model):
         self.created_by = created_by
         self.last_message_at = datetime.utcnow()
 
-    def to_dict(self, current_user_id: str = None, unread_count: int = None):
+    def to_dict(self, current_user_id: str = None):
         # Format participants
         participants_data = [p.to_dict() for p in self.participants] if self.participants else []
         
@@ -57,29 +57,27 @@ class Conversation(db.Model):
                     display_avatar = p.user.avatar_url
                     break
 
-        # Calculate unread count for the current user if not precomputed
-        actual_unread_count = unread_count
-        if actual_unread_count is None and current_user_id:
-            current_participant = None
+        # Calculate unread count for the current user
+        unread_count = 0
+        current_participant = None
+        if current_user_id:
             for p in self.participants:
                 if p.user_id == current_user_id:
                     current_participant = p
                     break
             
-            if current_participant:
-                from sqlalchemy import func
-                query = db.session.query(func.count(Message.id)).filter(
-                    Message.conversation_id == self.id,
-                    Message.sender_id != current_user_id,
-                    Message.is_deleted == False
+            if current_participant and current_participant.last_read_at:
+                unread_count = sum(
+                    1 for m in self.messages
+                    if m.sender_id != current_user_id
+                    and (m.created_at > current_participant.last_read_at)
+                    and not m.is_deleted
                 )
-                if current_participant.last_read_at:
-                    query = query.filter(Message.created_at > current_participant.last_read_at)
-                actual_unread_count = query.scalar() or 0
-            else:
-                actual_unread_count = 0
-        elif actual_unread_count is None:
-            actual_unread_count = 0
+            elif current_participant:
+                unread_count = sum(
+                    1 for m in self.messages
+                    if m.sender_id != current_user_id and not m.is_deleted
+                )
 
         return {
             'id': self.id,
@@ -91,7 +89,7 @@ class Conversation(db.Model):
             'otherUser': other_user,
             'participants': participants_data,
             'participantCount': len(participants_data),
-            'unreadCount': actual_unread_count,
+            'unreadCount': unread_count,
             'lastMessageAt': self.last_message_at.isoformat() + 'Z' if self.last_message_at else None,
             'lastMessagePreview': self.last_message_preview,
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None,
@@ -156,10 +154,6 @@ class Message(db.Model):
     conversation = db.relationship('Conversation', back_populates='messages')
     sender = db.relationship('User', foreign_keys=[sender_id], back_populates='sent_messages')
     reply_to = db.relationship('Message', remote_side=[id], lazy=True)
-
-    __table_args__ = (
-        db.Index('ix_messages_conv_created', 'conversation_id', 'created_at'),
-    )
 
     def __init__(self, conversation_id: str, sender_id: str, content: str = '', attachments: list = None, reply_to_id: str = None, is_forwarded: bool = False, is_pinned: bool = False, **kwargs):
         super().__init__(**kwargs)

@@ -24,7 +24,6 @@ import { TaskDetailWorkspace } from "@/components/task/TaskDetailWorkspace";
 import { toast } from "sonner";
 import { CalendarPageSkeleton } from "@/components/skeletons";
 import { BoardMember } from "@/types/board";
-import { queryKeys } from "@/config/queryKeys";
 
 const formatLocalDate = (d: Date | string | null | undefined): string => {
   if (!d) return "";
@@ -48,13 +47,13 @@ export default function CalendarPage() {
 
   // Fetch Boards
   const { data: boards = [] } = useQuery<Board[]>({
-    queryKey: queryKeys.boards.all,
+    queryKey: ["boards"],
     queryFn: () => boardApi.getBoards(),
   });
 
   // Fetch all tasks
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
-    queryKey: queryKeys.tasks.global(),
+    queryKey: ["globalTasks"],
     queryFn: () => taskApi.getTasks(),
   });
 
@@ -80,7 +79,7 @@ export default function CalendarPage() {
   }, [boards, selectedTask]);
 
   const { data: activeTaskBoardMembers = [] } = useQuery<BoardMember[]>({
-    queryKey: queryKeys.boards.members(activeTaskBoard?.id || ""),
+    queryKey: ["boardMembers", activeTaskBoard?.id],
     queryFn: () =>
       activeTaskBoard?.id ? boardApi.getMembers(activeTaskBoard.id) : Promise.resolve([]),
     enabled: !!activeTaskBoard?.id,
@@ -90,7 +89,7 @@ export default function CalendarPage() {
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       taskApi.updateTask(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
+      queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
       toast.success("Task updated");
     },
     onError: (err: any) => {
@@ -102,8 +101,7 @@ export default function CalendarPage() {
     mutationFn: (data: CreateTaskData & { boardId: string }) =>
       taskApi.createTask(data),
     onSuccess: (newTask) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
+      queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
       toast.success(`Task "${newTask.title}" scheduled!`);
       setIsNewTaskModalOpen(false);
     },

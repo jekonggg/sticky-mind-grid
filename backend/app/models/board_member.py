@@ -20,7 +20,6 @@ class BoardMember(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint('board_id', 'user_id', name='uq_board_user'),
-        db.Index('ix_board_members_user_status', 'user_id', 'status'),
     )
 
     def __init__(self, board_id: str, user_id: str, role: str = 'member', status: str = 'accepted', **kwargs):

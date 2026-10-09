@@ -3,8 +3,6 @@ from app import db
 from app.models.message import Conversation, ConversationParticipant, Message
 from app.models.user import User
 from app.utils.event_broadcaster import broadcaster
-from sqlalchemy.orm import selectinload
-from sqlalchemy import func
 
 class MessageService:
     @staticmethod
@@ -23,9 +21,6 @@ class MessageService:
         # Look for existing direct conversation with exactly both participants
         direct_convs = (
             Conversation.query
-            .options(
-                selectinload(Conversation.participants).selectinload(ConversationParticipant.user)
-            )
             .filter_by(type='direct')
             .join(ConversationParticipant)
             .filter(ConversationParticipant.user_id.in_([user1_id, user2_id]))
@@ -102,53 +97,24 @@ class MessageService:
 
         conversations = (
             Conversation.query
-            .options(
-                selectinload(Conversation.participants).selectinload(ConversationParticipant.user)
-            )
             .filter(Conversation.id.in_(conv_ids))
             .order_by(Conversation.last_message_at.desc())
             .all()
         )
 
-        unread_counts = dict(
-            db.session.query(
-                Message.conversation_id,
-                func.count(Message.id)
-            )
-            .join(
-                ConversationParticipant,
-                (ConversationParticipant.conversation_id == Message.conversation_id) &
-                (ConversationParticipant.user_id == user_id)
-            )
-            .filter(
-                Message.conversation_id.in_(conv_ids),
-                Message.sender_id != user_id,
-                Message.is_deleted == False,
-                db.or_(
-                    ConversationParticipant.last_read_at.is_(None),
-                    Message.created_at > ConversationParticipant.last_read_at
-                )
-            )
-            .group_by(Message.conversation_id)
-            .all()
-        )
-
-        return [c.to_dict(user_id, unread_count=unread_counts.get(c.id, 0)) for c in conversations]
+        return [c.to_dict(user_id) for c in conversations]
 
     @staticmethod
     def get_conversation(user_id: str, conversation_id: str):
-        conv = (
-            Conversation.query
-            .options(
-                selectinload(Conversation.participants).selectinload(ConversationParticipant.user)
-            )
-            .filter_by(id=conversation_id)
-            .first()
-        )
+        conv = db.session.get(Conversation, conversation_id)
         if not conv:
             return None, "Conversation not found", 404
 
-        participant = next((p for p in conv.participants if p.user_id == user_id), None)
+        participant = (
+            ConversationParticipant.query
+            .filter_by(conversation_id=conversation_id, user_id=user_id)
+            .first()
+        )
         if not participant:
             return None, "You are not a participant in this conversation", 403
 

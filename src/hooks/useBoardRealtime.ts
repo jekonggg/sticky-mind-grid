@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { toast } from "sonner";
 import { API_BASE, getStoredToken } from "@/config/api";
-import { queryKeys } from "@/config/queryKeys";
 
 interface RealtimeEvent {
   type: string;
@@ -32,7 +30,6 @@ export function useBoardRealtime({
   onMemberChange,
   onBoardChange,
 }: UseBoardRealtimeOptions) {
-  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { devSettings } = useDevMode();
   const [isConnected, setIsConnected] = useState(false);
@@ -116,64 +113,35 @@ export function useBoardRealtime({
           switch (payload.type) {
             case "connected":
               if (isMounted) setIsConnected(true);
-              if (boardId) {
-                queryClient.invalidateQueries({ queryKey: queryKeys.tasks.board(boardId) });
-                queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
-                queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
-                queryClient.invalidateQueries({ queryKey: queryKeys.boards.members(boardId) });
-                queryClient.invalidateQueries({ queryKey: queryKeys.notes.board(boardId) });
-                queryClient.invalidateQueries({ queryKey: queryKeys.activity.board(boardId) });
-              }
               break;
 
             case "task:created":
             case "task:moved":
             case "tasks:reordered":
-              if (boardId) {
-                queryClient.invalidateQueries({ queryKey: queryKeys.tasks.board(boardId) });
-                queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
-                queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
-              }
               callbacksRef.current.onTaskChange?.();
               break;
 
             case "task:updated":
-              if (boardId) {
-                queryClient.invalidateQueries({ queryKey: queryKeys.tasks.board(boardId) });
-                queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
-              }
               callbacksRef.current.onTaskChange?.();
               callbacksRef.current.onTaskUpdate?.(payload.data);
               break;
 
             case "task:deleted":
-              if (boardId) {
-                queryClient.invalidateQueries({ queryKey: queryKeys.tasks.board(boardId) });
-                queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
-                queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
-              }
               callbacksRef.current.onTaskChange?.();
               callbacksRef.current.onTaskDelete?.(payload.data?.taskId || payload.data?.id || payload.data);
               break;
 
             case "activity:new":
-              if (boardId) {
-                queryClient.invalidateQueries({ queryKey: queryKeys.activity.board(boardId) });
-              }
               callbacksRef.current.onActivityChange?.(payload.data);
               break;
 
             case "member:joined":
             case "member:removed":
             case "member:role_updated":
-              if (boardId) {
-                queryClient.invalidateQueries({ queryKey: queryKeys.boards.members(boardId) });
-              }
               callbacksRef.current.onMemberChange?.();
               break;
 
             case "board:updated":
-              queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
               callbacksRef.current.onBoardChange?.(payload.data);
               break;
 
@@ -208,7 +176,7 @@ export function useBoardRealtime({
       }
       setIsConnected(false);
     };
-  }, [boardId, userId, devSettings.simulateSseDisconnect, queryClient]);
+  }, [boardId, userId, devSettings.simulateSseDisconnect]);
 
   return { isConnected };
 }

@@ -6,83 +6,38 @@ from app.models.user import User
 from app.models.notification import Notification
 from app.utils.event_broadcaster import broadcaster
 from datetime import datetime
-from sqlalchemy.orm import joinedload
 
 class TaskService:
     @staticmethod
-    def get_tasks(board_id, start_date=None, end_date=None, limit=None, offset=None):
+    def get_tasks(board_id):
         if not board_id:
             return []
-        query = (
-            Task.query
-            .options(joinedload(Task.assignee), joinedload(Task.board))
-            .filter_by(board_id=board_id, is_deleted=False)
-        )
-        if start_date:
-            query = query.filter(Task.due_date >= start_date)
-        if end_date:
-            query = query.filter(Task.due_date <= end_date)
-
-        query = query.order_by(Task.position.asc(), Task.created_at.asc())
-
-        if offset is not None:
-            query = query.offset(offset)
-        if limit is not None:
-            query = query.limit(limit)
-
-        return query.all()
+        return Task.query.filter_by(board_id=board_id, is_deleted=False).order_by(Task.position.asc(), Task.created_at.asc()).all()
 
     @staticmethod
-    def get_user_tasks(user_id, assigned_to_me=False, start_date=None, end_date=None, limit=None, offset=None):
+    def get_user_tasks(user_id, assigned_to_me=False):
         from app.models.board_member import BoardMember
         board_ids_query = db.session.query(BoardMember.board_id).filter(
             BoardMember.user_id == user_id,
             BoardMember.status == 'accepted'
         )
-        query = (
-            Task.query
-            .options(joinedload(Task.assignee), joinedload(Task.board))
-            .filter(
-                Task.board_id.in_(board_ids_query),
-                Task.is_deleted == False
-            )
+        query = Task.query.filter(
+            Task.board_id.in_(board_ids_query),
+            Task.is_deleted == False
         )
         if assigned_to_me:
             query = query.filter(Task.assigned_to == user_id)
-        if start_date:
-            query = query.filter(Task.due_date >= start_date)
-        if end_date:
-            query = query.filter(Task.due_date <= end_date)
-
-        query = query.order_by(Task.due_date.asc(), Task.created_at.desc())
-
-        if offset is not None:
-            query = query.offset(offset)
-        if limit is not None:
-            query = query.limit(limit)
-
-        return query.all()
+        return query.order_by(Task.due_date.asc(), Task.created_at.desc()).all()
 
     @staticmethod
     def get_deleted_tasks(board_id):
         if not board_id:
             return []
-        return (
-            Task.query
-            .options(joinedload(Task.assignee), joinedload(Task.board))
-            .filter_by(board_id=board_id, is_deleted=True)
-            .order_by(Task.deleted_at.desc())
-            .all()
-        )
+        return Task.query.filter_by(board_id=board_id, is_deleted=True).order_by(Task.deleted_at.desc()).all()
 
     @staticmethod
     def get_task_by_id(task_id):
-        return (
-            Task.query
-            .options(joinedload(Task.assignee), joinedload(Task.board))
-            .filter_by(id=task_id)
-            .first()
-        )
+        return db.session.get(Task, task_id)
 
     @staticmethod
     def create_task(data, user_id=None):

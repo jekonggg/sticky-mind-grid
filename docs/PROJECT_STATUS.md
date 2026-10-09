@@ -39,13 +39,11 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 - **Auto-progress snapping** — 0% first column, 30% intermediate, 100% last column
 - **Inline column rename** — double-click to edit column titles
 
-### Task Management & Query Efficiency
+### Task Management
 - **Full CRUD** — create, read, update, soft-delete tasks
 - **Task properties** — title, emoji, description, status, priority (low/medium/high), progress (0-100), due date, assignee, checklist, tags, attachments
-- **Optimistic updates & React Query** — local state patched with automatic rollback and unified query cache synchronization (`queryKeys.tasks.global()`, `queryKeys.tasks.board(boardId)`)
-- **Real-Time SSE Synchronization with Connected Handshake Invalidation** — eliminates aggressive 4s polling loops in favor of instantaneous event-driven and connected-frame query invalidation
-- **O(1) Constant-Query Loading** — Eager loading with `joinedload` on Task.assignee and Task.board completely prevents N+1 SQL queries
-- **Composite Indexing** — MySQL/SQLite composite indexes on `tasks(board_id, is_deleted, position)` and `tasks(assigned_to, due_date)`
+- **Optimistic updates** — local state patched before API confirmation, rolled back on error
+- **4-second polling** — tasks auto-refresh when tab is visible
 - **Position-based ordering** — float positions with 1000-based indices
 
 ### Multiple Views

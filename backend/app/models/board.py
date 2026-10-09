@@ -38,12 +38,9 @@ class Board(db.Model):
     def touch(self):
         self.updated_at = datetime.utcnow()
 
-    def to_dict(self, task_count=None):
+    def to_dict(self):
         # Ensure a valid HSL color is always returned
         safe_color = self.color if (self.color and self.color.startswith('hsl')) else 'hsl(220, 80%, 56%)'
-        actual_task_count = task_count if task_count is not None else (
-            getattr(self, '_task_count', None) if getattr(self, '_task_count', None) is not None else len(self.tasks)
-        )
         return {
             'id': self.id,
             'name': self.name,
@@ -53,7 +50,7 @@ class Board(db.Model):
             'heroImageUrl': self.hero_image_url,
             'columns': self.columns,
             'ownerId': self.owner_id,
-            'taskCount': actual_task_count,
+            'taskCount': len(self.tasks),
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None,
             'updatedAt': self.updated_at.isoformat() + 'Z' if self.updated_at else None
         }

@@ -1,13 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Task, CreateTaskData, UpdateTaskData, TaskStatus, Column } from "@/types/task";
 import { taskApi } from "@/services/api";
 import { useActivity } from "./useActivity";
-import { queryKeys } from "@/config/queryKeys";
+
+const DEFAULT_COLUMNS: Column[] = [
+  { id: "todo", title: "To Do" },
+  { id: "in_progress", title: "In Progress" },
+  { id: "done", title: "Done" },
+  { id: "archive", title: "Archive" },
+];
 
 export function useTasks(boardId: string, initialColumns: Column[] = []) {
-  const queryClient = useQueryClient();
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [columns, setColumns] = useState<Column[]>(initialColumns);
+  const [loading, setLoading] = useState(true);
   const { addActivity } = useActivity();
 
   // Sync columns when board updates
@@ -17,83 +23,60 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     }
   }, [initialColumns]);
 
-  // Primary task query for this board
-  const {
-    data: serverTasks = [],
-    isLoading: loading,
-  } = useQuery<Task[]>({
-    queryKey: queryKeys.tasks.board(boardId),
-    queryFn: () => (boardId ? taskApi.getTasks(boardId) : Promise.resolve([])),
-    enabled: !!boardId,
-    // Slow fallback interval only (45s) — real-time SSE handles primary synchronization
-    refetchInterval: 45000,
-    refetchIntervalInBackground: false,
-  });
-
-  // Local state for optimistic mutations
-  const [tasks, setTasks] = useState<Task[]>([]);
-
-  // Sync server tasks to local state when query cache updates
-  useEffect(() => {
-    setTasks(serverTasks);
-  }, [serverTasks]);
-
   const fetchTasks = useCallback(async () => {
     if (!boardId) return;
-    await queryClient.invalidateQueries({ queryKey: queryKeys.tasks.board(boardId) });
-  }, [boardId, queryClient]);
+    try {
+      setLoading(true);
+      const data = await taskApi.getTasks(boardId);
+      setTasks(data);
+    } catch (err) {
+      console.error("Failed to fetch tasks:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [boardId]);
 
-  const addTask = useCallback(
-    async (data: CreateTaskData) => {
-      const task = await taskApi.createTask({ ...data, boardId });
-      setTasks((prev) => [...prev, task]);
-      queryClient.setQueryData<Task[]>(queryKeys.tasks.board(boardId), (old = []) => [...old, task]);
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
-      addActivity("create", task.title, `Created task "${task.title}"`, boardId);
-      return task;
-    },
-    [addActivity, boardId, queryClient]
-  );
-
-  const updateTask = useCallback(
-    async (id: string, data: UpdateTaskData) => {
-      const previousTasks = tasks;
-      const task = tasks.find((t) => t.id === id);
-      if (!task) return;
-
-      // Optimistic local and cache update
-      const updatedList = tasks.map((t) =>
-        t.id === id ? { ...t, ...data, updatedAt: new Date() } : t
-      );
-      setTasks(updatedList);
-      queryClient.setQueryData<Task[]>(queryKeys.tasks.board(boardId), updatedList);
-
-      try {
-        const updated = await taskApi.updateTask(id, data);
-        setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
-        queryClient.setQueryData<Task[]>(queryKeys.tasks.board(boardId), (prev = []) =>
-          prev.map((t) => (t.id === id ? updated : t))
-        );
-        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
-        queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
-      } catch {
-        setTasks(previousTasks);
-        queryClient.setQueryData<Task[]>(queryKeys.tasks.board(boardId), previousTasks);
-        fetchTasks();
+  useEffect(() => {
+    fetchTasks();
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible" && boardId) {
+        taskApi.getTasks(boardId).then((data) => setTasks(data)).catch(() => {});
       }
-    },
-    [boardId, fetchTasks, queryClient, tasks]
-  );
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [fetchTasks, boardId]);
 
-  const reorderTasks = useCallback(
-    async (items: Array<{ id: string; status?: string; position: number }>) => {
-      if (!boardId || items.length === 0) return;
-      const previousTasks = tasks;
+  const addTask = useCallback(async (data: CreateTaskData) => {
+    const task = await taskApi.createTask({ ...data, boardId });
+    setTasks((prev) => [...prev, task]);
+    addActivity("create", task.title, `Created task "${task.title}"`, boardId);
+    return task;
+  }, [addActivity, boardId]);
 
-      // Optimistic local reorder
+  const updateTask = useCallback(async (id: string, data: UpdateTaskData) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    // Optimistic local update
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...data, updatedAt: new Date() } : t))
+    );
+
+    try {
+      const updated = await taskApi.updateTask(id, data);
+      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+    } catch {
+      fetchTasks();
+    }
+  }, [fetchTasks, tasks]);
+
+  const reorderTasks = useCallback(async (items: Array<{ id: string; status?: string; position: number }>) => {
+    if (!boardId || items.length === 0) return;
+
+    // Optimistic local reorder
+    setTasks((prev) => {
       const itemMap = new Map(items.map((i) => [i.id, i]));
-      const updated = tasks.map((t) => {
+      const updated = prev.map((t) => {
         const match = itemMap.get(t.id);
         if (match) {
           return {
@@ -104,74 +87,50 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
         }
         return t;
       });
-      const sorted = updated.sort((a, b) => (a.position || 0) - (b.position || 0));
-      setTasks(sorted);
-      queryClient.setQueryData<Task[]>(queryKeys.tasks.board(boardId), sorted);
+      return updated.sort((a, b) => (a.position || 0) - (b.position || 0));
+    });
 
-      try {
-        const updatedList = await taskApi.reorderTasks(boardId, items);
-        if (updatedList && updatedList.length > 0) {
+    try {
+      const updatedList = await taskApi.reorderTasks(boardId, items);
+      if (updatedList && updatedList.length > 0) {
+        setTasks((prev) => {
           const updatedMap = new Map(updatedList.map((t) => [t.id, t]));
-          const next = sorted.map((t) => updatedMap.get(t.id) || t);
-          setTasks(next);
-          queryClient.setQueryData<Task[]>(queryKeys.tasks.board(boardId), next);
-        }
-        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
-      } catch {
-        setTasks(previousTasks);
-        queryClient.setQueryData<Task[]>(queryKeys.tasks.board(boardId), previousTasks);
-        fetchTasks();
+          return prev.map((t) => updatedMap.get(t.id) || t);
+        });
       }
-    },
-    [boardId, fetchTasks, queryClient, tasks]
-  );
+    } catch {
+      fetchTasks();
+    }
+  }, [boardId, fetchTasks]);
 
-  const moveTask = useCallback(
-    async (id: string, status: TaskStatus) => {
-      const task = tasks.find((t) => t.id === id);
-      if (!task || task.status === status) return;
-      const previousTasks = tasks;
+  const moveTask = useCallback(async (id: string, status: TaskStatus) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    if (task.status === status) return;
 
-      const updated = tasks.map((t) =>
-        t.id === id ? { ...t, status, updatedAt: new Date() } : t
-      );
-      setTasks(updated);
-      queryClient.setQueryData<Task[]>(queryKeys.tasks.board(boardId), updated);
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, status, updatedAt: new Date() } : t))
+    );
 
-      try {
-        await taskApi.updateTask(id, { status });
-        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
-      } catch {
-        setTasks(previousTasks);
-        queryClient.setQueryData<Task[]>(queryKeys.tasks.board(boardId), previousTasks);
-        fetchTasks();
-      }
-    },
-    [boardId, fetchTasks, queryClient, tasks]
-  );
+    try {
+      await taskApi.updateTask(id, { status });
+    } catch {
+      fetchTasks();
+    }
+  }, [fetchTasks, tasks]);
 
-  const deleteTask = useCallback(
-    async (id: string) => {
-      const task = tasks.find((t) => t.id === id);
-      if (!task) return;
-      const previousTasks = tasks;
+  const deleteTask = useCallback(async (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
 
-      const filtered = tasks.filter((t) => t.id !== id);
-      setTasks(filtered);
-      queryClient.setQueryData<Task[]>(queryKeys.tasks.board(boardId), filtered);
+    setTasks((prev) => prev.filter((t) => t.id !== id));
 
-      try {
-        await taskApi.deleteTask(id);
-        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
-        queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
-      } catch {
-        setTasks(previousTasks);
-        queryClient.setQueryData<Task[]>(queryKeys.tasks.board(boardId), previousTasks);
-        fetchTasks();
-      }
-    },
-    [boardId, fetchTasks, queryClient, tasks]
-  );
+    try {
+      await taskApi.deleteTask(id);
+    } catch {
+      fetchTasks();
+    }
+  }, [fetchTasks, tasks]);
 
   const addColumn = useCallback((title: string) => {
     const newColumn: Column = {

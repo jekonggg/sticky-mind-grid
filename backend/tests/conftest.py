@@ -22,36 +22,6 @@ class TestConfig(Config):
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     SECRET_KEY = 'test-secret-key'
 
-from sqlalchemy import event
-
-class QueryCounter:
-    def __init__(self, engine):
-        self.engine = engine
-        self.count = 0
-        self.queries = []
-
-    def _callback(self, conn, cursor, statement, parameters, context, executemany):
-        self.count += 1
-        self.queries.append((statement, parameters))
-
-    def __enter__(self):
-        self.count = 0
-        self.queries = []
-        event.listen(self.engine, "before_cursor_execute", self._callback)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        event.remove(self.engine, "before_cursor_execute", self._callback)
-
-    def reset(self):
-        self.count = 0
-        self.queries = []
-
-@pytest.fixture
-def query_counter(app):
-    with app.app_context():
-        return QueryCounter(db.engine)
-
 @pytest.fixture
 def app():
     app = create_app(TestConfig)

@@ -22,6 +22,7 @@ export function useConversations() {
   return useQuery<Conversation[]>({
     queryKey: CONVERSATIONS_QUERY_KEY,
     queryFn: () => messageApi.getConversations(),
+    refetchInterval: 15000,
   });
 }
 
@@ -44,6 +45,7 @@ export function useMessagesThread(conversationId?: string) {
     queryKey: messagesQueryKey(conversationId || ""),
     queryFn: () => (conversationId ? messageApi.getMessages(conversationId) : Promise.resolve([])),
     enabled: !!conversationId,
+    refetchInterval: 10000,
   });
 }
 
@@ -57,6 +59,7 @@ export function useUnreadMessageCount() {
       const data = await messageApi.getUnreadCount();
       return data.unreadCount;
     },
+    refetchInterval: 10000,
   });
 }
 
@@ -233,10 +236,7 @@ export function useMessageRealtime() {
     es.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
-        if (payload.type === "connected") {
-          queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY });
-          queryClient.invalidateQueries({ queryKey: UNREAD_COUNT_QUERY_KEY });
-        } else if (payload.type === "message:new") {
+        if (payload.type === "message:new") {
           const convId = payload.data?.conversationId || payload.data?.message?.conversationId;
           if (convId) {
             queryClient.invalidateQueries({ queryKey: messagesQueryKey(convId) });
