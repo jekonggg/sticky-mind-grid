@@ -689,7 +689,7 @@ export function KanbanBoard() {
         </div>
 
         {/* Meta Floating Dock Pill Navigation Bar + Adjacent Add Task Button (Fixed Bottom Center) */}
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-2.5 max-w-[calc(100vw-2rem)]">
+        <div className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-2.5 max-w-[calc(100vw-2rem)]">
           <PillNavBar
             items={views}
             activeId={activeView}

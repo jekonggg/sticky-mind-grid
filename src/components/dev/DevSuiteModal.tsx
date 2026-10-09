@@ -12,7 +12,6 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -151,32 +150,32 @@ export function DevSuiteModal() {
 
   return (
     <Dialog open={isDevModalOpen} onOpenChange={setIsDevModalOpen}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-card/95 backdrop-blur-xl border-amber-500/30 shadow-2xl">
+      <DialogContent className="w-[95vw] sm:w-full max-w-3xl h-[88dvh] sm:h-auto sm:max-h-[85vh] max-h-[88dvh] flex flex-col p-0 overflow-hidden bg-card/95 backdrop-blur-xl border-amber-500/30 shadow-2xl rounded-2xl">
         {/* Header */}
-        <DialogHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center border border-amber-500/40">
+        <DialogHeader className="p-4 sm:p-5 pb-3 border-b border-border/60 bg-muted/20 shrink-0">
+          <div className="flex items-center justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-8 w-8 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center border border-amber-500/40 shrink-0">
                 <Sliders className="h-4 w-4" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <DialogTitle className="text-base font-black tracking-tight">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <DialogTitle className="text-sm sm:text-base font-black tracking-tight truncate">
                     Developer Mode Suite
                   </DialogTitle>
                   <Badge
                     variant="outline"
-                    className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] font-mono font-bold"
+                    className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[9px] sm:text-[10px] font-mono font-bold shrink-0"
                   >
                     DEV ONLY
                   </Badge>
                   {activeDevModesCount > 0 && (
-                    <Badge className="bg-primary text-primary-foreground text-[10px] h-5 px-1.5 font-bold">
+                    <Badge className="bg-primary text-primary-foreground text-[9px] sm:text-[10px] h-4.5 sm:h-5 px-1.5 font-bold shrink-0">
                       {activeDevModesCount} Active
                     </Badge>
                   )}
                 </div>
-                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                <DialogDescription className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-none">
                   Live latency injection, error simulation, RBAC role preview & real-time telemetry.
                 </DialogDescription>
               </div>
@@ -186,38 +185,38 @@ export function DevSuiteModal() {
               size="sm"
               variant="outline"
               onClick={resetDevSettings}
-              className="h-8 text-xs font-semibold gap-1.5 border-border/80 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+              className="h-7 sm:h-8 text-xs font-semibold gap-1 sm:gap-1.5 px-2.5 sm:px-3 border-border/80 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 shrink-0"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              <span>Reset All</span>
+              <span className="hidden sm:inline">Reset All</span>
             </Button>
           </div>
         </DialogHeader>
 
         {/* Tabbed Navigation */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-          <div className="px-5 pt-3 border-b border-border/40 bg-muted/10">
-            <TabsList className="grid grid-cols-4 w-full bg-muted/40 p-1">
-              <TabsTrigger value="network" className="text-xs font-bold gap-1.5 py-1.5">
-                <Zap className="h-3.5 w-3.5" />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="px-3 sm:px-5 pt-2 sm:pt-3 border-b border-border/40 bg-muted/10 shrink-0 overflow-x-auto custom-scrollbar">
+            <TabsList className="flex sm:grid sm:grid-cols-4 w-max sm:w-full bg-muted/40 p-1 gap-1 min-w-full">
+              <TabsTrigger value="network" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
+                <Zap className="h-3.5 w-3.5 shrink-0" />
                 <span>Skeletons & Network</span>
               </TabsTrigger>
-              <TabsTrigger value="rbac" className="text-xs font-bold gap-1.5 py-1.5">
-                <Shield className="h-3.5 w-3.5" />
+              <TabsTrigger value="rbac" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
+                <Shield className="h-3.5 w-3.5 shrink-0" />
                 <span>Role Preview</span>
               </TabsTrigger>
-              <TabsTrigger value="sse" className="text-xs font-bold gap-1.5 py-1.5">
-                <Radio className="h-3.5 w-3.5" />
+              <TabsTrigger value="sse" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
+                <Radio className="h-3.5 w-3.5 shrink-0" />
                 <span>Real-Time SSE</span>
               </TabsTrigger>
-              <TabsTrigger value="sandbox" className="text-xs font-bold gap-1.5 py-1.5">
-                <Layers className="h-3.5 w-3.5" />
+              <TabsTrigger value="sandbox" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
+                <Layers className="h-3.5 w-3.5 shrink-0" />
                 <span>Helpers & Stress</span>
               </TabsTrigger>
             </TabsList>
           </div>
 
-          <ScrollArea className="flex-1 p-5 max-h-[60vh]">
+          <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 custom-scrollbar min-h-0 overscroll-contain">
             {/* TAB 1: Skeletons & Network */}
             <TabsContent value="network" className="space-y-4 m-0">
               {/* 1. Skeleton Loading Simulation */}
@@ -621,7 +620,7 @@ export function DevSuiteModal() {
                 </CardContent>
               </Card>
             </TabsContent>
-          </ScrollArea>
+          </div>
         </Tabs>
       </DialogContent>
     </Dialog>

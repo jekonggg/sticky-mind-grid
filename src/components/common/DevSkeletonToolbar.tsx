@@ -38,7 +38,7 @@ export function DevSkeletonToolbar() {
       {hasActiveModes && (
         <aside
           aria-label="Developer Mode Toolbar"
-          className="fixed bottom-5 right-5 z-50 flex items-center gap-3 p-3 px-4 rounded-2xl bg-card/90 dark:bg-card/90 backdrop-blur-xl border border-amber-500/40 text-foreground shadow-2xl shadow-amber-500/10 animate-in fade-in slide-in-from-bottom-4 duration-300 select-none"
+          className="fixed bottom-24 right-3.5 left-3.5 sm:bottom-24 sm:left-auto sm:right-5 md:bottom-5 md:left-auto z-50 flex items-center gap-3 p-3 px-4 rounded-2xl bg-card/90 dark:bg-card/90 backdrop-blur-xl border border-amber-500/40 text-foreground shadow-2xl shadow-amber-500/10 animate-in fade-in slide-in-from-bottom-4 duration-300 select-none"
         >
           {/* Status Indicator & Badges */}
           <div className="flex items-center gap-2.5">
@@ -47,10 +47,10 @@ export function DevSkeletonToolbar() {
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
             </span>
 
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-300">
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>
+            <div className="flex flex-col min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-300 truncate">
+                <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">
                   {isSimulating
                     ? "Dev Mode: Skeleton Simulator Active"
                     : `Dev Suite Active (${activeDevModesCount} modes)`}
@@ -136,19 +136,19 @@ export function DevSkeletonToolbar() {
 
       {/* Idle Quick-Access Floating Button */}
       {!hasActiveModes && (
-        <div className="fixed bottom-5 right-5 z-40 animate-in fade-in duration-300">
+        <div className="fixed bottom-24 right-3.5 sm:bottom-24 md:bottom-5 md:right-5 z-40 animate-in fade-in duration-300">
           <Button
             size="sm"
             variant="outline"
             onClick={() => setIsDevModalOpen(true)}
             aria-label="Open Developer Suite"
-            className="h-8 px-2.5 text-xs font-bold bg-card/90 hover:bg-card border-border/80 shadow-lg hover:shadow-xl backdrop-blur-md text-foreground gap-1.5 rounded-full hover:border-amber-500/50 transition-all hover:scale-105 cursor-pointer group"
+            className="h-8.5 px-3 text-xs font-bold bg-card/90 hover:bg-card border-border/80 shadow-lg hover:shadow-xl backdrop-blur-md text-foreground gap-1.5 rounded-full hover:border-amber-500/50 transition-all hover:scale-105 cursor-pointer group"
           >
             <div className="h-4 w-4 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-amber-950 transition-colors">
               <Sliders className="h-2.5 w-2.5" />
             </div>
             <span className="text-[11px] font-bold">Dev Mode</span>
-            <kbd className="font-mono text-[9px] bg-muted/80 text-muted-foreground px-1 py-0.2 rounded border border-border/60">
+            <kbd className="hidden sm:inline font-mono text-[9px] bg-muted/80 text-muted-foreground px-1 py-0.2 rounded border border-border/60">
               Ctrl+Alt+D
             </kbd>
           </Button>

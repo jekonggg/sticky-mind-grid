@@ -160,7 +160,7 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
   };
 
   return (
-    <div className="p-3 bg-card/95 backdrop-blur-md border-t border-border/60 transition-all">
+    <div className="p-3 pb-20 md:pb-3 bg-card/95 backdrop-blur-md border-t border-border/60 transition-all">
       {/* Active Reply Banner */}
       {replyingTo && (
         <div className="mb-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-bottom-2 duration-200">
