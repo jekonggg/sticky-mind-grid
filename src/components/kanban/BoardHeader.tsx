@@ -23,7 +23,6 @@ import { LatestChangesPanel } from "./LatestChangesPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import {
-  Home01 as Home,
   SearchLg as Search,
   LayoutGrid01 as LayoutGrid,
   ChevronDown,
@@ -66,7 +65,7 @@ export function BoardHeader({
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const { settings, updateLocalSetting } = useSettings();
-  const { setIsDevModalOpen } = useDevMode();
+  const { devSettings, setIsDevModalOpen } = useDevMode();
   const { setIsMobileOpen } = useLayout();
 
   useEffect(() => {
@@ -96,7 +95,7 @@ export function BoardHeader({
   return (
     <>
       <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-border/60 bg-card/95 backdrop-blur-md sticky top-0 z-40 h-16 shrink-0 shadow-sm gap-2">
-        {/* Left: Home + Quick Board Switcher + Search */}
+        {/* Left: Quick Board Switcher + Search */}
         <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
           <Button
             variant="ghost"
@@ -107,15 +106,6 @@ export function BoardHeader({
           >
             <Menu className="h-6 w-6" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hidden md:flex h-9 w-9 hover:bg-muted shrink-0 text-muted-foreground hover:text-foreground rounded-lg"
-            onClick={() => navigate("/")}
-            title="Dashboard / Home"
-          >
-            <Home className="h-4.5 w-4.5" />
-          </Button>
 
           {/* Quick Board Switcher Dropdown */}
           <DropdownMenu>
@@ -125,9 +115,9 @@ export function BoardHeader({
                 size="sm"
                 className="h-9 gap-2 border-border/60 bg-background/50 hover:bg-muted/80 max-w-[190px] md:max-w-[220px] rounded-lg px-2.5 shadow-none shrink-0 min-w-0"
               >
-                <div className="h-5 w-5 rounded-md bg-primary/10 flex items-center justify-center text-primary text-xs shrink-0 font-bold">
-                  {currentBoard?.emoji || <Kanban className="h-3.5 w-3.5" />}
-                </div>
+                {!devSettings.disableEmojiCustomization && currentBoard?.emoji && (
+                  <span className="text-xs shrink-0">{currentBoard.emoji}</span>
+                )}
                 <span className="truncate text-xs font-bold text-foreground">
                   {currentBoard ? currentBoard.name : "Switch Board"}
                 </span>
@@ -159,7 +149,9 @@ export function BoardHeader({
                       }`}
                     >
                       <div className="flex items-center gap-2 truncate">
-                        <span className="text-sm shrink-0">{b.emoji || "📋"}</span>
+                        {!devSettings.disableEmojiCustomization && b.emoji && (
+                          <span className="text-sm shrink-0">{b.emoji}</span>
+                        )}
                         <span className="truncate">{b.name}</span>
                       </div>
                       {isCurrent && <Check className="h-4 w-4 text-primary shrink-0 ml-2" />}

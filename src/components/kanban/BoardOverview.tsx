@@ -1,5 +1,6 @@
 import { Task, TaskStatus, CreateTaskData } from "@/types/task";
 import { Board } from "@/types/board";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle as CheckCircle2, Circle, Clock, AlertCircle } from "@untitledui/icons";
 
@@ -9,6 +10,7 @@ interface BoardOverviewProps {
 }
 
 export function BoardOverview({ board, tasks }: BoardOverviewProps) {
+  const { devSettings } = useDevMode();
   const totalTasks = tasks.length;
   
   // Calculate average progress across all tasks
@@ -78,7 +80,7 @@ export function BoardOverview({ board, tasks }: BoardOverviewProps) {
                     {stat.value}
                   </h3>
                 </div>
-                {stat.emoji ? (
+                {!devSettings.disableEmojiCustomization && stat.emoji ? (
                   <div className={`h-12 w-12 rounded-xl ${stat.bg} border border-border/40 flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs shrink-0`}>
                     <span className="text-2xl leading-none">{stat.emoji}</span>
                   </div>

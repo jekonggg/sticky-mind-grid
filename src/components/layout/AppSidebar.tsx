@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useTheme } from "next-themes";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -75,6 +76,7 @@ export function AppSidebar({
   const location = useLocation();
   const { boardId } = useParams<{ boardId: string }>();
   const { user, logout } = useAuth();
+  const { devSettings } = useDevMode();
   const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
 
@@ -420,13 +422,15 @@ export function AppSidebar({
                               : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                           }`}
                         >
-                          {b.emoji ? (
-                            <span className="text-xs shrink-0">{b.emoji}</span>
-                          ) : (
-                            <span
-                              className="h-2 w-2 rounded-full shrink-0"
-                              style={{ backgroundColor: b.color || "var(--primary)" }}
-                            />
+                          {!devSettings.disableEmojiCustomization && (
+                            b.emoji ? (
+                              <span className="text-xs shrink-0">{b.emoji}</span>
+                            ) : (
+                              <span
+                                className="h-2 w-2 rounded-full shrink-0"
+                                style={{ backgroundColor: b.color || "var(--primary)" }}
+                              />
+                            )
                           )}
                           <span className="truncate flex-1 text-left">{b.name}</span>
                           {isCurrent && (

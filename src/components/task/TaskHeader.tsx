@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmojiSelector } from "../common/EmojiSelector";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -66,6 +67,7 @@ export function TaskHeader({
   onCoverChange,
   onDelete,
 }: TaskHeaderProps) {
+  const { devSettings } = useDevMode();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [selectedCover, setSelectedCover] = useState(coverImage || "");
@@ -120,7 +122,7 @@ export function TaskHeader({
           </button>
           <span className="text-muted-foreground/40 font-light">/</span>
           <span className="text-foreground font-semibold truncate max-w-[200px] text-xs">
-            {emoji ? `${emoji} ` : ""}{title || "Untitled Task"}
+            {!devSettings.disableEmojiCustomization && emoji ? `${emoji} ` : ""}{title || "Untitled Task"}
           </span>
         </div>
 
@@ -194,23 +196,25 @@ export function TaskHeader({
       <div className={`max-w-4xl mx-auto px-6 sm:px-12 ${selectedCover ? "-mt-10" : "pt-8"}`}>
         <div className="flex items-center gap-2 mb-3">
           {/* Emoji Icon Button */}
-          {!readOnly ? (
-            <EmojiSelector
-              selectedEmoji={emoji}
-              onSelect={onEmojiChange}
-              size="lg"
-              className={`transition-transform hover:scale-105 shadow-sm ${
-                selectedCover ? "bg-background border-2 border-background ring-2 ring-border/30 rounded-2xl" : ""
-              }`}
-            />
-          ) : emoji ? (
-            <div className="text-4xl">{emoji}</div>
-          ) : null}
+          {!devSettings.disableEmojiCustomization && (
+            !readOnly ? (
+              <EmojiSelector
+                selectedEmoji={emoji}
+                onSelect={onEmojiChange}
+                size="lg"
+                className={`transition-transform hover:scale-105 shadow-sm ${
+                  selectedCover ? "bg-background border-2 border-background ring-2 ring-border/30 rounded-2xl" : ""
+                }`}
+              />
+            ) : emoji ? (
+              <div className="text-4xl">{emoji}</div>
+            ) : null
+          )}
 
           {/* Quick Notion-style hover controls if no icon / cover */}
           {!readOnly && (
             <div className="flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
-              {!emoji && (
+              {!devSettings.disableEmojiCustomization && !emoji && (
                 <Button
                   variant="ghost"
                   size="sm"

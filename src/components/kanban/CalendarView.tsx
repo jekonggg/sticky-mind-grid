@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { getProgressColor } from "@/utils/taskUtils";
 
 interface CalendarViewProps {
@@ -26,6 +27,7 @@ interface CalendarViewProps {
 type ViewMode = "month" | "week" | "day";
 
 export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick }: CalendarViewProps) {
+  const { devSettings } = useDevMode();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   
@@ -250,7 +252,7 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
                                     className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground border border-border/50 flex items-center gap-1 truncate max-w-[125px]"
                                     title={statusTitle}
                                   >
-                                    {statusEmoji ? (
+                                    {!devSettings.disableEmojiCustomization && statusEmoji ? (
                                       <span className="text-xs shrink-0">{statusEmoji}</span>
                                     ) : (
                                       <span
@@ -278,7 +280,7 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
 
                                 {/* Task Emoji & Title */}
                                 <div className="flex items-start gap-2">
-                                  {task.emoji ? (
+                                  {!devSettings.disableEmojiCustomization && task.emoji ? (
                                     <span className="text-sm shrink-0 mt-0.5">{task.emoji}</span>
                                   ) : (
                                     <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 mt-0.5 group-hover/card:text-primary transition-colors" />
@@ -425,7 +427,7 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
                             }}
                           >
                             <div className="flex items-center gap-1 min-w-0 flex-1">
-                              {task.emoji && <span className="text-xs shrink-0">{task.emoji}</span>}
+                              {!devSettings.disableEmojiCustomization && task.emoji && <span className="text-xs shrink-0">{task.emoji}</span>}
                               <span className="font-bold truncate group-hover/m-task:text-primary">{task.title}</span>
                             </div>
                             {task.progress === 100 && (

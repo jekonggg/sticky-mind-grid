@@ -27,4 +27,5 @@ export interface DevSettings {
   simulateSseDisconnect: boolean;
   forceReducedMotion: boolean;
   fontFamily: DevFontFamily;
+  disableEmojiCustomization: boolean;
 }

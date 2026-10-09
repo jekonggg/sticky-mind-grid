@@ -84,13 +84,18 @@ describe("Developer Mode Suite", () => {
           >
             Set Font Inter
           </button>
+          <button
+            onClick={() => updateDevSetting("disableEmojiCustomization", true)}
+          >
+            Set No Emojis
+          </button>
           <button onClick={() => setIsDevModalOpen(true)}>Open Modal</button>
           <DevSkeletonToolbar />
         </div>
       );
     }
 
-    it("renders active badges for latency, chaos, role spoofing, and font family", () => {
+    it("renders active badges for latency, chaos, role spoofing, font family, and no emojis", () => {
       renderWithProviders(<DevTestConsumer />);
 
       // Initially no toolbar
@@ -112,6 +117,10 @@ describe("Developer Mode Suite", () => {
       // Trigger font family Fraunces
       fireEvent.click(screen.getByText("Set Font Fraunces"));
       expect(screen.getByText(/🔤 Fraunces/i)).toBeInTheDocument();
+
+      // Trigger No Emojis
+      fireEvent.click(screen.getByText("Set No Emojis"));
+      expect(screen.getByText(/🚫 No Emojis/i)).toBeInTheDocument();
     });
 
     it("updates documentElement --app-font and body fontFamily when font is toggled", () => {

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { taskApi } from "@/services/api";
 import { boardApi } from "@/services/boardApi";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
 import { Task, Priority, CreateTaskData } from "@/types/task";
@@ -29,6 +30,7 @@ import {
   Calendar,
   AlertCircle,
   LayoutGrid01 as LayoutGrid,
+  Columns03 as Kanban,
   List as ListIcon,
   LayersTwo01 as Layers,
   ChevronSelectorVertical as ArrowUpDown,
@@ -58,6 +60,7 @@ export default function TasksPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { devSettings } = useDevMode();
   const { settings } = useSettings();
 
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
@@ -96,7 +99,7 @@ export default function TasksPage() {
       boards.find((b) => b.id === selectedTask.boardId) || {
         id: selectedTask.boardId,
         name: selectedTask.boardName || "Workspace Board",
-        emoji: selectedTask.boardEmoji || "📋",
+        emoji: devSettings.disableEmojiCustomization ? "" : (selectedTask.boardEmoji || "📋"),
         color: "#3b82f6",
         ownerId: selectedTask.createdBy || "",
         columns: [],
@@ -104,7 +107,7 @@ export default function TasksPage() {
         updatedAt: new Date(),
       }
     );
-  }, [boards, selectedTask]);
+  }, [boards, selectedTask, devSettings.disableEmojiCustomization]);
 
   // Fetch Board Members for active task board
   const { data: activeTaskBoardMembers = [] } = useQuery<BoardMember[]>({
@@ -326,7 +329,7 @@ export default function TasksPage() {
               <SelectItem value="all">All Boards</SelectItem>
               {boards.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
-                  {b.emoji || "📋"} {b.name}
+                  {!devSettings.disableEmojiCustomization && (b.emoji ? `${b.emoji} ` : "📋 ")}{b.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -466,7 +469,7 @@ export default function TasksPage() {
 
                             <div className="flex flex-col min-w-0 flex-1">
                               <div className="flex items-center gap-2">
-                                {task.emoji && (
+                                {!devSettings.disableEmojiCustomization && task.emoji && (
                                   <span className="text-sm shrink-0 leading-none">
                                     {task.emoji}
                                   </span>
@@ -503,7 +506,9 @@ export default function TasksPage() {
                               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 text-xs font-semibold max-w-[170px] truncate transition-all group-hover/row:border-primary/40 cursor-pointer"
                               title={`Open ${task.boardName}`}
                             >
-                              <span className="shrink-0">{task.boardEmoji || "📋"}</span>
+                              {!devSettings.disableEmojiCustomization && (
+                                <span className="shrink-0">{task.boardEmoji || "📋"}</span>
+                              )}
                               <span className="truncate">{task.boardName}</span>
                             </button>
                           ) : (
@@ -619,7 +624,7 @@ export default function TasksPage() {
                         <span className={`text-sm font-semibold truncate ${
                           isDone ? "line-through text-muted-foreground" : "text-foreground group-hover/mobile-row:text-primary"
                         }`}>
-                          {task.emoji && <span className="mr-1.5">{task.emoji}</span>}
+                          {!devSettings.disableEmojiCustomization && task.emoji && <span className="mr-1.5">{task.emoji}</span>}
                           {task.title}
                         </span>
                         {task.description && (
@@ -632,8 +637,11 @@ export default function TasksPage() {
 
                     <div className="pl-9 flex flex-wrap items-center gap-2">
                       {task.boardName && (
-                        <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20 px-1.5 py-0">
-                          {task.boardEmoji || "📋"} {task.boardName}
+                        <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20 px-1.5 py-0 inline-flex items-center gap-1">
+                          {!devSettings.disableEmojiCustomization && (
+                            <span>{task.boardEmoji || "📋"}</span>
+                          )}
+                          <span>{task.boardName}</span>
                         </Badge>
                       )}
                       <Badge
@@ -685,9 +693,12 @@ export default function TasksPage() {
                       {task.boardName && (
                         <Badge
                           variant="outline"
-                          className="text-[10px] px-1.5 py-0 bg-primary/5 text-primary border-primary/20"
+                          className="text-[10px] px-1.5 py-0 bg-primary/5 text-primary border-primary/20 inline-flex items-center gap-1"
                         >
-                          {task.boardEmoji || "📋"} {task.boardName}
+                          {!devSettings.disableEmojiCustomization && (
+                            <span>{task.boardEmoji || "📋"}</span>
+                          )}
+                          <span>{task.boardName}</span>
                         </Badge>
                       )}
                       <Badge
@@ -725,7 +736,7 @@ export default function TasksPage() {
                               : "text-foreground group-hover:text-primary transition-colors"
                           }`}
                         >
-                          {task.emoji && <span className="mr-1.5">{task.emoji}</span>}
+                          {!devSettings.disableEmojiCustomization && task.emoji && <span className="mr-1.5">{task.emoji}</span>}
                           {task.title}
                         </h4>
                         {task.description && (

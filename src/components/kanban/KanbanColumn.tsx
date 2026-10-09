@@ -5,6 +5,7 @@ import { Task, TaskStatus } from "@/types/task";
 import { TaskCard } from "./TaskCard";
 import { Input } from "@/components/ui/input";
 import { Plus } from "@untitledui/icons";
+import { useDevMode } from "@/contexts/DevModeContext";
 
 interface KanbanColumnProps {
   id: TaskStatus;
@@ -33,6 +34,7 @@ export function KanbanColumn({
   onAddTask,
   onRename,
 }: KanbanColumnProps) {
+  const { devSettings } = useDevMode();
   const { setNodeRef, isOver } = useDroppable({ id });
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
@@ -66,7 +68,7 @@ export function KanbanColumn({
   return (
     <div className="flex flex-col min-w-[280px] w-full max-w-sm group/column">
       <div className="flex items-center gap-2.5 px-1 mb-3 h-10">
-        {emoji && (
+        {!devSettings.disableEmojiCustomization && emoji && (
            <div className="h-8 w-8 bg-primary/5 border border-border/40 rounded-xl flex items-center justify-center shadow-sm shrink-0">
               <span className="text-base leading-none">{emoji}</span>
            </div>

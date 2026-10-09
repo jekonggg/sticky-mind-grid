@@ -46,12 +46,14 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 
 export default function BoardsOverview() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { devSettings } = useDevMode();
   const { settings } = useSettings();
   const { boards, loading, search, setSearch, sort, setSort, createBoard, updateBoard, deleteBoard } = useBoards();
   const [modalOpen, setModalOpen] = useState(false);
@@ -208,9 +210,11 @@ export default function BoardsOverview() {
                   className="bg-card p-4 rounded-xl border border-border/80 shadow-sm flex items-center justify-between gap-4 transition-all hover:border-primary/40"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg shrink-0 border border-primary/20">
-                      {invite.board.emoji || "📋"}
-                    </div>
+                    {!devSettings.disableEmojiCustomization && invite.board.emoji && (
+                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg shrink-0 border border-primary/20 text-primary">
+                        {invite.board.emoji}
+                      </div>
+                    )}
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2">
                         <h4 className="font-bold text-sm text-foreground truncate">

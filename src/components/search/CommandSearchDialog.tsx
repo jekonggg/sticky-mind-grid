@@ -5,6 +5,7 @@ import { boardApi } from "@/services/boardApi";
 import { taskApi } from "@/services/api";
 import { userApi } from "@/services/userApi";
 import { useTheme } from "next-themes";
+import { useDevMode } from "@/contexts/DevModeContext";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,7 @@ import {
   Sun,
   Moon01 as Moon,
   Monitor01 as Laptop,
+  File06 as FileText,
 } from "@untitledui/icons";
 import { Badge } from "@/components/ui/badge";
 
@@ -42,6 +44,7 @@ export function CommandSearchDialog({
   onOpenNewTask,
 }: CommandSearchDialogProps) {
   const navigate = useNavigate();
+  const { devSettings } = useDevMode();
   const { theme, setTheme } = useTheme();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -272,13 +275,15 @@ export function CommandSearchDialog({
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-7 w-7 rounded-lg bg-background border border-border/60 flex items-center justify-center shrink-0 shadow-2xs">
-                      {Icon ? (
-                        <Icon className="h-3.5 w-3.5 text-primary" />
-                      ) : (
-                        <span className="text-sm">{(item as any).emoji || "📄"}</span>
-                      )}
-                    </div>
+                    {(Icon || (!devSettings.disableEmojiCustomization && (item as any).emoji)) && (
+                      <div className="h-7 w-7 rounded-lg bg-background border border-border/60 flex items-center justify-center shrink-0 shadow-2xs">
+                        {Icon ? (
+                          <Icon className="h-3.5 w-3.5 text-primary" />
+                        ) : (
+                          <span className="text-sm">{(item as any).emoji}</span>
+                        )}
+                      </div>
+                    )}
                     <div className="flex flex-col min-w-0">
                       <span className="text-foreground font-medium truncate">
                         {item.title}

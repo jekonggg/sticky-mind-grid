@@ -49,6 +49,7 @@ import { BoardModal } from "../boards/BoardModal";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { useBoardPermissions } from "@/hooks/useBoardPermissions";
 import { useBoardRealtime } from "@/hooks/useBoardRealtime";
 
@@ -69,6 +70,7 @@ export function KanbanBoard() {
   const { boardId } = useParams<{ boardId: string }>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+  const { devSettings } = useDevMode();
   const { settings, playSound } = useSettings();
   const [board, setBoard] = useState<Board | null>(null);
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
@@ -527,7 +529,7 @@ export function KanbanBoard() {
             {/* Row 1: Board Name, Emoji, Badges, & Edit */}
             <div className="px-6 pt-3.5 pb-2 md:px-8 flex items-center justify-between gap-4 w-full">
               <div className="flex items-center gap-3 min-w-0">
-                {board.emoji && (
+                {!devSettings.disableEmojiCustomization && board.emoji && (
                   <div className="h-10 w-10 md:h-11 md:w-11 bg-primary/10 flex items-center justify-center rounded-xl border border-primary/20 shadow-2xs shrink-0">
                     <span className="text-xl md:text-2xl">{board.emoji}</span>
                   </div>
@@ -543,7 +545,9 @@ export function KanbanBoard() {
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 capitalize text-[10px] font-bold py-0.5 px-2 shrink-0">
-                        {permissions.role === "owner" ? "👑 Owner" : permissions.role === "admin" ? "🛡️ Admin" : "👤 Member"}
+                        {devSettings.disableEmojiCustomization
+                          ? permissions.role
+                          : permissions.role === "owner" ? "👑 Owner" : permissions.role === "admin" ? "🛡️ Admin" : "👤 Member"}
                       </Badge>
                     )}
                     {isConnected && (

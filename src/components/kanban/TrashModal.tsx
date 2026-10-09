@@ -13,12 +13,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useDevMode } from "@/contexts/DevModeContext";
 import {
   Trash01 as Trash2,
   RefreshCcw01 as RotateCcw,
   SearchLg as Search,
   AlertTriangle,
   CheckCircle as CheckCircle2,
+  File06 as FileText,
 } from "@untitledui/icons";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -32,6 +34,7 @@ interface TrashModalProps {
 
 export function TrashModal({ open, onClose, boardId, canManage }: TrashModalProps) {
   const [search, setSearch] = useState("");
+  const { devSettings } = useDevMode();
   const queryClient = useQueryClient();
 
   const { data: trashTasks = [], isLoading } = useQuery<Task[]>({
@@ -144,8 +147,12 @@ export function TrashModal({ open, onClose, boardId, canManage }: TrashModalProp
                 className="pt-2.5 first:pt-0 flex items-center justify-between gap-3 text-xs"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="h-8 w-8 rounded-lg bg-muted/60 flex items-center justify-center shrink-0 border border-border/50 text-base">
-                    {t.emoji || "📝"}
+                  <div className="h-8 w-8 rounded-lg bg-muted/60 flex items-center justify-center shrink-0 border border-border/50 text-base text-primary">
+                    {!devSettings.disableEmojiCustomization && t.emoji ? (
+                      t.emoji
+                    ) : (
+                      <FileText className="h-4 w-4" />
+                    )}
                   </div>
                   <div className="flex flex-col min-w-0">
                     <span className="font-bold text-foreground truncate">{t.title}</span>

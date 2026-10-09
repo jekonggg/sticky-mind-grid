@@ -5,6 +5,7 @@ import { boardApi } from "@/services/boardApi";
 import { userApi } from "@/services/userApi";
 import { messageApi } from "@/services/messageApi";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
 import { Board, BoardInvitation } from "@/types/board";
@@ -36,6 +37,7 @@ export default function TeamsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { devSettings } = useDevMode();
   const { settings } = useSettings();
 
   const [search, setSearch] = useState("");
@@ -201,9 +203,11 @@ export default function TeamsPage() {
                   className="bg-card p-4 rounded-xl border border-border/80 shadow-xs flex items-center justify-between gap-4"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg shrink-0 border border-primary/20">
-                      {invite.board.emoji || "📋"}
-                    </div>
+                    {!devSettings.disableEmojiCustomization && invite.board.emoji && (
+                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg shrink-0 border border-primary/20 text-primary">
+                        {invite.board.emoji}
+                      </div>
+                    )}
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2">
                         <h4 className="font-bold text-sm text-foreground truncate">
@@ -269,9 +273,11 @@ export default function TeamsPage() {
                 className="p-4 rounded-2xl bg-card border border-border/60 hover:border-primary/40 shadow-xs hover:shadow-sm transition-all flex items-center justify-between gap-3 cursor-pointer group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg shrink-0 border border-primary/20">
-                    {b.emoji || "📋"}
-                  </div>
+                  {!devSettings.disableEmojiCustomization && b.emoji && (
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg shrink-0 border border-primary/20 text-primary">
+                      {b.emoji}
+                    </div>
+                  )}
                   <div className="flex flex-col min-w-0">
                     <span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
                       {b.name}
@@ -390,9 +396,12 @@ export default function TeamsPage() {
                           <Badge
                             key={sb.id}
                             variant="secondary"
-                            className="text-[10px] px-1.5 py-0 font-medium"
+                            className="text-[10px] px-1.5 py-0 font-medium inline-flex items-center gap-1"
                           >
-                            {sb.emoji || "📋"} {sb.name}
+                            {!devSettings.disableEmojiCustomization && (
+                              <span>{sb.emoji || "📋"}</span>
+                            )}
+                            <span>{sb.name}</span>
                           </Badge>
                         ))}
                         {teammate.sharedBoards.length > 3 && (

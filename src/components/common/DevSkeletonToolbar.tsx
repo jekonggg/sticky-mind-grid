@@ -96,6 +96,12 @@ export function DevSkeletonToolbar() {
                     🔤 {DEV_FONT_OPTIONS.find((f) => f.id === devSettings.fontFamily)?.name || devSettings.fontFamily}
                   </Badge>
                 )}
+
+                {devSettings.disableEmojiCustomization && (
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 font-bold">
+                    🚫 No Emojis
+                  </Badge>
+                )}
               </div>
             </div>
           </div>

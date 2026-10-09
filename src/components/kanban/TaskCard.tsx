@@ -11,6 +11,7 @@ import {
 import { format } from "date-fns";
 import { getProgressColor } from "@/utils/taskUtils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useDevMode } from "@/contexts/DevModeContext";
 
 interface TaskCardProps {
   task: Task;
@@ -20,6 +21,7 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, isSelected = false, onClick, isDragDisabled = false }: TaskCardProps) {
+  const { devSettings } = useDevMode();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { task },
@@ -70,7 +72,9 @@ export function TaskCard({ task, isSelected = false, onClick, isDragDisabled = f
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              {task.emoji && <span className="text-sm shrink-0">{task.emoji}</span>}
+              {!devSettings.disableEmojiCustomization && task.emoji && (
+                <span className="text-sm shrink-0">{task.emoji}</span>
+              )}
               <h4 className="font-bold text-sm text-card-foreground leading-tight truncate">
                 {task.title}
               </h4>

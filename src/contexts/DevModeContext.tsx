@@ -15,6 +15,7 @@ export const defaultDevSettings: DevSettings = {
   simulateSseDisconnect: false,
   forceReducedMotion: false,
   fontFamily: "helvetica",
+  disableEmojiCustomization: false,
 };
 
 // Global synchronous getter for API services & non-React files
@@ -177,7 +178,8 @@ export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     (devSettings.simulatedRole !== "none" ? 1 : 0) +
     (devSettings.simulateSseDisconnect ? 1 : 0) +
     (devSettings.forceReducedMotion ? 1 : 0) +
-    (devSettings.fontFamily && devSettings.fontFamily !== "helvetica" ? 1 : 0);
+    (devSettings.fontFamily && devSettings.fontFamily !== "helvetica" ? 1 : 0) +
+    (devSettings.disableEmojiCustomization ? 1 : 0);
 
   return (
     <DevModeContext.Provider

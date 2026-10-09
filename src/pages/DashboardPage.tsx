@@ -5,6 +5,7 @@ import { boardApi } from "@/services/boardApi";
 import { taskApi } from "@/services/api";
 import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import {
   CheckCircle as CheckCircle2,
   Plus,
   FolderLock,
+  File06 as FileText,
 } from "@untitledui/icons";
 import { BoardModal } from "@/components/boards/BoardModal";
 import { TaskModal } from "@/components/kanban/TaskModal";
@@ -31,6 +33,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { devSettings } = useDevMode();
   const { activities } = useActivity();
   const { settings } = useSettings();
 
@@ -57,7 +60,7 @@ export default function DashboardPage() {
       boards.find((b: any) => b.id === selectedTask.boardId) || {
         id: selectedTask.boardId,
         name: selectedTask.boardName || "Workspace Board",
-        emoji: selectedTask.boardEmoji || "📋",
+        emoji: devSettings.disableEmojiCustomization ? "" : (selectedTask.boardEmoji || "📋"),
         color: "#3b82f6",
         ownerId: selectedTask.createdBy || "",
         columns: [],
@@ -65,7 +68,7 @@ export default function DashboardPage() {
         updatedAt: new Date(),
       }
     );
-  }, [boards, selectedTask]);
+  }, [boards, selectedTask, devSettings.disableEmojiCustomization]);
 
   const { data: activeTaskBoardMembers = [] } = useQuery<BoardMember[]>({
     queryKey: ["boardMembers", activeTaskBoard?.id],
@@ -349,7 +352,9 @@ export default function DashboardPage() {
 
                         <div className="flex flex-col min-w-0">
                           <div className="flex items-center gap-1.5">
-                            {task.emoji && <span className="text-xs">{task.emoji}</span>}
+                            {!devSettings.disableEmojiCustomization && task.emoji && (
+                              <span className="text-xs">{task.emoji}</span>
+                            )}
                             <span
                               className={`text-xs font-semibold truncate ${
                                 isDone
@@ -423,7 +428,11 @@ export default function DashboardPage() {
                     className="flex items-center justify-between p-2.5 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-colors cursor-pointer text-xs"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span>{task.emoji || "📌"}</span>
+                      {!devSettings.disableEmojiCustomization ? (
+                        <span>{task.emoji || "📌"}</span>
+                      ) : (
+                        <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      )}
                       <span className="font-medium text-foreground truncate max-w-[130px]">
                         {task.title}
                       </span>

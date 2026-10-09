@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { taskApi } from "@/services/api";
 import { boardApi } from "@/services/boardApi";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
 import { Task, CreateTaskData } from "@/types/task";
 import { Board } from "@/types/board";
@@ -18,6 +19,8 @@ import {
   Plus,
   CheckCircle as CheckCircle2,
   Stars01 as Sparkles,
+  Columns03 as Kanban,
+  File06 as FileText,
 } from "@untitledui/icons";
 import { TaskModal } from "@/components/kanban/TaskModal";
 import { TaskDetailWorkspace } from "@/components/task/TaskDetailWorkspace";
@@ -38,6 +41,7 @@ const formatLocalDate = (d: Date | string | null | undefined): string => {
 export default function CalendarPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { devSettings } = useDevMode();
   const { settings } = useSettings();
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -68,7 +72,7 @@ export default function CalendarPage() {
       boards.find((b) => b.id === selectedTask.boardId) || {
         id: selectedTask.boardId,
         name: selectedTask.boardName || "Workspace Board",
-        emoji: selectedTask.boardEmoji || "📋",
+        emoji: devSettings.disableEmojiCustomization ? "" : (selectedTask.boardEmoji || "📋"),
         color: "#3b82f6",
         ownerId: selectedTask.createdBy || "",
         columns: [],
@@ -76,7 +80,7 @@ export default function CalendarPage() {
         updatedAt: new Date(),
       }
     );
-  }, [boards, selectedTask]);
+  }, [boards, selectedTask, devSettings.disableEmojiCustomization]);
 
   const { data: activeTaskBoardMembers = [] } = useQuery<BoardMember[]>({
     queryKey: ["boardMembers", activeTaskBoard?.id],
@@ -336,7 +340,11 @@ export default function CalendarPage() {
                           className="px-1.5 py-0.5 rounded text-[10px] font-semibold truncate flex items-center gap-1 bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20 cursor-pointer"
                           title={`${task.title} (${task.boardName || "Board"})`}
                         >
-                          <span>{task.emoji || "📌"}</span>
+                          {!devSettings.disableEmojiCustomization ? (
+                            <span>{task.emoji || "📌"}</span>
+                          ) : (
+                            <FileText className="h-3 w-3 shrink-0" />
+                          )}
                           <span className="truncate">{task.title}</span>
                         </div>
                       ))}
@@ -393,7 +401,7 @@ export default function CalendarPage() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-bold text-foreground truncate">
-                          {t.emoji && <span className="mr-1">{t.emoji}</span>}
+                          {!devSettings.disableEmojiCustomization && t.emoji && <span className="mr-1">{t.emoji}</span>}
                           {t.title}
                         </span>
                         <Badge variant="outline" className="text-[9px] px-1 py-0 uppercase font-mono">
@@ -401,8 +409,11 @@ export default function CalendarPage() {
                         </Badge>
                       </div>
                       {t.boardName && (
-                        <span className="text-[10px] text-muted-foreground block truncate">
-                          {t.boardEmoji || "📋"} {t.boardName}
+                        <span className="text-[10px] text-muted-foreground block truncate flex items-center gap-1">
+                          {!devSettings.disableEmojiCustomization && (
+                            <span>{t.boardEmoji || "📋"}</span>
+                          )}
+                          <span>{t.boardName}</span>
                         </span>
                       )}
                     </div>
@@ -434,7 +445,7 @@ export default function CalendarPage() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-bold text-rose-600 dark:text-rose-400 truncate">
-                          {task.emoji && <span className="mr-1">{task.emoji}</span>}
+                          {!devSettings.disableEmojiCustomization && task.emoji && <span className="mr-1">{task.emoji}</span>}
                           {task.title}
                         </span>
                         <span className="text-[10px] font-mono text-rose-500 font-bold shrink-0">
@@ -445,8 +456,11 @@ export default function CalendarPage() {
                         </span>
                       </div>
                       {task.boardName && (
-                        <span className="text-[10px] text-muted-foreground block truncate">
-                          {task.boardEmoji || "📋"} {task.boardName}
+                        <span className="text-[10px] text-muted-foreground block truncate flex items-center gap-1">
+                          {!devSettings.disableEmojiCustomization && (
+                            <span>{task.boardEmoji || "📋"}</span>
+                          )}
+                          <span>{task.boardName}</span>
                         </span>
                       )}
                     </div>

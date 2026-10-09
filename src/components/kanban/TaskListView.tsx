@@ -20,6 +20,7 @@ import {
   File06 as FileText,
 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
+import { useDevMode } from "@/contexts/DevModeContext";
 
 interface TaskListViewProps {
   tasks: Task[];
@@ -29,6 +30,7 @@ interface TaskListViewProps {
 }
 
 export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick }: TaskListViewProps) {
+  const { devSettings } = useDevMode();
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
@@ -103,7 +105,7 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                       <div className="flex items-center gap-3">
                         {/* Uniform leading icon container */}
                         <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0 border transition-all duration-200 select-none bg-muted/20 border-border/40 group-hover:border-primary/30 group-hover:bg-primary/5">
-                          {task.emoji ? (
+                          {!devSettings.disableEmojiCustomization && task.emoji ? (
                             <span className="text-base leading-none">{task.emoji}</span>
                           ) : (
                             <FileText className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary transition-colors" />

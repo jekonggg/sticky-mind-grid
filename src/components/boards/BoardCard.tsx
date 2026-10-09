@@ -18,6 +18,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { BoardHeroImage } from "./BoardHeroImage";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDevMode } from "@/contexts/DevModeContext";
 
 interface BoardCardProps {
   board: Board;
@@ -30,7 +31,9 @@ interface BoardCardProps {
 export function BoardCard({ board, taskCount = 0, onEdit, onDelete, onLeave }: BoardCardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { devSettings } = useDevMode();
   const boardColor = board.color && board.color.startsWith("hsl") ? board.color : "hsl(220, 80%, 56%)";
+  const showEmoji = !devSettings.disableEmojiCustomization && !!board.emoji;
 
   return (
     <Card
@@ -50,17 +53,19 @@ export function BoardCard({ board, taskCount = 0, onEdit, onDelete, onLeave }: B
       <CardContent className="p-4 pt-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-border/50 shadow-sm
-                ${board.emoji ? "bg-primary/5" : "bg-muted/50"}`}
-              style={{ borderColor: board.emoji ? "transparent" : boardColor + "44" }}
-            >
-              {board.emoji ? (
-                <span className="text-xl leading-none">{board.emoji}</span>
-              ) : (
-                <LayoutGrid className="h-5 w-5" style={{ color: boardColor }} />
-              )}
-            </div>
+            {!devSettings.disableEmojiCustomization && (
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-border/50 shadow-sm
+                  ${showEmoji ? "bg-primary/5" : "bg-muted/50"}`}
+                style={{ borderColor: showEmoji ? "transparent" : boardColor + "44" }}
+              >
+                {showEmoji ? (
+                  <span className="text-xl leading-none">{board.emoji}</span>
+                ) : (
+                  <LayoutGrid className="h-5 w-5" style={{ color: boardColor }} />
+                )}
+              </div>
+            )}
             <div className="min-w-0">
               <h3 className="font-bold text-sm text-foreground truncate">{board.name}</h3>
               {board.description && (

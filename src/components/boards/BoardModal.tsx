@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Check, ImagePlus, XClose as X, Plus, Stars01 as Sparkles, Link01 as LinkIcon, Upload01 as Upload } from "@untitledui/icons";
 import { EmojiSelector } from "../common/EmojiSelector";
+import { useDevMode } from "@/contexts/DevModeContext";
 
 interface BoardModalProps {
   open: boolean;
@@ -86,6 +87,7 @@ export const sanitizeImageUrl = (rawUrl: string) => {
 };
 
 export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) {
+  const { devSettings } = useDevMode();
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("");
   const [description, setDescription] = useState("");
@@ -178,15 +180,17 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
     e.preventDefault();
     if (!name.trim()) return;
 
-    const finalUrl = sanitizeImageUrl(heroImageUrl);
-    const finalColumns = [...columns];
+    const finalColumns = columns.map((col) => ({
+      ...col,
+      emoji: devSettings.disableEmojiCustomization ? undefined : col.emoji,
+    }));
     if (!finalColumns.some((c) => c.id === "archive")) {
-      finalColumns.push({ id: "archive", title: "Archive", emoji: "📦" });
+      finalColumns.push({ id: "archive", title: "Archive", emoji: devSettings.disableEmojiCustomization ? undefined : "📦" });
     }
 
     onSubmit({
       name: name.trim(),
-      emoji: emoji || undefined,
+      emoji: devSettings.disableEmojiCustomization ? undefined : (emoji || undefined),
       description: description.trim() || undefined,
       color,
       heroImageUrl: finalUrl || undefined,
@@ -207,10 +211,12 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
           {/* Icon & Name */}
           <div className="space-y-1.5">
             <Label htmlFor="board-name" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Board Icon & Name
+              {devSettings.disableEmojiCustomization ? "Board Name" : "Board Icon & Name"}
             </Label>
             <div className="flex gap-2">
-              <EmojiSelector value={emoji} onChange={setEmoji} />
+              {!devSettings.disableEmojiCustomization && (
+                <EmojiSelector value={emoji} onChange={setEmoji} />
+              )}
               <Input
                 id="board-name"
                 value={name}
@@ -259,10 +265,12 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
                 .filter((c) => c.id !== "archive")
                 .map((col, idx) => (
                   <div key={col.id} className="flex gap-2 group/col">
-                    <EmojiSelector
-                      value={col.emoji || "📌"}
-                      onChange={(e) => handleColumnRename(col.id, col.title, e)}
-                    />
+                    {!devSettings.disableEmojiCustomization && (
+                      <EmojiSelector
+                        value={col.emoji || "📌"}
+                        onChange={(e) => handleColumnRename(col.id, col.title, e)}
+                      />
+                    )}
                     <Input
                       value={col.title}
                       onChange={(e) => handleColumnRename(col.id, e.target.value, col.emoji)}
@@ -283,7 +291,7 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
                 ))}
             </div>
             <p className="text-[10px] text-muted-foreground font-medium italic">
-              Minimum 3 states required. Each state can have a unique icon.
+              Minimum 3 states required.
             </p>
           </div>
 

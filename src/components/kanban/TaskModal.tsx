@@ -45,6 +45,7 @@ import { TaskComments } from "./TaskComments";
 import { fileApi } from "@/services/fileApi";
 import { toast } from "sonner";
 import { boardApi } from "@/services/boardApi";
+import { useDevMode } from "@/contexts/DevModeContext";
 
 interface TaskModalProps {
   open?: boolean;
@@ -84,6 +85,7 @@ export function TaskModal({
   onSave,
   onDelete,
 }: TaskModalProps) {
+  const { devSettings } = useDevMode();
   const isModalOpen = open ?? isOpen ?? false;
   const [boardMembers, setBoardMembers] = useState<BoardMember[]>(members);
   const [title, setTitle] = useState("");
@@ -233,7 +235,7 @@ export function TaskModal({
 
     const payload: TaskFormData = {
       title: title.trim(),
-      emoji: emoji || undefined,
+      emoji: devSettings.disableEmojiCustomization ? undefined : (emoji || undefined),
       description: description.trim() || undefined,
       priority,
       status: task?.status,
@@ -323,13 +325,15 @@ export function TaskModal({
               Task Title <span className="text-destructive">*</span>
             </Label>
             <div className="flex gap-2">
-              {!readOnly ? (
-                <EmojiSelector value={emoji} onChange={setEmoji} />
-              ) : emoji ? (
-                <div className="h-10 w-10 flex items-center justify-center text-xl bg-muted rounded-md shrink-0">
-                  {emoji}
-                </div>
-              ) : null}
+              {!devSettings.disableEmojiCustomization && (
+                !readOnly ? (
+                  <EmojiSelector value={emoji} onChange={setEmoji} />
+                ) : emoji ? (
+                  <div className="h-10 w-10 flex items-center justify-center text-xl bg-muted rounded-md shrink-0">
+                    {emoji}
+                  </div>
+                ) : null
+              )}
               <Input
                 id="title"
                 value={title}

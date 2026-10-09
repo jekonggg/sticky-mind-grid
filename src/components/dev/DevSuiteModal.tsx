@@ -498,6 +498,38 @@ export function DevSuiteModal() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Emoji Customization Toggle */}
+                  <div className="pt-3 border-t border-border/50">
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-background border border-border/60">
+                      <div className="space-y-0.5 pr-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-foreground">
+                            Disable Emoji Customization
+                          </span>
+                          {devSettings.disableEmojiCustomization && (
+                            <Badge className="text-[9px] h-4 px-1 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                              Clean UI Active
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Hides emoji pickers, board/task emoji selectors, and decorative emojis across the app in favor of a clean Untitled UI icon aesthetic.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={devSettings.disableEmojiCustomization}
+                        onCheckedChange={(checked) => {
+                          updateDevSetting("disableEmojiCustomization", checked);
+                          toast.success(
+                            checked
+                              ? "Emoji customization disabled (Clean UI)"
+                              : "Emoji customization restored"
+                          );
+                        }}
+                      />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
