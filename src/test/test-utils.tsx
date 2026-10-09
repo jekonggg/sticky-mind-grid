@@ -8,6 +8,7 @@ import { SettingsProvider } from "@/contexts/SettingsContext";
 import { DevModeProvider } from "@/contexts/DevModeContext";
 import { ActivityProvider } from "@/hooks/useActivity";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { LayoutProvider } from "@/contexts/LayoutContext";
 import { User } from "@/types/user";
 
 export const mockUser: User = {
@@ -57,7 +58,9 @@ export function renderWithProviders(
               <SettingsProvider>
                 <DevModeProvider>
                   <ActivityProvider>
-                    <BrowserRouter>{children}</BrowserRouter>
+                    <LayoutProvider>
+                      <BrowserRouter>{children}</BrowserRouter>
+                    </LayoutProvider>
                   </ActivityProvider>
                 </DevModeProvider>
               </SettingsProvider>

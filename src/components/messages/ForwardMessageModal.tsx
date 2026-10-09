@@ -92,7 +92,7 @@ export function ForwardMessageModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-card border-border/70 rounded-2xl shadow-2xl">
+      <DialogContent className="w-full max-w-none sm:max-w-md h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[85vh] rounded-none sm:rounded-2xl p-0 overflow-hidden bg-card border-border/70 shadow-2xl">
         <DialogHeader className="p-4 pb-2 border-b border-border/50">
           <DialogTitle className="flex items-center gap-2 text-base font-bold">
             <Forward className="h-4 w-4 text-primary" />

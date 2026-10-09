@@ -149,8 +149,9 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
         {/* Calendar Grid Side */}
         <div className="flex-1 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden shadow-sm flex flex-col">
           {viewMode === 'week' ? (
-            <div className="flex flex-col h-full">
-              {/* Week Day Header */}
+            <div className="flex flex-col h-full overflow-x-auto custom-scrollbar">
+              <div className="min-w-[700px] flex flex-col h-full">
+                {/* Week Day Header */}
               <div className="grid grid-cols-7 bg-muted/20 border-b border-border/50 divide-x divide-border/30 shrink-0">
                 {calendarDays.map((day) => {
                   const isToday = isSameDay(day, new Date());
@@ -367,9 +368,11 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
                 })}
               </div>
             </div>
-          ) : viewMode === 'month' ? (
-            <>
-              <div className="grid grid-cols-7 bg-muted/30 border-b border-border/50">
+          </div>
+        ) : viewMode === 'month' ? (
+          <div className="overflow-x-auto custom-scrollbar">
+              <div className="min-w-[700px]">
+                <div className="grid grid-cols-7 bg-muted/30 border-b border-border/50">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                   <div key={day} className="py-2 text-[10px] font-black uppercase tracking-widest text-center text-muted-foreground">
                     {day}
@@ -425,7 +428,8 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
                   );
                 })}
               </div>
-            </>
+             </div>
+            </div>
           ) : (
             /* Day View: Hourly Plotting with Dynamic Compact Heights */
             <div className="flex-1 overflow-y-auto custom-scrollbar relative" style={{ maxHeight: 'calc(100vh - 300px)' }}>

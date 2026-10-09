@@ -39,8 +39,10 @@ import {
   Palette,
   History,
   Sliders,
+  Menu,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useLayout } from "@/contexts/LayoutContext";
 
 interface BoardHeaderProps {
   search?: string;
@@ -65,6 +67,7 @@ export function BoardHeader({
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const { settings, updateLocalSetting } = useSettings();
   const { setIsDevModalOpen } = useDevMode();
+  const { setIsMobileOpen } = useLayout();
 
   useEffect(() => {
     // Load available boards for quick switcher
@@ -92,13 +95,22 @@ export function BoardHeader({
 
   return (
     <>
-      <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-border/60 bg-card/95 backdrop-blur-md sticky top-0 z-40 h-16 shrink-0 shadow-sm">
+      <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-border/60 bg-card/95 backdrop-blur-md sticky top-0 z-40 h-16 shrink-0 shadow-sm gap-2">
         {/* Left: Home + Quick Board Switcher + Search */}
-        <div className="flex items-center gap-3 w-1/3 min-w-0">
+        <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 hover:bg-muted shrink-0 text-muted-foreground hover:text-foreground rounded-lg"
+            className="md:hidden h-11 w-11 text-muted-foreground hover:text-foreground shrink-0 rounded-lg"
+            onClick={() => setIsMobileOpen(true)}
+            title="Open Menu"
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden md:flex h-9 w-9 hover:bg-muted shrink-0 text-muted-foreground hover:text-foreground rounded-lg"
             onClick={() => navigate("/")}
             title="Dashboard / Home"
           >
@@ -111,7 +123,7 @@ export function BoardHeader({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 gap-2 border-border/60 bg-background/50 hover:bg-muted/80 max-w-[190px] md:max-w-[220px] rounded-lg px-2.5 shadow-none shrink-0"
+                className="h-9 gap-2 border-border/60 bg-background/50 hover:bg-muted/80 max-w-[190px] md:max-w-[220px] rounded-lg px-2.5 shadow-none shrink-0 min-w-0"
               >
                 <div className="h-5 w-5 rounded-md bg-primary/10 flex items-center justify-center text-primary text-xs shrink-0 font-bold">
                   {currentBoard?.emoji || <Kanban className="h-3.5 w-3.5" />}
@@ -119,7 +131,7 @@ export function BoardHeader({
                 <span className="truncate text-xs font-bold text-foreground">
                   {currentBoard ? currentBoard.name : "Switch Board"}
                 </span>
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-auto opacity-70" />
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-auto opacity-70 shrink-0" />
               </Button>
             </DropdownMenuTrigger>
 
@@ -182,29 +194,29 @@ export function BoardHeader({
         </div>
 
         {/* Center: Branding */}
-        <div className="flex flex-col items-center justify-center w-1/3 select-none">
+        <div className="hidden md:flex items-center justify-center shrink-0 select-none">
           <div
             className="flex items-center gap-2 cursor-pointer group"
             onClick={() => navigate("/")}
           >
-            <div className="w-6 h-6 bg-primary rounded-lg flex items-center justify-center shadow-sm shadow-primary/20 group-hover:scale-105 transition-transform">
+            <div className="w-6 h-6 md:w-6 md:h-6 bg-primary rounded-lg flex items-center justify-center shadow-sm shadow-primary/20 group-hover:scale-105 transition-transform shrink-0">
               <div className="w-2.5 h-2.5 border-2 border-primary-foreground rounded-sm" />
             </div>
-            <h1 className="text-sm md:text-base font-black text-foreground tracking-tight leading-none uppercase italic text-center">
+            <h1 className="hidden sm:block text-sm md:text-base font-black text-foreground tracking-tight leading-none uppercase italic text-center">
               Sticky Mind <span className="text-primary not-italic">Grid</span>
             </h1>
           </div>
         </div>
 
         {/* Right: Actions & User Avatar Menu */}
-        <div className="flex items-center justify-end gap-2.5 w-1/3">
+        <div className="flex items-center justify-end gap-1 md:gap-2.5 flex-1 min-w-0">
           {/* On-demand Board Activity Trigger */}
           {boardId && (
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsActivityOpen(true)}
-              className="h-9 w-9 text-muted-foreground hover:text-foreground"
+              className="h-11 w-11 md:h-9 md:w-9 text-muted-foreground hover:text-foreground shrink-0"
               title="Activity History"
             >
               <History className="h-4 w-4" />
@@ -221,9 +233,9 @@ export function BoardHeader({
                 variant="ghost"
                 aria-label="User menu"
                 title="User menu"
-                className="relative h-9.5 w-9.5 rounded-full p-0 ring-2 ring-primary/20 hover:ring-primary/50 transition-all focus-visible:ring-primary"
+                className="relative h-11 w-11 md:h-9.5 md:w-9.5 rounded-full p-0 ring-2 ring-primary/20 hover:ring-primary/50 transition-all focus-visible:ring-primary shrink-0"
               >
-                <Avatar className="h-9 w-9">
+                <Avatar className="h-10 w-10 md:h-9 md:w-9">
                   {user?.avatarUrl ? (
                     <AvatarImage src={user.avatarUrl} alt={user?.fullName || "User"} className="object-cover" />
                   ) : null}

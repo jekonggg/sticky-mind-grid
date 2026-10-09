@@ -37,8 +37,9 @@ const mockBoard: Board = {
   ownerId: "owner-999", // Different from mockUser.id
   emoji: "🛠️",
   color: "hsl(220, 80%, 56%)",
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
+  columns: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
 describe("Developer Mode Suite", () => {

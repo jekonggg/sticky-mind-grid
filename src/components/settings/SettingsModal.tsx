@@ -70,7 +70,7 @@ export function SettingsModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-4xl w-[95vw] h-[85vh] max-h-[720px] p-0 gap-0 overflow-hidden flex flex-col sm:flex-row bg-card border-border/80 shadow-2xl rounded-2xl">
+      <DialogContent className="max-w-4xl w-full sm:w-[95vw] h-[100dvh] sm:h-[85vh] max-h-[100dvh] sm:max-h-[720px] rounded-none sm:rounded-2xl p-0 gap-0 overflow-hidden flex flex-col sm:flex-row bg-card border-border/80 shadow-2xl">
         <DialogTitle className="sr-only">Settings Dialog</DialogTitle>
         <DialogDescription className="sr-only">
           Manage your system and user preferences

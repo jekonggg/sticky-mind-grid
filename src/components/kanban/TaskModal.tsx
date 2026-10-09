@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Task, UpdateTaskData, Priority, Column, Attachment, ChecklistItem, Tag } from "@/types/task";
+import { Task, UpdateTaskData, TaskFormData, Priority, Column, Attachment, ChecklistItem, Tag } from "@/types/task";
 import { BoardMember } from "@/types/board";
 import {
   Dialog,
@@ -47,14 +47,16 @@ import { toast } from "sonner";
 import { boardApi } from "@/services/boardApi";
 
 interface TaskModalProps {
-  open: boolean;
+  open?: boolean;
+  isOpen?: boolean;
   onClose: () => void;
   task?: Task | null;
   columns?: Column[];
   boardId?: string;
   members?: BoardMember[];
   readOnly?: boolean;
-  onSubmit: (data: UpdateTaskData) => void;
+  onSubmit?: (data: TaskFormData) => void;
+  onSave?: (data: TaskFormData) => void;
   onDelete?: (id: string) => void;
 }
 
@@ -71,6 +73,7 @@ const TAG_COLORS = [
 
 export function TaskModal({
   open,
+  isOpen,
   onClose,
   task,
   columns = [],
@@ -78,8 +81,10 @@ export function TaskModal({
   members = [],
   readOnly = false,
   onSubmit,
+  onSave,
   onDelete,
 }: TaskModalProps) {
+  const isModalOpen = open ?? isOpen ?? false;
   const [boardMembers, setBoardMembers] = useState<BoardMember[]>(members);
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState("");
@@ -226,7 +231,7 @@ export function TaskModal({
     if (e) e.preventDefault();
     if (readOnly || !title.trim()) return;
 
-    onSubmit({
+    const payload: TaskFormData = {
       title: title.trim(),
       emoji: emoji || undefined,
       description: description.trim() || undefined,
@@ -238,7 +243,14 @@ export function TaskModal({
       checklist,
       tags,
       attachments,
-    });
+    };
+
+    if (onSubmit) {
+      onSubmit(payload);
+    }
+    if (onSave) {
+      onSave(payload);
+    }
     onClose();
   };
 
@@ -250,10 +262,10 @@ export function TaskModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={isModalOpen} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
         onKeyDown={handleKeyDown}
-        className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 overflow-hidden shadow-2xl border-border/80"
+        className="w-full max-w-none sm:max-w-xl h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90dvh] rounded-none sm:rounded-lg flex flex-col p-0 overflow-hidden shadow-2xl border-border/80"
       >
         {/* Header with Top Quick Save Option */}
         <DialogHeader className="px-6 pt-5 pb-3 border-b border-border/40 shrink-0 bg-background">

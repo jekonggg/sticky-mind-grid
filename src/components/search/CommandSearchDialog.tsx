@@ -8,6 +8,8 @@ import { useTheme } from "next-themes";
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Search,
@@ -227,7 +229,10 @@ export function CommandSearchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="p-0 max-w-xl overflow-hidden rounded-2xl border-border/70 shadow-2xl bg-card">
+      <DialogContent className="w-full max-w-none sm:max-w-xl h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[85vh] rounded-none sm:rounded-2xl p-0 overflow-hidden border-border/70 shadow-2xl bg-card">
+        <DialogTitle className="sr-only">Command Search</DialogTitle>
+        <DialogDescription className="sr-only">Search across the workspace</DialogDescription>
+        
         {/* Search Input Bar */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border/60 bg-muted/20">
           <Search className="h-5 w-5 text-muted-foreground shrink-0" />

@@ -11,6 +11,7 @@ export interface Board {
   heroImageUrl?: string;
   columns: Column[];
   ownerId?: string;
+  role?: BoardRole;
   taskCount?: number;
   createdAt: Date;
   updatedAt: Date;

@@ -128,7 +128,7 @@ export function NewChatModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-xl border border-border/70 shadow-2xl p-0 overflow-hidden rounded-2xl">
+      <DialogContent className="w-full max-w-none sm:max-w-md h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[85vh] rounded-none sm:rounded-2xl bg-card/95 backdrop-blur-xl border border-border/70 shadow-2xl p-0 overflow-hidden">
         <DialogHeader className="p-5 pb-3 border-b border-border/40">
           <DialogTitle className="text-lg font-bold flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />

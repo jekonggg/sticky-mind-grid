@@ -12,9 +12,11 @@ import {
   Users,
   MessageSquare,
   Sparkles,
+  Menu,
 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLayout } from "@/contexts/LayoutContext";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -32,6 +34,7 @@ export function ConversationList({
   isLoading,
 }: ConversationListProps) {
   const { settings } = useSettings();
+  const { setIsMobileOpen } = useLayout();
   const [search, setSearch] = useState("");
   const [filterTab, setFilterTab] = useState<"all" | "direct" | "group">("all");
 
@@ -63,7 +66,15 @@ export function ConversationList({
       <div className="p-3 border-b border-border/50 space-y-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-primary" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden h-11 w-11 text-muted-foreground hover:text-foreground shrink-0 rounded-lg -ml-1"
+              onClick={() => setIsMobileOpen(true)}
+            >
+              <Menu className="h-6 w-6" />
+            </Button>
+            <MessageSquare className="hidden md:block h-4 w-4 text-primary" />
             <h2 className="text-sm font-bold text-foreground">Messages</h2>
           </div>
 

@@ -23,6 +23,7 @@ import {
 import { useDevMode } from "@/contexts/DevModeContext";
 import { ChaosErrorMode, SimulatedRole } from "@/types/devMode";
 import { taskApi } from "@/services/api";
+import { Tag } from "@/types/task";
 import { toast } from "sonner";
 import {
   Sparkles,
@@ -93,12 +94,27 @@ export function DevSuiteModal() {
         "high",
         "urgent",
       ];
-      const tagsList = [
-        ["infra", "security"],
-        ["frontend", "perf"],
-        ["backend", "api"],
-        ["qa", "e2e"],
-        ["database", "migration"],
+      const tagsList: Tag[][] = [
+        [
+          { id: "tag-infra", name: "infra", color: "#3b82f6" },
+          { id: "tag-security", name: "security", color: "#ef4444" },
+        ],
+        [
+          { id: "tag-frontend", name: "frontend", color: "#10b981" },
+          { id: "tag-perf", name: "perf", color: "#8b5cf6" },
+        ],
+        [
+          { id: "tag-backend", name: "backend", color: "#f59e0b" },
+          { id: "tag-api", name: "api", color: "#06b6d4" },
+        ],
+        [
+          { id: "tag-qa", name: "qa", color: "#ec4899" },
+          { id: "tag-e2e", name: "e2e", color: "#6366f1" },
+        ],
+        [
+          { id: "tag-database", name: "database", color: "#14b8a6" },
+          { id: "tag-migration", name: "migration", color: "#f97316" },
+        ],
       ];
 
       for (let i = 1; i <= 15; i++) {

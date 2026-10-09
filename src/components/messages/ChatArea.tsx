@@ -809,7 +809,7 @@ export function ChatArea({
         open={Boolean(unsendTargetId)}
         onOpenChange={(open) => !open && setUnsendTargetId(null)}
       >
-        <DialogContent className="sm:max-w-sm bg-card border-border/70 rounded-2xl shadow-2xl">
+        <DialogContent className="w-full max-w-none sm:max-w-sm h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[85vh] rounded-none sm:rounded-2xl bg-card border-border/70 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-destructive">
               <RotateCcw className="h-4 w-4" />

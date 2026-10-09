@@ -28,10 +28,35 @@ import { User } from "@/types/user";
 
 interface InviteMemberDialogProps {
   boardId: string;
+  open?: boolean;
+  onClose?: () => void;
+  onOpenChange?: (open: boolean) => void;
+  onInvited?: () => void;
+  trigger?: React.ReactNode;
 }
 
-export function InviteMemberDialog({ boardId }: InviteMemberDialogProps) {
-  const [open, setOpen] = useState(false);
+export function InviteMemberDialog({
+  boardId,
+  open: controlledOpen,
+  onClose,
+  onOpenChange,
+  onInvited,
+  trigger,
+}: InviteMemberDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!isControlled) {
+      setInternalOpen(newOpen);
+    }
+    onOpenChange?.(newOpen);
+    if (!newOpen) {
+      onClose?.();
+    }
+  };
+
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -87,10 +112,11 @@ export function InviteMemberDialog({ boardId }: InviteMemberDialogProps) {
         boardId
       );
       toast.success("Member invited successfully!");
-      setOpen(false);
+      handleOpenChange(false);
       setEmail("");
       setRole("member");
       setSearchResults([]);
+      onInvited?.();
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to invite member");
@@ -109,14 +135,18 @@ export function InviteMemberDialog({ boardId }: InviteMemberDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2 font-bold shadow-sm">
-          <UserPlus className="h-4 w-4 text-primary" />
-          <span>Invite Member</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {trigger !== undefined ? (
+        trigger
+      ) : !isControlled ? (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-2 font-bold shadow-sm">
+            <UserPlus className="h-4 w-4 text-primary" />
+            <span>Invite Member</span>
+          </Button>
+        </DialogTrigger>
+      ) : null}
+      <DialogContent className="w-full max-w-none sm:max-w-md h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[85vh] rounded-none sm:rounded-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Invite to Board</DialogTitle>
         </DialogHeader>
@@ -225,7 +255,7 @@ export function InviteMemberDialog({ boardId }: InviteMemberDialogProps) {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setOpen(false)}
+              onClick={() => handleOpenChange(false)}
               className="text-xs font-bold"
             >
               Cancel

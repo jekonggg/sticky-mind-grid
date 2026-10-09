@@ -82,7 +82,7 @@ export function NotificationBell() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-8 w-8 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
+          className="relative h-11 w-11 md:h-8 md:w-8 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
           title="Notifications"
         >
           <Bell className="h-4 w-4" />

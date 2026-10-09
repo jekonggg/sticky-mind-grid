@@ -379,7 +379,7 @@ export default function TasksPage() {
         ) : viewMode === "list" ? (
           /* Structured Table View */
           <div className="bg-card rounded-2xl border border-border/60 overflow-hidden shadow-xs">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto hidden sm:block">
               <Table className="min-w-[760px] w-full">
                 <TableHeader className="bg-muted/40">
                   <TableRow className="border-border/50 hover:bg-transparent">
@@ -551,6 +551,77 @@ export default function TasksPage() {
                   })}
                 </TableBody>
               </Table>
+            </div>
+            
+            {/* Mobile List View */}
+            <div className="block sm:hidden divide-y divide-border/50">
+              {filteredTasks.map((task) => {
+                const isDone = task.status === "done" || task.progress === 100;
+                const isOverdue = task.dueDate && !isDone && new Date(task.dueDate) < now;
+
+                return (
+                  <div
+                    key={task.id}
+                    onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
+                    className="p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors cursor-pointer group/mobile-row"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleComplete(task, e)}
+                        className={`h-6 w-6 mt-0.5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
+                          isDone
+                            ? "bg-emerald-500 border-emerald-500 text-white"
+                            : "border-border/80 hover:border-primary bg-background"
+                        }`}
+                      >
+                        {isDone && <CheckCircle2 className="h-4 w-4" />}
+                      </button>
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className={`text-sm font-semibold truncate ${
+                          isDone ? "line-through text-muted-foreground" : "text-foreground group-hover/mobile-row:text-primary"
+                        }`}>
+                          {task.emoji && <span className="mr-1.5">{task.emoji}</span>}
+                          {task.title}
+                        </span>
+                        {task.description && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                            {task.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pl-9 flex flex-wrap items-center gap-2">
+                      {task.boardName && (
+                        <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20 px-1.5 py-0">
+                          {task.boardEmoji || "📋"} {task.boardName}
+                        </Badge>
+                      )}
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] uppercase font-mono px-1.5 py-0 ${
+                          task.priority === "urgent" || task.priority === "high"
+                            ? "bg-rose-500/10 text-rose-600 border-rose-500/30"
+                            : task.priority === "medium"
+                            ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                            : "bg-slate-500/10 text-slate-600 border-slate-500/30"
+                        }`}
+                      >
+                        {task.priority || "none"}
+                      </Badge>
+                      {task.dueDate && (
+                        <span className={`text-[10px] font-medium flex items-center gap-1 ${
+                          isOverdue ? "text-rose-500" : "text-muted-foreground"
+                        }`}>
+                          <Clock className="h-3 w-3" />
+                          {new Date(task.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : (

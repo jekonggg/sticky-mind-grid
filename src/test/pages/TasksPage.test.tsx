@@ -82,8 +82,8 @@ describe("TasksPage", () => {
     expect(screen.getByText("Assigned to Me")).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText("Write Vitest Tests")).toBeInTheDocument();
-      expect(screen.getByText("Refactor Navbar")).toBeInTheDocument();
+      expect(screen.getAllByText("Write Vitest Tests").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Refactor Navbar").length).toBeGreaterThan(0);
     });
   });
 
@@ -91,14 +91,14 @@ describe("TasksPage", () => {
     renderWithProviders(<TasksPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Write Vitest Tests")).toBeInTheDocument();
+      expect(screen.getAllByText("Write Vitest Tests").length).toBeGreaterThan(0);
     });
 
     const assignedTab = screen.getByText("Assigned to Me");
     fireEvent.click(assignedTab);
 
     await waitFor(() => {
-      expect(screen.getByText("Write Vitest Tests")).toBeInTheDocument();
+      expect(screen.getAllByText("Write Vitest Tests").length).toBeGreaterThan(0);
       expect(screen.queryByText("Refactor Navbar")).not.toBeInTheDocument();
     });
   });
@@ -130,14 +130,14 @@ describe("TasksPage", () => {
     renderWithProviders(<TasksPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Overdue Critical Bugfix")).toBeInTheDocument();
+      expect(screen.getAllByText("Overdue Critical Bugfix").length).toBeGreaterThan(0);
     });
 
     const overdueTab = screen.getByText("Overdue");
     fireEvent.click(overdueTab);
 
     await waitFor(() => {
-      expect(screen.getByText("Overdue Critical Bugfix")).toBeInTheDocument();
+      expect(screen.getAllByText("Overdue Critical Bugfix").length).toBeGreaterThan(0);
       expect(screen.queryByText("Refactor Navbar")).not.toBeInTheDocument();
     });
   });

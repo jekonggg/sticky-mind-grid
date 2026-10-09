@@ -35,6 +35,13 @@ export interface Task {
   status: TaskStatus;
   priority: Priority;
   assignedTo?: string | null;
+  createdBy?: string | null;
+  creator?: {
+    id: string;
+    email: string;
+    fullName?: string;
+    avatarUrl?: string;
+  } | null;
   assignee?: {
     id: string;
     email: string;
@@ -59,7 +66,7 @@ export interface CreateTaskData {
   description?: string;
   status?: TaskStatus;
   priority: Priority;
-  assignedTo?: string;
+  assignedTo?: string | null;
   dueDate?: Date;
   progress?: number;
   position?: number;
@@ -74,7 +81,7 @@ export interface UpdateTaskData {
   description?: string;
   status?: TaskStatus;
   priority?: Priority;
-  assignedTo?: string;
+  assignedTo?: string | null;
   dueDate?: Date;
   progress?: number;
   position?: number;
@@ -82,6 +89,8 @@ export interface UpdateTaskData {
   tags?: Tag[];
   attachments?: Attachment[];
 }
+
+export type TaskFormData = CreateTaskData;
 
 export type ActivityType = "create" | "move" | "update" | "delete";
 

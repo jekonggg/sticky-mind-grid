@@ -1,7 +1,9 @@
 // Centralized API and environment configuration
 
+const defaultHost = typeof window !== "undefined" && window.location.hostname ? window.location.hostname : "127.0.0.1";
+
 export const API_BASE: string =
-  (import.meta.env.VITE_API_BASE_URL as string) || "http://127.0.0.1:5000/api";
+  (import.meta.env.VITE_API_BASE_URL as string) || `http://${defaultHost}:5000/api`;
 
 export const API_AUTH_BASE: string = `${API_BASE}/auth`;
 
