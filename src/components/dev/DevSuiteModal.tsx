@@ -20,7 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDevMode } from "@/contexts/DevModeContext";
-import { ChaosErrorMode, SimulatedRole } from "@/types/devMode";
+import { ChaosErrorMode, SimulatedRole, DevFontFamily } from "@/types/devMode";
+import { DEV_FONT_OPTIONS } from "@/constants/fonts";
 import { taskApi } from "@/services/api";
 import { Tag } from "@/types/task";
 import { toast } from "sonner";
@@ -43,6 +44,8 @@ import {
   LayersThree01 as Layers,
   Activity,
   PlusCircle,
+  Type01,
+  Check,
 } from "@untitledui/icons";
 
 export function DevSuiteModal() {
@@ -196,10 +199,14 @@ export function DevSuiteModal() {
         {/* Tabbed Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="px-3 sm:px-5 pt-2 sm:pt-3 border-b border-border/40 bg-muted/10 shrink-0 overflow-x-auto custom-scrollbar">
-            <TabsList className="flex sm:grid sm:grid-cols-4 w-max sm:w-full bg-muted/40 p-1 gap-1 min-w-full">
+            <TabsList className="flex sm:grid sm:grid-cols-5 w-max sm:w-full bg-muted/40 p-1 gap-1 min-w-full">
               <TabsTrigger value="network" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
                 <Zap className="h-3.5 w-3.5 shrink-0" />
-                <span>Skeletons & Network</span>
+                <span>Skeletons & Latency</span>
+              </TabsTrigger>
+              <TabsTrigger value="typography" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
+                <Type01 className="h-3.5 w-3.5 shrink-0" />
+                <span>Typography</span>
               </TabsTrigger>
               <TabsTrigger value="rbac" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
                 <Shield className="h-3.5 w-3.5 shrink-0" />
@@ -364,7 +371,138 @@ export function DevSuiteModal() {
               </Card>
             </TabsContent>
 
-            {/* TAB 2: RBAC Role Preview */}
+            {/* TAB 2: Dynamic Typography & Font Switcher */}
+            <TabsContent value="typography" className="space-y-4 m-0">
+              <Card className="border-border/60 bg-muted/20">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Type01 className="h-4 w-4 text-primary" />
+                        <h4 className="text-sm font-bold text-foreground">
+                          Dynamic Typography & Font Switcher
+                        </h4>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Switch the global UI font family in real-time across cards, headers, sidebars, and modals.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px] font-bold bg-primary/10 text-primary border-primary/30">
+                        Active: {DEV_FONT_OPTIONS.find((f) => f.id === (devSettings.fontFamily || "helvetica"))?.name || "Helvetica"}
+                      </Badge>
+                      {devSettings.fontFamily && devSettings.fontFamily !== "helvetica" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            updateDevSetting("fontFamily", "helvetica");
+                            toast.success("Font reset to Helvetica default");
+                          }}
+                          className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          <span>Reset (Helvetica)</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Font Cards Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    {DEV_FONT_OPTIONS.map((font) => {
+                      const isSelected = (devSettings.fontFamily || "helvetica") === font.id;
+                      return (
+                        <button
+                          key={font.id}
+                          type="button"
+                          onClick={() => {
+                            updateDevSetting("fontFamily", font.id as DevFontFamily);
+                            toast.success(`Font switched to ${font.name}`);
+                          }}
+                          className={`relative flex flex-col items-start p-3.5 rounded-xl border text-left transition-all group ${
+                            isSelected
+                              ? "border-primary bg-primary/10 ring-2 ring-primary/20 shadow-sm"
+                              : "border-border/60 bg-card hover:bg-muted/40 hover:border-border"
+                          }`}
+                        >
+                          {isSelected && (
+                            <div className="absolute top-3 right-3 h-4 w-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                              <Check className="h-2.5 w-2.5 stroke-[3]" />
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 mb-1.5 w-full pr-6">
+                            <span
+                              className="font-bold text-sm text-foreground"
+                              style={{ fontFamily: font.fontStack }}
+                            >
+                              {font.name}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] px-1.5 py-0 h-4 bg-muted/60 text-muted-foreground border-border/60 font-medium"
+                            >
+                              {font.badge}
+                            </Badge>
+                          </div>
+
+                          {/* Font Specimen Preview */}
+                          <div
+                            className="w-full rounded-lg bg-background/80 border border-border/40 p-2.5 my-2 space-y-1"
+                            style={{ fontFamily: font.fontStack }}
+                          >
+                            <p className="text-xs font-semibold text-foreground truncate">
+                              Sphinx of black quartz, judge my vow.
+                            </p>
+                            <p className="text-[10px] text-muted-foreground tracking-wide font-normal">
+                              Aa Bb Gg 1234567890 !?@#$
+                            </p>
+                          </div>
+
+                          <p className="text-[11px] text-muted-foreground leading-tight">
+                            {font.description}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Live Component Sandbox Specimen */}
+                  <div className="pt-3 border-t border-border/50 space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Live Component Specimen:
+                    </span>
+                    <div className="p-3.5 rounded-xl bg-background border border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-foreground">
+                            Task Board & Navigation Hierarchy
+                          </span>
+                          <Badge className="text-[9px] h-4 px-1.5 bg-primary/10 text-primary border-primary/20">
+                            Live Render
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Balanced proportions across labels, headers, buttons, and metadata.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" className="h-7 px-2.5 text-xs font-bold">
+                          Create Task
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs font-medium">
+                          Filters (3)
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* TAB 3: RBAC Role Preview */}
             <TabsContent value="rbac" className="space-y-4 m-0">
               <Card className="border-border/60 bg-muted/20">
                 <CardContent className="p-4 space-y-4">

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { DevSettings, SseLogEntry } from "@/types/devMode";
+import { FONT_STACK_MAP } from "@/constants/fonts";
 import { useSettings } from "@/contexts/SettingsContext";
 import { toast } from "sonner";
 
@@ -13,6 +14,7 @@ export const defaultDevSettings: DevSettings = {
   simulatedRole: "none",
   simulateSseDisconnect: false,
   forceReducedMotion: false,
+  fontFamily: "helvetica",
 };
 
 // Global synchronous getter for API services & non-React files
@@ -99,6 +101,16 @@ export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [devSettings.forceReducedMotion]);
 
+  // Handle dynamic font family application to root & body
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      const activeFont = devSettings.fontFamily || "helvetica";
+      const fontStack = FONT_STACK_MAP[activeFont] || FONT_STACK_MAP.helvetica;
+      document.documentElement.style.setProperty("--app-font", fontStack);
+      document.body.style.fontFamily = fontStack;
+    }
+  }, [devSettings.fontFamily]);
+
   // Global Keyboard Shortcut: Ctrl + Alt + D (or Cmd + Alt + D) to toggle Dev Suite modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -164,7 +176,8 @@ export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     (devSettings.simulateEmptyState ? 1 : 0) +
     (devSettings.simulatedRole !== "none" ? 1 : 0) +
     (devSettings.simulateSseDisconnect ? 1 : 0) +
-    (devSettings.forceReducedMotion ? 1 : 0);
+    (devSettings.forceReducedMotion ? 1 : 0) +
+    (devSettings.fontFamily && devSettings.fontFamily !== "helvetica" ? 1 : 0);
 
   return (
     <DevModeContext.Provider

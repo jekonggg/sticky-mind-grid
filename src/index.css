@@ -132,7 +132,7 @@ All colors MUST be HSL.
 
   html, body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--app-font, 'Helvetica Neue', Helvetica, Arial, system-ui, -apple-system, sans-serif);
     overflow-x: hidden;
   }
 }

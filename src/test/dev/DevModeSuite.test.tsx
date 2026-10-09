@@ -74,13 +74,23 @@ describe("Developer Mode Suite", () => {
           >
             Set Reduced Motion
           </button>
+          <button
+            onClick={() => updateDevSetting("fontFamily", "fraunces")}
+          >
+            Set Font Fraunces
+          </button>
+          <button
+            onClick={() => updateDevSetting("fontFamily", "inter")}
+          >
+            Set Font Inter
+          </button>
           <button onClick={() => setIsDevModalOpen(true)}>Open Modal</button>
           <DevSkeletonToolbar />
         </div>
       );
     }
 
-    it("renders active badges for latency, chaos, and role spoofing", () => {
+    it("renders active badges for latency, chaos, role spoofing, and font family", () => {
       renderWithProviders(<DevTestConsumer />);
 
       // Initially no toolbar
@@ -98,15 +108,32 @@ describe("Developer Mode Suite", () => {
       // Trigger role spoof
       fireEvent.click(screen.getByText("Set Role Viewer"));
       expect(screen.getByText(/🎭 viewer/i)).toBeInTheDocument();
+
+      // Trigger font family Fraunces
+      fireEvent.click(screen.getByText("Set Font Fraunces"));
+      expect(screen.getByText(/🔤 Fraunces/i)).toBeInTheDocument();
     });
 
-    it("opens the Developer Mode Suite modal when Tools or open trigger is clicked", () => {
+    it("updates documentElement --app-font and body fontFamily when font is toggled", () => {
+      renderWithProviders(<DevTestConsumer />);
+
+      fireEvent.click(screen.getByText("Set Font Inter"));
+      expect(document.documentElement.style.getPropertyValue("--app-font")).toContain("Inter");
+      expect(document.body.style.fontFamily).toContain("Inter");
+
+      fireEvent.click(screen.getByText("Set Font Fraunces"));
+      expect(document.documentElement.style.getPropertyValue("--app-font")).toContain("Fraunces");
+      expect(document.body.style.fontFamily).toContain("Fraunces");
+    });
+
+    it("opens the Developer Mode Suite modal and displays the typography tab", () => {
       renderWithProviders(<DevTestConsumer />);
 
       fireEvent.click(screen.getByText("Open Modal"));
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByText("Developer Mode Suite")).toBeInTheDocument();
       expect(screen.getByText("Freeze Skeleton Loading")).toBeInTheDocument();
+      expect(screen.getByText("Typography")).toBeInTheDocument();
     });
 
     it("toggles force-reduced-motion class on documentElement", () => {

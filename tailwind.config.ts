@@ -13,6 +13,17 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: [
+          'var(--app-font)',
+          '"Helvetica Neue"',
+          'Helvetica',
+          'Arial',
+          'system-ui',
+          '-apple-system',
+          'sans-serif',
+        ],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

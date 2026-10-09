@@ -4,6 +4,7 @@ import { useDevMode } from "@/contexts/DevModeContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DevSuiteModal } from "@/components/dev/DevSuiteModal";
+import { DEV_FONT_OPTIONS } from "@/constants/fonts";
 import {
   Stars01 as Sparkles,
   EyeOff,
@@ -87,6 +88,12 @@ export function DevSkeletonToolbar() {
                 {devSettings.simulateSseDisconnect && (
                   <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4 font-bold">
                     📡 SSE Dropped
+                  </Badge>
+                )}
+
+                {devSettings.fontFamily && devSettings.fontFamily !== "helvetica" && (
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/30 font-bold">
+                    🔤 {DEV_FONT_OPTIONS.find((f) => f.id === devSettings.fontFamily)?.name || devSettings.fontFamily}
                   </Badge>
                 )}
               </div>
