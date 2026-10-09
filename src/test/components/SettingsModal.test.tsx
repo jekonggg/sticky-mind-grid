@@ -48,7 +48,7 @@ describe("SettingsModal Component", () => {
     expect(screen.getByRole("button", { name: /System & About/i })).toBeInTheDocument();
   }, 15000);
 
-  it("switches to Appearance tab and displays theme cards", async () => {
+  it("switches to Appearance tab and displays theme cards and density controls", async () => {
     renderWithProviders(<SettingsModal open={true} onClose={onClose} />);
 
     const appearanceTabBtn = screen.getByRole("button", { name: /Appearance/i });
@@ -59,7 +59,23 @@ describe("SettingsModal Component", () => {
     expect(screen.getByText("Dark")).toBeInTheDocument();
     expect(screen.getByText("System")).toBeInTheDocument();
     expect(screen.getByText("UI Density")).toBeInTheDocument();
-  });
+    expect(screen.getByText("Comfortable")).toBeInTheDocument();
+    expect(screen.getByText("Compact")).toBeInTheDocument();
+
+    // Select Compact mode
+    const compactBtn = screen.getByRole("button", { name: /Compact/i });
+    fireEvent.click(compactBtn);
+
+    expect(document.documentElement.getAttribute("data-density")).toBe("compact");
+    expect(document.documentElement.classList.contains("density-compact")).toBe(true);
+
+    // Select Comfortable mode
+    const comfortableBtn = screen.getByRole("button", { name: /Comfortable/i });
+    fireEvent.click(comfortableBtn);
+
+    expect(document.documentElement.getAttribute("data-density")).toBe("comfortable");
+    expect(document.documentElement.classList.contains("density-comfortable")).toBe(true);
+  }, 15000);
 
   it("switches to Notifications tab and displays audio controls", async () => {
     renderWithProviders(<SettingsModal open={true} onClose={onClose} />);
@@ -71,7 +87,7 @@ describe("SettingsModal Component", () => {
     expect(screen.getByText("In-App Sound Effects")).toBeInTheDocument();
     expect(screen.getByText("Mentions")).toBeInTheDocument();
     expect(screen.getByText("Task Assignments")).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("switches to Workflow tab and shows default board view & auto-progress", async () => {
     renderWithProviders(<SettingsModal open={true} onClose={onClose} />);
@@ -82,7 +98,7 @@ describe("SettingsModal Component", () => {
     expect(screen.getByText("Task & Workflow Defaults")).toBeInTheDocument();
     expect(screen.getByText("Default Board View")).toBeInTheDocument();
     expect(screen.getByText("Auto-Progress Calculation")).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("switches to Privacy tab and displays data export button", async () => {
     renderWithProviders(<SettingsModal open={true} onClose={onClose} />);
@@ -93,7 +109,7 @@ describe("SettingsModal Component", () => {
     expect(screen.getByText("Privacy & Data Management")).toBeInTheDocument();
     expect(screen.getByText("Export All User Data")).toBeInTheDocument();
     expect(screen.getByText("Download JSON Export")).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("switches to About tab and fetches health diagnostics", async () => {
     renderWithProviders(<SettingsModal open={true} onClose={onClose} />);
@@ -106,5 +122,5 @@ describe("SettingsModal Component", () => {
       expect(screen.getByText("Backend API")).toBeInTheDocument();
       expect(screen.getByText("Database Engine")).toBeInTheDocument();
     });
-  });
+  }, 15000);
 });

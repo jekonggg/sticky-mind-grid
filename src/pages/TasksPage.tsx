@@ -62,6 +62,7 @@ export default function TasksPage() {
   const { user } = useAuth();
   const { devSettings } = useDevMode();
   const { settings } = useSettings();
+  const isCompact = settings.uiDensity === "compact";
 
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [search, setSearch] = useState("");
@@ -418,19 +419,19 @@ export default function TasksPage() {
               <Table className="min-w-[760px] w-full">
                 <TableHeader className="bg-muted/40">
                   <TableRow className="border-border/50 hover:bg-transparent">
-                    <TableHead className="w-[38%] py-3.5 pl-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                    <TableHead className={`w-[38%] ${isCompact ? "py-2 pl-3 text-[10px]" : "py-3.5 pl-4 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Task
                     </TableHead>
-                    <TableHead className="w-[18%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                    <TableHead className={`w-[18%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Board
                     </TableHead>
-                    <TableHead className="w-[14%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                    <TableHead className={`w-[14%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Priority
                     </TableHead>
-                    <TableHead className="w-[18%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                    <TableHead className={`w-[18%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Assigned
                     </TableHead>
-                    <TableHead className="w-[12%] py-3.5 pr-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                    <TableHead className={`w-[12%] ${isCompact ? "py-2 pr-3 text-[10px]" : "py-3.5 pr-4 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Due Date
                     </TableHead>
                   </TableRow>
@@ -452,8 +453,8 @@ export default function TasksPage() {
                         }`}
                       >
                         {/* Task Column */}
-                        <TableCell className="py-3.5 pl-4">
-                          <div className="flex items-center gap-3 min-w-0">
+                        <TableCell className={`${isCompact ? "py-2 pl-3" : "py-3.5 pl-4"}`}>
+                          <div className={`flex items-center ${isCompact ? "gap-2" : "gap-3"} min-w-0`}>
                             <button
                               type="button"
                               onClick={(e) => handleToggleComplete(task, e)}
@@ -495,7 +496,7 @@ export default function TasksPage() {
                         </TableCell>
 
                         {/* Board Column */}
-                        <TableCell className="py-3.5">
+                        <TableCell className={`${isCompact ? "py-2 px-3" : "py-3.5"}`}>
                           {task.boardName ? (
                             <button
                               type="button"
@@ -517,7 +518,7 @@ export default function TasksPage() {
                         </TableCell>
 
                         {/* Priority Column */}
-                        <TableCell className="py-3.5">
+                        <TableCell className={`${isCompact ? "py-2 px-3" : "py-3.5"}`}>
                           <Badge
                             variant="outline"
                             className={`text-[10px] uppercase font-mono px-2 py-0.5 font-bold tracking-tight ${
@@ -533,15 +534,15 @@ export default function TasksPage() {
                         </TableCell>
 
                         {/* Assigned Column */}
-                        <TableCell className="py-3.5">
+                        <TableCell className={`${isCompact ? "py-2 px-3" : "py-3.5"}`}>
                           {task.assignee ? (
                             <div className="flex items-center gap-2 max-w-[160px]">
-                              <Avatar className="h-6 w-6 border border-border/80 shrink-0">
+                              <Avatar className={`${isCompact ? "h-5 w-5" : "h-6 w-6"} border border-border/80 shrink-0`}>
                                 <AvatarImage
                                   src={task.assignee.avatarUrl}
                                   alt={task.assignee.fullName || task.assignee.email}
                                 />
-                                <AvatarFallback className="text-[9px] font-bold bg-primary/10 text-primary">
+                                <AvatarFallback className={`font-bold bg-primary/10 text-primary ${isCompact ? "text-[8px]" : "text-[9px]"}`}>
                                   {(task.assignee.fullName || task.assignee.email || "U")
                                     .charAt(0)
                                     .toUpperCase()}
@@ -560,7 +561,7 @@ export default function TasksPage() {
                         </TableCell>
 
                         {/* Due Date Column */}
-                        <TableCell className="py-3.5 pr-4">
+                        <TableCell className={`${isCompact ? "py-2 pr-3" : "py-3.5 pr-4"}`}>
                           {task.dueDate ? (
                             <span
                               className={`text-xs font-medium flex items-center gap-1.5 whitespace-nowrap ${
@@ -672,7 +673,7 @@ export default function TasksPage() {
           </div>
         ) : (
           /* Grid Cards View */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${isCompact ? "gap-2.5" : "gap-4"}`}>
             {filteredTasks.map((task) => {
               const isDone = task.status === "done" || task.progress === 100;
               const isOverdue =
@@ -682,7 +683,7 @@ export default function TasksPage() {
                 <div
                   key={task.id}
                   onClick={() => setSelectedTaskId(task.id)}
-                  className={`p-5 rounded-2xl bg-card border shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-4 cursor-pointer group ${
+                  className={`${isCompact ? "p-3.5 rounded-xl gap-2.5" : "p-5 rounded-2xl gap-4"} bg-card border shadow-xs hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group ${
                     selectedTaskId === task.id
                       ? "border-primary/60 ring-2 ring-primary/20"
                       : "border-border/60 hover:border-primary/40"

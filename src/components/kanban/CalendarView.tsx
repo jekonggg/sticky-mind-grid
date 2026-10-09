@@ -15,6 +15,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDevMode } from "@/contexts/DevModeContext";
+import { useSettings } from "@/contexts/SettingsContext";
 import { getProgressColor } from "@/utils/taskUtils";
 
 interface CalendarViewProps {
@@ -28,6 +29,8 @@ type ViewMode = "month" | "week" | "day";
 
 export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick }: CalendarViewProps) {
   const { devSettings } = useDevMode();
+  const { settings } = useSettings();
+  const isCompact = settings.uiDensity === "compact";
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   
@@ -392,7 +395,7 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
                 ))}
               </div>
               
-              <div className="grid grid-cols-7 auto-rows-[100px] md:auto-rows-[120px]">
+              <div className={`grid grid-cols-7 ${isCompact ? "auto-rows-[80px] md:auto-rows-[95px]" : "auto-rows-[100px] md:auto-rows-[120px]"}`}>
                 {calendarDays.map((day) => {
                   const dayTasks = getTasksForDay(day);
                   const isToday = isSameDay(day, new Date());
@@ -420,11 +423,11 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
                             className="px-1.5 py-1 rounded-md border border-border/50 bg-card hover:bg-card/90 shadow-2xs cursor-pointer transition-all hover:scale-[1.02] flex items-center justify-between gap-1 text-[10px] group/m-task"
                             style={{ 
                               borderLeft: `3px solid ${
-                                task.priority === 'urgent' ? 'rgb(244, 63, 94)' :
-                                task.priority === 'high' ? 'rgb(249, 115, 22)' : 
-                                task.priority === 'medium' ? 'rgb(245, 158, 11)' : 'rgb(59, 130, 246)'
-                              }`
-                            }}
+                              task.priority === 'urgent' ? 'rgb(244, 63, 94)' :
+                              task.priority === 'high' ? 'rgb(249, 115, 22)' : 
+                              task.priority === 'medium' ? 'rgb(245, 158, 11)' : 'rgb(59, 130, 246)'
+                            }`
+                          }}
                           >
                             <div className="flex items-center gap-1 min-w-0 flex-1">
                               {!devSettings.disableEmojiCustomization && task.emoji && <span className="text-xs shrink-0">{task.emoji}</span>}
@@ -456,7 +459,7 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
                     return (
                       <div
                         key={hour}
-                        className={`flex min-h-[34px] transition-colors group/hour hover:bg-muted/20 ${
+                        className={`flex ${isCompact ? "min-h-[28px]" : "min-h-[34px]"} transition-colors group/hour hover:bg-muted/20 ${
                           isCurrentHour ? "bg-primary/[0.03] ring-1 ring-inset ring-primary/20" : ""
                         }`}
                       >

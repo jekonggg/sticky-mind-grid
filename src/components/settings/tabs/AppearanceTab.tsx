@@ -173,18 +173,23 @@ export function AppearanceTab() {
 
       {/* UI Density Selection */}
       <div className="space-y-3 pt-4 border-t border-border/50">
-        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          UI Density
-        </Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            UI Density
+          </Label>
+          <span className="text-[10px] text-muted-foreground font-medium">
+            Applies to Boards, Lists, and Cards
+          </span>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {densityOptions.map((opt) => {
-            const isSelected = settings.uiDensity === opt.mode;
+            const isSelected = (settings.uiDensity || "comfortable") === opt.mode;
             return (
               <button
                 key={opt.mode}
                 type="button"
                 onClick={() => updateLocalSetting("uiDensity", opt.mode)}
-                className={`relative flex flex-col items-start p-3.5 rounded-xl border text-left transition-all ${
+                className={`relative flex flex-col items-start p-3.5 rounded-xl border text-left transition-all group ${
                   isSelected
                     ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-sm"
                     : "border-border/60 bg-card hover:bg-muted/50 hover:border-border"
@@ -195,8 +200,37 @@ export function AppearanceTab() {
                     <Check className="h-2.5 w-2.5 stroke-[3]" />
                   </div>
                 )}
+                
+                {/* Visual Density Preview Mock */}
+                <div className="w-full h-14 rounded-lg bg-muted/40 border border-border/40 p-2 mb-2.5 flex flex-col justify-center overflow-hidden">
+                  {opt.mode === "comfortable" ? (
+                    <div className="bg-card rounded-md border border-border/60 p-1.5 shadow-2xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div className="h-1.5 w-16 bg-foreground/70 rounded-full" />
+                        <div className="h-1.5 w-6 bg-primary/40 rounded-full" />
+                      </div>
+                      <div className="h-1 w-24 bg-muted-foreground/30 rounded-full" />
+                      <div className="flex items-center justify-between pt-0.5">
+                        <div className="h-1 w-8 bg-muted-foreground/20 rounded-full" />
+                        <div className="h-2 w-2 rounded-full bg-primary/60" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="bg-card rounded border border-border/60 px-1.5 py-0.5 shadow-2xs flex items-center justify-between">
+                        <div className="h-1.5 w-14 bg-foreground/70 rounded-full" />
+                        <div className="h-1.5 w-5 bg-primary/40 rounded-full" />
+                      </div>
+                      <div className="bg-card rounded border border-border/60 px-1.5 py-0.5 shadow-2xs flex items-center justify-between">
+                        <div className="h-1.5 w-12 bg-foreground/70 rounded-full" />
+                        <div className="h-1.5 w-4 bg-emerald-500/40 rounded-full" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <span className="font-bold text-xs text-foreground">{opt.label}</span>
-                <span className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                <span className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
                   {opt.desc}
                 </span>
               </button>

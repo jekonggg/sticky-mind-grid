@@ -95,6 +95,30 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [localPrefs.darkColorway]);
 
+  // Sync UI density class and data-attribute to root documentElement
+  useEffect(() => {
+    const root = document.documentElement;
+    const density = localPrefs.uiDensity || "comfortable";
+    root.setAttribute("data-density", density);
+    if (density === "compact") {
+      root.classList.add("density-compact");
+      root.classList.remove("density-comfortable");
+    } else {
+      root.classList.add("density-comfortable");
+      root.classList.remove("density-compact");
+    }
+  }, [localPrefs.uiDensity]);
+
+  // Sync reduced motion to root documentElement
+  useEffect(() => {
+    const root = document.documentElement;
+    if (localPrefs.reducedMotion) {
+      root.classList.add("force-reduced-motion");
+    } else {
+      root.classList.remove("force-reduced-motion");
+    }
+  }, [localPrefs.reducedMotion]);
+
   // Global Keyboard Shortcut: Ctrl + Alt + S (or Cmd + Alt + S) to toggle skeleton simulation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -338,7 +362,17 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 export const useSettings = () => {
   const context = useContext(SettingsContext);
   if (!context) {
-    throw new Error("useSettings must be used within a SettingsProvider");
+    return {
+      settings: {
+        ...defaultLocalPreferences,
+        ...defaultSyncedPreferences,
+      },
+      updateLocalSetting: () => {},
+      updateSyncedSetting: async () => {},
+      resetLocalSettings: () => {},
+      playSound: () => {},
+      isSyncing: false,
+    };
   }
   return context;
 };

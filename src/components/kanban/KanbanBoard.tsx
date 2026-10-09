@@ -419,11 +419,13 @@ export function KanbanBoard() {
     { id: "members", label: "Team", icon: Users },
   ] as const;
 
+  const isCompact = settings.uiDensity === "compact";
+
   const renderActiveView = () => {
     switch (activeView) {
       case "overview":
         return (
-          <div className="p-6 md:p-8 flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28">
+          <div className={`${isCompact ? "p-3.5 md:p-4" : "p-6 md:p-8"} flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28`}>
             <BoardOverview board={board} tasks={tasks} />
           </div>
         );
@@ -447,15 +449,15 @@ export function KanbanBoard() {
         );
       case "members":
         return (
-          <div className="p-6 md:p-8 max-w-4xl mx-auto w-full flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28">
-            <div className="flex items-center justify-between mb-8">
+          <div className={`${isCompact ? "p-3.5 md:p-4" : "p-6 md:p-8"} max-w-4xl mx-auto w-full flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28`}>
+            <div className={`flex items-center justify-between ${isCompact ? "mb-4" : "mb-8"}`}>
               <div>
-                <h2 className="text-3xl font-black tracking-tight text-foreground">Board Members</h2>
+                <h2 className={`${isCompact ? "text-2xl" : "text-3xl"} font-black tracking-tight text-foreground`}>Board Members</h2>
                 <p className="text-sm text-muted-foreground mt-1">Manage who has access to this board</p>
               </div>
               {permissions.canManageMembers && <InviteMemberDialog boardId={board.id} />}
             </div>
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 max-h-[70vh] overflow-y-auto">
+            <div className={`bg-card rounded-xl border border-border/50 shadow-sm ${isCompact ? "p-4" : "p-6"} max-h-[70vh] overflow-y-auto`}>
               <BoardMembers boardId={board.id} />
             </div>
           </div>
@@ -463,7 +465,7 @@ export function KanbanBoard() {
       case "board":
       default:
         return (
-          <main ref={scrollRef} className="p-6 md:p-8 flex-1 min-h-0 overflow-x-auto overflow-y-auto custom-scrollbar h-full">
+          <main ref={scrollRef} className={`${isCompact ? "p-3.5 md:p-4" : "p-6 md:p-8"} flex-1 min-h-0 overflow-x-auto overflow-y-auto custom-scrollbar h-full density-kanban-board`}>
             <DndContext
               sensors={sensors}
               collisionDetection={closestCorners}
@@ -471,7 +473,7 @@ export function KanbanBoard() {
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
             >
-              <div className="flex gap-6 md:gap-8 h-full min-w-max pb-28 items-start">
+              <div className={`flex ${isCompact ? "gap-3.5 md:gap-4" : "gap-6 md:gap-8"} h-full min-w-max pb-28 items-start`}>
                 {columns
                   .filter((col) => col.id !== "archive")
                   .map((col) => (
@@ -492,7 +494,7 @@ export function KanbanBoard() {
                   ))}
 
                 {permissions.canEditBoard && (
-                  <div className="w-80 shrink-0">
+                  <div className={`${isCompact ? "w-64" : "w-80"} shrink-0`}>
                     <button
                       onClick={handleAddNewState}
                       className="w-full flex items-center justify-center gap-2 p-4 text-muted-foreground hover:text-foreground hover:bg-background rounded-xl border border-dashed border-border/60 transition-all group bg-white/40"
@@ -527,7 +529,7 @@ export function KanbanBoard() {
           {/* Pinned Board Header */}
           <div className="bg-background border-b border-border/50 shrink-0">
             {/* Row 1: Board Name, Emoji, Badges, & Edit */}
-            <div className="px-6 pt-3.5 pb-2 md:px-8 flex items-center justify-between gap-4 w-full">
+            <div className={`${isCompact ? "px-4 pt-2.5 pb-1.5 md:px-6" : "px-6 pt-3.5 pb-2 md:px-8"} flex items-center justify-between gap-4 w-full`}>
               <div className="flex items-center gap-3 min-w-0">
                 {!devSettings.disableEmojiCustomization && board.emoji && (
                   <div className="h-10 w-10 md:h-11 md:w-11 bg-primary/10 flex items-center justify-center rounded-xl border border-primary/20 shadow-2xs shrink-0">

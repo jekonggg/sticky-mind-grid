@@ -123,6 +123,29 @@ All colors MUST be HSL.
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-ring: 226 100% 64%;
   }
+  /* UI Density Design Tokens */
+  :root {
+    --density-card-padding: 0.875rem;
+    --density-card-gap: 0.5rem;
+    --density-column-min-w: 280px;
+    --density-column-padding: 0.5rem;
+    --density-table-py: 1rem;
+    --density-table-px: 1rem;
+    --density-header-h: 2.5rem;
+    --density-avatar-size: 1.5rem;
+  }
+
+  [data-density="compact"],
+  .density-compact {
+    --density-card-padding: 0.5625rem;
+    --density-card-gap: 0.375rem;
+    --density-column-min-w: 248px;
+    --density-column-padding: 0.375rem;
+    --density-table-py: 0.5rem;
+    --density-table-px: 0.75rem;
+    --density-header-h: 2rem;
+    --density-avatar-size: 1.25rem;
+  }
 }
 
 @layer base {
@@ -161,6 +184,41 @@ All colors MUST be HSL.
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+
+  /* Compact UI Density global overrides */
+  .density-compact table th,
+  [data-density="compact"] table th {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    height: 2.25rem !important;
+  }
+
+  .density-compact table td,
+  [data-density="compact"] table td {
+    padding-top: 0.45rem !important;
+    padding-bottom: 0.45rem !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  /* Compact Kanban spacing */
+  .density-compact .density-kanban-board,
+  [data-density="compact"] .density-kanban-board {
+    padding: 0.875rem !important;
+    gap: 0.75rem !important;
+  }
+
+  .density-compact .density-kanban-column,
+  [data-density="compact"] .density-kanban-column {
+    min-width: 250px !important;
+  }
+
+  .density-compact .density-task-card,
+  [data-density="compact"] .density-task-card {
+    padding: 0.625rem 0.6875rem !important;
   }
 
   /* Prevent iOS zoom on inputs */

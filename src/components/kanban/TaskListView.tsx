@@ -21,6 +21,7 @@ import {
 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { useDevMode } from "@/contexts/DevModeContext";
+import { useSettings } from "@/contexts/SettingsContext";
 
 interface TaskListViewProps {
   tasks: Task[];
@@ -31,6 +32,9 @@ interface TaskListViewProps {
 
 export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick }: TaskListViewProps) {
   const { devSettings } = useDevMode();
+  const { settings } = useSettings();
+  const isCompact = settings.uiDensity === "compact";
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
@@ -45,36 +49,36 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className={`${isCompact ? "p-3 md:p-4 space-y-3" : "p-6 md:p-8 space-y-6"} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
       <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow className="border-border/50">
-              <TableHead className="w-[28%] font-black uppercase text-[10px] tracking-widest py-4">
+              <TableHead className={`w-[28%] font-black uppercase ${isCompact ? "py-2 px-3 text-[9px]" : "py-4 px-4 text-[10px]"} tracking-widest`}>
                 Task Name
               </TableHead>
-              <TableHead className="font-black uppercase text-[10px] tracking-widest py-4">
+              <TableHead className={`font-black uppercase ${isCompact ? "py-2 px-3 text-[9px]" : "py-4 px-4 text-[10px]"} tracking-widest`}>
                 Status
               </TableHead>
-              <TableHead className="font-black uppercase text-[10px] tracking-widest py-4">
+              <TableHead className={`font-black uppercase ${isCompact ? "py-2 px-3 text-[9px]" : "py-4 px-4 text-[10px]"} tracking-widest`}>
                 Assignee
               </TableHead>
-              <TableHead className="font-black uppercase text-[10px] tracking-widest py-4">
+              <TableHead className={`font-black uppercase ${isCompact ? "py-2 px-3 text-[9px]" : "py-4 px-4 text-[10px]"} tracking-widest`}>
                 Progress
               </TableHead>
-              <TableHead className="font-black uppercase text-[10px] tracking-widest py-4">
+              <TableHead className={`font-black uppercase ${isCompact ? "py-2 px-3 text-[9px]" : "py-4 px-4 text-[10px]"} tracking-widest`}>
                 Priority
               </TableHead>
-              <TableHead className="font-black uppercase text-[10px] tracking-widest py-4">
+              <TableHead className={`font-black uppercase ${isCompact ? "py-2 px-3 text-[9px]" : "py-4 px-4 text-[10px]"} tracking-widest`}>
                 Due Date
               </TableHead>
-              <TableHead className="text-right py-4"></TableHead>
+              <TableHead className={`text-right ${isCompact ? "py-2 px-3" : "py-4 px-4"}`}></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {tasks.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-32 text-center text-muted-foreground italic">
+                <TableCell colSpan={7} className={`${isCompact ? "h-20" : "h-32"} text-center text-muted-foreground italic`}>
                   No tasks found matching your criteria
                 </TableCell>
               </TableRow>
@@ -101,19 +105,19 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                     }`}
                     onClick={() => onTaskClick(task)}
                   >
-                    <TableCell className="py-4">
-                      <div className="flex items-center gap-3">
+                    <TableCell className={`${isCompact ? "py-2 px-3" : "py-4 px-4"}`}>
+                      <div className={`flex items-center ${isCompact ? "gap-2" : "gap-3"}`}>
                         {/* Uniform leading icon container */}
-                        <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0 border transition-all duration-200 select-none bg-muted/20 border-border/40 group-hover:border-primary/30 group-hover:bg-primary/5">
+                        <div className={`${isCompact ? "h-6 w-6 rounded-md" : "h-7 w-7 rounded-lg"} flex items-center justify-center shrink-0 border transition-all duration-200 select-none bg-muted/20 border-border/40 group-hover:border-primary/30 group-hover:bg-primary/5`}>
                           {!devSettings.disableEmojiCustomization && task.emoji ? (
-                            <span className="text-base leading-none">{task.emoji}</span>
+                            <span className={`${isCompact ? "text-sm" : "text-base"} leading-none`}>{task.emoji}</span>
                           ) : (
-                            <FileText className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary transition-colors" />
+                            <FileText className={`${isCompact ? "h-3 w-3" : "h-3.5 w-3.5"} text-muted-foreground/60 group-hover:text-primary transition-colors`} />
                           )}
                         </div>
 
                         <div className="flex flex-col gap-0.5 min-w-0">
-                          <span className="font-bold text-foreground text-sm group-hover:text-primary transition-colors truncate">
+                          <span className={`font-bold text-foreground ${isCompact ? "text-xs" : "text-sm"} group-hover:text-primary transition-colors truncate`}>
                             {task.title}
                           </span>
                           {task.description && (
@@ -122,12 +126,12 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                             </span>
                           )}
                           {task.tags && task.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
+                            <div className="flex flex-wrap gap-1 mt-0.5">
                               {task.tags.map((t) => (
                                 <span
                                   key={t.id}
                                   style={{ backgroundColor: `${t.color}20`, color: t.color, borderColor: `${t.color}40` }}
-                                  className="text-[9px] font-bold px-1.5 py-0.2 rounded-full border shadow-2xs"
+                                  className={`font-bold rounded-full border shadow-2xs ${isCompact ? "text-[8px] px-1 py-0.1" : "text-[9px] px-1.5 py-0.2"}`}
                                 >
                                   {t.name}
                                 </span>
@@ -137,7 +141,7 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="py-4">
+                    <TableCell className={`${isCompact ? "py-2 px-3" : "py-4 px-4"}`}>
                       {(() => {
                         const column = columns.find((c) => c.id === task.status);
                         const statusTitle = column?.title || task.status.replace(/_/g, " ");
@@ -145,9 +149,9 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                         const statusColor = column?.color;
 
                         return (
-                          <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                          <div className={`flex items-center gap-1.5 ${isCompact ? "text-[11px]" : "text-xs"} font-bold text-foreground`}>
                             {statusEmoji ? (
-                              <span className="text-sm shrink-0 leading-none">{statusEmoji}</span>
+                              <span className={`${isCompact ? "text-xs" : "text-sm"} shrink-0 leading-none`}>{statusEmoji}</span>
                             ) : (
                               <span
                                 className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
@@ -159,27 +163,27 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                         );
                       })()}
                     </TableCell>
-                    <TableCell className="py-4">
+                    <TableCell className={`${isCompact ? "py-2 px-3" : "py-4 px-4"}`}>
                       {task.assignee ? (
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6 border border-primary/20">
+                        <div className="flex items-center gap-1.5">
+                          <Avatar className={`${isCompact ? "h-5 w-5" : "h-6 w-6"} border border-primary/20`}>
                             <AvatarImage src={task.assignee.avatarUrl} alt={assigneeName} />
-                            <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
+                            <AvatarFallback className={`font-bold bg-primary/10 text-primary ${isCompact ? "text-[8px]" : "text-[10px]"}`}>
                               {assigneeInitial}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-xs font-semibold text-foreground truncate max-w-[120px]">
+                          <span className={`${isCompact ? "text-[11px]" : "text-xs"} font-semibold text-foreground truncate max-w-[120px]`}>
                             {assigneeName}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground italic flex items-center gap-1.5 opacity-60">
+                        <span className={`${isCompact ? "text-[11px]" : "text-xs"} text-muted-foreground italic flex items-center gap-1.5 opacity-60`}>
                           <User className="h-3 w-3" /> Unassigned
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="py-4">
-                      <div className="flex flex-col gap-1.5 w-24">
+                    <TableCell className={`${isCompact ? "py-2 px-3" : "py-4 px-4"}`}>
+                      <div className={`flex flex-col gap-1 ${isCompact ? "w-20" : "w-24"}`}>
                         <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                           <div
                             className={`h-full transition-all duration-500 ${getProgressColor(
@@ -198,7 +202,7 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="py-4">
+                    <TableCell className={`${isCompact ? "py-2 px-3" : "py-4 px-4"}`}>
                       <Badge
                         variant="outline"
                         className={`font-black uppercase text-[9px] tracking-tighter ${getPriorityColor(
@@ -208,14 +212,14 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                         {task.priority}
                       </Badge>
                     </TableCell>
-                    <TableCell className="py-4 font-medium text-xs text-muted-foreground">
+                    <TableCell className={`${isCompact ? "py-2 px-3" : "py-4 px-4"} font-medium ${isCompact ? "text-[11px]" : "text-xs"} text-muted-foreground`}>
                       {task.dueDate ? format(new Date(task.dueDate), "MMM d, yyyy") : "No due date"}
                     </TableCell>
-                    <TableCell className="text-right py-4">
+                    <TableCell className={`text-right ${isCompact ? "py-2 px-3" : "py-4 px-4"}`}>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className={`${isCompact ? "h-7 w-7" : "h-8 w-8"} opacity-0 group-hover:opacity-100 transition-opacity`}
                       >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
