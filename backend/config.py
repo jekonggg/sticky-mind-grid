@@ -41,12 +41,13 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24) # Dev friendly expiry
 
     # CORS Origins
+    default_cors = (
+        'http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,'
+        'https://sticky-mind-grid.vercel.app'
+    )
     CORS_ORIGINS = [
         origin.strip()
-        for origin in os.environ.get(
-            'CORS_ORIGINS',
-            'http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000'
-        ).split(',')
+        for origin in os.environ.get('CORS_ORIGINS', default_cors).split(',')
         if origin.strip()
     ]
 

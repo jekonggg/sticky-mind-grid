@@ -18,20 +18,27 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     
-    # Initialize Flask-CORS with configurable origins
-    cors_origins = app.config.get('CORS_ORIGINS') or [
+    # Initialize Flask-CORS with configurable origins and Vercel domains
+    configured_origins = app.config.get('CORS_ORIGINS') or []
+    base_origins = [
         "http://localhost:8080",
         "http://127.0.0.1:8080",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "https://sticky-mind-grid.vercel.app",
+        r"https:\/\/.*\.vercel\.app",
     ]
+    # Merge unique origins preserving string and regex types
+    all_origins = list(dict.fromkeys(configured_origins + base_origins))
+
     CORS(
         app,
-        resources={r"/*": {"origins": cors_origins}},
+        resources={r"/*": {"origins": all_origins}},
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials", "X-Requested-With", "Accept", "Origin"],
-        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        expose_headers=["Content-Type", "Authorization"]
     )
 
     jwt.init_app(app)
