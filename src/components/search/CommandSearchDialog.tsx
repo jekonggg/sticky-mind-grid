@@ -27,6 +27,7 @@ import {
   Monitor01 as Laptop,
 } from "@untitledui/icons";
 import { Badge } from "@/components/ui/badge";
+import { queryKeys } from "@/config/queryKeys";
 
 interface CommandSearchDialogProps {
   open: boolean;
@@ -48,21 +49,21 @@ export function CommandSearchDialog({
 
   // Fetch Boards
   const { data: boards = [] } = useQuery({
-    queryKey: ["boards"],
+    queryKey: queryKeys.boards.all,
     queryFn: () => boardApi.getBoards(),
     enabled: open,
   });
 
   // Fetch Global Tasks
   const { data: tasks = [] } = useQuery({
-    queryKey: ["globalTasks"],
+    queryKey: queryKeys.tasks.global(),
     queryFn: () => taskApi.getTasks(),
     enabled: open,
   });
 
   // Fetch Teammates
   const { data: teammates = [] } = useQuery({
-    queryKey: ["teammates"],
+    queryKey: queryKeys.boards.teammates,
     queryFn: () => userApi.getTeammates(),
     enabled: open,
   });

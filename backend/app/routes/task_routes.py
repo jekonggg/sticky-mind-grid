@@ -15,14 +15,47 @@ def get_tasks():
     user_id = get_jwt_identity()
     assigned_only = request.args.get('assignedToMe', 'false').lower() == 'true'
     
+    start_date = None
+    end_date = None
+    start_date_str = request.args.get('startDate')
+    end_date_str = request.args.get('endDate')
+    if start_date_str:
+        try:
+            from datetime import datetime
+            start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+        except (ValueError, TypeError):
+            pass
+    if end_date_str:
+        try:
+            from datetime import datetime
+            end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+        except (ValueError, TypeError):
+            pass
+
+    limit = request.args.get('limit', type=int)
+    offset = request.args.get('offset', type=int)
+    
     if not board_id or board_id == 'all':
-        tasks = TaskService.get_user_tasks(user_id, assigned_to_me=assigned_only)
+        tasks = TaskService.get_user_tasks(
+            user_id,
+            assigned_to_me=assigned_only,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+            offset=offset
+        )
         return jsonify([task.to_dict() for task in tasks]), 200
 
     if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['viewer']:
         return jsonify({'error': 'Unauthorized to view tasks for this board'}), 403
 
-    tasks = TaskService.get_tasks(board_id)
+    tasks = TaskService.get_tasks(
+        board_id,
+        start_date=start_date,
+        end_date=end_date,
+        limit=limit,
+        offset=offset
+    )
     return jsonify([task.to_dict() for task in tasks]), 200
 
 @bp.route('/boards/<board_id>/trash', methods=['GET'])

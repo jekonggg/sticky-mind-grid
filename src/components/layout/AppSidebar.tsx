@@ -10,6 +10,7 @@ import { taskApi } from "@/services/api";
 import { Board, CreateBoardData } from "@/types/board";
 import { Note, CreateNoteData } from "@/types/note";
 import { Task } from "@/types/task";
+import { queryKeys } from "@/config/queryKeys";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -130,28 +131,27 @@ export function AppSidebar({
 
   // Fetch Boards
   const { data: boards = [] } = useQuery<Board[]>({
-    queryKey: ["boards"],
+    queryKey: queryKeys.boards.all,
     queryFn: () => boardApi.getBoards(),
   });
 
   // Fetch Pending Invitations for Team Badge
   const { data: invitations = [] } = useQuery({
-    queryKey: ["pendingInvitations"],
+    queryKey: queryKeys.boards.invitations,
     queryFn: () => boardApi.getPendingInvitations(),
-    refetchInterval: 10000,
   });
 
   // Fetch notes for active board if available
   const activeBoardId = boardId || (boards[0]?.id ?? "");
   const { data: notes = [] } = useQuery<Note[]>({
-    queryKey: ["notes", activeBoardId],
+    queryKey: queryKeys.notes.board(activeBoardId),
     queryFn: () => (activeBoardId ? noteApi.getNotes(activeBoardId) : Promise.resolve([])),
     enabled: !!activeBoardId,
   });
 
-  // Fetch all tasks for task badge
+  // Fetch all tasks for task badge (shares single cache with Dashboard, Tasks, and Calendar pages)
   const { data: allTasks = [] } = useQuery<Task[]>({
-    queryKey: ["tasks"],
+    queryKey: queryKeys.tasks.global(),
     queryFn: () => taskApi.getTasks(),
   });
 
@@ -162,7 +162,7 @@ export function AppSidebar({
   const createBoardMutation = useMutation({
     mutationFn: (data: CreateBoardData) => boardApi.createBoard(data),
     onSuccess: (newBoard) => {
-      queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
       toast.success(`Board "${newBoard.name}" created!`);
       setIsBoardModalOpen(false);
       navigate(`/boards/${newBoard.id}`);

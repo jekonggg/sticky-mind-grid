@@ -34,6 +34,11 @@ class Task(db.Model):
     creator = db.relationship('User', foreign_keys=[created_by], back_populates='created_tasks')
     assignee = db.relationship('User', foreign_keys=[assigned_to], back_populates='assigned_tasks')
 
+    __table_args__ = (
+        db.Index('ix_tasks_board_deleted_pos', 'board_id', 'is_deleted', 'position'),
+        db.Index('ix_tasks_assigned_due', 'assigned_to', 'due_date'),
+    )
+
     def __init__(self, board_id: str, title: str, emoji: str = None, description: str = None, status: str = 'todo', priority: str = 'medium', progress: int = 0, due_date: datetime = None, assigned_to: str = None, created_by: str = None, position: float = 0.0, checklist: list = None, tags: list = None, attachments: list = None, is_deleted: bool = False, deleted_at: datetime = None, **kwargs):
         super().__init__(**kwargs)
         self.board_id = board_id

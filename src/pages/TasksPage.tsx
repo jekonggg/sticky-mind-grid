@@ -50,6 +50,7 @@ import { PillNavBar } from "@/components/common/PillNavBar";
 import { toast } from "sonner";
 import { TableRowSkeleton, TaskCardSkeleton } from "@/components/skeletons";
 import { BoardMember } from "@/types/board";
+import { queryKeys } from "@/config/queryKeys";
 
 type FilterTab = "all" | "assigned" | "created" | "completed" | "overdue";
 type SortOption = "dueDate" | "priority" | "title" | "created";
@@ -75,13 +76,13 @@ export default function TasksPage() {
 
   // Fetch all user boards
   const { data: boards = [] } = useQuery<Board[]>({
-    queryKey: ["boards"],
+    queryKey: queryKeys.boards.all,
     queryFn: () => boardApi.getBoards(),
   });
 
   // Fetch all user tasks
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
-    queryKey: ["globalTasks"],
+    queryKey: queryKeys.tasks.global(),
     queryFn: () => taskApi.getTasks(),
   });
 
@@ -108,7 +109,7 @@ export default function TasksPage() {
 
   // Fetch Board Members for active task board
   const { data: activeTaskBoardMembers = [] } = useQuery<BoardMember[]>({
-    queryKey: ["boardMembers", activeTaskBoard?.id],
+    queryKey: queryKeys.boards.members(activeTaskBoard?.id || ""),
     queryFn: () =>
       activeTaskBoard?.id ? boardApi.getMembers(activeTaskBoard.id) : Promise.resolve([]),
     enabled: !!activeTaskBoard?.id,
@@ -119,7 +120,7 @@ export default function TasksPage() {
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       taskApi.updateTask(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
       toast.success("Task updated");
     },
     onError: (err: any) => {
@@ -131,7 +132,8 @@ export default function TasksPage() {
     mutationFn: (data: CreateTaskData & { boardId: string }) =>
       taskApi.createTask(data),
     onSuccess: (newTask) => {
-      queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
       toast.success(`Task "${newTask.title}" created!`);
       setIsNewTaskModalOpen(false);
     },

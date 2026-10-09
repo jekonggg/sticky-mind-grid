@@ -24,6 +24,7 @@ import { TaskDetailWorkspace } from "@/components/task/TaskDetailWorkspace";
 import { toast } from "sonner";
 import { CalendarPageSkeleton } from "@/components/skeletons";
 import { BoardMember } from "@/types/board";
+import { queryKeys } from "@/config/queryKeys";
 
 const formatLocalDate = (d: Date | string | null | undefined): string => {
   if (!d) return "";
@@ -47,13 +48,13 @@ export default function CalendarPage() {
 
   // Fetch Boards
   const { data: boards = [] } = useQuery<Board[]>({
-    queryKey: ["boards"],
+    queryKey: queryKeys.boards.all,
     queryFn: () => boardApi.getBoards(),
   });
 
   // Fetch all tasks
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
-    queryKey: ["globalTasks"],
+    queryKey: queryKeys.tasks.global(),
     queryFn: () => taskApi.getTasks(),
   });
 
@@ -79,7 +80,7 @@ export default function CalendarPage() {
   }, [boards, selectedTask]);
 
   const { data: activeTaskBoardMembers = [] } = useQuery<BoardMember[]>({
-    queryKey: ["boardMembers", activeTaskBoard?.id],
+    queryKey: queryKeys.boards.members(activeTaskBoard?.id || ""),
     queryFn: () =>
       activeTaskBoard?.id ? boardApi.getMembers(activeTaskBoard.id) : Promise.resolve([]),
     enabled: !!activeTaskBoard?.id,
@@ -89,7 +90,7 @@ export default function CalendarPage() {
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       taskApi.updateTask(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
       toast.success("Task updated");
     },
     onError: (err: any) => {
@@ -101,7 +102,8 @@ export default function CalendarPage() {
     mutationFn: (data: CreateTaskData & { boardId: string }) =>
       taskApi.createTask(data),
     onSuccess: (newTask) => {
-      queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.global() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
       toast.success(`Task "${newTask.title}" scheduled!`);
       setIsNewTaskModalOpen(false);
     },

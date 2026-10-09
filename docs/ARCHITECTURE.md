@@ -65,12 +65,12 @@ QueryClientProvider
 
 ### State Management
 
-There is no single global store. State is managed through:
+Application state is systematically managed through:
 
 1. **AuthContext** (`src/contexts/AuthContext.tsx`) — `user`, `token`, `loading`. Persists to `localStorage`.
-2. **ActivityContext** (`src/hooks/useActivity.tsx`) — `activities[]`, `currentBoardId`. Polls every 5s.
-3. **React Query** (`@tanstack/react-query`) — Used for board members, notes, comments, notifications, trash, and invitations. NOT used for tasks or boards themselves.
-4. **Custom hooks** — `useTasks` and `useBoards` use raw `useState` + polling intervals.
+2. **ActivityContext** (`src/hooks/useActivity.tsx`) — `activities[]`, `currentBoardId`.
+3. **React Query** (`@tanstack/react-query`) — Centralized server-state management with `queryKeys` factory, default 30s staleTime / 5m gcTime, and event-driven invalidations. Backs all tasks, boards, comments, notes, notifications, messages, and invitations.
+4. **Optimistic Custom hooks** — `useTasks` and `useBoards` wrap React Query with optimistic UI state transitions and automatic cache invalidation (`queryKeys.tasks.global()`, `queryKeys.tasks.board(boardId)`, `queryKeys.boards.all`).
 5. **Local component state** — Modals, search, filters, form inputs.
 
 ### Key Hooks
@@ -79,10 +79,11 @@ There is no single global store. State is managed through:
 |------|------|---------|
 | `useAuth` | `src/contexts/AuthContext.tsx` | Access auth state (user, token, login, logout) |
 | `useActivity` | `src/hooks/useActivity.tsx` | Activity feed context (fetch, add, clear) |
-| `useBoards` | `src/hooks/useBoards.ts` | Board CRUD + search/sort with optimistic updates |
-| `useTasks` | `src/hooks/useTasks.ts` | Task CRUD + reorder/move + 4s polling + optimistic updates |
+| `useBoards` | `src/hooks/useBoards.ts` | Board CRUD + search/sort powered by React Query |
+| `useTasks` | `src/hooks/useTasks.ts` | Task CRUD + reorder/move + React Query cache sync + optimistic updates |
 | `useBoardPermissions` | `src/hooks/useBoardPermissions.ts` | Derives `BoardPermissions` from board + members + user |
-| `useBoardRealtime` | `src/hooks/useBoardRealtime.ts` | SSE `EventSource` connection for live board sync |
+| `useBoardRealtime` | `src/hooks/useBoardRealtime.ts` | SSE `EventSource` connection with connected-frame and event cache invalidations |
+| `useMessageRealtime` | `src/hooks/useMessages.ts` | User-scoped SSE stream with connected-frame invalidations |
 | `useIsMobile` | `src/hooks/use-mobile.tsx` | Media query for `<768px` breakpoint |
 
 ### API Communication

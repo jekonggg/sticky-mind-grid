@@ -1,72 +1,74 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Board, CreateBoardData, UpdateBoardData } from "@/types/board";
 import { boardApi } from "@/services/boardApi";
 import { toast } from "sonner";
 import { useActivity } from "./useActivity";
+import { queryKeys } from "@/config/queryKeys";
 
 export type SortOption = "updated" | "name" | "created";
 
 export function useBoards() {
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("updated");
   const { addActivity } = useActivity();
 
-  const fetchBoards = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await boardApi.getBoards();
-      setBoards(data);
-    } catch {
-      toast.error("Failed to load boards");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data: boards = [], isLoading: loading, refetch: fetchBoards } = useQuery<Board[]>({
+    queryKey: queryKeys.boards.all,
+    queryFn: () => boardApi.getBoards(),
+  });
 
-  useEffect(() => {
-    fetchBoards();
-  }, [fetchBoards]);
-
-  const createBoard = useCallback(async (data: CreateBoardData) => {
-    try {
-      const board = await boardApi.createBoard(data);
-      setBoards((prev) => [...prev, board]);
+  const createMutation = useMutation({
+    mutationFn: (data: CreateBoardData) => boardApi.createBoard(data),
+    onSuccess: (board) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
       addActivity("create", board.name, `New board "${board.name}" created`);
       toast.success(`Board "${board.name}" created`);
-      return board;
-    } catch {
+    },
+    onError: () => {
       toast.error("Failed to create board");
-    }
-  }, [addActivity]);
+    },
+  });
 
-  const updateBoard = useCallback(async (id: string, data: UpdateBoardData) => {
-    try {
-      const board = await boardApi.updateBoard(id, data);
-      setBoards((prev) => prev.map((b) => (b.id === id ? board : b)));
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateBoardData }) =>
+      boardApi.updateBoard(id, data),
+    onSuccess: (board) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
       addActivity("update", board.name, `Board settings updated for "${board.name}"`);
       toast.success(`Board "${board.name}" updated`);
-      return board;
-    } catch {
+    },
+    onError: () => {
       toast.error("Failed to update board");
-    }
-  }, [addActivity]);
+    },
+  });
 
-  const deleteBoard = useCallback(async (id: string) => {
-    const board = boards.find((b) => b.id === id);
-    if (!board) return;
-    
-    setBoards((prev) => prev.filter((b) => b.id !== id));
-    addActivity("delete", board.name, `Board "${board.name}" permanently deleted`);
-    toast.success(`Board "${board.name}" deleted`);
-    
-    try {
-      await boardApi.deleteBoard(id);
-    } catch {
-      fetchBoards();
-    }
-  }, [boards, fetchBoards, addActivity]);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => boardApi.deleteBoard(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
+      const board = boards.find((b) => b.id === id);
+      const name = board?.name || "Board";
+      addActivity("delete", name, `Board "${name}" permanently deleted`);
+      toast.success(`Board "${name}" deleted`);
+    },
+    onError: () => {
+      toast.error("Failed to delete board");
+    },
+  });
+
+  const createBoard = async (data: CreateBoardData) => {
+    return await createMutation.mutateAsync(data);
+  };
+
+  const updateBoard = async (id: string, data: UpdateBoardData) => {
+    return await updateMutation.mutateAsync({ id, data });
+  };
+
+  const deleteBoard = async (id: string) => {
+    return await deleteMutation.mutateAsync(id);
+  };
 
   const filteredBoards = useMemo(() => {
     let result = boards;
@@ -102,5 +104,6 @@ export function useBoards() {
     createBoard,
     updateBoard,
     deleteBoard,
+    fetchBoards,
   };
 }

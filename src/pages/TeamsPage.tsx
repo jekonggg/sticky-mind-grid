@@ -31,6 +31,7 @@ import {
 import { InviteMemberDialog } from "@/components/board/InviteMemberDialog";
 import { toast } from "sonner";
 import { TeamsPageSkeleton } from "@/components/skeletons";
+import { queryKeys } from "@/config/queryKeys";
 
 export default function TeamsPage() {
   const navigate = useNavigate();
@@ -44,20 +45,19 @@ export default function TeamsPage() {
 
   // Fetch Boards
   const { data: boards = [] } = useQuery<Board[]>({
-    queryKey: ["boards"],
+    queryKey: queryKeys.boards.all,
     queryFn: () => boardApi.getBoards(),
   });
 
   // Fetch Pending Invitations
   const { data: invitations = [] } = useQuery<BoardInvitation[]>({
-    queryKey: ["pendingInvitations"],
+    queryKey: queryKeys.boards.invitations,
     queryFn: () => boardApi.getPendingInvitations(),
-    refetchInterval: 6000,
   });
 
   // Fetch Teammates
   const { data: teammates = [], isLoading: isTeammatesLoading } = useQuery({
-    queryKey: ["teammates"],
+    queryKey: queryKeys.boards.teammates,
     queryFn: () => userApi.getTeammates(),
   });
 
@@ -65,9 +65,9 @@ export default function TeamsPage() {
   const acceptMutation = useMutation({
     mutationFn: (boardId: string) => boardApi.acceptInvitation(boardId),
     onSuccess: (data, boardId) => {
-      queryClient.invalidateQueries({ queryKey: ["pendingInvitations"] });
-      queryClient.invalidateQueries({ queryKey: ["boards"] });
-      queryClient.invalidateQueries({ queryKey: ["teammates"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.invitations });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.teammates });
       toast.success("Invitation accepted!");
       navigate(`/boards/${boardId}`);
     },
@@ -79,7 +79,7 @@ export default function TeamsPage() {
   const declineMutation = useMutation({
     mutationFn: (boardId: string) => boardApi.declineInvitation(boardId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pendingInvitations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.invitations });
       toast.info("Invitation declined");
     },
     onError: (err: any) => {

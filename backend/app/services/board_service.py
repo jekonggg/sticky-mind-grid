@@ -5,18 +5,45 @@ from app.models.user import User
 from app.models.activity import Activity
 from app.models.notification import Notification
 from app.utils.event_broadcaster import broadcaster
+from sqlalchemy.orm import joinedload
+from sqlalchemy import func
 
 class BoardService:
     @staticmethod
     def get_user_boards(user_id):
-        return db.session.query(Board).join(BoardMember).filter(
+        boards = db.session.query(Board).join(BoardMember).filter(
             BoardMember.user_id == user_id,
             BoardMember.status == 'accepted'
         ).all()
+        if not boards:
+            return []
+        
+        from app.models.task import Task
+        board_ids = [b.id for b in boards]
+        task_counts = dict(
+            db.session.query(
+                Task.board_id,
+                func.count(Task.id)
+            )
+            .filter(
+                Task.board_id.in_(board_ids),
+                Task.is_deleted == False
+            )
+            .group_by(Task.board_id)
+            .all()
+        )
+        for b in boards:
+            b._task_count = task_counts.get(b.id, 0)
+        return boards
 
     @staticmethod
     def get_user_invitations(user_id):
-        memberships = BoardMember.query.filter_by(user_id=user_id, status='pending').all()
+        memberships = (
+            BoardMember.query
+            .options(joinedload(BoardMember.board).joinedload(Board.owner))
+            .filter_by(user_id=user_id, status='pending')
+            .all()
+        )
         invites = []
         for m in memberships:
             board = m.board
