@@ -1,5 +1,6 @@
 import { API_BASE, TOKEN_STORAGE_KEY, getStoredToken } from "@/config/api";
 import { getDevSettings } from "@/contexts/DevModeContext";
+import { isJwtExpired } from "@/utils/authUtils";
 
 export async function authenticatedFetch(endpoint: string, options: RequestInit = {}) {
   // DEV Mode Interception
@@ -52,6 +53,15 @@ export async function authenticatedFetch(endpoint: string, options: RequestInit 
   }
 
   const token = getStoredToken();
+
+  // Instant client-side check: if token has expired due to inactivity, clear and redirect immediately
+  if (token && isJwtExpired(token)) {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem("auth_user");
+    window.dispatchEvent(new Event("auth:session-expired"));
+    window.location.href = "/login";
+    throw new Error("Unauthorized");
+  }
   
   const headers = new Headers(options.headers || {});
   if (token) {
@@ -67,9 +77,10 @@ export async function authenticatedFetch(endpoint: string, options: RequestInit 
   });
 
   if (response.status === 401) {
-    // Handle unauthorized - clear token and potentially redirect
+    // Handle unauthorized - clear token, notify context, and redirect
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     localStorage.removeItem("auth_user");
+    window.dispatchEvent(new Event("auth:session-expired"));
     window.location.href = "/login";
     throw new Error("Unauthorized");
   }
