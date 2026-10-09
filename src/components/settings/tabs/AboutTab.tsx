@@ -8,17 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { useDevMode } from "@/contexts/DevModeContext";
 import {
   Activity,
-  CheckCircle2,
+  CheckCircle as CheckCircle2,
   AlertTriangle,
-  Server,
-  Database,
-  Radio,
-  RefreshCw,
-  Loader2,
-  Code2,
-  Sparkles,
-  Sliders,
-} from "lucide-react";
+  Server01 as Server,
+  Database01 as Database,
+  Signal01 as Radio,
+  RefreshCw01 as RefreshCw,
+  Loading01 as Loader2,
+  Code01 as Code2,
+  Stars01 as Sparkles,
+  Sliders01 as Sliders,
+} from "@untitledui/icons";
 
 export function AboutTab() {
   const { settings, updateLocalSetting } = useSettings();

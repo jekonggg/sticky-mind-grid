@@ -125,7 +125,7 @@ describe("AppSidebar Component", () => {
     expect(onToggleCollapse).toHaveBeenCalledTimes(1);
   });
 
-  it("opens personal scratchpad when clicking Personal Scratchpad", async () => {
+  it("opens personal scratchpad when clicking Open Scratchpad", async () => {
     renderWithProviders(
       <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />
     );
@@ -135,7 +135,7 @@ describe("AppSidebar Component", () => {
     fireEvent.click(personalFilesHeader);
 
     await waitFor(() => {
-      const scratchpadBtn = screen.getByText("Personal Scratchpad");
+      const scratchpadBtn = screen.getByText("Open Scratchpad");
       expect(scratchpadBtn).toBeInTheDocument();
       fireEvent.click(scratchpadBtn);
     });
@@ -145,14 +145,15 @@ describe("AppSidebar Component", () => {
     });
   });
 
-  it("renders numerical notification badges for Boards, Tasks, and Messages", async () => {
+  it("renders numerical notification badges for Boards, Tasks, Messages, and Personal Files", async () => {
     renderWithProviders(
       <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />
     );
 
-    // Wait for boards count badge (mockBoards length is 2)
+    // Wait for boards count badges (mockBoards length is 2, personalNotesCount is 2)
     await waitFor(() => {
-      expect(screen.getByText("2")).toBeInTheDocument();
+      const badgesWithTwo = screen.getAllByText("2");
+      expect(badgesWithTwo.length).toBeGreaterThanOrEqual(2);
     });
 
     // Tasks count badge (mockTasks length is 4)
@@ -163,6 +164,20 @@ describe("AppSidebar Component", () => {
     // Unread messages count badge (unreadCount is 3)
     await waitFor(() => {
       expect(screen.getByText("3")).toBeInTheDocument();
+    });
+  });
+
+  it("opens New Chat modal when clicking Plus button on Messages", async () => {
+    renderWithProviders(
+      <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />
+    );
+
+    const newChatBtn = screen.getByTitle("New Message / Chat");
+    expect(newChatBtn).toBeInTheDocument();
+    fireEvent.click(newChatBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("New Conversation")).toBeInTheDocument();
     });
   });
 });

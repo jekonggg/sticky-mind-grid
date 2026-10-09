@@ -1,14 +1,22 @@
 import { useSettings } from "@/contexts/SettingsContext";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Sun, Moon, Laptop, Sparkles, Check, RotateCcw, LucideIcon, Palette } from "lucide-react";
+import {
+  Sun,
+  Moon01 as Moon,
+  Monitor01 as Laptop,
+  Stars01 as Sparkles,
+  Check,
+  RefreshCcw01 as RotateCcw,
+  Palette,
+} from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { ThemeMode, UIDensity, DarkColorway } from "@/types/settings";
 
 export function AppearanceTab() {
   const { settings, updateLocalSetting, resetLocalSettings } = useSettings();
 
-  const themeOptions: { mode: ThemeMode; label: string; desc: string; icon: LucideIcon }[] = [
+  const themeOptions: { mode: ThemeMode; label: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
     {
       mode: "light",
       label: "Light",

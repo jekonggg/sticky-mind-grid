@@ -19,26 +19,26 @@ import { TrashModal } from "./TrashModal";
 import { BoardHeader } from "./BoardHeader";
 import { TaskDetailWorkspace } from "../task/TaskDetailWorkspace";
 import { arrayMove } from "@dnd-kit/sortable";
-import { 
-  Loader2, 
-  Plus, 
-  Settings, 
-  Smile, 
-  Pencil,
-  Filter,
-  User,
-  Users,
+import {
+  Loading01 as Loader2,
+  Plus,
+  Settings01 as Settings,
+  FaceSmile as Smile,
+  Edit01 as Pencil,
+  FilterLines as Filter,
+  User01 as User,
+  Users01 as Users,
   Eye,
-  ShieldAlert,
-  Radio,
-  Trash2,
-  Tag as TagIcon,
-  LayoutGrid,
+  ShieldZap as ShieldAlert,
+  Signal01 as Radio,
+  Trash01 as Trash2,
+  Tag01 as TagIcon,
+  LayoutGrid01 as LayoutGrid,
   List,
   Calendar,
-  FileText,
-  BarChart3
-} from "lucide-react";
+  File06 as FileText,
+  BarChart01 as BarChart3,
+} from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, LayoutGrid, Eye, EyeOff } from "lucide-react";
+import { Loading01 as Loader2, LayoutGrid01 as LayoutGrid, Eye, EyeOff } from "@untitledui/icons";
 import { motion } from "framer-motion";
 
 import { OAuthButtons } from "@/components/auth/OAuthButtons";

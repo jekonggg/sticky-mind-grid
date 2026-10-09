@@ -5,15 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DevSuiteModal } from "@/components/dev/DevSuiteModal";
 import {
-  Sparkles,
+  Stars01 as Sparkles,
   EyeOff,
-  Sliders,
-  Wifi,
-  Flame,
-  Shield,
-  Radio,
-  FileCode,
-} from "lucide-react";
+  Sliders01 as Sliders,
+} from "@untitledui/icons";
 
 export function DevSkeletonToolbar() {
   const { settings, updateLocalSetting } = useSettings();

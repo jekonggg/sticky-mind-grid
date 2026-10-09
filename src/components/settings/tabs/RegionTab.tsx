@@ -7,7 +7,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Globe, Clock, CalendarDays, Languages } from "lucide-react";
+import {
+  Globe01 as Globe,
+  Clock,
+  CalendarDate as CalendarDays,
+  Translate01 as Languages,
+} from "@untitledui/icons";
 import { DateFormatOption } from "@/types/settings";
 
 const COMMON_TIMEZONES = [

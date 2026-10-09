@@ -69,4 +69,16 @@ describe("TeamsPage", () => {
       expect(screen.getByText("sarah@example.com")).toBeInTheDocument();
     });
   });
+
+  it("renders clean empty state without matching quotes when teammates list is empty and search untouched", async () => {
+    (userApi.getTeammates as any).mockResolvedValue([]);
+
+    renderWithProviders(<TeamsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("No teammates found")).toBeInTheDocument();
+      expect(screen.queryByText(/No teammates found matching ""/i)).not.toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /invite teammate/i }).length).toBeGreaterThanOrEqual(1);
+    });
+  });
 });

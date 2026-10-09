@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Check, ImagePlus, X, Plus, Sparkles, Link as LinkIcon, Upload } from "lucide-react";
+import { Check, ImagePlus, XClose as X, Plus, Stars01 as Sparkles, Link01 as LinkIcon, Upload01 as Upload } from "@untitledui/icons";
 import { EmojiSelector } from "../common/EmojiSelector";
 
 interface BoardModalProps {

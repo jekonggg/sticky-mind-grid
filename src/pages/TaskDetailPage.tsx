@@ -11,7 +11,7 @@ import { useBoardRealtime } from "@/hooks/useBoardRealtime";
 import { useActivity } from "@/hooks/useActivity";
 import { useSettings } from "@/contexts/SettingsContext";
 import { TaskDetailWorkspace } from "@/components/task/TaskDetailWorkspace";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { TaskDetailSkeleton } from "@/components/skeletons";

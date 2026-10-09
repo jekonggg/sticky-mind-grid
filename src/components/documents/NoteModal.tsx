@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Trash2, StickyNote, Check } from "lucide-react";
+import { Trash01 as Trash2, File06 as StickyNote, Check } from "@untitledui/icons";
 
 interface NoteModalProps {
   open: boolean;

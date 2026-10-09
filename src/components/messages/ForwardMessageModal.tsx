@@ -11,16 +11,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Search,
-  Forward,
+  SearchLg as Search,
+  Share01 as Forward,
   Check,
-  Loader2,
-  Users,
-  User as UserIcon,
-  FileText,
-  Video,
-  Image as ImageIcon,
-} from "lucide-react";
+  Loading01 as Loader2,
+  Users01 as Users,
+  User01 as UserIcon,
+  File06 as FileText,
+  VideoRecorder as Video,
+  Image01 as ImageIcon,
+} from "@untitledui/icons";
 import { Conversation, Message } from "@/types/message";
 import { useForwardMessage } from "@/hooks/useMessages";
 

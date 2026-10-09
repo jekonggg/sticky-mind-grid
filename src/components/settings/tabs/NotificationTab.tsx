@@ -4,16 +4,16 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import {
-  Volume2,
+  VolumeMax as Volume2,
   VolumeX,
-  Bell,
+  Bell01 as Bell,
   AtSign,
-  UserCheck,
-  MailPlus,
-  MessageSquare,
-  Sparkles,
-  Info,
-} from "lucide-react";
+  UserCheck01 as UserCheck,
+  Mail01 as MailPlus,
+  MessageChatSquare as MessageSquare,
+  Stars01 as Sparkles,
+  InfoCircle as Info,
+} from "@untitledui/icons";
 
 export function NotificationTab() {
   const { settings, updateLocalSetting, updateSyncedSetting, playSound, isSyncing } =

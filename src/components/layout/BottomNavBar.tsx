@@ -2,12 +2,12 @@ import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FolderKanban,
-  LayoutDashboard,
+  Columns03 as FolderKanban,
+  LayoutGrid01 as LayoutDashboard,
   CheckSquare,
-  MessageSquare,
-  CalendarDays,
-} from "lucide-react";
+  MessageChatSquare as MessageSquare,
+  CalendarDate as CalendarDays,
+} from "@untitledui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { taskApi } from "@/services/api";
 import { useUnreadMessageCount } from "@/hooks/useMessages";

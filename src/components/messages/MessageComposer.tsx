@@ -2,15 +2,15 @@ import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Send,
-  Paperclip,
-  Smile,
-  X,
-  FileText,
-  Image as ImageIcon,
-  Loader2,
+  Send01 as Send,
+  Attachment01 as Paperclip,
+  FaceSmile as Smile,
+  XClose as X,
+  File06 as FileText,
+  Image01 as ImageIcon,
+  Loading01 as Loader2,
   CornerUpLeft,
-} from "lucide-react";
+} from "@untitledui/icons";
 import { MessageAttachment, MessageReplySnippet } from "@/types/message";
 import { fileApi } from "@/services/fileApi";
 import { toast } from "sonner";

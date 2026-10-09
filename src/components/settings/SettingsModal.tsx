@@ -6,16 +6,15 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  User,
+  User01 as User,
   Palette,
-  Bell,
-  Sliders,
-  Globe,
-  Shield,
-  Info,
-  Settings,
-  LucideIcon,
-} from "lucide-react";
+  Bell01 as Bell,
+  Sliders01 as Sliders,
+  Globe01 as Globe,
+  Shield01 as Shield,
+  InfoCircle as Info,
+  Settings01 as Settings,
+} from "@untitledui/icons";
 import { SettingsTab } from "@/types/settings";
 import { ProfileTab } from "./tabs/ProfileTab";
 import { AppearanceTab } from "./tabs/AppearanceTab";

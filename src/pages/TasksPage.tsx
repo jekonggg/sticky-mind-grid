@@ -21,21 +21,21 @@ import {
 } from "@/components/ui/select";
 import {
   CheckSquare,
-  Search,
-  Filter,
+  SearchLg as Search,
+  FilterLines as Filter,
   Plus,
   Clock,
-  CheckCircle2,
+  CheckCircle as CheckCircle2,
   Calendar,
   AlertCircle,
-  LayoutGrid,
+  LayoutGrid01 as LayoutGrid,
   List as ListIcon,
-  Layers,
-  ArrowUpDown,
-  Tag as TagIcon,
-  Sparkles,
-  User,
-} from "lucide-react";
+  LayersTwo01 as Layers,
+  ChevronSelectorVertical as ArrowUpDown,
+  Tag01 as TagIcon,
+  Stars01 as Sparkles,
+  User01 as User,
+} from "@untitledui/icons";
 import {
   Table,
   TableBody,
@@ -45,9 +45,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TaskModal } from "@/components/kanban/TaskModal";
+import { TaskDetailWorkspace } from "@/components/task/TaskDetailWorkspace";
 import { PillNavBar } from "@/components/common/PillNavBar";
 import { toast } from "sonner";
 import { TableRowSkeleton, TaskCardSkeleton } from "@/components/skeletons";
+import { BoardMember } from "@/types/board";
 
 type FilterTab = "all" | "assigned" | "created" | "completed" | "overdue";
 type SortOption = "dueDate" | "priority" | "title" | "created";
@@ -67,6 +69,7 @@ export default function TasksPage() {
 
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [targetBoardForNewTask, setTargetBoardForNewTask] = useState<string>("");
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const now = useMemo(() => new Date(), []);
 
@@ -80,6 +83,35 @@ export default function TasksPage() {
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ["globalTasks"],
     queryFn: () => taskApi.getTasks(),
+  });
+
+  const selectedTask = useMemo(
+    () => tasks.find((t) => t.id === selectedTaskId) || null,
+    [tasks, selectedTaskId]
+  );
+
+  const activeTaskBoard = useMemo(() => {
+    if (!selectedTask) return null;
+    return (
+      boards.find((b) => b.id === selectedTask.boardId) || {
+        id: selectedTask.boardId,
+        name: selectedTask.boardName || "Workspace Board",
+        emoji: selectedTask.boardEmoji || "📋",
+        color: "#3b82f6",
+        ownerId: selectedTask.createdBy || "",
+        columns: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+    );
+  }, [boards, selectedTask]);
+
+  // Fetch Board Members for active task board
+  const { data: activeTaskBoardMembers = [] } = useQuery<BoardMember[]>({
+    queryKey: ["boardMembers", activeTaskBoard?.id],
+    queryFn: () =>
+      activeTaskBoard?.id ? boardApi.getMembers(activeTaskBoard.id) : Promise.resolve([]),
+    enabled: !!activeTaskBoard?.id,
   });
 
   // Task mutation
@@ -409,8 +441,12 @@ export default function TasksPage() {
                     return (
                       <TableRow
                         key={task.id}
-                        onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
-                        className="group/row cursor-pointer border-border/50 hover:bg-muted/30 transition-colors"
+                        onClick={() => setSelectedTaskId(task.id)}
+                        className={`group/row cursor-pointer border-border/50 transition-colors ${
+                          selectedTaskId === task.id
+                            ? "bg-primary/10 hover:bg-primary/15 font-semibold"
+                            : "hover:bg-muted/30"
+                        }`}
                       >
                         {/* Task Column */}
                         <TableCell className="py-3.5 pl-4">
@@ -464,7 +500,7 @@ export default function TasksPage() {
                                 e.stopPropagation();
                                 navigate(`/boards/${task.boardId}`);
                               }}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 text-xs font-semibold max-w-[170px] truncate transition-all group-hover/row:border-primary/40"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 text-xs font-semibold max-w-[170px] truncate transition-all group-hover/row:border-primary/40 cursor-pointer"
                               title={`Open ${task.boardName}`}
                             >
                               <span className="shrink-0">{task.boardEmoji || "📋"}</span>
@@ -562,8 +598,10 @@ export default function TasksPage() {
                 return (
                   <div
                     key={task.id}
-                    onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
-                    className="p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors cursor-pointer group/mobile-row"
+                    onClick={() => setSelectedTaskId(task.id)}
+                    className={`p-4 flex flex-col gap-3 transition-colors cursor-pointer group/mobile-row ${
+                      selectedTaskId === task.id ? "bg-primary/10" : "hover:bg-muted/30"
+                    }`}
                   >
                     <div className="flex items-start gap-3 min-w-0">
                       <button
@@ -635,8 +673,12 @@ export default function TasksPage() {
               return (
                 <div
                   key={task.id}
-                  onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
-                  className="p-5 rounded-2xl bg-card border border-border/60 hover:border-primary/40 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-4 cursor-pointer group"
+                  onClick={() => setSelectedTaskId(task.id)}
+                  className={`p-5 rounded-2xl bg-card border shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-4 cursor-pointer group ${
+                    selectedTaskId === task.id
+                      ? "border-primary/60 ring-2 ring-primary/20"
+                      : "border-border/60 hover:border-primary/40"
+                  }`}
                 >
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
@@ -732,6 +774,48 @@ export default function TasksPage() {
           </div>
         )}
       </main>
+
+      {/* Screen-Wide Backdrop Dimming Overlay when Task Drawer is Open */}
+      {selectedTask && activeTaskBoard && (
+        <div
+          data-testid="task-drawer-backdrop"
+          aria-label="Close task details"
+          onClick={() => setSelectedTaskId(null)}
+          className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-[1.5px] z-40 transition-opacity animate-in fade-in duration-200 cursor-pointer"
+        />
+      )}
+
+      {/* Notion-Style Right-Side Task Detail Workspace Drawer */}
+      {selectedTask && activeTaskBoard && (
+        <aside
+          data-testid="task-detail-drawer"
+          className="fixed inset-y-0 right-0 w-full sm:w-[540px] md:w-[620px] lg:w-[720px] xl:w-[780px] border-l border-border bg-background shadow-2xl h-full overflow-hidden flex flex-col z-50 transition-all duration-200 animate-in slide-in-from-right duration-250 ease-out"
+        >
+          <TaskDetailWorkspace
+            task={selectedTask}
+            board={activeTaskBoard}
+            members={activeTaskBoardMembers}
+            readOnly={false}
+            onClose={() => setSelectedTaskId(null)}
+            onUpdateTask={async (updates) => {
+              await updateTaskMutation.mutateAsync({
+                id: selectedTask.id,
+                data: updates,
+              });
+            }}
+            onDeleteTask={async (id) => {
+              try {
+                await taskApi.deleteTask(id);
+                queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
+                setSelectedTaskId(null);
+                toast.success("Task deleted");
+              } catch (err: any) {
+                toast.error(err.message || "Failed to delete task");
+              }
+            }}
+          />
+        </aside>
+      )}
 
       {/* Task Creation Modal */}
       {activeTargetBoard && (

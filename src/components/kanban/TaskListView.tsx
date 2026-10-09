@@ -11,7 +11,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
-import { MoreHorizontal, AlertCircle, Clock, CheckCircle2, User, FileText } from "lucide-react";
+import {
+  DotsHorizontal as MoreHorizontal,
+  AlertCircle,
+  Clock,
+  CheckCircle as CheckCircle2,
+  User01 as User,
+  File06 as FileText,
+} from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 
 interface TaskListViewProps {

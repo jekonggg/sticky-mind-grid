@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { FileText } from "lucide-react";
+import { File06 as FileText } from "@untitledui/icons";
 
 interface TaskDescriptionProps {
   description: string;

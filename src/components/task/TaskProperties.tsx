@@ -14,16 +14,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Calendar,
-  User,
+  User01 as User,
   AlertCircle,
   Clock,
-  Tag as TagIcon,
-  Sliders,
+  Tag01 as TagIcon,
+  Sliders01 as Sliders,
   Plus,
-  X,
+  XClose as X,
   Check,
-  ListTodo,
-} from "lucide-react";
+  CheckSquare as ListTodo,
+} from "@untitledui/icons";
 import { format, formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
 
 interface TaskPropertiesProps {

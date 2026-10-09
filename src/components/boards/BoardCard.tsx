@@ -8,7 +8,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Trash2, LayoutGrid, LogOut } from "lucide-react";
+import {
+  DotsHorizontal as MoreHorizontal,
+  Edit01 as Pencil,
+  Trash01 as Trash2,
+  LayoutGrid01 as LayoutGrid,
+  LogOut01 as LogOut,
+} from "@untitledui/icons";
 import { formatDistanceToNow } from "date-fns";
 import { BoardHeroImage } from "./BoardHeroImage";
 import { useAuth } from "@/contexts/AuthContext";

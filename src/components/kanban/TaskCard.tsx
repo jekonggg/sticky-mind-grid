@@ -1,7 +1,13 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Task } from "@/types/task";
-import { GripVertical, Paperclip, FileText, Smile, CheckSquare } from "lucide-react";
+import {
+  DotsGrid as GripVertical,
+  Attachment01 as Paperclip,
+  File06 as FileText,
+  FaceSmile as Smile,
+  CheckSquare,
+} from "@untitledui/icons";
 import { format } from "date-fns";
 import { getProgressColor } from "@/utils/taskUtils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

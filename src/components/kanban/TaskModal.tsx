@@ -23,23 +23,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Trash2,
+  Trash01 as Trash2,
   ImagePlus,
-  X,
+  XClose as X,
   Check,
-  FileText,
-  User,
-  Users,
+  File06 as FileText,
+  User01 as User,
+  Users01 as Users,
   Eye,
   CheckSquare,
   Square,
-  Tag as TagIcon,
+  Tag01 as TagIcon,
   Plus,
   Calendar,
   AlertCircle,
   Clock,
-  Sparkles,
-} from "lucide-react";
+  Stars01 as Sparkles,
+} from "@untitledui/icons";
 import { EmojiSelector } from "../common/EmojiSelector";
 import { TaskComments } from "./TaskComments";
 import { fileApi } from "@/services/fileApi";

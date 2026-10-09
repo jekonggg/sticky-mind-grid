@@ -1,6 +1,12 @@
 import React, { useState } from "react";
 import { ChecklistItem } from "@/types/task";
-import { CheckSquare, Square, Plus, Trash2, CheckCircle2 } from "lucide-react";
+import {
+  CheckSquare,
+  Square,
+  Plus,
+  Trash01 as Trash2,
+  CheckCircle as CheckCircle2,
+} from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 

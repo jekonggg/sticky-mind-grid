@@ -11,7 +11,7 @@ import { TaskAttachments } from "./TaskAttachments";
 import { TaskActivityLog } from "./TaskActivityLog";
 import { TaskComments } from "../kanban/TaskComments";
 import { formatDistanceToNow } from "date-fns";
-import { Clock, Loader2, Check, Cloud } from "lucide-react";
+import { Clock, Loading01 as Loader2, Check, Cloud01 as Cloud } from "@untitledui/icons";
 import { toast } from "sonner";
 
 interface TaskDetailWorkspaceProps {

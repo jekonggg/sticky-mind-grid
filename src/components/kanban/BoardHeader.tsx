@@ -23,24 +23,24 @@ import { LatestChangesPanel } from "./LatestChangesPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import {
-  Home,
-  Search,
-  LayoutGrid,
+  Home01 as Home,
+  SearchLg as Search,
+  LayoutGrid01 as LayoutGrid,
   ChevronDown,
   Check,
   Plus,
-  LogOut,
-  User,
-  Kanban,
-  Sparkles,
-  Settings,
-  Moon,
+  LogOut01 as LogOut,
+  User01 as User,
+  Columns03 as Kanban,
+  Stars01 as Sparkles,
+  Settings01 as Settings,
+  Moon01 as Moon,
   Sun,
   Palette,
-  History,
-  Sliders,
-  Menu,
-} from "lucide-react";
+  ClockRewind as History,
+  Sliders01 as Sliders,
+  Menu01 as Menu,
+} from "@untitledui/icons";
 import { toast } from "sonner";
 import { useLayout } from "@/contexts/LayoutContext";
 

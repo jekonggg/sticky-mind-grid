@@ -1,6 +1,16 @@
 import { Task, Column } from "@/types/task";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, startOfDay, endOfDay, setHours, getHours } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutGrid, Columns, Square, CheckSquare, Paperclip, FileText } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Calendar as CalendarIcon,
+  LayoutGrid01 as LayoutGrid,
+  Columns03 as Columns,
+  Square,
+  CheckSquare,
+  Attachment01 as Paperclip,
+  File06 as FileText,
+} from "@untitledui/icons";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

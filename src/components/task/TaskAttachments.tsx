@@ -1,6 +1,16 @@
 import React, { useRef, useState } from "react";
 import { Attachment } from "@/types/task";
-import { Paperclip, Upload, Trash2, Download, ExternalLink, Image as ImageIcon, FileText, Loader2, Plus } from "lucide-react";
+import {
+  Attachment01 as Paperclip,
+  Upload01 as Upload,
+  Trash01 as Trash2,
+  Download01 as Download,
+  LinkExternal01 as ExternalLink,
+  Image01 as ImageIcon,
+  File06 as FileText,
+  Loading01 as Loader2,
+  Plus,
+} from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { fileApi } from "@/services/fileApi";
 import { toast } from "sonner";

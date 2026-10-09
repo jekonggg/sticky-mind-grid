@@ -4,7 +4,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { Task, TaskStatus } from "@/types/task";
 import { TaskCard } from "./TaskCard";
 import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
+import { Plus } from "@untitledui/icons";
 
 interface KanbanColumnProps {
   id: TaskStatus;

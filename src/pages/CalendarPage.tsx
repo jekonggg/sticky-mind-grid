@@ -16,12 +16,14 @@ import {
   Clock,
   AlertCircle,
   Plus,
-  CheckCircle2,
-  Sparkles,
-} from "lucide-react";
+  CheckCircle as CheckCircle2,
+  Stars01 as Sparkles,
+} from "@untitledui/icons";
 import { TaskModal } from "@/components/kanban/TaskModal";
+import { TaskDetailWorkspace } from "@/components/task/TaskDetailWorkspace";
 import { toast } from "sonner";
 import { CalendarPageSkeleton } from "@/components/skeletons";
+import { BoardMember } from "@/types/board";
 
 const formatLocalDate = (d: Date | string | null | undefined): string => {
   if (!d) return "";
@@ -41,6 +43,7 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(new Date());
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   // Fetch Boards
   const { data: boards = [] } = useQuery<Board[]>({
@@ -52,6 +55,46 @@ export default function CalendarPage() {
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ["globalTasks"],
     queryFn: () => taskApi.getTasks(),
+  });
+
+  const selectedTask = useMemo(() => {
+    if (!selectedTaskId) return null;
+    return tasks.find((t) => t.id === selectedTaskId) || null;
+  }, [tasks, selectedTaskId]);
+
+  const activeTaskBoard = useMemo(() => {
+    if (!selectedTask) return null;
+    return (
+      boards.find((b) => b.id === selectedTask.boardId) || {
+        id: selectedTask.boardId,
+        name: selectedTask.boardName || "Workspace Board",
+        emoji: selectedTask.boardEmoji || "📋",
+        color: "#3b82f6",
+        ownerId: selectedTask.createdBy || "",
+        columns: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+    );
+  }, [boards, selectedTask]);
+
+  const { data: activeTaskBoardMembers = [] } = useQuery<BoardMember[]>({
+    queryKey: ["boardMembers", activeTaskBoard?.id],
+    queryFn: () =>
+      activeTaskBoard?.id ? boardApi.getMembers(activeTaskBoard.id) : Promise.resolve([]),
+    enabled: !!activeTaskBoard?.id,
+  });
+
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      taskApi.updateTask(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
+      toast.success("Task updated");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to update task");
+    },
   });
 
   const createTaskMutation = useMutation({
@@ -288,9 +331,9 @@ export default function CalendarPage() {
                           key={task.id}
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/boards/${task.boardId}/tasks/${task.id}`);
+                            setSelectedTaskId(task.id);
                           }}
-                          className="px-1.5 py-0.5 rounded text-[10px] font-semibold truncate flex items-center gap-1 bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20"
+                          className="px-1.5 py-0.5 rounded text-[10px] font-semibold truncate flex items-center gap-1 bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20 cursor-pointer"
                           title={`${task.title} (${task.boardName || "Board"})`}
                         >
                           <span>{task.emoji || "📌"}</span>
@@ -345,7 +388,7 @@ export default function CalendarPage() {
                   {selectedDayTasks.map((t) => (
                     <div
                       key={t.id}
-                      onClick={() => navigate(`/boards/${t.boardId}/tasks/${t.id}`)}
+                      onClick={() => setSelectedTaskId(t.id)}
                       className="p-2.5 rounded-xl bg-muted/40 hover:bg-muted/70 transition-colors cursor-pointer text-xs space-y-1"
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -386,7 +429,7 @@ export default function CalendarPage() {
                   {overdueTasks.slice(0, 6).map((task) => (
                     <div
                       key={task.id}
-                      onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
+                      onClick={() => setSelectedTaskId(task.id)}
                       className="p-2.5 rounded-xl bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/20 transition-colors cursor-pointer text-xs space-y-1"
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -414,6 +457,48 @@ export default function CalendarPage() {
           </div>
         </div>
       </main>
+
+      {/* Screen-Wide Backdrop Dimming Overlay when Task Drawer is Open */}
+      {selectedTask && activeTaskBoard && (
+        <div
+          data-testid="task-drawer-backdrop"
+          aria-label="Close task details"
+          onClick={() => setSelectedTaskId(null)}
+          className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-[1.5px] z-40 transition-opacity animate-in fade-in duration-200 cursor-pointer"
+        />
+      )}
+
+      {/* Notion-Style Right-Side Task Detail Workspace Drawer */}
+      {selectedTask && activeTaskBoard && (
+        <aside
+          data-testid="task-detail-drawer"
+          className="fixed inset-y-0 right-0 w-full sm:w-[540px] md:w-[620px] lg:w-[720px] xl:w-[780px] border-l border-border bg-background shadow-2xl h-full overflow-hidden flex flex-col z-50 transition-all duration-200 animate-in slide-in-from-right duration-250 ease-out"
+        >
+          <TaskDetailWorkspace
+            task={selectedTask}
+            board={activeTaskBoard}
+            members={activeTaskBoardMembers}
+            readOnly={false}
+            onClose={() => setSelectedTaskId(null)}
+            onUpdateTask={async (updates) => {
+              await updateTaskMutation.mutateAsync({
+                id: selectedTask.id,
+                data: updates,
+              });
+            }}
+            onDeleteTask={async (id) => {
+              try {
+                await taskApi.deleteTask(id);
+                queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
+                setSelectedTaskId(null);
+                toast.success("Task deleted");
+              } catch (err: any) {
+                toast.error(err.message || "Failed to delete task");
+              }
+            }}
+          />
+        </aside>
+      )}
 
       {/* Task Creation Modal */}
       {activeTargetBoard && (

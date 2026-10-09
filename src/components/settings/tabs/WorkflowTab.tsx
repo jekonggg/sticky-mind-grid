@@ -9,16 +9,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Kanban,
-  ListFilter,
+  Columns03 as Kanban,
+  FilterLines as ListFilter,
   Calendar,
-  FileText,
-  LayoutDashboard,
-  Percent,
-  Trash2,
-  Sliders,
-  LucideIcon,
-} from "lucide-react";
+  File06 as FileText,
+  LayoutGrid01 as LayoutDashboard,
+  Percent01 as Percent,
+  Trash01 as Trash2,
+  Sliders01 as Sliders,
+} from "@untitledui/icons";
 import { BoardViewMode } from "@/types/settings";
 
 export function WorkflowTab() {

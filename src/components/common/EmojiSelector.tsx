@@ -1,6 +1,6 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Smile } from "lucide-react";
+import { FaceSmile as Smile } from "@untitledui/icons";
 
 interface EmojiSelectorProps {
   currentEmoji?: string;

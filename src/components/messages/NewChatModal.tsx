@@ -14,7 +14,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, UserPlus, Users, MessageSquare, Loader2, Check } from "lucide-react";
+import {
+  SearchLg as Search,
+  UserPlus01 as UserPlus,
+  Users01 as Users,
+  MessageChatSquare as MessageSquare,
+  Loading01 as Loader2,
+  Check,
+} from "@untitledui/icons";
 import { authApi } from "@/services/authApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { messageApi } from "@/services/messageApi";

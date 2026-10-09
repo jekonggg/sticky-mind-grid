@@ -13,21 +13,21 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Users,
-  Mail,
+  Users01 as Users,
+  Mail01 as Mail,
   Check,
-  X,
-  Shield,
-  User,
+  XClose as X,
+  Shield01 as Shield,
+  User01 as User,
   Eye,
-  MessageSquare,
+  MessageChatSquare as MessageSquare,
   Plus,
-  Search,
-  LayoutGrid,
-  Loader2,
-  Sparkles,
-  ExternalLink,
-} from "lucide-react";
+  SearchLg as Search,
+  LayoutGrid01 as LayoutGrid,
+  Loading01 as Loader2,
+  Stars01 as Sparkles,
+  LinkExternal01 as ExternalLink,
+} from "@untitledui/icons";
 import { InviteMemberDialog } from "@/components/board/InviteMemberDialog";
 import { toast } from "sonner";
 import { TeamsPageSkeleton } from "@/components/skeletons";
@@ -318,9 +318,39 @@ export default function TeamsPage() {
           </div>
 
           {filteredTeammates.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl bg-card border border-border/60 text-muted-foreground text-xs">
-              No teammates found matching "{search}".
-            </div>
+            search.trim() ? (
+              <div className="p-12 text-center rounded-2xl bg-card border border-border/60 text-muted-foreground text-xs space-y-3">
+                <p>No teammates found matching &quot;{search}&quot;.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSearch("")}
+                  className="h-7 text-xs font-semibold cursor-pointer"
+                >
+                  Clear search
+                </Button>
+              </div>
+            ) : (
+              <div className="p-12 text-center rounded-2xl bg-card border border-border/60 flex flex-col items-center justify-center space-y-3">
+                <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+                  <Users className="h-6 w-6" />
+                </div>
+                <div className="space-y-1 max-w-sm text-center">
+                  <h3 className="text-sm font-bold text-foreground">No teammates found</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Invite colleagues and collaborators to your workspace boards to start working together.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => handleOpenInvite()}
+                  className="h-8 gap-1.5 text-xs font-semibold cursor-pointer shadow-xs"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Invite Teammate
+                </Button>
+              </div>
+            )
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredTeammates.map((teammate) => (

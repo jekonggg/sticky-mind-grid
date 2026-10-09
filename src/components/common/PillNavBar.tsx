@@ -1,12 +1,11 @@
 import React from "react";
-import { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export interface PillNavItem<T extends string = string> {
   id: T;
   label: string;
-  icon: LucideIcon;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   badge?: number | string;
 }
 

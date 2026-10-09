@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loading01 as Loader2 } from "@untitledui/icons";
 
 interface OAuthButtonsProps {
   mode?: "login" | "register";

@@ -1,7 +1,7 @@
 import { Task, TaskStatus, CreateTaskData } from "@/types/task";
 import { Board } from "@/types/board";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Circle, Clock, AlertCircle } from "lucide-react";
+import { CheckCircle as CheckCircle2, Circle, Clock, AlertCircle } from "@untitledui/icons";
 
 interface BoardOverviewProps {
   board: Board;

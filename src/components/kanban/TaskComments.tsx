@@ -8,7 +8,13 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, Send, Trash2, AtSign, Loader2 } from "lucide-react";
+import {
+  MessageChatSquare as MessageSquare,
+  Send01 as Send,
+  Trash01 as Trash2,
+  AtSign,
+  Loading01 as Loader2,
+} from "@untitledui/icons";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { TaskCommentsSkeleton } from "@/components/skeletons";

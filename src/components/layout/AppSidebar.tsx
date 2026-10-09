@@ -23,36 +23,39 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Home,
-  LayoutDashboard,
-  Kanban,
+  Home01 as Home,
+  LayoutGrid01 as LayoutDashboard,
+  Columns03 as Kanban,
   CheckSquare,
-  CalendarDays,
-  Users,
-  Settings,
-  FolderKanban,
+  CalendarDate as CalendarDays,
+  Users01 as Users,
+  Settings01 as Settings,
+  Folder as FolderKanban,
   FolderLock,
-  FileText,
+  File06 as FileText,
   Plus,
   ChevronDown,
-  ChevronRight,
   Sun,
-  Moon,
-  Laptop,
-  LogOut,
-  PanelLeftClose,
-  PanelLeft,
-  Sparkles,
-  Search,
-  CheckCircle2,
-  FileSpreadsheet,
-  StickyNote,
-  MessageSquare,
-} from "lucide-react";
+  Moon01 as Moon,
+  Monitor01 as Laptop,
+  LogOut01 as LogOut,
+  LayoutLeft as PanelLeft,
+  LayoutLeft as PanelLeftClose,
+  Stars01 as Sparkles,
+  SearchLg as Search,
+  CheckCircle as CheckCircle2,
+  File02 as FileSpreadsheet,
+  File06 as StickyNote,
+  MessageChatSquare as MessageSquare,
+} from "@untitledui/icons";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { BoardModal } from "@/components/boards/BoardModal";
 import { NoteModal } from "@/components/documents/NoteModal";
-import { PersonalScratchpadModal } from "@/components/documents/PersonalScratchpadModal";
+import {
+  PersonalScratchpadModal,
+  getPersonalNotesCount,
+} from "@/components/documents/PersonalScratchpadModal";
+import { NewChatModal } from "@/components/messages/NewChatModal";
 import { SettingsTab } from "@/types/settings";
 import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { toast } from "sonner";
@@ -90,10 +93,27 @@ export function AppSidebar({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
-  const [isAddBoardVisible, setIsAddBoardVisible] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isScratchpadOpen, setIsScratchpadOpen] = useState(false);
+  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+
+  // Personal Notes count state & event listener
+  const [personalNotesCount, setPersonalNotesCount] = useState<number>(() =>
+    getPersonalNotesCount()
+  );
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setPersonalNotesCount(getPersonalNotesCount());
+    };
+    window.addEventListener("personal_notes_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("personal_notes_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
 
   // Sync section expansion with localStorage
   useEffect(() => {
@@ -349,15 +369,9 @@ export function AppSidebar({
                     </div>
 
                     {!isCollapsed && (
-                      <div className="flex items-center gap-1 ml-auto">
-                        {/* Smooth slide-in Add Board button */}
-                        <div
-                          className={`flex items-center overflow-hidden transition-all duration-300 ease-out ${
-                            isAddBoardVisible
-                              ? "max-w-[28px] opacity-100 translate-x-0"
-                              : "max-w-0 opacity-0 translate-x-2 pointer-events-none"
-                          }`}
-                        >
+                      <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                        {/* Smooth hover reveal Add Board button */}
+                        <div className="flex items-center overflow-hidden transition-all duration-200 max-w-0 opacity-0 group-hover:max-w-[28px] group-hover:opacity-100 shrink-0">
                           <button
                             type="button"
                             onClick={(e) => {
@@ -372,15 +386,10 @@ export function AppSidebar({
                           </button>
                         </div>
 
-                        {/* Number Notification Badge (Clicking toggles add button slide-out) */}
+                        {/* Number Notification Badge - Rightmost position */}
                         <Badge
                           variant="secondary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsAddBoardVisible((prev) => !prev);
-                          }}
-                          className="text-[10px] px-1.5 py-0 h-4 font-bold cursor-pointer hover:bg-muted/80 transition-colors select-none shrink-0"
-                          title="Click to toggle add board button"
+                          className="text-[10px] px-1.5 py-0 h-4 font-bold select-none shrink-0"
                         >
                           {boards.length}
                         </Badge>
@@ -447,7 +456,7 @@ export function AppSidebar({
                     {!isCollapsed && <span>Tasks</span>}
                   </div>
                   {!isCollapsed && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-bold">
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-bold shrink-0">
                       {allTasks.length}
                     </Badge>
                   )}
@@ -490,7 +499,7 @@ export function AppSidebar({
                     {!isCollapsed && <span>Teams</span>}
                   </div>
                   {!isCollapsed && invitations.length > 0 && (
-                    <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0 h-4 font-bold">
+                    <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0 h-4 font-bold shrink-0">
                       {invitations.length}
                     </Badge>
                   )}
@@ -502,7 +511,7 @@ export function AppSidebar({
             {/* Messages */}
             <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
               <TooltipTrigger asChild>
-                <button
+                <div
                   onClick={() => navigate("/messages")}
                   className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
                     isMessagesActive
@@ -525,12 +534,34 @@ export function AppSidebar({
                     </div>
                     {!isCollapsed && <span>Messages</span>}
                   </div>
-                  {!isCollapsed && unreadMessagesCount > 0 && (
-                    <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0 h-4 font-bold shadow-2xs animate-pulse">
-                      {unreadMessagesCount}
-                    </Badge>
+
+                  {!isCollapsed && (
+                    <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                      {/* Smooth hover reveal New Chat button */}
+                      <div className="flex items-center overflow-hidden transition-all duration-200 max-w-0 opacity-0 group-hover:max-w-[28px] group-hover:opacity-100 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsNewChatModalOpen(true);
+                          }}
+                          className="h-5 w-5 flex items-center justify-center rounded bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground transition-colors cursor-pointer shadow-2xs shrink-0"
+                          title="New Message / Chat"
+                          aria-label="New Message / Chat"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </div>
+
+                      {/* Number Notification Badge - Rightmost position */}
+                      {unreadMessagesCount > 0 && (
+                        <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0 h-4 font-bold shadow-2xs animate-pulse select-none shrink-0">
+                          {unreadMessagesCount}
+                        </Badge>
+                      )}
+                    </div>
                   )}
-                </button>
+                </div>
               </TooltipTrigger>
               {isCollapsed && (
                 <TooltipContent side="right">
@@ -580,27 +611,31 @@ export function AppSidebar({
                     </div>
 
                     {!isCollapsed && (
-                      <div className="flex items-center gap-1.5">
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-bold">
+                      <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                        {/* Smooth hover reveal Add Document button */}
+                        <div className="flex items-center overflow-hidden transition-all duration-200 max-w-0 opacity-0 group-hover:max-w-[28px] group-hover:opacity-100 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedNote(null);
+                              setIsNoteModalOpen(true);
+                            }}
+                            className="h-5 w-5 flex items-center justify-center rounded bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground transition-colors cursor-pointer shadow-2xs shrink-0"
+                            title="New Note / Document"
+                            aria-label="New Note / Document"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+
+                        {/* Number Notification Badge - Rightmost position */}
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] px-1.5 py-0 h-4 font-bold select-none shrink-0"
+                        >
                           {notes.length}
                         </Badge>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedNote(null);
-                            setIsNoteModalOpen(true);
-                          }}
-                          className="h-5 w-5 flex items-center justify-center rounded hover:bg-background text-muted-foreground hover:text-primary transition-colors"
-                          title="New Note / Document"
-                        >
-                          <Plus className="h-3 w-3" />
-                        </button>
-                        {isBoardFilesExpanded ? (
-                          <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                        ) : (
-                          <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                        )}
                       </div>
                     )}
                   </div>
@@ -636,47 +671,62 @@ export function AppSidebar({
 
             {/* Personal Files */}
             <div>
-              <div
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
-                  isCollapsed ? "justify-center px-0" : ""
-                }`}
-                onClick={() => !isCollapsed && setIsPersonalFilesExpanded(!isPersonalFilesExpanded)}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <FolderLock className="h-4 w-4 shrink-0 text-amber-500/80" />
-                  {!isCollapsed && <span className="truncate">Personal Files</span>}
-                </div>
+              <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
+                <TooltipTrigger asChild>
+                  <div
+                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group ${
+                      isCollapsed ? "justify-center px-0" : ""
+                    }`}
+                    onClick={() => !isCollapsed && setIsPersonalFilesExpanded(!isPersonalFilesExpanded)}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <FolderLock className="h-4 w-4 shrink-0 text-amber-500/80" />
+                      {!isCollapsed && <span className="truncate">Personal Files</span>}
+                    </div>
 
-                {!isCollapsed && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsScratchpadOpen(true);
-                      }}
-                      className="h-5 w-5 flex items-center justify-center rounded hover:bg-background text-muted-foreground hover:text-amber-500 transition-colors"
-                      title="New Personal Scratchpad Note"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                    {isPersonalFilesExpanded ? (
-                      <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                    {!isCollapsed && (
+                      <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                        {/* Smooth hover reveal Add Scratchpad Note button */}
+                        <div className="flex items-center overflow-hidden transition-all duration-200 max-w-0 opacity-0 group-hover:max-w-[28px] group-hover:opacity-100 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsScratchpadOpen(true);
+                            }}
+                            className="h-5 w-5 flex items-center justify-center rounded bg-amber-500/10 hover:bg-amber-500 text-amber-600 dark:text-amber-400 hover:text-white transition-colors cursor-pointer shadow-2xs shrink-0"
+                            title="New Personal Scratchpad Note"
+                            aria-label="New Personal Scratchpad Note"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+
+                        {/* Number Notification Badge - Rightmost position */}
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] px-1.5 py-0 h-4 font-bold select-none shrink-0"
+                        >
+                          {personalNotesCount}
+                        </Badge>
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
+                </TooltipTrigger>
+                {isCollapsed && <TooltipContent side="right">Personal Files ({personalNotesCount})</TooltipContent>}
+              </Tooltip>
 
               {!isCollapsed && isPersonalFilesExpanded && (
                 <div className="pl-4 pr-1 py-1 space-y-0.5 border-l border-border/40 ml-4 my-1">
                   <button
                     onClick={() => setIsScratchpadOpen(true)}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors group cursor-pointer text-left"
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-amber-600 dark:text-amber-400 font-semibold hover:bg-amber-500/10 transition-colors group cursor-pointer text-left"
                   >
                     <StickyNote className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                    <span className="truncate">Personal Scratchpad</span>
+                    <span className="truncate flex-1">Open Scratchpad</span>
+                    <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                      {personalNotesCount}
+                    </Badge>
                   </button>
                 </div>
               )}
@@ -762,7 +812,19 @@ export function AppSidebar({
 
       <PersonalScratchpadModal
         open={isScratchpadOpen}
-        onClose={() => setIsScratchpadOpen(false)}
+        onClose={() => {
+          setIsScratchpadOpen(false);
+          setPersonalNotesCount(getPersonalNotesCount());
+        }}
+      />
+
+      <NewChatModal
+        open={isNewChatModalOpen}
+        onOpenChange={setIsNewChatModalOpen}
+        onSelectConversation={(id) => {
+          setIsNewChatModalOpen(false);
+          navigate(`/messages/${id}`);
+        }}
       />
     </>
   );

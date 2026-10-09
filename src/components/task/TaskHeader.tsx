@@ -1,6 +1,18 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Trash2, Copy, Check, Sparkles, Image as ImageIcon, Smile, Share2, MoreHorizontal, Loader2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Trash01 as Trash2,
+  Copy01 as Copy,
+  Check,
+  Stars01 as Sparkles,
+  Image01 as ImageIcon,
+  FaceSmile as Smile,
+  Share01 as Share2,
+  DotsHorizontal as MoreHorizontal,
+  Loading01 as Loader2,
+  XClose as X,
+} from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmojiSelector } from "../common/EmojiSelector";

@@ -1,7 +1,7 @@
 import React from "react";
 import { Activity } from "@/types/task";
 import { formatDistanceToNow } from "date-fns";
-import { PlusCircle, ArrowRightCircle, Edit3, Trash2 } from "lucide-react";
+import { PlusCircle, ArrowCircleRight as ArrowRightCircle, Edit03 as Edit3, Trash01 as Trash2 } from "@untitledui/icons";
 
 interface ActivityItemProps {
   activity: Activity;

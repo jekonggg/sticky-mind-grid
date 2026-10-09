@@ -13,7 +13,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, RotateCcw, Search, AlertTriangle, CheckCircle2 } from "lucide-react";
+import {
+  Trash01 as Trash2,
+  RefreshCcw01 as RotateCcw,
+  SearchLg as Search,
+  AlertTriangle,
+  CheckCircle as CheckCircle2,
+} from "@untitledui/icons";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 

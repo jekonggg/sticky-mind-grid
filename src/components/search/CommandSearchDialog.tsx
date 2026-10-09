@@ -12,20 +12,20 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Search,
-  LayoutGrid,
+  SearchLg as Search,
+  LayoutGrid01 as LayoutGrid,
   CheckSquare,
   Calendar,
-  Users,
-  MessageSquare,
-  Settings,
-  Sparkles,
+  Users01 as Users,
+  MessageChatSquare as MessageSquare,
+  Settings01 as Settings,
+  Stars01 as Sparkles,
   Plus,
   ArrowRight,
   Sun,
-  Moon,
-  Laptop,
-} from "lucide-react";
+  Moon01 as Moon,
+  Monitor01 as Laptop,
+} from "@untitledui/icons";
 import { Badge } from "@/components/ui/badge";
 
 interface CommandSearchDialogProps {

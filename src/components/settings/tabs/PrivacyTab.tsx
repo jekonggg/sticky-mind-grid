@@ -5,15 +5,15 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
-  Download,
-  Trash2,
-  Shield,
-  Key,
-  Smartphone,
-  Loader2,
-  FileJson,
-  CheckCircle2,
-} from "lucide-react";
+  Download01 as Download,
+  Trash01 as Trash2,
+  Shield01 as Shield,
+  Key01 as Key,
+  Phone01 as Smartphone,
+  Loading01 as Loader2,
+  FileCode01 as FileJson,
+  CheckCircle as CheckCircle2,
+} from "@untitledui/icons";
 
 export function PrivacyTab() {
   const { resetLocalSettings } = useSettings();

@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UserPlus, Loader2, Search, UserCheck } from "lucide-react";
+import { UserPlus01 as UserPlus, Loading01 as Loader2, SearchLg as Search, UserCheck01 as UserCheck } from "@untitledui/icons";
 import { boardApi } from "@/services/boardApi";
 import { authApi } from "@/services/authApi";
 import { toast } from "sonner";

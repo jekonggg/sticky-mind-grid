@@ -25,7 +25,19 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BoardCardSkeleton, BoardsOverviewSkeleton } from "@/components/skeletons";
-import { Plus, Search, LayoutGrid, Mail, Check, X, Shield, User, Eye, Loader2, Sparkles } from "lucide-react";
+import {
+  Plus,
+  SearchLg as Search,
+  LayoutGrid01 as LayoutGrid,
+  Mail01 as Mail,
+  Check,
+  XClose as X,
+  Shield01 as Shield,
+  User01 as User,
+  Eye,
+  Loading01 as Loader2,
+  Stars01 as Sparkles,
+} from "@untitledui/icons";
 import { BoardsHeroBanner } from "@/components/boards/BoardsHeroBanner";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";

@@ -10,16 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  StickyNote,
+  File06 as StickyNote,
   Plus,
-  Trash2,
-  Copy,
+  Trash01 as Trash2,
+  Copy01 as Copy,
   Check,
-  Sparkles,
-  Search,
+  Stars01 as Sparkles,
+  SearchLg as Search,
   FolderLock,
-  Pin,
-} from "lucide-react";
+  Pin01 as Pin,
+} from "@untitledui/icons";
 import { toast } from "sonner";
 
 export interface PersonalNote {
@@ -61,6 +61,15 @@ const DEFAULT_NOTES: PersonalNote[] = [
   },
 ];
 
+export function getPersonalNotesCount(): number {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved).length : DEFAULT_NOTES.length;
+  } catch {
+    return DEFAULT_NOTES.length;
+  }
+}
+
 interface PersonalScratchpadModalProps {
   open: boolean;
   onClose: () => void;
@@ -86,6 +95,7 @@ export function PersonalScratchpadModal({
   // Sync to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+    window.dispatchEvent(new Event("personal_notes_updated"));
   }, [notes]);
 
   const activeNote = notes.find((n) => n.id === selectedNoteId) || notes[0];

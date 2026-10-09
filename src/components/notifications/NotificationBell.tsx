@@ -9,7 +9,17 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, CheckCheck, AtSign, UserPlus, UserMinus, MessageSquare, CheckCircle2, XCircle, LogOut } from "lucide-react";
+import {
+  Bell01 as Bell,
+  CheckDone01 as CheckCheck,
+  AtSign,
+  UserPlus01 as UserPlus,
+  UserMinus01 as UserMinus,
+  MessageChatSquare as MessageSquare,
+  CheckCircle as CheckCircle2,
+  XCircle,
+  LogOut01 as LogOut,
+} from "@untitledui/icons";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";

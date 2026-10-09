@@ -25,25 +25,25 @@ import { taskApi } from "@/services/api";
 import { Tag } from "@/types/task";
 import { toast } from "sonner";
 import {
-  Sparkles,
+  Stars01 as Sparkles,
   Wifi,
   WifiOff,
-  Shield,
-  Radio,
-  Sliders,
-  RotateCcw,
+  Shield01 as Shield,
+  Signal01 as Radio,
+  Sliders01 as Sliders,
+  RefreshCcw01 as RotateCcw,
   Zap,
-  Flame,
-  UserCheck,
+  ZapFast as Flame,
+  UserCheck01 as UserCheck,
   Eye,
-  CheckCircle2,
+  CheckCircle as CheckCircle2,
   XCircle,
-  Copy,
-  Trash2,
-  Layers,
+  Copy01 as Copy,
+  Trash01 as Trash2,
+  LayersThree01 as Layers,
   Activity,
   PlusCircle,
-} from "lucide-react";
+} from "@untitledui/icons";
 
 export function DevSuiteModal() {
   const {

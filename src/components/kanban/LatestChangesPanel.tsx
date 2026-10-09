@@ -1,7 +1,7 @@
 import React from "react";
 import { useActivity } from "@/hooks/useActivity";
 import { ActivityItem } from "./ActivityItem";
-import { History, X } from "lucide-react";
+import { ClockRewind as History, XClose as X } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 

@@ -8,14 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import {
-  User,
-  Mail,
-  KeyRound,
-  Loader2,
-  Camera,
-  Trash2,
-  CheckCircle2,
-} from "lucide-react";
+  User01 as User,
+  Mail01 as Mail,
+  Key01 as KeyRound,
+  Loading01 as Loader2,
+  Camera01 as Camera,
+  Trash01 as Trash2,
+  CheckCircle as CheckCircle2,
+} from "@untitledui/icons";
 
 export function ProfileTab({ onClose }: { onClose?: () => void }) {
   const { user, updateUser } = useAuth();

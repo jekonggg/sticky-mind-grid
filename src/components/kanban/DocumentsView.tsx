@@ -6,22 +6,22 @@ import { fileApi } from "@/services/fileApi";
 import { NoteModal } from "../documents/NoteModal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  FileText,
-  Download,
+  File06 as FileText,
+  Download01 as Download,
   Clock,
   HardDrive,
-  Filter,
+  FilterLines as Filter,
   Plus,
-  File,
-  Film,
-  Music,
+  File02 as File,
+  Film01 as Film,
+  MusicNote01 as Music,
   Eye,
-  StickyNote,
-  Pencil,
-  Trash2,
-  User,
-  Sparkles,
-} from "lucide-react";
+  File06 as StickyNote,
+  Edit01 as Pencil,
+  Trash01 as Trash2,
+  User01 as User,
+  Stars01 as Sparkles,
+} from "@untitledui/icons";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -10,7 +10,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserMinus, ShieldAlert, Crown, Shield, User, Eye, LogOut } from "lucide-react";
+import {
+  UserMinus01 as UserMinus,
+  ShieldZap as ShieldAlert,
+  Award01 as Crown,
+  Shield01 as Shield,
+  User01 as User,
+  Eye,
+  LogOut01 as LogOut,
+} from "@untitledui/icons";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { BoardMember } from "@/types/board";

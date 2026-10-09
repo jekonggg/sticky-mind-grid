@@ -141,4 +141,20 @@ describe("TasksPage", () => {
       expect(screen.queryByText("Refactor Navbar")).not.toBeInTheDocument();
     });
   });
+
+  it("opens Notion-style slide drawer when clicking a task in TasksPage", async () => {
+    renderWithProviders(<TasksPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Write Vitest Tests").length).toBeGreaterThan(0);
+    });
+
+    const taskElement = screen.getAllByText("Write Vitest Tests")[0];
+    fireEvent.click(taskElement);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("task-detail-drawer")).toBeInTheDocument();
+      expect(screen.getByTestId("task-drawer-backdrop")).toBeInTheDocument();
+    });
+  });
 });

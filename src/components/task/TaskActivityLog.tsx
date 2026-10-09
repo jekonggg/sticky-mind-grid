@@ -1,6 +1,13 @@
 import React from "react";
 import { useActivity } from "@/hooks/useActivity";
-import { History, Activity as ActivityIcon, ArrowRight, CheckCircle2, User, Clock } from "lucide-react";
+import {
+  ClockRewind as History,
+  Activity as ActivityIcon,
+  ArrowRight,
+  CheckCircle as CheckCircle2,
+  User01 as User,
+  Clock,
+} from "@untitledui/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow, format } from "date-fns";

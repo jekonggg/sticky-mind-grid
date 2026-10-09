@@ -7,13 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings } from "@/contexts/SettingsContext";
 import {
-  Search,
+  SearchLg as Search,
   Plus,
-  Users,
-  MessageSquare,
-  Sparkles,
-  Menu,
-} from "lucide-react";
+  Users01 as Users,
+  MessageChatSquare as MessageSquare,
+  Stars01 as Sparkles,
+  Menu01 as Menu,
+} from "@untitledui/icons";
 import { format, isToday, isYesterday } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLayout } from "@/contexts/LayoutContext";
@@ -142,18 +142,29 @@ export function ConversationList({
         ) : filteredConversations.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center text-muted-foreground space-y-2">
             <Sparkles className="h-8 w-8 text-muted-foreground/40 stroke-[1.5]" />
-            <p className="text-xs font-semibold text-foreground">No conversations</p>
+            <p className="text-xs font-semibold text-foreground">
+              {search.trim() ? "No chats found" : "No conversations"}
+            </p>
             <p className="text-[11px] text-muted-foreground">
               {search.trim()
-                ? "No chats matched your search."
+                ? `No chats matched "${search}".`
                 : "Start a new conversation with your teammates."}
             </p>
-            {!search.trim() && (
+            {search.trim() ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSearch("")}
+                className="text-xs h-7 rounded-xl mt-2 cursor-pointer"
+              >
+                Clear search
+              </Button>
+            ) : (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onOpenNewChat}
-                className="text-xs h-7 rounded-xl mt-2"
+                className="text-xs h-7 rounded-xl mt-2 cursor-pointer"
               >
                 <Plus className="h-3 w-3 mr-1" />
                 Start Chat

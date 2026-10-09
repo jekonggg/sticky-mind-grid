@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { boardApi } from "@/services/boardApi";
@@ -12,16 +12,18 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  LayoutGrid,
+  LayoutGrid01 as LayoutGrid,
   Clock,
-  CheckCircle2,
+  CheckCircle as CheckCircle2,
   Plus,
   FolderLock,
-} from "lucide-react";
+} from "@untitledui/icons";
 import { BoardModal } from "@/components/boards/BoardModal";
 import { TaskModal } from "@/components/kanban/TaskModal";
+import { TaskDetailWorkspace } from "@/components/task/TaskDetailWorkspace";
 import { PersonalScratchpadModal } from "@/components/documents/PersonalScratchpadModal";
 import { Task, CreateTaskData } from "@/types/task";
+import { BoardMember } from "@/types/board";
 import { toast } from "sonner";
 import { DashboardSkeleton } from "@/components/skeletons";
 
@@ -47,6 +49,29 @@ export default function DashboardPage() {
   const { data: tasks = [], isLoading: isTasksLoading } = useQuery({
     queryKey: ["globalTasks"],
     queryFn: () => taskApi.getTasks(),
+  });
+
+  const activeTaskBoard = useMemo(() => {
+    if (!selectedTask) return null;
+    return (
+      boards.find((b: any) => b.id === selectedTask.boardId) || {
+        id: selectedTask.boardId,
+        name: selectedTask.boardName || "Workspace Board",
+        emoji: selectedTask.boardEmoji || "📋",
+        color: "#3b82f6",
+        ownerId: selectedTask.createdBy || "",
+        columns: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+    );
+  }, [boards, selectedTask]);
+
+  const { data: activeTaskBoardMembers = [] } = useQuery<BoardMember[]>({
+    queryKey: ["boardMembers", activeTaskBoard?.id],
+    queryFn: () =>
+      activeTaskBoard?.id ? boardApi.getMembers(activeTaskBoard.id) : Promise.resolve([]),
+    enabled: !!activeTaskBoard?.id,
   });
 
   // Task update mutation
@@ -305,7 +330,7 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={task.id}
-                      onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
+                      onClick={() => setSelectedTask(task)}
                       className="p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-all flex items-center justify-between gap-3 cursor-pointer group"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -394,7 +419,7 @@ export default function DashboardPage() {
                 {upcomingDeadlines.map((task) => (
                   <div
                     key={task.id}
-                    onClick={() => navigate(`/boards/${task.boardId}/tasks/${task.id}`)}
+                    onClick={() => setSelectedTask(task)}
                     className="flex items-center justify-between p-2.5 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-colors cursor-pointer text-xs"
                   >
                     <div className="flex items-center gap-2 min-w-0">
@@ -490,6 +515,50 @@ export default function DashboardPage() {
         open={isScratchpadOpen}
         onClose={() => setIsScratchpadOpen(false)}
       />
+
+      {/* Screen-Wide Backdrop Dimming Overlay when Task Drawer is Open */}
+      {selectedTask && activeTaskBoard && (
+        <div
+          data-testid="task-drawer-backdrop"
+          aria-label="Close task details"
+          onClick={() => setSelectedTask(null)}
+          className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-[1.5px] z-40 transition-opacity animate-in fade-in duration-200 cursor-pointer"
+        />
+      )}
+
+      {/* Notion-Style Right-Side Task Detail Workspace Drawer */}
+      {selectedTask && activeTaskBoard && (
+        <aside
+          data-testid="task-detail-drawer"
+          className="fixed inset-y-0 right-0 w-full sm:w-[540px] md:w-[620px] lg:w-[720px] xl:w-[780px] border-l border-border bg-background shadow-2xl h-full overflow-hidden flex flex-col z-50 transition-all duration-200 animate-in slide-in-from-right duration-250 ease-out"
+        >
+          <TaskDetailWorkspace
+            task={selectedTask}
+            board={activeTaskBoard}
+            members={activeTaskBoardMembers}
+            readOnly={false}
+            onClose={() => setSelectedTask(null)}
+            onUpdateTask={async (updates) => {
+              await updateTaskMutation.mutateAsync({
+                id: selectedTask.id,
+                data: updates,
+              });
+              // Keep selectedTask up-to-date with local modifications
+              setSelectedTask((prev) => (prev ? { ...prev, ...updates } : null));
+            }}
+            onDeleteTask={async (id) => {
+              try {
+                await taskApi.deleteTask(id);
+                queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
+                setSelectedTask(null);
+                toast.success("Task deleted");
+              } catch (err: any) {
+                toast.error(err.message || "Failed to delete task");
+              }
+            }}
+          />
+        </aside>
+      )}
     </div>
   );
 }

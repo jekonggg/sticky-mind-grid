@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { PillNavBar, PillNavItem } from "@/components/common/PillNavBar";
-import { LayoutGrid, List, Calendar, FileText, BarChart3, Users } from "lucide-react";
+import { LayoutGrid01 as LayoutGrid, List, Calendar, File06 as FileText, BarChart01 as BarChart3, Users01 as Users } from "@untitledui/icons";
 
 describe("PillNavBar Component", () => {
   const mockItems: PillNavItem[] = [
