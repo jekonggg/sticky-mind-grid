@@ -1,4 +1,5 @@
 import { Task, Column } from "@/types/task";
+import { Board } from "@/types/board";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, startOfDay, endOfDay, setHours, getHours } from "date-fns";
 import {
   ChevronLeft,
@@ -10,29 +11,48 @@ import {
   CheckSquare,
   Attachment01 as Paperclip,
   File06 as FileText,
+  Plus,
+  AlertCircle,
 } from "@untitledui/icons";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { getProgressColor } from "@/utils/taskUtils";
 
-interface CalendarViewProps {
+export interface CalendarViewProps {
   tasks: Task[];
   columns?: Column[];
+  boards?: Board[];
   selectedTaskId?: string | null;
   onTaskClick: (task: Task) => void;
+  onAddTask?: (date?: Date) => void;
+  scope?: "global" | "board";
+  title?: string;
+  subtitle?: string;
 }
 
 type ViewMode = "month" | "week" | "day";
 
-export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick }: CalendarViewProps) {
+export function CalendarView({
+  tasks,
+  columns = [],
+  boards = [],
+  selectedTaskId,
+  onTaskClick,
+  onAddTask,
+  scope = "board",
+  title,
+  subtitle,
+}: CalendarViewProps) {
   const { devSettings } = useDevMode();
   const { settings } = useSettings();
   const isCompact = settings.uiDensity === "compact";
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   
   // Date calculations based on viewMode
@@ -69,6 +89,19 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
     });
   };
 
+  const now = new Date();
+  const overdueTasks = tasks.filter((t) => {
+    if (!t.dueDate || t.status === "done" || t.progress === 100) return false;
+    return new Date(t.dueDate) < startOfDay(now);
+  });
+
+  const selectedDayTasks = tasks
+    .filter((task) => {
+      if (!task.dueDate) return false;
+      return isSameDay(new Date(task.dueDate), selectedDay);
+    })
+    .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
+
   // Filter tasks for the sidebar based on current view range
   const contextTasks = tasks
     .filter((task) => {
@@ -102,6 +135,7 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
 
   const handleToday = useCallback(() => {
     const today = new Date();
+    setSelectedDay(today);
     if (isSameMonth(today, currentDate) && viewMode === 'month') return;
     if (isSameDay(today, currentDate) && (viewMode === 'day' || viewMode === 'week')) return;
     setSlideDirection(today.getTime() >= currentDate.getTime() ? 1 : -1);
@@ -214,37 +248,49 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
             <CalendarIcon className="h-5 w-5" />
           </div>
           <div className="flex flex-col">
-            <div className="overflow-hidden">
-              <AnimatePresence mode="popLayout" custom={slideDirection} initial={false}>
-                <motion.h2
-                  key={getTitle()}
-                  custom={slideDirection}
-                  initial={{
-                    y: devSettings.forceReducedMotion ? 0 : slideDirection > 0 ? 8 : -8,
-                    opacity: devSettings.forceReducedMotion ? 1 : 0,
-                  }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{
-                    y: devSettings.forceReducedMotion ? 0 : slideDirection > 0 ? -8 : 8,
-                    opacity: devSettings.forceReducedMotion ? 1 : 0,
-                  }}
-                  transition={{
-                    duration: devSettings.forceReducedMotion ? 0 : 0.16,
-                    ease: "easeOut",
-                  }}
-                  className="text-xl font-black text-foreground leading-tight"
-                >
-                  {getTitle()}
-                </motion.h2>
-              </AnimatePresence>
+            {title && (
+              <div className="mb-0.5">
+                <h1 className="text-xl md:text-2xl font-black text-foreground tracking-tight leading-tight">
+                  {title}
+                </h1>
+                {subtitle && (
+                  <p className="text-xs text-muted-foreground line-clamp-1">{subtitle}</p>
+                )}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <div className="overflow-hidden">
+                <AnimatePresence mode="popLayout" custom={slideDirection} initial={false}>
+                  <motion.h2
+                    key={getTitle()}
+                    custom={slideDirection}
+                    initial={{
+                      y: devSettings.forceReducedMotion ? 0 : slideDirection > 0 ? 8 : -8,
+                      opacity: devSettings.forceReducedMotion ? 1 : 0,
+                    }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{
+                      y: devSettings.forceReducedMotion ? 0 : slideDirection > 0 ? -8 : 8,
+                      opacity: devSettings.forceReducedMotion ? 1 : 0,
+                    }}
+                    transition={{
+                      duration: devSettings.forceReducedMotion ? 0 : 0.16,
+                      ease: "easeOut",
+                    }}
+                    className={`font-black text-foreground leading-tight ${title ? "text-sm text-primary font-bold" : "text-xl"}`}
+                  >
+                    {getTitle()}
+                  </motion.h2>
+                </AnimatePresence>
+              </div>
+              <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">
+                {title ? `• ${viewMode} View` : `${viewMode} View`}
+              </span>
             </div>
-            <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">
-              {viewMode} View
-            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex bg-muted/30 p-1 rounded-lg border border-border/50">
             {[
               { id: 'month', icon: LayoutGrid, label: 'Month' },
@@ -267,7 +313,7 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
             ))}
           </div>
 
-          <div className="h-8 w-px bg-border/50 mx-1" />
+          <div className="h-8 w-px bg-border/50 mx-1 hidden sm:block" />
 
           <div className="flex items-center gap-2">
             <Button
@@ -297,6 +343,16 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
+
+          {onAddTask && (
+            <Button
+              onClick={() => onAddTask(selectedDay)}
+              className="gap-1.5 font-semibold text-xs h-9 shadow-xs"
+            >
+              <Plus className="h-4 w-4" />
+              Schedule Task
+            </Button>
+          )}
         </div>
       </div>
 
@@ -563,27 +619,40 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
                 {calendarDays.map((day) => {
                   const dayTasks = getTasksForDay(day);
                   const isToday = isSameDay(day, new Date());
+                  const isSelected = isSameDay(day, selectedDay);
                   const isCurrentMonth = isSameMonth(day, viewMonthStart);
 
                   return (
                     <div 
                       key={day.toISOString()} 
-                      className={`p-1.5 border-r border-b border-border/30 last:border-r-0 flex flex-col gap-1 transition-colors
-                        ${(!isCurrentMonth) ? "opacity-30 bg-muted/5" : "bg-card/20"}
+                      onClick={() => setSelectedDay(day)}
+                      className={`p-1.5 border-r border-b border-border/30 last:border-r-0 flex flex-col gap-1 transition-colors cursor-pointer
+                        ${(!isCurrentMonth) ? "opacity-30 bg-muted/5" : "bg-card/20 hover:bg-muted/30"}
                         ${isToday ? "bg-primary/5" : ""}
+                        ${isSelected ? "ring-2 ring-primary ring-inset bg-primary/[0.04]" : ""}
                       `}
                     >
-                      <span className={`text-[10px] font-black flex items-center justify-center w-5 h-5 rounded-full transition-colors mb-0.5
-                        ${isToday ? "bg-primary text-white" : "text-muted-foreground"}
-                      `}>
-                        {format(day, "d")}
-                      </span>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className={`text-[10px] font-black flex items-center justify-center w-5 h-5 rounded-full transition-colors
+                          ${isToday ? "bg-primary text-white" : isSelected ? "bg-primary/20 text-primary font-bold" : "text-muted-foreground"}
+                        `}>
+                          {format(day, "d")}
+                        </span>
+                        {dayTasks.length > 0 && (
+                          <span className="text-[9px] font-mono text-muted-foreground/70 font-bold hidden sm:inline">
+                            {dayTasks.length}
+                          </span>
+                        )}
+                      </div>
                       
                       <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1">
                         {dayTasks.map((task) => (
                           <div
                             key={task.id}
-                            onClick={() => onTaskClick(task)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTaskClick(task);
+                            }}
                             className="px-1.5 py-1 rounded-md border border-border/50 bg-card hover:bg-card/90 shadow-2xs cursor-pointer transition-all hover:scale-[1.02] flex items-center justify-between gap-1 text-[10px] group/m-task"
                             style={{ 
                               borderLeft: `3px solid ${
@@ -596,6 +665,11 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
                             <div className="flex items-center gap-1 min-w-0 flex-1">
                               {!devSettings.disableEmojiCustomization && task.emoji && <span className="text-xs shrink-0">{task.emoji}</span>}
                               <span className="font-bold truncate group-hover/m-task:text-primary">{task.title}</span>
+                              {scope === "global" && task.boardName && (
+                                <span className="text-[8px] font-semibold text-muted-foreground bg-muted/60 px-1 py-0.2 rounded truncate max-w-[65px] ml-auto shrink-0 hidden md:inline">
+                                  {task.boardName}
+                                </span>
+                              )}
                             </div>
                             {task.progress === 100 && (
                               <span className="text-[9px] text-emerald-500 font-bold shrink-0">✓</span>
@@ -738,78 +812,131 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
 
         {/* Sidebar Side */}
         <div className="w-full lg:w-80 flex flex-col gap-6">
-          {/* Section: Pending/Ongoing */}
-          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 flex flex-col flex-[1.5] min-h-[350px]">
-            <div className="flex items-center gap-2 mb-4 border-b border-border/50 pb-3">
-              <div className="h-8 w-1 bg-primary rounded-full" />
-              <h3 className="font-black text-sm uppercase tracking-wider">
-                {viewMode === 'month' ? format(currentDate, "MMMM") : viewMode === 'week' ? "Weekly" : "Daily"} Tasks
-              </h3>
-              <span className="ml-auto bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded-full">
-                {pendingTasks.length}
-              </span>
+          {/* Section 1: Selected Day Agenda */}
+          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 flex flex-col flex-[1.4] min-h-[300px]">
+            <div className="flex items-center justify-between mb-3 border-b border-border/50 pb-2.5">
+              <div>
+                <h3 className="font-black text-sm uppercase tracking-wider text-foreground">
+                  {format(selectedDay, "EEE, MMM d")}
+                </h3>
+                <span className="text-[10px] text-muted-foreground font-semibold">
+                  {selectedDayTasks.length} {selectedDayTasks.length === 1 ? "task" : "tasks"} scheduled
+                </span>
+              </div>
+              {onAddTask && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onAddTask(selectedDay)}
+                  className="h-7 text-xs px-2 gap-1 font-semibold"
+                >
+                  <Plus className="h-3 w-3" /> Add
+                </Button>
+              )}
             </div>
             
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-3">
-              {pendingTasks.length > 0 ? (
-                pendingTasks.map((task) => (
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2.5">
+              {selectedDayTasks.length > 0 ? (
+                selectedDayTasks.map((task) => (
                   <div
                     key={task.id}
                     onClick={() => onTaskClick(task)}
-                    className="group relative p-3 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer overflow-hidden text-xs font-bold"
+                    className="group relative p-2.5 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer overflow-hidden text-xs font-bold"
                   >
                     <div className={`absolute top-0 left-0 bottom-0 w-1 ${
-                      task.priority === 'high' ? 'bg-destructive' : 
+                      task.priority === 'urgent' ? 'bg-rose-500' :
+                      task.priority === 'high' ? 'bg-orange-500' : 
                       task.priority === 'medium' ? 'bg-amber-500' : 'bg-primary/50'
                     }`} />
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-[10px] opacity-60">
-                        {task.dueDate ? format(new Date(task.dueDate), "MMM d, h:mm aa") : "No date"}
+                        {task.dueDate ? format(new Date(task.dueDate), "h:mm aa") : "All day"}
                       </span>
-                      <span className="text-[10px] uppercase opacity-40">{task.priority}</span>
+                      <Badge variant="outline" className="text-[8px] px-1 py-0 uppercase font-mono">
+                        {task.priority}
+                      </Badge>
                     </div>
                     <div className="line-clamp-1">{task.title}</div>
+                    {task.boardName && (
+                      <span className="text-[9px] text-muted-foreground block truncate mt-0.5">
+                        {task.boardEmoji ? `${task.boardEmoji} ` : "📋 "}{task.boardName}
+                      </span>
+                    )}
                     <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
                       <div className="h-full bg-primary" style={{ width: `${task.progress}%` }} />
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center py-10 opacity-50">
-                  <p className="text-[10px] font-black uppercase tracking-widest">No pending tasks</p>
+                <div className="flex flex-col items-center justify-center h-full text-center py-8 opacity-50">
+                  <p className="text-[10px] font-black uppercase tracking-widest">No tasks scheduled for this day</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Section: Completed */}
-          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 flex flex-col flex-1 min-h-[200px]">
-            <div className="flex items-center gap-2 mb-4 border-b border-border/50 pb-3">
-              <div className="h-8 w-1 bg-green-500 rounded-full" />
-              <h3 className="font-black text-sm uppercase tracking-wider text-green-500/80">
-                Completed
+          {/* Section 2: Overdue Tasks Alert */}
+          {overdueTasks.length > 0 && (
+            <div className="bg-card/50 backdrop-blur-sm border border-rose-500/30 rounded-xl p-4 flex flex-col min-h-[170px] max-h-[250px]">
+              <div className="flex items-center gap-2 mb-3 border-b border-border/50 pb-2">
+                <AlertCircle className="h-4 w-4 text-rose-500" />
+                <h3 className="font-black text-xs uppercase tracking-wider text-rose-500">
+                  Overdue Tasks ({overdueTasks.length})
+                </h3>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2">
+                {overdueTasks.slice(0, 8).map((task) => (
+                  <div
+                    key={task.id}
+                    onClick={() => onTaskClick(task)}
+                    className="p-2 rounded-lg bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/20 transition-all cursor-pointer text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-bold text-rose-600 dark:text-rose-400 truncate">
+                        {!devSettings.disableEmojiCustomization && task.emoji && <span className="mr-1">{task.emoji}</span>}
+                        {task.title}
+                      </span>
+                      <span className="text-[9px] font-mono text-rose-500 font-bold shrink-0">
+                        {format(new Date(task.dueDate!), "MMM d")}
+                      </span>
+                    </div>
+                    {task.boardName && (
+                      <span className="text-[9px] text-muted-foreground block truncate mt-0.5">
+                        {task.boardEmoji ? `${task.boardEmoji} ` : ""}{task.boardName}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Section 3: Completed Tasks */}
+          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 flex flex-col flex-1 min-h-[150px] max-h-[200px]">
+            <div className="flex items-center gap-2 mb-3 border-b border-border/50 pb-2">
+              <div className="h-6 w-1 bg-green-500 rounded-full" />
+              <h3 className="font-black text-xs uppercase tracking-wider text-green-500/80">
+                Completed ({completedTasks.length})
               </h3>
-              <span className="ml-auto bg-green-500/10 text-green-500 text-[10px] font-black px-2 py-0.5 rounded-full">
-                {completedTasks.length}
-              </span>
             </div>
             
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2">
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-1.5">
               {completedTasks.length > 0 ? (
                 completedTasks.map((task) => (
                   <div
                     key={task.id}
                     onClick={() => onTaskClick(task)}
-                    className="p-2.5 rounded-lg border border-border/30 bg-green-500/5 hover:bg-green-500/10 transition-all cursor-pointer flex items-center gap-3 group"
+                    className="p-2 rounded-lg border border-border/30 bg-green-500/5 hover:bg-green-500/10 transition-all cursor-pointer flex items-center gap-2 group"
                   >
-                    <div className="h-5 w-5 rounded-full bg-green-500/20 flex items-center justify-center text-green-500">
+                    <div className="h-4 w-4 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 shrink-0">
                       <span className="text-[8px]">✓</span>
                     </div>
-                    <h4 className="text-[11px] font-bold text-foreground/70 line-through truncate">{task.title}</h4>
+                    <h4 className="text-[10px] font-bold text-foreground/70 line-through truncate">{task.title}</h4>
                   </div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center py-6 opacity-30">
+                <div className="flex flex-col items-center justify-center h-full text-center py-4 opacity-30">
                   <p className="text-[9px] font-black uppercase">None finished yet</p>
                 </div>
               )}

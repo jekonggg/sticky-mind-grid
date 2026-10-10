@@ -184,5 +184,56 @@ describe("CalendarView Component", () => {
 
     expect(screen.getByRole("heading", { name: nextMonthLabel })).toBeInTheDocument();
   });
+
+  it("renders global scope with custom title, schedule task button, and overdue tasks", () => {
+    const onAddTask = vi.fn();
+    const pastDate = new Date();
+    pastDate.setDate(pastDate.getDate() - 5);
+
+    const tasksWithOverdue: Task[] = [
+      ...mockTasks,
+      {
+        id: "task-overdue",
+        title: "Overdue Bug Fix",
+        boardId: "board-1",
+        boardName: "Core Platform",
+        status: "todo",
+        priority: "urgent",
+        progress: 10,
+        dueDate: pastDate,
+        attachments: [],
+        checklist: [],
+        tags: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    renderWithProviders(
+      <CalendarView
+        tasks={tasksWithOverdue}
+        onTaskClick={vi.fn()}
+        onAddTask={onAddTask}
+        scope="global"
+        title="Global Calendar"
+        subtitle="Track deadlines across all boards"
+      />
+    );
+
+    // Verifies title and subtitle
+    expect(screen.getByText("Global Calendar")).toBeInTheDocument();
+    expect(screen.getByText("Track deadlines across all boards")).toBeInTheDocument();
+
+    // Verifies Schedule Task button
+    const scheduleBtn = screen.getByRole("button", { name: /schedule task/i });
+    expect(scheduleBtn).toBeInTheDocument();
+    fireEvent.click(scheduleBtn);
+    expect(onAddTask).toHaveBeenCalled();
+
+    // Verifies Overdue Tasks section
+    expect(screen.getByText(/overdue tasks/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Overdue Bug Fix").length).toBeGreaterThanOrEqual(2);
+  });
 });
+
 

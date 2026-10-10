@@ -152,7 +152,7 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
 
                         return (
                           <div className={`flex items-center gap-1.5 ${isCompact ? "text-[11px]" : "text-xs"} font-bold text-foreground`}>
-                            {statusEmoji ? (
+                            {!devSettings.disableEmojiCustomization && statusEmoji ? (
                               <span className={`${isCompact ? "text-xs" : "text-sm"} shrink-0 leading-none`}>{statusEmoji}</span>
                             ) : (
                               <span

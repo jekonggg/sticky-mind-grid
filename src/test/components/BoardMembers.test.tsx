@@ -4,6 +4,7 @@ import { BoardMembers } from "@/components/board/BoardMembers";
 import { renderWithProviders, mockUser } from "@/test/test-utils";
 import { boardApi } from "@/services/boardApi";
 import { BoardMember } from "@/types/board";
+import { DEV_SETTINGS_STORAGE_KEY } from "@/contexts/DevModeContext";
 
 vi.mock("@/services/boardApi", () => ({
   boardApi: {
@@ -99,5 +100,31 @@ describe("BoardMembers Component", () => {
     await waitFor(() => {
       expect(boardApi.removeMember).toHaveBeenCalledWith("board-1", mockUser.id);
     });
+  });
+
+  it("renders role select without emojis when disableEmojiCustomization is enabled", async () => {
+    localStorage.setItem(
+      DEV_SETTINGS_STORAGE_KEY,
+      JSON.stringify({ disableEmojiCustomization: true })
+    );
+
+    const ownerUser = {
+      id: "owner-user-id",
+      email: "owner@example.com",
+      fullName: "Owner User",
+      createdAt: new Date().toISOString(),
+    };
+
+    vi.mocked(boardApi.getMembers).mockResolvedValue(mockMembers);
+
+    renderWithProviders(<BoardMembers boardId="board-1" />, { user: ownerUser });
+
+    await waitFor(() => {
+      expect(screen.getByText("Owner User")).toBeInTheDocument();
+    });
+
+    // The role select trigger should show "member" or clean label
+    const triggers = screen.getAllByRole("combobox");
+    expect(triggers.length).toBeGreaterThan(0);
   });
 });

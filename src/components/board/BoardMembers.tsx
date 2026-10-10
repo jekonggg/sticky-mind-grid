@@ -25,6 +25,7 @@ import { BoardMember } from "@/types/board";
 import { useActivity } from "@/hooks/useActivity";
 import { useBoards } from "@/hooks/useBoards";
 import { useNavigate } from "react-router-dom";
+import { useDevMode } from "@/contexts/DevModeContext";
 
 interface BoardMembersProps {
   boardId: string;
@@ -32,6 +33,7 @@ interface BoardMembersProps {
 
 export function BoardMembers({ boardId }: BoardMembersProps) {
   const navigate = useNavigate();
+  const { devSettings } = useDevMode();
   const { user: currentUser } = useAuth();
   const { addActivity } = useActivity();
   const { boards } = useBoards();
@@ -190,13 +192,19 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">
-                        <span className="flex items-center text-xs">🛡️ Admin</span>
+                        <span className="flex items-center text-xs">
+                          {!devSettings.disableEmojiCustomization && "🛡️ "}Admin
+                        </span>
                       </SelectItem>
                       <SelectItem value="member">
-                        <span className="flex items-center text-xs">👤 Member</span>
+                        <span className="flex items-center text-xs">
+                          {!devSettings.disableEmojiCustomization && "👤 "}Member
+                        </span>
                       </SelectItem>
                       <SelectItem value="viewer">
-                        <span className="flex items-center text-xs">👁️ Viewer</span>
+                        <span className="flex items-center text-xs">
+                          {!devSettings.disableEmojiCustomization && "👁️ "}Viewer
+                        </span>
                       </SelectItem>
                     </SelectContent>
                   </Select>

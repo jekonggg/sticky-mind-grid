@@ -24,6 +24,7 @@ import { authApi } from "@/services/authApi";
 import { toast } from "sonner";
 import { useActivity } from "@/hooks/useActivity";
 import { useBoards } from "@/hooks/useBoards";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { User } from "@/types/user";
 
 interface InviteMemberDialogProps {
@@ -43,6 +44,7 @@ export function InviteMemberDialog({
   onInvited,
   trigger,
 }: InviteMemberDialogProps) {
+  const { devSettings } = useDevMode();
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
@@ -230,19 +232,19 @@ export function InviteMemberDialog({
               <SelectContent>
                 <SelectItem value="admin">
                   <div className="flex flex-col text-left py-0.5">
-                    <span className="font-bold text-xs">🛡️ Admin</span>
+                    <span className="font-bold text-xs">{!devSettings.disableEmojiCustomization && "🛡️ "}Admin</span>
                     <span className="text-[10px] text-muted-foreground">Can manage members, states & tasks</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="member">
                   <div className="flex flex-col text-left py-0.5">
-                    <span className="font-bold text-xs">👤 Member</span>
+                    <span className="font-bold text-xs">{!devSettings.disableEmojiCustomization && "👤 "}Member</span>
                     <span className="text-[10px] text-muted-foreground">Can create, edit, move & delete tasks</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="viewer">
                   <div className="flex flex-col text-left py-0.5">
-                    <span className="font-bold text-xs">👁️ Viewer</span>
+                    <span className="font-bold text-xs">{!devSettings.disableEmojiCustomization && "👁️ "}Viewer</span>
                     <span className="text-[10px] text-muted-foreground">Read-only access (no task movements or edits)</span>
                   </div>
                 </SelectItem>

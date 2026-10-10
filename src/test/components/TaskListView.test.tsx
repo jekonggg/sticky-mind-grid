@@ -1,10 +1,14 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent } from "@testing-library/react";
 import { TaskListView } from "@/components/kanban/TaskListView";
 import { renderWithProviders } from "@/test/test-utils";
 import { Task } from "@/types/task";
+import { DEV_SETTINGS_STORAGE_KEY } from "@/contexts/DevModeContext";
 
 describe("TaskListView Component", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
   const mockTasks: Task[] = [
     {
       id: "task-1",
@@ -77,5 +81,39 @@ describe("TaskListView Component", () => {
     // Ensure "Quality Assurance" is rendered exactly, not "Qa"
     expect(screen.getByText("Quality Assurance")).toBeInTheDocument();
     expect(screen.getByText("🧪")).toBeInTheDocument();
+  });
+
+  it("hides status emoji and task emoji when disableEmojiCustomization is enabled", () => {
+    localStorage.setItem(
+      DEV_SETTINGS_STORAGE_KEY,
+      JSON.stringify({ disableEmojiCustomization: true })
+    );
+
+    const customTasks: Task[] = [
+      {
+        id: "task-qa",
+        title: "Test Task in QA",
+        emoji: "🚀",
+        boardId: "board-1",
+        status: "qa",
+        priority: "urgent",
+        progress: 90,
+        attachments: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    const mockColumns = [
+      { id: "qa", title: "Quality Assurance", emoji: "🧪", color: "#8b5cf6" },
+    ];
+
+    renderWithProviders(
+      <TaskListView tasks={customTasks} columns={mockColumns} onTaskClick={vi.fn()} />
+    );
+
+    expect(screen.getByText("Quality Assurance")).toBeInTheDocument();
+    expect(screen.queryByText("🧪")).not.toBeInTheDocument();
+    expect(screen.queryByText("🚀")).not.toBeInTheDocument();
   });
 });

@@ -39,6 +39,7 @@ import {
   AlertCircle,
   Clock,
   Stars01 as Sparkles,
+  LayoutGrid01 as LayoutGrid,
 } from "@untitledui/icons";
 import { EmojiSelector } from "../common/EmojiSelector";
 import { TaskComments } from "./TaskComments";
@@ -52,6 +53,7 @@ interface TaskModalProps {
   isOpen?: boolean;
   onClose: () => void;
   task?: Task | null;
+  initialStatus?: string;
   columns?: Column[];
   boardId?: string;
   members?: BoardMember[];
@@ -72,12 +74,15 @@ const TAG_COLORS = [
   "#ec4899", // Pink
 ];
 
+const EMPTY_COLUMNS: Column[] = [];
+
 export function TaskModal({
   open,
   isOpen,
   onClose,
   task,
-  columns = [],
+  initialStatus,
+  columns = EMPTY_COLUMNS,
   boardId,
   members = [],
   readOnly = false,
@@ -91,6 +96,9 @@ export function TaskModal({
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState("");
   const [description, setDescription] = useState("");
+  const [status, setStatus] = useState<string>(
+    task?.status || initialStatus || (columns && columns.length > 0 ? columns[0].id : "todo")
+  );
   const [priority, setPriority] = useState<Priority>("medium");
   const [dueDate, setDueDate] = useState<string>("");
   const [progress, setProgress] = useState<number>(0);
@@ -111,7 +119,7 @@ export function TaskModal({
       setBoardMembers(members);
     } else {
       const activeBoardId = boardId || task?.boardId;
-      if (activeBoardId && open) {
+      if (activeBoardId && isModalOpen) {
         boardApi
           .getMembers(activeBoardId)
           .then((data) => {
@@ -120,13 +128,14 @@ export function TaskModal({
           .catch(() => {});
       }
     }
-  }, [members, boardId, task?.boardId, open]);
+  }, [members, boardId, task?.boardId, isModalOpen]);
 
   useEffect(() => {
     if (task) {
       setTitle(task.title);
       setEmoji(task.emoji || "");
       setDescription(task.description || "");
+      setStatus(task.status || "todo");
       setPriority(task.priority || "medium");
       setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : "");
       setProgress(task.progress || 0);
@@ -138,6 +147,7 @@ export function TaskModal({
       setTitle("");
       setEmoji("");
       setDescription("");
+      setStatus(initialStatus || (columns && columns.length > 0 ? columns[0].id : "todo"));
       setPriority("medium");
       setDueDate("");
       setProgress(0);
@@ -148,7 +158,8 @@ export function TaskModal({
     }
     setNewChecklistText("");
     setIsAddingTag(false);
-  }, [task, open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task?.id, isModalOpen]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (readOnly) return;
@@ -238,7 +249,7 @@ export function TaskModal({
       emoji: devSettings.disableEmojiCustomization ? undefined : (emoji || undefined),
       description: description.trim() || undefined,
       priority,
-      status: task?.status,
+      status: status || task?.status || (columns && columns.length > 0 ? columns[0].id : "todo"),
       assignedTo: assignedTo === "unassigned" ? null : assignedTo,
       dueDate: dueDate ? new Date(dueDate) : undefined,
       progress,
@@ -550,45 +561,78 @@ export function TaskModal({
             </div>
           </div>
 
-          {/* Assignee Selection */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-primary" /> Assignee
-            </Label>
-            <Select value={assignedTo} onValueChange={setAssignedTo} disabled={readOnly}>
-              <SelectTrigger className="h-10 bg-background/50 border-border/60 text-xs">
-                <SelectValue placeholder="Assign to team member..." />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                <SelectItem value="unassigned" className="cursor-pointer">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs">
-                      <User className="h-3.5 w-3.5" />
-                    </div>
-                    <span className="text-xs font-medium">Unassigned</span>
-                  </div>
-                </SelectItem>
-                {boardMembers.map((m) => {
-                  const name = m.user?.fullName || m.user?.email || "Member";
-                  const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
-                  return (
-                    <SelectItem key={m.userId} value={m.userId} className="cursor-pointer">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar className="h-6 w-6 border border-primary/20">
-                          <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
-                            {initial}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col text-left">
-                          <span className="text-xs font-bold leading-tight">{name}</span>
-                          <span className="text-[10px] text-muted-foreground">{m.user?.email}</span>
+          {/* Stage / Column & Assignee Row */}
+          <div className={`grid ${columns && columns.length > 0 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"} gap-3`}>
+            {columns && columns.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <LayoutGrid className="h-3.5 w-3.5 text-primary" /> Stage / Column
+                </Label>
+                <Select value={status} onValueChange={setStatus} disabled={readOnly}>
+                  <SelectTrigger className="h-10 bg-background/50 border-border/60 text-xs">
+                    <SelectValue placeholder="Select column..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {columns.map((c) => (
+                      <SelectItem key={c.id} value={c.id} className="cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          {!devSettings.disableEmojiCustomization && c.emoji ? (
+                            <span className="text-sm shrink-0 leading-none">{c.emoji}</span>
+                          ) : (
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: c.color || "var(--primary)" }}
+                            />
+                          )}
+                          <span>{c.title}</span>
                         </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Assignee Selection */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5 text-primary" /> Assignee
+              </Label>
+              <Select value={assignedTo} onValueChange={setAssignedTo} disabled={readOnly}>
+                <SelectTrigger className="h-10 bg-background/50 border-border/60 text-xs">
+                  <SelectValue placeholder="Assign to team member..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  <SelectItem value="unassigned" className="cursor-pointer">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs">
+                        <User className="h-3.5 w-3.5" />
                       </div>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+                      <span className="text-xs font-medium">Unassigned</span>
+                    </div>
+                  </SelectItem>
+                  {boardMembers.map((m) => {
+                    const name = m.user?.fullName || m.user?.email || "Member";
+                    const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
+                    return (
+                      <SelectItem key={m.userId} value={m.userId} className="cursor-pointer">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="h-6 w-6 border border-primary/20">
+                            <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
+                              {initial}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col text-left">
+                            <span className="text-xs font-bold leading-tight">{name}</span>
+                            <span className="text-[10px] text-muted-foreground">{m.user?.email}</span>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Subtasks / Checklist Section */}

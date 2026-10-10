@@ -11,12 +11,13 @@ import {
   useSensors,
   closestCorners,
 } from "@dnd-kit/core";
-import { Task, TaskStatus, CreateTaskData } from "@/types/task";
+import { Task, TaskStatus, CreateTaskData, TaskFormData } from "@/types/task";
 import { useTasks } from "@/hooks/useTasks";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
 import { TrashModal } from "./TrashModal";
 import { BoardHeader } from "./BoardHeader";
+import { TaskModal } from "./TaskModal";
 import { TaskDetailWorkspace } from "../task/TaskDetailWorkspace";
 import { arrayMove } from "@dnd-kit/sortable";
 import {
@@ -121,6 +122,8 @@ export function KanbanBoard() {
     (settings.defaultBoardView as any) || "board"
   );
 
+  const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
+  const [newTaskStatus, setNewTaskStatus] = useState<string>("todo");
   const [createdDraftTask, setCreatedDraftTask] = useState<Task | null>(null);
 
   const selectedTask = useMemo(() => {
@@ -358,23 +361,36 @@ export function KanbanBoard() {
     setSelectedTaskId((prev) => (prev === task.id ? null : task.id));
   }, []);
 
-  const openNewModal = useCallback(async (targetStatus?: TaskStatus) => {
+  const openNewModal = useCallback((targetStatus?: TaskStatus) => {
     if (!permissions.canCreateTask || !board) return;
+    const defaultStatus = targetStatus || (board.columns && board.columns.length > 0 ? board.columns[0].id : "todo");
+    setNewTaskStatus(defaultStatus);
+    setIsNewTaskModalOpen(true);
+  }, [permissions.canCreateTask, board]);
+
+  const handleCreateTaskFromModal = async (data: TaskFormData) => {
     try {
-      const defaultStatus = targetStatus || (board.columns && board.columns.length > 0 ? board.columns[0].id : "todo");
       const newTask = await addTask({
-        title: "Untitled Task",
-        status: defaultStatus,
-        priority: "medium",
+        title: data.title,
+        description: data.description,
+        status: data.status || newTaskStatus,
+        priority: data.priority,
+        assignedTo: data.assignedTo,
+        dueDate: data.dueDate,
+        tags: data.tags,
+        checklist: data.checklist,
+        attachments: data.attachments,
+        emoji: data.emoji,
+        progress: data.progress,
       });
       if (newTask && newTask.id) {
-        setCreatedDraftTask(newTask);
-        setSelectedTaskId(newTask.id);
+        toast.success(`Task "${newTask.title}" created`);
       }
+      setIsNewTaskModalOpen(false);
     } catch (err: any) {
       toast.error(err.message || "Failed to create task");
     }
-  }, [permissions.canCreateTask, board, addTask]);
+  };
 
   // Filter task matching search query, assignee filter, and tag filter
   const isTaskMatchingFilters = useCallback(
@@ -486,8 +502,16 @@ export function KanbanBoard() {
         return (
           <main
             ref={scrollRef}
-            style={geom.isCustom ? { padding: `${geom.padding}px` } : undefined}
-            className={`${isCompact ? "p-2" : "p-3"} flex-1 min-h-0 overflow-x-auto overflow-y-hidden custom-scrollbar h-full density-kanban-board`}
+            style={
+              geom.isCustom
+                ? {
+                    paddingTop: `${geom.padding}px`,
+                    paddingRight: `${Math.max(geom.padding, isCompact ? 24 : 32)}px`,
+                    paddingBottom: `${geom.padding}px`,
+                  }
+                : undefined
+            }
+            className={`${isCompact ? "pl-4 md:pl-6 py-2 pr-4 md:pr-6" : "pl-6 md:pl-8 py-3 pr-6 md:pr-8"} flex-1 min-h-0 overflow-x-auto overflow-y-hidden custom-scrollbar h-full density-kanban-board`}
           >
             <DndContext
               sensors={sensors}
@@ -611,7 +635,7 @@ export function KanbanBoard() {
 
             {/* Row 2: Left-Aligned Minimalist Filter Toolbar */}
             {(activeView === "board" || activeView === "list" || activeView === "calendar") && (
-              <div className="px-6 pb-2.5 md:px-8 w-full flex items-center justify-between gap-3 flex-wrap">
+              <div className={`${isCompact ? "px-4 pb-2 md:px-6" : "px-6 pb-2.5 md:px-8"} w-full flex items-center justify-between gap-3 flex-wrap`}>
                 <div className="flex items-center gap-1.5 overflow-x-auto max-w-full custom-scrollbar shrink-0 py-0.5">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground font-semibold shrink-0 mr-0.5">
                     <Filter className="h-3.5 w-3.5" />
@@ -796,6 +820,20 @@ export function KanbanBoard() {
           </aside>
         )}
       </div>
+
+      {/* Create New Task Dialog Box */}
+      {board && isNewTaskModalOpen && (
+        <TaskModal
+          isOpen={isNewTaskModalOpen}
+          onClose={() => setIsNewTaskModalOpen(false)}
+          task={null}
+          initialStatus={newTaskStatus}
+          boardId={board.id}
+          columns={board.columns}
+          members={members}
+          onSave={handleCreateTaskFromModal}
+        />
+      )}
 
       <BoardModal
         open={isBoardModalOpen}
