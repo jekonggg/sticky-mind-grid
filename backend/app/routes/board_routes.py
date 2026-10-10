@@ -114,10 +114,13 @@ def create_board():
 def update_board(board_id):
     data = request.json
     user_id = get_jwt_identity()
-    board = BoardService.update_board(board_id, data, user_id=user_id)
-    if not board:
-        return jsonify({'error': 'Board not found'}), 404
-    return jsonify(board.to_dict()), 200
+    try:
+        board = BoardService.update_board(board_id, data, user_id=user_id)
+        if not board:
+            return jsonify({'error': 'Board not found'}), 404
+        return jsonify(board.to_dict()), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
 
 @bp.route('/<board_id>', methods=['DELETE'])
 @jwt_required()
@@ -128,12 +131,37 @@ def delete_board(board_id):
         return jsonify({'error': 'Board not found'}), 404
     return jsonify({'message': 'Board deleted successfully'}), 200
 
+@bp.route('/<board_id>/export', methods=['GET'])
+@jwt_required()
+@require_board_access('admin')
+def export_board(board_id):
+    actor_id = get_jwt_identity()
+    export_data, error = BoardService.export_board_data(board_id, actor_id=actor_id)
+    if error:
+        return jsonify({'error': error}), 400
+    return jsonify(export_data), 200
+
+@bp.route('/<board_id>/transfer-ownership', methods=['POST'])
+@jwt_required()
+@require_board_access('owner')
+def transfer_ownership(board_id):
+    data = request.json
+    actor_id = get_jwt_identity()
+    new_owner_id = data.get('userId') or data.get('newOwnerId') if data else None
+    if not new_owner_id:
+        return jsonify({'error': 'Target userId is required'}), 400
+    success, error = BoardService.transfer_ownership(board_id, new_owner_id, actor_id=actor_id)
+    if not success:
+        return jsonify({'error': error or 'Failed to transfer ownership'}), 400
+    return jsonify({'message': 'Ownership transferred successfully'}), 200
+
 @bp.route('/<board_id>/members', methods=['GET'])
 @jwt_required()
 @require_board_access('viewer')
 def get_members(board_id):
-    members = BoardService.get_board_members(board_id)
-    return jsonify([member.to_dict() for member in members]), 200
+    user_id = get_jwt_identity()
+    members = BoardService.get_board_members(board_id, actor_id=user_id)
+    return jsonify(members), 200
 
 @bp.route('/<board_id>/members', methods=['POST'])
 @jwt_required()
@@ -142,7 +170,7 @@ def add_member(board_id):
     data = request.json
     user_id = get_jwt_identity()
     email = data.get('email') if data else None
-    role = data.get('role', 'member') if data else 'member'
+    role = data.get('role', 'editor') if data else 'editor'
     
     if not email:
         return jsonify({'error': 'Email is required'}), 400
@@ -172,6 +200,16 @@ def remove_member(board_id, user_id):
         return jsonify({'error': error or 'Could not remove member'}), 400
     return jsonify({'message': 'Left board successfully' if is_self else 'Member removed'}), 200
 
+@bp.route('/<board_id>/members/<user_id>/resend', methods=['POST'])
+@jwt_required()
+@require_board_access('admin')
+def resend_invite(board_id, user_id):
+    actor_id = get_jwt_identity()
+    success, error = BoardService.resend_invitation(board_id, user_id, actor_id=actor_id)
+    if not success:
+        return jsonify({'error': error}), 400
+    return jsonify({'message': 'Invitation resent successfully'}), 200
+
 @bp.route('/<board_id>/members/<user_id>', methods=['PATCH', 'PUT'])
 @jwt_required()
 @require_board_access('admin')
@@ -187,3 +225,4 @@ def update_member_role(board_id, user_id):
         return jsonify({'error': error}), 400
         
     return jsonify(member.to_dict()), 200
+

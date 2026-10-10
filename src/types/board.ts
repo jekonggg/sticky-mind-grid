@@ -1,6 +1,6 @@
 import { Column } from "./task";
 
-export type BoardRole = 'owner' | 'admin' | 'member' | 'viewer';
+export type BoardRole = 'owner' | 'admin' | 'editor' | 'member' | 'commenter' | 'viewer';
 
 export interface Board {
   id: string;

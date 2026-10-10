@@ -52,7 +52,10 @@ export const taskApi = {
       method: "PATCH",
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error("Failed to update task");
+    if (!res.ok) {
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.error || "Failed to update task");
+    }
     const task = await res.json();
     return mapTask(task);
   },

@@ -1,12 +1,11 @@
 import React from "react";
 import { useActivity } from "@/hooks/useActivity";
 import { ActivityItem } from "./ActivityItem";
-import { ClockRewind as History, XClose as X } from "@untitledui/icons";
-import { Button } from "@/components/ui/button";
+import { ClockRewind as History } from "@untitledui/icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export const LatestChangesPanel: React.FC = () => {
-  const { activities, clearActivities } = useActivity();
+  const { activities } = useActivity();
 
   return (
     <div className="h-full flex flex-col bg-card">
@@ -16,18 +15,6 @@ export const LatestChangesPanel: React.FC = () => {
           <History className="h-5 w-5 text-muted-foreground shrink-0" />
           <h2 className="font-bold text-sm tracking-tight uppercase">History</h2>
         </div>
-        
-        {activities.length > 0 && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors"
-            onClick={clearActivities}
-            title="Clear activity log"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
       </div>
 
       {/* Content */}

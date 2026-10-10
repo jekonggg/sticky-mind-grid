@@ -55,6 +55,7 @@ describe("useBoardPermissions hook", () => {
     expect(result.current.isOwner).toBe(false);
     expect(result.current.canCreateTask).toBe(false);
     expect(result.current.canEditBoard).toBe(false);
+    expect(result.current.canComment).toBe(false);
   });
 
   it("returns read-only viewer defaults when board is null", () => {
@@ -65,9 +66,10 @@ describe("useBoardPermissions hook", () => {
     expect(result.current.role).toBe("viewer");
     expect(result.current.isReadOnly).toBe(true);
     expect(result.current.canDeleteBoard).toBe(false);
+    expect(result.current.canComment).toBe(false);
   });
 
-  it("correctly identifies direct board owner", () => {
+  it("correctly identifies direct board owner with full capabilities", () => {
     const { result } = renderHook(() => useBoardPermissions(mockBoard, []), {
       wrapper: createWrapper(testUser),
     });
@@ -75,17 +77,75 @@ describe("useBoardPermissions hook", () => {
     expect(result.current.role).toBe("owner");
     expect(result.current.isOwner).toBe(true);
     expect(result.current.isAdmin).toBe(true);
-    expect(result.current.isMember).toBe(true);
+    expect(result.current.isEditor).toBe(true);
+    expect(result.current.isCommenter).toBe(true);
     expect(result.current.isViewer).toBe(false);
-    expect(result.current.canDeleteBoard).toBe(true);
+
+    // Board Management
     expect(result.current.canEditBoard).toBe(true);
+    expect(result.current.canExportBoard).toBe(true);
+    expect(result.current.canManageBilling).toBe(true);
+    expect(result.current.canTransferOwnership).toBe(true);
+    expect(result.current.canDeleteBoard).toBe(true);
+    expect(result.current.canLeaveBoard).toBe(false); // Sole owner cannot leave
+
+    // Members & Invites
+    expect(result.current.canViewFullMemberList).toBe(true);
+    expect(result.current.canInviteMembers).toBe(true);
+    expect(result.current.canRevokeInvites).toBe(true);
+    expect(result.current.canGrantAdminOwner).toBe(true);
+    expect(result.current.canGrantEditorCommenter).toBe(true);
     expect(result.current.canManageMembers).toBe(true);
+
+    // Columns
+    expect(result.current.canManageColumns).toBe(true);
+    expect(result.current.canDeleteColumn).toBe(true);
+
+    // Cards & Comments
     expect(result.current.canCreateTask).toBe(true);
+    expect(result.current.canEditTask).toBe(true);
+    expect(result.current.canMoveTask).toBe(true);
+    expect(result.current.canAssignTask).toBe(true);
+    expect(result.current.canArchiveTask).toBe(true);
+    expect(result.current.canDeleteTask).toBe(true); // Soft delete goes to trash
+    expect(result.current.canViewTrash).toBe(true);
+    expect(result.current.canRestoreTask).toBe(true);
+    expect(result.current.canPurgeTask).toBe(true); // Purge permanently
+    expect(result.current.canComment).toBe(true);
     expect(result.current.isReadOnly).toBe(false);
   });
 
-  it("correctly derives admin role from membership", () => {
-    const nonOwnerUser: User = { ...testUser, id: "user-admin-2" };
+  it("allows owner to leave if another owner exists", () => {
+    const members: BoardMember[] = [
+      {
+        id: "mem-1",
+        boardId: "board-123",
+        userId: "user-owner-1",
+        role: "owner",
+        status: "accepted",
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "mem-2",
+        boardId: "board-123",
+        userId: "user-owner-2",
+        role: "owner",
+        status: "accepted",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const { result } = renderHook(
+      () => useBoardPermissions(mockBoard, members),
+      { wrapper: createWrapper(testUser) }
+    );
+
+    expect(result.current.isOwner).toBe(true);
+    expect(result.current.canLeaveBoard).toBe(true);
+  });
+
+  it("correctly derives admin role with management but no delete/transfer/grant-admin", () => {
+    const adminUser: User = { ...testUser, id: "user-admin-2" };
     const members: BoardMember[] = [
       {
         id: "mem-1",
@@ -99,21 +159,107 @@ describe("useBoardPermissions hook", () => {
 
     const { result } = renderHook(
       () => useBoardPermissions(mockBoard, members),
-      { wrapper: createWrapper(nonOwnerUser) }
+      { wrapper: createWrapper(adminUser) }
     );
 
     expect(result.current.role).toBe("admin");
     expect(result.current.isOwner).toBe(false);
     expect(result.current.isAdmin).toBe(true);
-    expect(result.current.isMember).toBe(true);
-    expect(result.current.canDeleteBoard).toBe(false);
+    expect(result.current.isEditor).toBe(true);
+    expect(result.current.isCommenter).toBe(true);
+    expect(result.current.isViewer).toBe(false);
+
+    // Board Management
     expect(result.current.canEditBoard).toBe(true);
+    expect(result.current.canExportBoard).toBe(true);
+    expect(result.current.canManageBilling).toBe(false);
+    expect(result.current.canTransferOwnership).toBe(false);
+    expect(result.current.canDeleteBoard).toBe(false);
+    expect(result.current.canLeaveBoard).toBe(true);
+
+    // Members & Invites
+    expect(result.current.canViewFullMemberList).toBe(true);
+    expect(result.current.canInviteMembers).toBe(true);
+    expect(result.current.canRevokeInvites).toBe(true);
+    expect(result.current.canGrantAdminOwner).toBe(false); // Admin cannot grant admin or owner
+    expect(result.current.canGrantEditorCommenter).toBe(true);
     expect(result.current.canManageMembers).toBe(true);
+
+    // Columns
+    expect(result.current.canManageColumns).toBe(true);
+    expect(result.current.canDeleteColumn).toBe(true);
+
+    // Cards & Comments
     expect(result.current.canCreateTask).toBe(true);
+    expect(result.current.canEditTask).toBe(true);
+    expect(result.current.canMoveTask).toBe(true);
+    expect(result.current.canAssignTask).toBe(true);
+    expect(result.current.canArchiveTask).toBe(true);
+    expect(result.current.canDeleteTask).toBe(true); // Soft delete goes to trash
+    expect(result.current.canViewTrash).toBe(true);
+    expect(result.current.canRestoreTask).toBe(true);
+    expect(result.current.canPurgeTask).toBe(true); // Admin can permanently purge cards
+    expect(result.current.canComment).toBe(true);
     expect(result.current.isReadOnly).toBe(false);
   });
 
-  it("correctly derives member role with task permissions but no board admin", () => {
+  it("correctly derives editor role (card editing and soft delete allowed, purge blocked)", () => {
+    const editorUser: User = { ...testUser, id: "user-editor-3" };
+    const members: BoardMember[] = [
+      {
+        id: "mem-2",
+        boardId: "board-123",
+        userId: "user-editor-3",
+        role: "editor",
+        status: "accepted",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const { result } = renderHook(
+      () => useBoardPermissions(mockBoard, members),
+      { wrapper: createWrapper(editorUser) }
+    );
+
+    expect(result.current.role).toBe("editor");
+    expect(result.current.isOwner).toBe(false);
+    expect(result.current.isAdmin).toBe(false);
+    expect(result.current.isEditor).toBe(true);
+    expect(result.current.isCommenter).toBe(true);
+    expect(result.current.isViewer).toBe(false);
+
+    // Board Management
+    expect(result.current.canEditBoard).toBe(false);
+    expect(result.current.canExportBoard).toBe(false);
+    expect(result.current.canManageBilling).toBe(false);
+    expect(result.current.canTransferOwnership).toBe(false);
+    expect(result.current.canDeleteBoard).toBe(false);
+    expect(result.current.canLeaveBoard).toBe(true);
+
+    // Members
+    expect(result.current.canViewFullMemberList).toBe(true);
+    expect(result.current.canInviteMembers).toBe(false);
+    expect(result.current.canManageMembers).toBe(false);
+
+    // Columns
+    expect(result.current.canManageColumns).toBe(false);
+    expect(result.current.canDeleteColumn).toBe(false);
+
+    // Cards & Comments
+    expect(result.current.canCreateTask).toBe(true);
+    expect(result.current.canEditTask).toBe(true);
+    expect(result.current.canMoveTask).toBe(true);
+    expect(result.current.canAssignTask).toBe(true);
+    expect(result.current.canArchiveTask).toBe(true);
+    expect(result.current.canDeleteTask).toBe(true); // Editor can soft delete card (goes to trash)
+    expect(result.current.canViewTrash).toBe(true); // Editor can view trash
+    expect(result.current.canRestoreTask).toBe(true); // Editor can restore card
+    expect(result.current.canPurgeTask).toBe(false); // Editor cannot permanently purge cards
+    expect(result.current.canComment).toBe(true);
+    expect(result.current.isReadOnly).toBe(false);
+  });
+
+  it("supports legacy member role mapped to editor capabilities", () => {
     const memberUser: User = { ...testUser, id: "user-member-3" };
     const members: BoardMember[] = [
       {
@@ -131,27 +277,76 @@ describe("useBoardPermissions hook", () => {
       { wrapper: createWrapper(memberUser) }
     );
 
-    expect(result.current.role).toBe("member");
-    expect(result.current.isOwner).toBe(false);
-    expect(result.current.isAdmin).toBe(false);
-    expect(result.current.isMember).toBe(true);
-    expect(result.current.canDeleteBoard).toBe(false);
-    expect(result.current.canEditBoard).toBe(false);
-    expect(result.current.canManageMembers).toBe(false);
+    expect(result.current.isEditor).toBe(true);
     expect(result.current.canCreateTask).toBe(true);
     expect(result.current.canEditTask).toBe(true);
-    expect(result.current.canDeleteTask).toBe(true);
-    expect(result.current.canMoveTask).toBe(true);
+    expect(result.current.canArchiveTask).toBe(true);
+    expect(result.current.canDeleteTask).toBe(true); // Soft delete goes to trash
+    expect(result.current.canViewTrash).toBe(true);
+    expect(result.current.canRestoreTask).toBe(true);
+    expect(result.current.canPurgeTask).toBe(false);
+    expect(result.current.canComment).toBe(true);
     expect(result.current.isReadOnly).toBe(false);
   });
 
-  it("correctly derives viewer role as read only", () => {
-    const viewerUser: User = { ...testUser, id: "user-viewer-4" };
+  it("correctly derives commenter role (can comment, cannot edit cards or manage board)", () => {
+    const commenterUser: User = { ...testUser, id: "user-commenter-4" };
     const members: BoardMember[] = [
       {
-        id: "mem-3",
+        id: "mem-4",
         boardId: "board-123",
-        userId: "user-viewer-4",
+        userId: "user-commenter-4",
+        role: "commenter",
+        status: "accepted",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const { result } = renderHook(
+      () => useBoardPermissions(mockBoard, members),
+      { wrapper: createWrapper(commenterUser) }
+    );
+
+    expect(result.current.role).toBe("commenter");
+    expect(result.current.isOwner).toBe(false);
+    expect(result.current.isAdmin).toBe(false);
+    expect(result.current.isEditor).toBe(false);
+    expect(result.current.isCommenter).toBe(true);
+    expect(result.current.isViewer).toBe(false);
+
+    // Board & Columns
+    expect(result.current.canEditBoard).toBe(false);
+    expect(result.current.canExportBoard).toBe(false);
+    expect(result.current.canManageColumns).toBe(false);
+
+    // Members (redacted name/avatar only)
+    expect(result.current.canViewFullMemberList).toBe(false);
+    expect(result.current.canInviteMembers).toBe(false);
+    expect(result.current.canManageMembers).toBe(false);
+
+    // Cards
+    expect(result.current.canCreateTask).toBe(false);
+    expect(result.current.canEditTask).toBe(false);
+    expect(result.current.canMoveTask).toBe(false);
+    expect(result.current.canAssignTask).toBe(false);
+    expect(result.current.canArchiveTask).toBe(false);
+    expect(result.current.canDeleteTask).toBe(false);
+    expect(result.current.canViewTrash).toBe(false);
+    expect(result.current.canRestoreTask).toBe(false);
+    expect(result.current.canPurgeTask).toBe(false);
+
+    // Comments
+    expect(result.current.canComment).toBe(true);
+    expect(result.current.isReadOnly).toBe(true);
+  });
+
+  it("correctly derives viewer role as strictly read only (cannot comment)", () => {
+    const viewerUser: User = { ...testUser, id: "user-viewer-5" };
+    const members: BoardMember[] = [
+      {
+        id: "mem-5",
+        boardId: "board-123",
+        userId: "user-viewer-5",
         role: "viewer",
         status: "accepted",
         createdAt: new Date().toISOString(),
@@ -166,11 +361,32 @@ describe("useBoardPermissions hook", () => {
     expect(result.current.role).toBe("viewer");
     expect(result.current.isOwner).toBe(false);
     expect(result.current.isAdmin).toBe(false);
-    expect(result.current.isMember).toBe(false);
+    expect(result.current.isEditor).toBe(false);
+    expect(result.current.isCommenter).toBe(false);
     expect(result.current.isViewer).toBe(true);
-    expect(result.current.isReadOnly).toBe(true);
+
+    // Board & Columns
+    expect(result.current.canEditBoard).toBe(false);
+    expect(result.current.canExportBoard).toBe(false);
+    expect(result.current.canDeleteBoard).toBe(false);
+    expect(result.current.canManageColumns).toBe(false);
+
+    // Members (redacted name/avatar only)
+    expect(result.current.canViewFullMemberList).toBe(false);
+    expect(result.current.canInviteMembers).toBe(false);
+    expect(result.current.canManageMembers).toBe(false);
+
+    // Cards & Comments
     expect(result.current.canCreateTask).toBe(false);
     expect(result.current.canEditTask).toBe(false);
+    expect(result.current.canMoveTask).toBe(false);
+    expect(result.current.canAssignTask).toBe(false);
+    expect(result.current.canArchiveTask).toBe(false);
     expect(result.current.canDeleteTask).toBe(false);
+    expect(result.current.canViewTrash).toBe(false);
+    expect(result.current.canRestoreTask).toBe(false);
+    expect(result.current.canPurgeTask).toBe(false);
+    expect(result.current.canComment).toBe(false);
+    expect(result.current.isReadOnly).toBe(true);
   });
 });

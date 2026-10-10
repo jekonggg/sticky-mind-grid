@@ -8,6 +8,7 @@ export interface Attachment {
   type: string; // mime-type
   size?: string | number;
   uploadedAt?: Date | string;
+  uploaderId?: string;
 }
 
 export interface ChecklistItem {
@@ -67,6 +68,7 @@ export interface CreateTaskData {
   status?: TaskStatus;
   priority: Priority;
   assignedTo?: string | null;
+  boardId?: string;
   dueDate?: Date;
   progress?: number;
   position?: number;
@@ -82,6 +84,7 @@ export interface UpdateTaskData {
   status?: TaskStatus;
   priority?: Priority;
   assignedTo?: string | null;
+  boardId?: string;
   dueDate?: Date;
   progress?: number;
   position?: number;
@@ -128,6 +131,8 @@ export interface Comment {
   };
   content: string;
   mentions: string[];
+  isEdited?: boolean;
+  originalContent?: string;
   createdAt: Date;
   updatedAt?: Date;
 }

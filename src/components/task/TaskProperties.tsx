@@ -38,6 +38,7 @@ interface TaskPropertiesProps {
   createdAt?: Date;
   updatedAt?: Date;
   readOnly?: boolean;
+  checklist?: ChecklistItem[];
   onStatusChange: (status: string) => void;
   onPriorityChange: (priority: Priority) => void;
   onAssigneeChange: (userId: string) => void;
@@ -69,6 +70,7 @@ export function TaskProperties({
   createdAt,
   updatedAt,
   readOnly,
+  checklist,
   onStatusChange,
   onPriorityChange,
   onAssigneeChange,
@@ -76,6 +78,7 @@ export function TaskProperties({
   onProgressChange,
   onTagsChange,
 }: TaskPropertiesProps) {
+  const hasChecklist = Boolean(checklist && checklist.length > 0);
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [selectedTagColor, setSelectedTagColor] = useState(TAG_COLORS[0]);
@@ -107,6 +110,9 @@ export function TaskProperties({
 
   const assignedMember = members.find((m) => m.userId === assignedTo);
   const currentColumn = columns.find((c) => c.id === status);
+  const assignableMembers = members.filter((m) =>
+    ["owner", "admin", "editor", "member"].includes(m.role)
+  );
 
   return (
     <div className="w-full max-w-4xl mx-auto px-6 sm:px-10 py-5 border-b border-border/40 space-y-3.5">
@@ -238,7 +244,7 @@ export function TaskProperties({
                   <SelectItem value="unassigned" className="text-xs text-muted-foreground">
                     Unassigned
                   </SelectItem>
-                  {members.map((m) => {
+                  {assignableMembers.map((m) => {
                     const name = m.user?.fullName || m.user?.email || "User";
                     const initial = name.charAt(0).toUpperCase();
                     return (
@@ -298,19 +304,31 @@ export function TaskProperties({
                     {dueDate ? format(new Date(dueDate), "MMM d, yyyy h:mm a") : "No due date"}
                   </span>
                 ) : (
-                  <Input
-                    type="datetime-local"
-                    value={dueDate}
-                    onChange={(e) => onDueDateChange(e.target.value)}
-                    title={isOverdue ? "Overdue" : isTodayDue ? "Due Today" : undefined}
-                    className={`h-8 text-xs w-full min-w-0 shadow-2xs px-2 transition-colors ${
-                      isOverdue
-                        ? "border-rose-500/60 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-semibold focus-visible:ring-rose-500"
-                        : isTodayDue
-                        ? "border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold focus-visible:ring-amber-500"
-                        : "border-border/60 bg-card/60 text-foreground"
-                    }`}
-                  />
+                  <div className="relative flex items-center w-full min-w-0">
+                    <Input
+                      type="datetime-local"
+                      value={dueDate}
+                      onChange={(e) => onDueDateChange(e.target.value)}
+                      title={isOverdue ? "Overdue" : isTodayDue ? "Due Today" : undefined}
+                      className={`h-8 text-xs w-full min-w-0 shadow-2xs pl-2 pr-7 transition-colors ${
+                        isOverdue
+                          ? "border-rose-500/60 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-semibold focus-visible:ring-rose-500"
+                          : isTodayDue
+                          ? "border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold focus-visible:ring-amber-500"
+                          : "border-border/60 bg-card/60 text-foreground"
+                      }`}
+                    />
+                    {dueDate && (
+                      <button
+                        type="button"
+                        onClick={() => onDueDateChange("")}
+                        className="absolute right-2 text-muted-foreground hover:text-destructive p-0.5 cursor-pointer transition-colors"
+                        title="Clear due date"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -324,7 +342,7 @@ export function TaskProperties({
             <span>Progress</span>
           </div>
           <div className="flex-1 min-w-0">
-            {readOnly ? (
+            {readOnly || hasChecklist ? (
               <div className="flex items-center gap-2.5 w-full">
                 <div className="flex-1 h-2 bg-muted/80 rounded-full overflow-hidden border border-border/40">
                   <div
@@ -335,6 +353,11 @@ export function TaskProperties({
                 <span className="text-xs font-bold text-muted-foreground min-w-[32px] shrink-0">
                   {progress}%
                 </span>
+                {hasChecklist && (
+                  <span className="text-[10px] text-muted-foreground/70 italic hidden sm:inline">
+                    (checklist)
+                  </span>
+                )}
               </div>
             ) : (
               <div className="flex items-center gap-2.5 w-full">

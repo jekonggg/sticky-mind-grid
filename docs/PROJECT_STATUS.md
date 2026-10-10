@@ -39,9 +39,16 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 - **Auto-progress snapping** — 0% first column, 30% intermediate, 100% last column
 - **Inline column rename** — double-click to edit column titles
 
-### Task Management
+### Task Management & Modal RBAC
 - **Full CRUD** — create, read, update, soft-delete tasks
-- **Task properties** — title, emoji, description, status, priority (low/medium/high), progress (0-100), due date, assignee, checklist, tags, attachments
+- **Task properties** — title, emoji, description, status, priority (low/medium/high/urgent), progress (0-100), due date, assignee, checklist, tags, attachments
+- **Task Modal Granular RBAC & Rules Matrix**:
+  - **Read-only, not hidden:** For Commenters and Viewers, all fields are read-only while action buttons (Move, Archive, Delete, Upload) are hidden.
+  - **Status equals column:** Column is the single source of truth for both dropdown and dragging. Both write one unified log entry: `"Moved '{title}' from {old_col} to {new_col}"`.
+  - **Assignee eligibility:** Only Editor, Admin, and Owner can be assigned. Removing a member from the board or demoting them below Editor automatically unassigns them from all tasks and logs an activity entry.
+  - **Progress field calculation:** Auto-calculated from checklist completion (`Math.round(completed / total * 100)`) when checklist items exist; manual slider is locked. When checklist is empty, manual slider is editable.
+  - **Concurrent description edits:** Conflict warning banner when remote description changes while user has unsaved dirty draft, offering "Load Remote" and "Overwrite With Mine".
+  - **Cross-board move tenancy:** Requires Editor or above on both source and target boards. Automatically removes assignees who are not members/Editors of the target board. Target board activity logs `"Card '{title}' moved from another board"` without exposing the source board name.
 - **Optimistic updates** — local state patched before API confirmation, rolled back on error
 - **4-second polling** — tasks auto-refresh when tab is visible
 - **Position-based ordering** — float positions with 1000-based indices
@@ -53,30 +60,39 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 - **Documents** — project notes (CRUD) + aggregated task attachments across all tasks
 - **Overview** — stats cards, per-column task counts, overall progress bar
 
-### Trash / Soft Delete
-- **Soft delete** — tasks moved to trash (is_deleted + deleted_at)
-- **Trash modal** — view trashed tasks, restore, permanent delete
-- **Empty trash** — bulk permanent delete for a board
+### Trash / Soft Delete & 30-Day Purge
+- **Soft delete** — tasks moved to trash (is_deleted + deleted_at); allowed for Owner, Admin, Editor; deletion is logged in activity feed.
+- **Trash modal** — view trashed tasks and restore (logged in activity feed); allowed for Owner, Admin, Editor; blocked for Commenter and Viewer.
+- **30-Day auto-purge** — soft-deleted tasks sit in trash for 30 days then are purged automatically upon trash query.
+- **Permanent purge & Empty trash** — early permanent deletion strictly restricted to Owner and Admin.
 
-### Members & Roles
-- **Role hierarchy** — owner > admin > member > viewer
-- **Invite by email** — search registered users, send invitation
+### Members & Roles (5-Role System)
+- **Role hierarchy** — owner > admin > editor > commenter > viewer (legacy `member` maps to `editor`)
+- **Invite by email** — search registered users, send invitation (Admin & Owner)
 - **Accept/decline invitations** — invitation cards on dashboard
-- **Role management** — admin/owner can change member roles
+- **Role management** — admin can manage editor and below; owner manages any role except sole owner demotion/removal
 - **Remove members** — admin can remove; members can leave (sole-owner protection)
 - **Pending invitations** — polling every 6s on dashboard
 
 ### Activity / Audit
 - **Activity logging** — every mutation creates an Activity record with type, message, user, timestamp
 - **Activity sidebar** — LatestChangesPanel shows activities with icons, avatars, relative timestamps
+- **Permissions matrix**:
+  - Full board activity log (`/api/activities?boardId=...`): Owner and Admin (Yes); Editor, Commenter, Viewer (No - 403)
+  - Card-specific history (`/api/activities?boardId=...&taskTitle=...`): Allowed for all 5 roles (Owner, Admin, Editor, Commenter, Viewer)
+  - Immutability: System entries are immutable; edit and delete endpoints are blocked (403) for all 5 roles
 - **5-second polling** — activity feed auto-refreshes
-- **Clear activities** — admin can clear board activity history
 
-### Comments
-- **Add comments** on tasks — Ctrl+Enter or Send button
-- **Delete comments** — own comments only, or admin/owner
-- **@mention system** — detect `@` in textarea, autocomplete against board members, create notifications for mentions
+### Comments & Mentions
+- **Add comment & @mention** — Owner, Admin, Editor, Commenter (Yes); Viewer (No)
+- **Edit own comment** — author can edit inline; displays `(edited)` marker and preserves `original_content` in database
+- **Delete comments** — author can delete own comment; Admin and Owner can delete anyone's comment; Editor/Commenter cannot delete others' comments
 - **React Query** — comments fetched and cached via useQuery/useMutation
+
+### Attachments
+- **View & download attachments** — allowed for all 5 roles
+- **Upload attachment** — allowed for Owner, Admin, Editor; blocked for Commenter and Viewer
+- **Remove attachment** — author can remove own attachment; Admin and Owner can remove anyone's attachment; Editor cannot remove others' attachments
 
 ### Notifications
 - **Notification bell** — unread count badge, popover with notification list
@@ -288,7 +304,7 @@ Large base64 strings stored in LONGTEXT columns can cause database bloat and slo
 | Tasks (CRUD lifecycle) | pytest | 1 test | Single integration test |
 | Boards (CRUD lifecycle & cascade) | pytest | 5 tests | Good — create, get, list, update, cascade delete |
 | Notes (CRUD lifecycle) | pytest | 1 test | Good — create, list, update, delete |
-| RBAC (role matrix) | pytest | 19 tests | Excellent — full matrix + edge cases |
+| RBAC (role matrix) | pytest | 24 tests | Excellent — 5-role hierarchy + column deletion, member redaction, last owner guard, data export |
 | Invitations (invite/accept/decline) | pytest | 5 tests | Good — lifecycle + notifications |
 | System & User Preferences | pytest | 5 tests | Good — health check, preferences, export |
 | BoardCard component | Vitest | 3 tests | Partial — renders, owner vs non-owner menu |
@@ -296,7 +312,7 @@ Large base64 strings stored in LONGTEXT columns can cause database bloat and slo
 | NotificationBell component | Vitest | 2 tests | Partial — badge, mark all read |
 | BoardsOverview invitations | Vitest | 2 tests | Partial — banner, accept invitation |
 | SettingsModal component & tabs | Vitest | 6 tests | Good — rendering, tabs, theme, data export |
-| useBoardPermissions hook | Vitest | 6 tests | Excellent — full role matrix derivation |
+| useBoardPermissions hook | Vitest | 9 tests | Excellent — full 5-role capability matrix + last owner safety |
 | apiUtils service helper | Vitest | 3 tests | Good — token injection, FormData, 401 redirect |
 | E2E User Journeys & Workflows | Playwright | 12 spec files (117 tests) | Broad — auth, boards, kanban, members, activity, notifications, documents, filters, navigation, overview, settings, trash |
 

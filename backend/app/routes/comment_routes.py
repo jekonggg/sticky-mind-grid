@@ -14,7 +14,7 @@ def get_comments(task_id):
 
 @bp.route('/tasks/<task_id>/comments', methods=['POST'])
 @jwt_required()
-@require_task_access('viewer') # Even viewers or members can participate in task discussions
+@require_task_access('commenter')
 def add_comment(task_id):
     data = request.json
     user_id = get_jwt_identity()
@@ -28,6 +28,22 @@ def add_comment(task_id):
         return jsonify({'error': error}), 400
 
     return jsonify(comment.to_dict()), 201
+
+@bp.route('/comments/<comment_id>', methods=['PATCH', 'PUT'])
+@jwt_required()
+def update_comment(comment_id):
+    data = request.json
+    user_id = get_jwt_identity()
+    content = data.get('content') if data else None
+
+    if not content or not content.strip():
+        return jsonify({'error': 'Comment content cannot be empty'}), 400
+
+    comment, error = CommentService.update_comment(comment_id, user_id, content.strip())
+    if error:
+        return jsonify({'error': error}), 403
+
+    return jsonify(comment.to_dict()), 200
 
 @bp.route('/comments/<comment_id>', methods=['DELETE'])
 @jwt_required()

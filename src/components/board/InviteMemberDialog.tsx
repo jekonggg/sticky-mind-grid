@@ -25,6 +25,8 @@ import { toast } from "sonner";
 import { useActivity } from "@/hooks/useActivity";
 import { useBoards } from "@/hooks/useBoards";
 import { useDevMode } from "@/contexts/DevModeContext";
+import { useBoardPermissions } from "@/hooks/useBoardPermissions";
+import { useQuery } from "@tanstack/react-query";
 import { User } from "@/types/user";
 
 interface InviteMemberDialogProps {
@@ -60,7 +62,7 @@ export function InviteMemberDialog({
   };
 
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("member");
+  const [role, setRole] = useState("editor");
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -68,6 +70,12 @@ export function InviteMemberDialog({
   const { addActivity } = useActivity();
   const { boards } = useBoards();
   const currentBoard = boards.find((b) => b.id === boardId);
+  const { data: members = [] } = useQuery({
+    queryKey: ["boardMembers", boardId],
+    queryFn: () => boardApi.getMembers(boardId),
+    enabled: open,
+  });
+  const permissions = useBoardPermissions(currentBoard, members);
   const queryClient = useQueryClient();
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -116,7 +124,7 @@ export function InviteMemberDialog({
       toast.success("Member invited successfully!");
       handleOpenChange(false);
       setEmail("");
-      setRole("member");
+      setRole("editor");
       setSearchResults([]);
       onInvited?.();
     },
@@ -230,22 +238,30 @@ export function InviteMemberDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">
+                {permissions.canGrantAdminOwner && (
+                  <SelectItem value="admin">
+                    <div className="flex flex-col text-left py-0.5">
+                      <span className="font-bold text-xs">{!devSettings.disableEmojiCustomization && "🛡️ "}Admin</span>
+                      <span className="text-[10px] text-muted-foreground">Can manage members, columns, settings & cards</span>
+                    </div>
+                  </SelectItem>
+                )}
+                <SelectItem value="editor">
                   <div className="flex flex-col text-left py-0.5">
-                    <span className="font-bold text-xs">{!devSettings.disableEmojiCustomization && "🛡️ "}Admin</span>
-                    <span className="text-[10px] text-muted-foreground">Can manage members, states & tasks</span>
+                    <span className="font-bold text-xs">{!devSettings.disableEmojiCustomization && "✏️ "}Editor</span>
+                    <span className="text-[10px] text-muted-foreground">Can create, edit, move, archive & comment on cards</span>
                   </div>
                 </SelectItem>
-                <SelectItem value="member">
+                <SelectItem value="commenter">
                   <div className="flex flex-col text-left py-0.5">
-                    <span className="font-bold text-xs">{!devSettings.disableEmojiCustomization && "👤 "}Member</span>
-                    <span className="text-[10px] text-muted-foreground">Can create, edit, move & delete tasks</span>
+                    <span className="font-bold text-xs">{!devSettings.disableEmojiCustomization && "💬 "}Commenter</span>
+                    <span className="text-[10px] text-muted-foreground">Can view board and post comments on cards</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="viewer">
                   <div className="flex flex-col text-left py-0.5">
                     <span className="font-bold text-xs">{!devSettings.disableEmojiCustomization && "👁️ "}Viewer</span>
-                    <span className="text-[10px] text-muted-foreground">Read-only access (no task movements or edits)</span>
+                    <span className="text-[10px] text-muted-foreground">Read-only access (no comments or card edits)</span>
                   </div>
                 </SelectItem>
               </SelectContent>

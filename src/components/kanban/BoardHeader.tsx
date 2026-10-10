@@ -42,6 +42,7 @@ import {
 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { useLayout } from "@/contexts/LayoutContext";
+import { useBoardPermissions } from "@/hooks/useBoardPermissions";
 
 interface BoardHeaderProps {
   search?: string;
@@ -78,6 +79,7 @@ export function BoardHeader({
   }, [boardId]);
 
   const currentBoard = boards.find((b) => b.id === boardId);
+  const permissions = useBoardPermissions(currentBoard);
 
   const handleLogout = () => {
     logout();
@@ -203,7 +205,7 @@ export function BoardHeader({
         {/* Right: Actions & User Avatar Menu */}
         <div className="flex items-center justify-end gap-1 md:gap-2.5 flex-1 min-w-0">
           {/* On-demand Board Activity Trigger */}
-          {boardId && (
+          {boardId && permissions.canViewBoardActivity && (
             <Button
               variant="ghost"
               size="icon"

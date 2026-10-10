@@ -9,6 +9,7 @@ bp = Blueprint('activity_routes', __name__, url_prefix='/api/activities')
 @jwt_required()
 def get_activities():
     board_id = request.args.get('boardId')
+    task_title = request.args.get('taskTitle')
     user_id = get_jwt_identity()
     limit = request.args.get('limit', 50, type=int)
 
@@ -16,10 +17,16 @@ def get_activities():
         activities = ActivityService.get_user_activities(user_id, limit)
         return jsonify([activity.to_dict() for activity in activities]), 200
 
-    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['viewer']:
+    effective_role = get_effective_role(board_id, user_id)
+    if effective_role < ROLE_HIERARCHY['viewer']:
         return jsonify({'error': 'Unauthorized to view activities for this board'}), 403
 
-    activities = ActivityService.get_activities(board_id, limit)
+    # Viewing the full board activity log requires Admin or Owner.
+    # Viewing a card's history (taskTitle provided) is allowed for all board roles (Viewer+).
+    if not task_title and effective_role < ROLE_HIERARCHY['admin']:
+        return jsonify({'error': 'Only board admins and owners can view the full board activity log'}), 403
+
+    activities = ActivityService.get_activities(board_id, limit, task_title=task_title)
     return jsonify([activity.to_dict() for activity in activities]), 200
 
 @bp.route('', methods=['POST'])
@@ -43,14 +50,5 @@ def add_activity():
 @bp.route('', methods=['DELETE'])
 @jwt_required()
 def clear_history():
-    board_id = request.args.get('boardId')
-    user_id = get_jwt_identity()
+    return jsonify({'error': 'Activity log entries are immutable and cannot be edited or deleted'}), 403
 
-    if not board_id:
-        return jsonify({'error': 'boardId query parameter is required'}), 400
-
-    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['admin']:
-        return jsonify({'error': 'Only board admins or owners can clear activity history'}), 403
-
-    ActivityService.clear_activities(board_id)
-    return jsonify({'message': 'History cleared'}), 200

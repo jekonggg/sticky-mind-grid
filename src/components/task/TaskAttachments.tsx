@@ -15,20 +15,32 @@ import { Button } from "@/components/ui/button";
 import { fileApi } from "@/services/fileApi";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface TaskAttachmentsProps {
   attachments: Attachment[];
   readOnly?: boolean;
+  canUploadAttachment?: boolean;
+  canDeleteAnyAttachment?: boolean;
   onChange: (attachments: Attachment[]) => void;
 }
 
-export function TaskAttachments({ attachments, readOnly, onChange }: TaskAttachmentsProps) {
+export function TaskAttachments({
+  attachments,
+  readOnly,
+  canUploadAttachment = true,
+  canDeleteAnyAttachment = false,
+  onChange,
+}: TaskAttachmentsProps) {
+  const { user: currentUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
+  const isUploadAllowed = !readOnly && canUploadAttachment;
+
   const handleFiles = async (files: FileList | File[]) => {
-    if (readOnly || files.length === 0) return;
+    if (!isUploadAllowed || files.length === 0) return;
     setIsUploading(true);
 
     const newAttachments: Attachment[] = [...attachments];
@@ -43,6 +55,7 @@ export function TaskAttachments({ attachments, readOnly, onChange }: TaskAttachm
           type: uploaded.type || file.type,
           size: uploaded.size || file.size,
           uploadedAt: new Date(),
+          uploaderId: currentUser?.id,
         });
       } catch (err: any) {
         toast.error(`Failed to upload ${file.name}: ${err.message || "Upload error"}`);
@@ -53,8 +66,17 @@ export function TaskAttachments({ attachments, readOnly, onChange }: TaskAttachm
     setIsUploading(false);
   };
 
-  const handleDelete = (id: string) => {
-    if (readOnly) return;
+  const canDeleteAttachment = (att: Attachment) => {
+    if (readOnly) return false;
+    if (canDeleteAnyAttachment) return true;
+    if (isUploadAllowed) {
+      return !att.uploaderId || att.uploaderId === currentUser?.id;
+    }
+    return false;
+  };
+
+  const handleDelete = (id?: string) => {
+    if (!id || readOnly) return;
     onChange(attachments.filter((a) => a.id !== id));
     toast.success("Attachment removed");
   };
@@ -83,7 +105,7 @@ export function TaskAttachments({ attachments, readOnly, onChange }: TaskAttachm
           <span>Attachments ({attachments.length})</span>
         </div>
 
-        {!readOnly && (
+        {isUploadAllowed && (
           <Button
             type="button"
             variant="outline"
@@ -148,7 +170,7 @@ export function TaskAttachments({ attachments, readOnly, onChange }: TaskAttachm
                   >
                     <Download className="h-3.5 w-3.5" />
                   </a>
-                  {!readOnly && (
+                  {canDeleteAttachment(att) && (
                     <button
                       type="button"
                       onClick={() => handleDelete(att.id)}
@@ -166,7 +188,7 @@ export function TaskAttachments({ attachments, readOnly, onChange }: TaskAttachm
       ) : null}
 
       {/* Drag and Drop Zone if empty */}
-      {!readOnly && (
+      {isUploadAllowed && (
         <div
           onDragOver={(e) => {
             e.preventDefault();

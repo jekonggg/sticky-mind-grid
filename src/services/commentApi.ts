@@ -28,6 +28,19 @@ export const commentApi = {
     return mapComment(data);
   },
 
+  async updateComment(commentId: string, content: string): Promise<Comment> {
+    const res = await authenticatedFetch(`/comments/${commentId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ content }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to update comment");
+    }
+    const data = await res.json();
+    return mapComment(data);
+  },
+
   async deleteComment(commentId: string): Promise<void> {
     const res = await authenticatedFetch(`/comments/${commentId}`, {
       method: "DELETE",

@@ -62,15 +62,22 @@ def create_test_user(app):
 
 @pytest.fixture
 def create_test_board(app, create_test_user):
-    def _create_board(owner=None, name="Test Board"):
+    def _create_board(owner=None, name="Test Board", columns=None):
         if not owner:
             owner = create_test_user(email="boardowner@example.com", full_name="Board Owner")
         
+        default_columns = [
+            {"id": "todo", "title": "To Do", "emoji": "📝"},
+            {"id": "in_progress", "title": "In Progress", "emoji": "⏳"},
+            {"id": "done", "title": "Done", "emoji": "✅"},
+            {"id": "archive", "title": "Archive", "emoji": "📦"}
+        ]
         board = Board(
             name=name,
             owner_id=owner.id,
             color="hsl(220, 80%, 56%)",
-            emoji="📋"
+            emoji="📋",
+            columns=columns if columns is not None else default_columns
         )
         db.session.add(board)
         db.session.flush()

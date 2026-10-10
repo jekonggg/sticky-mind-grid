@@ -386,35 +386,123 @@ Only Tasks use soft delete:
 ### Role Hierarchy
 
 ```
-owner = 4
-admin = 3
-member = 2
+owner = 5
+admin = 4
+editor = 3 (member = 3 legacy alias)
+commenter = 2
 viewer = 1
 none = 0
 ```
 
-### Role Resolution
+### Role Resolution & Capabilities
 
 `get_effective_role(board_id, user_id)` in `backend/app/utils/decorators.py`:
-1. If user is `board.owner_id` → returns `owner` (4) regardless of membership row
-2. Looks up `BoardMember` with `status='accepted'` → returns role level
+1. If user is `board.owner_id` → returns `owner` (5) regardless of membership row
+2. Looks up `BoardMember` with `status='accepted'` → returns role level (`owner: 5, admin: 4, editor: 3, member: 3, commenter: 2, viewer: 1`)
 3. No membership → returns 0
+
+| Domain | Action | Owner | Admin | Editor | Commenter | Viewer |
+|---|---|---|---|---|---|---|
+| **Board** | View board, columns, cards | Yes | Yes | Yes | Yes | Yes |
+| | Rename board, edit settings | Yes | Yes | No | No | No |
+| | Export board data | Yes | Yes | No | No | No |
+| | Manage billing & storage | Yes | No | No | No | No |
+| | Transfer ownership | Yes | No | No | No | No |
+| | Delete board | Yes | No | No | No | No |
+| | Leave board | Yes (if >1 owner) | Yes | Yes | Yes | Yes |
+| **Members** | View member list | Yes | Yes | Yes | Name/avatar only | Name/avatar only |
+| | Send invite | Yes | Yes | No | No | No |
+| | Revoke / resend pending invite | Yes | Yes | No | No | No |
+| | Grant Admin or Owner role | Yes | No | No | No | No |
+| | Grant Editor, Commenter, Viewer | Yes | Yes | No | No | No |
+| | Change or remove a member | Any (except last owner) | Editor & below only | No | No | No |
+| **Columns** | Create, rename, reorder columns | Yes | Yes | No | No | No |
+| | Delete column | Yes (if empty) | Yes (if empty) | No | No | No |
+| **Cards** | Create, edit, move, assign, archive | Yes | Yes | Yes | No | No |
+| | Be assigned a card | Yes | Yes | Yes | No | No |
+| | Soft delete card (send to trash) | Yes | Yes | Yes | No | No |
+| | View trash and restore a card | Yes | Yes | Yes | No | No |
+| | Permanently purge card from trash | Yes | Yes | No | No | No |
+| **Comments** | Post comment | Yes | Yes | Yes | Yes | No |
+
+### Task Modal: Fields & Actions Permission Matrix
+
+| Modal Element | Owner | Admin | Editor | Commenter | Viewer |
+|---|---|---|---|---|---|
+| Open modal, read all fields & activity feed | Yes | Yes | Yes | Yes | Yes |
+| Edit task title | Yes | Yes | Yes | No | No |
+| Change status dropdown (moves card to column) | Yes | Yes | Yes | No | No |
+| Set priority | Yes | Yes | Yes | No | No |
+| Update progress | Yes | Yes | Yes | No | No |
+| Add or remove assignees | Yes | Yes | Yes | No | No |
+| Set or clear due date | Yes | Yes | Yes | No | No |
+| Edit description (save or cancel) | Yes | Yes | Yes | No | No |
+| Move button: to another column on this board | Yes | Yes | Yes | No | No |
+| Move button: to another board | Yes (if Editor+ on target) | Yes (if Editor+ on target) | Yes (if Editor+ on target) | No | No |
+| Archive task | Yes | Yes | Yes | No | No |
+| Delete task (soft delete, goes to trash) | Yes | Yes | Yes | No | No |
+| View trash and restore a task | Yes | Yes | Yes | No | No |
+| Purge a task from trash permanently | Yes | Yes | No | No | No |
+
+### Comments & Mentions Permission Matrix
+
+| Action | Owner | Admin | Editor | Commenter | Viewer |
+|---|---|---|---|---|---|
+| Add comment | Yes | Yes | Yes | Yes | No |
+| @mention a board member | Yes | Yes | Yes | Yes | No |
+| Edit or delete own comment | Yes | Yes | Yes | Yes | No |
+| Delete anyone's comment | Yes | Yes | No | No | No |
+
+### Attachments & Activity Permission Matrix
+
+| Action | Owner | Admin | Editor | Commenter | Viewer |
+|---|---|---|---|---|---|
+| View and download attachments | Yes | Yes | Yes | Yes | Yes |
+| Upload attachment | Yes | Yes | Yes | No | No |
+| Remove own attachment | Yes | Yes | Yes | No | No |
+| Remove anyone's attachment | Yes | Yes | No | No | No |
+| View a card's history | Yes | Yes | Yes | Yes | Yes |
+| View full board activity log | Yes | Yes | No | No | No |
+| Edit or delete log entries | No | No | No | No | No |
+
+### Task Modal Rules Behind The Matrix
+
+1. **Read-only, not hidden:** For Commenters and Viewers, all fields render as read-only (so they can inspect task details and card history), while mutation and action buttons (Move, Archive, Delete, Upload Dropzone) are hidden.
+2. **Status equals column:** Column is the single source of truth for both the dropdown and drag-and-drop operations. Both operations require Editor+ permission and write one unified activity log entry: `Moved '{title}' from {old_col} to {new_col}`.
+3. **Assignee eligibility & auto-unassign:** Only members with Editor role or above can be assigned to a card. If an assignee is removed from the board or demoted below Editor, the backend automatically unassigns them from all tasks on that board and writes an audit log entry.
+4. **Progress field calculation:** Automatically computed from checklist completion (`Math.round(completed / total * 100)`) whenever checklist items exist; the manual slider is locked. When no checklist items exist, the manual slider is unlocked for manual input.
+5. **Soft delete & 30-Day auto-purge:** Deleted tasks sit in the trash for 30 days with comments, files, and history intact, after which they are automatically purged. Admins and Owners can purge early. Deletion and restore are both written to the activity log.
+6. **Cross-board tenancy rules:** Moving across boards requires Editor or above on both source and target boards. Any assignees not belonging to the target board (with Editor+ role) are automatically unassigned. Activity logged on the target board displays `Card '{title}' moved from another board` without disclosing the source board name.
+7. **Concurrent description edits:** Conflict detection warns users if the remote task description was modified while they have an unsaved dirty draft, offering options to "Load Remote" or "Overwrite With Mine".
+8. **Activity feed immutability:** System audit log entries are immutable and cannot be edited or cleared. Comments are editable by their author, displaying an `(edited)` marker and preserving `original_content` in the database.
+9. **Sole owner protection & Admin ceiling:** A board must always have at least one Owner; the last Owner cannot leave or be demoted. Admins cannot modify or remove Owners or other Admins.
 
 ### Enforcement
 
-Two decorators enforce access:
-- `@require_board_access(minimum_role)` — For board-scoped routes
-- `@require_task_access(minimum_role)` — For task-scoped routes (resolves board via task.board_id)
+Decorators enforce access:
+- `@require_board_access(minimum_role)` — For board-scoped routes (`owner`, `admin`, `editor`, `commenter`, `viewer`)
+- `@require_task_access(minimum_role)` — For task-scoped routes (resolves board via `task.board_id`)
+- Cross-board moves validate that the authenticated user possesses `editor` role or higher on the destination board.
 
 ### Frontend Permissions
 
-`useBoardPermissions(board, members)` derives a `BoardPermissions` object for UI decisions:
-- `isReadOnly` for viewers
-- `canCreateTask`, `canEditTask`, `canDeleteTask` for members+
-- `canEditBoard`, `canManageMembers` for admins+
-- `canDeleteBoard` for owners only
+`useBoardPermissions(board, members)` derives a `BoardPermissions` object for UI decisions matching the 5-role capabilities:
+- `isReadOnly` for non-editors (commenters and viewers)
+- `canComment` for commenters, editors, admins, owners
+- `canCreateTask`, `canEditTask`, `canMoveTask`, `canArchiveTask` for editors+
+- `canDeleteTask` (soft delete / send to trash) for editors+
+- `canViewTrash`, `canRestoreTask` for editors+
+- `canPurgeTask` (permanently delete from trash) for admins+
+- `canManageColumns`, `canDeleteColumn`, `canEditBoard`, `canExportBoard`, `canManageMembers` for admins+
+- `canDeleteBoard`, `canTransferOwnership`, `canManageBilling`, `canGrantAdminOwner` for owners only
+- `canLeaveBoard` for everyone (except sole owner)
+- `canViewBoardActivity` for admins and owners only
+- `canDeleteAnyComment` for admins and owners only
+- `canUploadAttachment` for editors, admins, owners
+- `canDeleteAnyAttachment` for admins and owners only
+- `canMoveCrossBoard` for editors, admins, owners
 
-**Critical:** Frontend permissions are UX-only. All real authorization is enforced server-side.
+**Critical:** Frontend permissions are UX-only. All authorization is strictly enforced server-side.
 
 ---
 

@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.services.task_service import TaskService
 from app.utils.decorators import require_task_access, get_effective_role, ROLE_HIERARCHY
 from app.models.task import Task
+from app.models.board import Board
 
 from app import db
 
@@ -29,7 +30,7 @@ def get_tasks():
 @jwt_required()
 def get_trash(board_id):
     user_id = get_jwt_identity()
-    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['viewer']:
+    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['editor']:
         return jsonify({'error': 'Unauthorized to view trash for this board'}), 403
 
     deleted_tasks = TaskService.get_deleted_tasks(board_id)
@@ -64,9 +65,15 @@ def create_task():
     if not data or not board_id or not data.get('title'):
         return jsonify({'error': 'boardId and title are required'}), 400
 
-    # Require at least 'member' role (accepted membership or owner) to create tasks
-    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['member']:
+    # Require at least 'editor' role (accepted membership or owner) to create tasks
+    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['editor']:
         return jsonify({'error': 'You do not have permission to create tasks on this board'}), 403
+
+    assignee_id = data.get('assignedTo') or data.get('assigneeId')
+    if assignee_id and assignee_id != 'unassigned':
+        assignee_level = get_effective_role(board_id, assignee_id)
+        if assignee_level < ROLE_HIERARCHY['editor']:
+            return jsonify({'error': 'Cards can only be assigned to members with Editor role or above'}), 400
     
     try:
         task = TaskService.create_task(data, user_id=user_id)
@@ -86,7 +93,7 @@ def reorder_tasks():
     if not data or not board_id or not isinstance(items, list):
         return jsonify({'error': 'boardId and items array are required'}), 400
 
-    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['member']:
+    if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['editor']:
         return jsonify({'error': 'You do not have permission to reorder tasks on this board'}), 403
 
     try:
@@ -97,7 +104,7 @@ def reorder_tasks():
 
 @bp.route('/tasks/<task_id>', methods=['PATCH', 'PUT'])
 @jwt_required()
-@require_task_access('member')
+@require_task_access('editor')
 def update_task(task_id):
     data = request.json
     user_id = get_jwt_identity()
@@ -108,8 +115,29 @@ def update_task(task_id):
     if target_board_id:
         task = TaskService.get_task_by_id(task_id)
         if task and str(target_board_id) != str(task.board_id):
-            if get_effective_role(target_board_id, user_id) < ROLE_HIERARCHY['member']:
+            if get_effective_role(target_board_id, user_id) < ROLE_HIERARCHY['editor']:
                 return jsonify({'error': 'You do not have permission to move tasks to the target board'}), 403
+            target_board_obj = db.session.get(Board, target_board_id)
+            if target_board_obj and target_board_obj.columns:
+                target_cols = [c['id'] for c in target_board_obj.columns]
+                if data.get('status') not in target_cols:
+                    data['status'] = target_cols[0]
+
+            # Tenancy rule: Remove assignees who are not members/editors of the target board
+            candidate_assignee = data.get('assignedTo') if 'assignedTo' in data else task.assigned_to
+            if candidate_assignee and candidate_assignee != 'unassigned':
+                assignee_role = get_effective_role(target_board_id, candidate_assignee)
+                if assignee_role < ROLE_HIERARCHY['editor']:
+                    data['assignedTo'] = 'unassigned'
+
+    assignee_id = data.get('assignedTo') or data.get('assigneeId')
+    if assignee_id and assignee_id != 'unassigned':
+        task = TaskService.get_task_by_id(task_id)
+        if task:
+            target_board = data.get('boardId') or task.board_id
+            assignee_level = get_effective_role(target_board, assignee_id)
+            if assignee_level < ROLE_HIERARCHY['editor']:
+                return jsonify({'error': 'Cards can only be assigned to members with Editor role or above'}), 400
 
     task = TaskService.update_task(task_id, data, user_id=user_id)
     if not task:
@@ -118,7 +146,7 @@ def update_task(task_id):
 
 @bp.route('/tasks/<task_id>', methods=['DELETE'])
 @jwt_required()
-@require_task_access('member')
+@require_task_access('editor')
 def delete_task(task_id):
     user_id = get_jwt_identity()
     success = TaskService.delete_task(task_id, user_id=user_id)
@@ -135,7 +163,7 @@ def restore_task(task_id):
         return jsonify({'error': 'Task not found'}), 404
 
     membership_level = get_effective_role(task.board_id, user_id)
-    if membership_level < ROLE_HIERARCHY['member']:
+    if membership_level < ROLE_HIERARCHY['editor']:
         return jsonify({'error': 'Unauthorized to restore task'}), 403
 
     restored_task, error = TaskService.restore_task(task_id, user_id=user_id)

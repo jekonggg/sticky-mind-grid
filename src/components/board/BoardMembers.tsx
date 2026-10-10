@@ -18,14 +18,17 @@ import {
   User01 as User,
   Eye,
   LogOut01 as LogOut,
+  MessageChatSquare as MessageSquare,
+  Send01 as Send,
 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { BoardMember } from "@/types/board";
+import { BoardMember, BoardRole } from "@/types/board";
 import { useActivity } from "@/hooks/useActivity";
 import { useBoards } from "@/hooks/useBoards";
 import { useNavigate } from "react-router-dom";
 import { useDevMode } from "@/contexts/DevModeContext";
+import { useBoardPermissions } from "@/hooks/useBoardPermissions";
 
 interface BoardMembersProps {
   boardId: string;
@@ -44,6 +47,13 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
     queryKey: ["boardMembers", boardId],
     queryFn: () => boardApi.getMembers(boardId),
   });
+
+  const permissions = useBoardPermissions(currentBoard, members || []);
+
+  const acceptedOwners = (members || []).filter(
+    (m) => m.role === "owner" && m.status === "accepted"
+  );
+  const ownerCount = acceptedOwners.length || (currentBoard?.ownerId ? 1 : 0);
 
   const removeMutation = useMutation({
     mutationFn: (userId: string) => boardApi.removeMember(boardId, userId),
@@ -80,16 +90,42 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
     },
   });
 
+  const resendInviteMutation = useMutation({
+    mutationFn: (userId: string) => boardApi.resendInvite(boardId, userId),
+    onSuccess: () => {
+      toast.success("Invitation reminder resent");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to resend invitation");
+    },
+  });
+
+  const transferOwnershipMutation = useMutation({
+    mutationFn: (userId: string) => boardApi.transferOwnership(boardId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["boardMembers", boardId] });
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
+      toast.success("Board ownership transferred successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to transfer ownership");
+    },
+  });
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case "owner":
         return "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30";
       case "admin":
         return "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30";
+      case "editor":
+      case "member":
+        return "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
+      case "commenter":
+        return "bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30";
       case "viewer":
-        return "bg-slate-500/20 text-slate-600 dark:text-slate-400 border-slate-500/30";
       default:
-        return "bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30";
+        return "bg-slate-500/20 text-slate-600 dark:text-slate-400 border-slate-500/30";
     }
   };
 
@@ -99,10 +135,14 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
         return <Crown className="h-3 w-3 text-amber-500 mr-1" />;
       case "admin":
         return <Shield className="h-3 w-3 text-blue-500 mr-1" />;
+      case "editor":
+      case "member":
+        return <User className="h-3 w-3 text-emerald-500 mr-1" />;
+      case "commenter":
+        return <MessageSquare className="h-3 w-3 text-purple-500 mr-1" />;
       case "viewer":
-        return <Eye className="h-3 w-3 text-slate-500 mr-1" />;
       default:
-        return <User className="h-3 w-3 text-green-500 mr-1" />;
+        return <Eye className="h-3 w-3 text-slate-500 mr-1" />;
     }
   };
 
@@ -112,11 +152,6 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
 
   if (!members || members.length === 0) return null;
 
-  // Find current user's membership and management rights
-  const myMembership = members.find((m) => m.userId === currentUser?.id);
-  const isOwner = myMembership?.role === "owner" || currentBoard?.ownerId === currentUser?.id;
-  const canManage = isOwner || myMembership?.role === "admin";
-
   return (
     <div className="flex flex-col gap-4">
       {/* Avatars summary row */}
@@ -125,11 +160,11 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
           <Avatar
             key={member.id}
             className="inline-block h-9 w-9 rounded-full ring-2 ring-background transition-transform hover:scale-110 hover:z-10 cursor-pointer shadow-sm"
-            title={`${member.user?.fullName || member.user?.email} (${member.role})`}
+            title={`${member.user?.fullName || member.user?.email || "Member"} (${member.role})`}
           >
             <AvatarImage src={member.user?.avatarUrl} alt={member.user?.fullName || member.user?.email} />
             <AvatarFallback className="text-xs bg-muted font-bold">
-              {member.user?.fullName?.charAt(0).toUpperCase() || member.user?.email?.charAt(0).toUpperCase()}
+              {member.user?.fullName?.charAt(0).toUpperCase() || member.user?.email?.charAt(0).toUpperCase() || "M"}
             </AvatarFallback>
           </Avatar>
         ))}
@@ -143,8 +178,27 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
 
         {members.map((member) => {
           const isMemberOwner = member.role === "owner";
+          const isMemberAdmin = member.role === "admin";
           const isSelf = member.userId === currentUser?.id;
-          const canEditThisMember = canManage && !isMemberOwner && (!isSelf || isOwner);
+          const isSoleOwner = isMemberOwner && ownerCount <= 1;
+
+          // Permission to change this member's role:
+          // Owner can edit anyone (except sole owner demotion is blocked).
+          // Admin can only edit Editor and below (not Admin, not Owner).
+          const canEditThisMember =
+            (permissions.isOwner && !isSoleOwner && !isSelf) ||
+            (permissions.isAdmin && !permissions.isOwner && !isMemberOwner && !isMemberAdmin && !isSelf);
+
+          // Permission to remove this member:
+          // Owner can remove anyone (except sole owner).
+          // Admin can only remove Editor and below.
+          const canRemoveThisMember =
+            (permissions.isOwner && !isSoleOwner && !isSelf) ||
+            (permissions.isAdmin && !permissions.isOwner && !isMemberOwner && !isMemberAdmin && !isSelf);
+
+          // Owner can transfer ownership to any other active accepted member
+          const canTransferToThisMember =
+            permissions.isOwner && !isSelf && !isMemberOwner && member.status === "accepted";
 
           return (
             <div
@@ -155,12 +209,12 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                 <Avatar className="h-9 w-9 border border-border/80 shrink-0">
                   <AvatarImage src={member.user?.avatarUrl} alt={member.user?.fullName || member.user?.email} />
                   <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
-                    {member.user?.fullName?.charAt(0).toUpperCase() || member.user?.email?.charAt(0).toUpperCase()}
+                    {member.user?.fullName?.charAt(0).toUpperCase() || member.user?.email?.charAt(0).toUpperCase() || "M"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs md:text-sm font-bold text-foreground truncate flex items-center gap-1.5">
-                    {member.user?.fullName || member.user?.email}
+                    {member.user?.fullName || member.user?.email || "Member"}
                     {isSelf && (
                       <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.2 rounded font-black">
                         You
@@ -172,7 +226,8 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                       </span>
                     )}
                   </span>
-                  {member.user?.fullName && (
+                  {/* Show email only if available (redacted for commenter and viewer) */}
+                  {permissions.canViewFullMemberList && member.user?.email && (
                     <span className="text-[11px] text-muted-foreground truncate">{member.user.email}</span>
                   )}
                 </div>
@@ -191,14 +246,28 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="admin">
+                      {permissions.canGrantAdminOwner && (
+                        <>
+                          <SelectItem value="owner">
+                            <span className="flex items-center text-xs">
+                              {!devSettings.disableEmojiCustomization && "👑 "}Owner
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="admin">
+                            <span className="flex items-center text-xs">
+                              {!devSettings.disableEmojiCustomization && "🛡️ "}Admin
+                            </span>
+                          </SelectItem>
+                        </>
+                      )}
+                      <SelectItem value="editor">
                         <span className="flex items-center text-xs">
-                          {!devSettings.disableEmojiCustomization && "🛡️ "}Admin
+                          {!devSettings.disableEmojiCustomization && "✏️ "}Editor
                         </span>
                       </SelectItem>
-                      <SelectItem value="member">
+                      <SelectItem value="commenter">
                         <span className="flex items-center text-xs">
-                          {!devSettings.disableEmojiCustomization && "👤 "}Member
+                          {!devSettings.disableEmojiCustomization && "💬 "}Commenter
                         </span>
                       </SelectItem>
                       <SelectItem value="viewer">
@@ -220,14 +289,49 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                   </Badge>
                 )}
 
-                {canManage && !isMemberOwner && !isSelf && (
+                {/* Resend invite for pending members */}
+                {member.status === "pending" && permissions.isAdmin && !isSelf && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-primary rounded-lg"
+                    title="Resend invitation"
+                    onClick={() => resendInviteMutation.mutate(member.userId)}
+                    disabled={resendInviteMutation.isPending}
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+
+                {/* Transfer Ownership button for Owner */}
+                {canTransferToThisMember && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 rounded-lg gap-1"
+                    title="Transfer board ownership"
+                    onClick={() => {
+                      const targetName = member.user?.fullName || member.user?.email || "this member";
+                      if (confirm(`Transfer full board ownership to ${targetName}?`)) {
+                        transferOwnershipMutation.mutate(member.userId);
+                      }
+                    }}
+                    disabled={transferOwnershipMutation.isPending}
+                  >
+                    <Crown className="h-3 w-3 text-amber-500" />
+                    <span>Make Owner</span>
+                  </Button>
+                )}
+
+                {/* Remove member button */}
+                {canRemoveThisMember && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
                     title="Remove member from board"
                     onClick={() => {
-                      if (confirm(`Remove ${member.user?.fullName || member.user?.email} from this board?`)) {
+                      if (confirm(`Remove ${member.user?.fullName || member.user?.email || "this member"} from this board?`)) {
                         removeMutation.mutate(member.userId);
                       }
                     }}
@@ -237,18 +341,31 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                   </Button>
                 )}
 
-                {isSelf && !isMemberOwner && (
+                {/* Leave board button */}
+                {isSelf && (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-2.5 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 rounded-lg font-bold gap-1 cursor-pointer"
-                    title="Leave this board"
+                    className={`h-8 px-2.5 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 rounded-lg font-bold gap-1 cursor-pointer ${
+                      isSoleOwner ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                    title={
+                      isSoleOwner
+                        ? "The last Owner cannot leave the board. Transfer ownership or delete the board."
+                        : "Leave this board"
+                    }
                     onClick={() => {
+                      if (isSoleOwner) {
+                        toast.error(
+                          "A board must always have at least one Owner. Transfer ownership before leaving."
+                        );
+                        return;
+                      }
                       if (confirm(`Are you sure you want to leave "${currentBoard?.name || "this board"}"?`)) {
                         removeMutation.mutate(member.userId);
                       }
                     }}
-                    disabled={removeMutation.isPending}
+                    disabled={removeMutation.isPending || isSoleOwner}
                   >
                     <LogOut className="h-3.5 w-3.5" />
                     <span>Leave</span>

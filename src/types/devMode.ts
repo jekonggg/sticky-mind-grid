@@ -1,6 +1,6 @@
 export type ChaosErrorMode = "none" | "500" | "403" | "401" | "network_error";
 
-export type SimulatedRole = "none" | "owner" | "admin" | "member" | "viewer";
+export type SimulatedRole = "none" | "owner" | "admin" | "editor" | "member" | "commenter" | "viewer";
 
 export type DevFontFamily =
   | "helvetica"

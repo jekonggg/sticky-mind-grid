@@ -117,4 +117,35 @@ export const boardApi = {
       throw new Error(error.error || "Failed to decline invitation");
     }
   },
+
+  async resendInvite(boardId: string, userId: string): Promise<void> {
+    const res = await authenticatedFetch(`/boards/${boardId}/members/${userId}/resend`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || "Failed to resend invitation");
+    }
+  },
+
+  async transferOwnership(boardId: string, userId: string): Promise<void> {
+    const res = await authenticatedFetch(`/boards/${boardId}/transfer-ownership`, {
+      method: "POST",
+      body: JSON.stringify({ userId }),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || "Failed to transfer ownership");
+    }
+  },
+
+  async exportBoard(boardId: string): Promise<any> {
+    const res = await authenticatedFetch(`/boards/${boardId}/export`);
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || "Failed to export board");
+    }
+    return res.json();
+  },
 };
+

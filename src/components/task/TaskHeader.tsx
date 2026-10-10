@@ -12,6 +12,8 @@ import {
   DotsHorizontal as MoreHorizontal,
   Loading01 as Loader2,
   XClose as X,
+  ArrowRight,
+  Archive,
 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,12 +36,19 @@ interface TaskHeaderProps {
   coverImage?: string;
   saveStatus?: "idle" | "saving" | "saved";
   readOnly?: boolean;
+  columns?: { id: string; title: string; color?: string; emoji?: string }[];
+  currentColumnId?: string;
+  availableBoards?: { id: string; name: string; emoji?: string }[];
+  isArchived?: boolean;
   onClose?: () => void;
   onTitleChange: (title: string) => void;
   onTitleBlur?: () => void;
   onEmojiChange: (emoji: string) => void;
   onCoverChange?: (cover: string) => void;
   onDelete?: () => void;
+  onMoveToColumn?: (colId: string) => void;
+  onMoveToBoard?: (targetBoardId: string) => void;
+  onArchiveToggle?: () => void;
 }
 
 const COVER_GRADIENTS = [
@@ -60,12 +69,19 @@ export function TaskHeader({
   coverImage,
   saveStatus = "idle",
   readOnly,
+  columns,
+  currentColumnId,
+  availableBoards,
+  isArchived,
   onClose,
   onTitleChange,
   onTitleBlur,
   onEmojiChange,
   onCoverChange,
   onDelete,
+  onMoveToColumn,
+  onMoveToBoard,
+  onArchiveToggle,
 }: TaskHeaderProps) {
   const { devSettings } = useDevMode();
   const navigate = useNavigate();
@@ -137,6 +153,82 @@ export function TaskHeader({
             {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
             <span className="hidden sm:inline">{copied ? "Copied" : "Copy Link"}</span>
           </Button>
+
+          {!readOnly && (onMoveToColumn || onMoveToBoard) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  title="Move task"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Move</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {onMoveToColumn && columns && columns.length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      Move to Column
+                    </div>
+                    {columns
+                      .filter((c) => c.id !== "archive" && c.id !== currentColumnId)
+                      .map((col) => (
+                        <DropdownMenuItem
+                          key={col.id}
+                          onClick={() => onMoveToColumn(col.id)}
+                          className="text-xs cursor-pointer gap-2"
+                        >
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: col.color || "var(--primary)" }}
+                          />
+                          <span className="truncate">{col.title}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    {availableBoards && availableBoards.length > 1 && onMoveToBoard && (
+                      <DropdownMenuSeparator />
+                    )}
+                  </>
+                )}
+
+                {onMoveToBoard && availableBoards && availableBoards.length > 1 && (
+                  <>
+                    <div className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      Move to Board
+                    </div>
+                    {availableBoards
+                      .filter((b) => b.id !== boardId)
+                      .map((b) => (
+                        <DropdownMenuItem
+                          key={b.id}
+                          onClick={() => onMoveToBoard(b.id)}
+                          className="text-xs cursor-pointer gap-2"
+                        >
+                          <span>{b.emoji || "📋"}</span>
+                          <span className="truncate">{b.name}</span>
+                        </DropdownMenuItem>
+                      ))}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {!readOnly && onArchiveToggle && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onArchiveToggle}
+              className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+              title={isArchived ? "Unarchive task" : "Archive task"}
+            >
+              <Archive className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{isArchived ? "Unarchive" : "Archive"}</span>
+            </Button>
+          )}
 
           {!readOnly && onDelete && (
             <Button

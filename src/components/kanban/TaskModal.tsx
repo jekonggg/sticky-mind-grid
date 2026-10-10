@@ -40,6 +40,8 @@ import {
   Clock,
   Stars01 as Sparkles,
   LayoutGrid01 as LayoutGrid,
+  Archive,
+  ArrowRight,
 } from "@untitledui/icons";
 import { EmojiSelector } from "../common/EmojiSelector";
 import { TaskComments } from "./TaskComments";
@@ -47,6 +49,8 @@ import { fileApi } from "@/services/fileApi";
 import { toast } from "sonner";
 import { boardApi } from "@/services/boardApi";
 import { useDevMode } from "@/contexts/DevModeContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { Board } from "@/types/board";
 
 interface TaskModalProps {
   open?: boolean;
@@ -57,7 +61,9 @@ interface TaskModalProps {
   columns?: Column[];
   boardId?: string;
   members?: BoardMember[];
+  availableBoards?: Board[];
   readOnly?: boolean;
+  canComment?: boolean;
   onSubmit?: (data: TaskFormData) => void;
   onSave?: (data: TaskFormData) => void;
   onDelete?: (id: string) => void;
@@ -85,14 +91,22 @@ export function TaskModal({
   columns = EMPTY_COLUMNS,
   boardId,
   members = [],
+  availableBoards,
   readOnly = false,
+  canComment,
   onSubmit,
   onSave,
   onDelete,
 }: TaskModalProps) {
   const { devSettings } = useDevMode();
+  const { user: currentUser } = useAuth();
   const isModalOpen = open ?? isOpen ?? false;
   const [boardMembers, setBoardMembers] = useState<BoardMember[]>(members);
+  const assignableMembers = boardMembers.filter((m) =>
+    ["owner", "admin", "editor", "member"].includes(m.role)
+  );
+  const [userBoards, setUserBoards] = useState<Board[]>(availableBoards || []);
+  const [selectedBoardId, setSelectedBoardId] = useState<string>(task?.boardId || boardId || "");
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState("");
   const [description, setDescription] = useState("");
@@ -113,6 +127,18 @@ export function TaskModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!task;
+
+  useEffect(() => {
+    if (availableBoards && availableBoards.length > 0) {
+      setUserBoards(availableBoards);
+    } else if (isEditing && isModalOpen) {
+      boardApi.getBoards().then((b) => setUserBoards(b || [])).catch(() => {});
+    }
+  }, [availableBoards, isEditing, isModalOpen]);
+
+  useEffect(() => {
+    setSelectedBoardId(task?.boardId || boardId || "");
+  }, [task?.boardId, boardId, isModalOpen]);
 
   useEffect(() => {
     if (members && members.length > 0) {
@@ -177,6 +203,7 @@ export function TaskModal({
             size: uploaded.size,
             type: uploaded.type,
             url: uploaded.url,
+            uploaderId: currentUser?.id,
           },
         ]);
         toast.success(`Uploaded ${file.name}`);
@@ -202,6 +229,8 @@ export function TaskModal({
     const updated = [...checklist, newItem];
     setChecklist(updated);
     setNewChecklistText("");
+    const completedCount = updated.filter((i) => i.completed).length;
+    setProgress(Math.round((completedCount / updated.length) * 100));
   };
 
   const handleToggleChecklistItem = (id: string) => {
@@ -219,7 +248,12 @@ export function TaskModal({
 
   const handleDeleteChecklistItem = (id: string) => {
     if (readOnly) return;
-    setChecklist((prev) => prev.filter((item) => item.id !== id));
+    const updated = checklist.filter((item) => item.id !== id);
+    setChecklist(updated);
+    if (updated.length > 0) {
+      const completedCount = updated.filter((i) => i.completed).length;
+      setProgress(Math.round((completedCount / updated.length) * 100));
+    }
   };
 
   // Tag Actions
@@ -251,6 +285,7 @@ export function TaskModal({
       priority,
       status: status || task?.status || (columns && columns.length > 0 ? columns[0].id : "todo"),
       assignedTo: assignedTo === "unassigned" ? null : assignedTo,
+      boardId: selectedBoardId || undefined,
       dueDate: dueDate ? new Date(dueDate) : undefined,
       progress,
       checklist,
@@ -611,7 +646,7 @@ export function TaskModal({
                       <span className="text-xs font-medium">Unassigned</span>
                     </div>
                   </SelectItem>
-                  {boardMembers.map((m) => {
+                  {assignableMembers.map((m) => {
                     const name = m.user?.fullName || m.user?.email || "Member";
                     const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
                     return (
@@ -634,6 +669,30 @@ export function TaskModal({
               </Select>
             </div>
           </div>
+
+          {/* Move to another Board selector (when editing existing task) */}
+          {isEditing && userBoards.length > 1 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <ArrowRight className="h-3.5 w-3.5 text-primary" /> Board Location
+              </Label>
+              <Select value={selectedBoardId} onValueChange={setSelectedBoardId} disabled={readOnly}>
+                <SelectTrigger className="h-10 bg-background/50 border-border/60 text-xs">
+                  <SelectValue placeholder="Select board..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {userBoards.map((b) => (
+                    <SelectItem key={b.id} value={b.id} className="cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <span>{b.emoji || "📋"}</span>
+                        <span>{b.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Subtasks / Checklist Section */}
           <div className="space-y-2 pt-1">
@@ -783,7 +842,11 @@ export function TaskModal({
           {/* Task Comments & Mentions Discussion Thread */}
           {isEditing && task && (
             <div className="pt-2 border-t border-border/40">
-              <TaskComments taskId={task.id} boardMembers={boardMembers} readOnly={readOnly} />
+              <TaskComments
+                taskId={task.id}
+                boardMembers={boardMembers}
+                readOnly={canComment !== undefined ? !canComment : readOnly}
+              />
             </div>
           )}
         </form>
@@ -802,20 +865,44 @@ export function TaskModal({
             </Button>
           ) : (
             <>
-              {isEditing && onDelete ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-9 px-3 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs font-bold"
-                  onClick={() => {
-                    onDelete(task.id);
-                    onClose();
-                  }}
-                >
-                  <Trash2 className="h-4 w-4 mr-1.5" />
-                  Delete Task
-                </Button>
+              {isEditing ? (
+                <div className="flex items-center gap-1.5">
+                  {onDelete && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 px-3 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs font-bold"
+                      onClick={() => {
+                        onDelete(task.id);
+                        onClose();
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1.5" />
+                      Delete Task
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-3 text-xs font-medium gap-1.5 text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      if (status === "archive") {
+                        const defaultCol = columns.find((c) => c.id !== "archive")?.id || "todo";
+                        setStatus(defaultCol);
+                        toast.success("Task unarchived");
+                      } else {
+                        setStatus("archive");
+                        toast.success("Task marked for archive");
+                      }
+                    }}
+                    title={status === "archive" ? "Unarchive task" : "Archive task"}
+                  >
+                    <Archive className="h-3.5 w-3.5" />
+                    <span>{status === "archive" ? "Unarchive" : "Archive"}</span>
+                  </Button>
+                </div>
               ) : (
                 <div />
               )}

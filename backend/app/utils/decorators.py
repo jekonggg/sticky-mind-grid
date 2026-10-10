@@ -8,9 +8,11 @@ from app.models.task import Task
 from app import db
 
 ROLE_HIERARCHY = {
-    'owner': 4,
-    'admin': 3,
-    'member': 2,
+    'owner': 5,
+    'admin': 4,
+    'editor': 3,
+    'member': 3,  # backwards-compatibility alias for editor
+    'commenter': 2,
     'viewer': 1
 }
 
@@ -19,6 +21,7 @@ def get_effective_role(board_id, user_id):
 
     - Board owners get 'owner' level even without an accepted membership
       row (covers legacy boards created before memberships existed).
+    - Membership with status == 'accepted' determines role level.
     - Only memberships with status == 'accepted' count; pending or
       declined invitees have no access.
     - Returns 0 when the user has no access at all.
@@ -50,18 +53,12 @@ def require_board_access(minimum_role='viewer'):
             if not board:
                 return jsonify({'error': 'Board not found'}), 404
 
-            # If user is the board owner, grant access
-            if board.owner_id and str(board.owner_id) == current_user_id:
-                return fn(*args, **kwargs)
-                
-            membership = BoardMember.query.filter_by(board_id=board_id, user_id=current_user_id).first()
-            
-            if not membership or membership.status != 'accepted':
-                return jsonify({'error': 'You do not have active access to this board'}), 403
-                
-            user_level = ROLE_HIERARCHY.get(membership.role, 0)
+            user_level = get_effective_role(board_id, current_user_id)
             required_level = ROLE_HIERARCHY.get(minimum_role, 0)
             
+            if user_level == 0:
+                return jsonify({'error': 'You do not have active access to this board'}), 403
+                
             if user_level < required_level:
                 return jsonify({'error': f'Requires {minimum_role} privileges on this board'}), 403
                 
@@ -82,22 +79,18 @@ def require_task_access(minimum_role='viewer'):
             task = db.session.get(Task, task_id)
             if not task:
                 return jsonify({'error': 'Task not found'}), 404
-                
-            # If user is the board owner, grant access
-            if task.board and task.board.owner_id and str(task.board.owner_id) == current_user_id:
-                return fn(*args, **kwargs)
 
-            membership = BoardMember.query.filter_by(board_id=task.board_id, user_id=current_user_id).first()
-            if not membership or membership.status != 'accepted':
-                return jsonify({'error': 'You do not have access to this task'}), 403
-                
-            user_level = ROLE_HIERARCHY.get(membership.role, 0)
+            user_level = get_effective_role(task.board_id, current_user_id)
             required_level = ROLE_HIERARCHY.get(minimum_role, 0)
             
+            if user_level == 0:
+                return jsonify({'error': 'You do not have access to this task'}), 403
+                
             if user_level < required_level:
                 return jsonify({'error': f'Requires {minimum_role} privileges'}), 403
                 
             return fn(*args, **kwargs)
         return wrapper
     return decorator
+
 

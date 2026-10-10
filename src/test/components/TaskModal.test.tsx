@@ -144,4 +144,48 @@ describe("TaskModal Component", () => {
       })
     );
   });
+
+  it("renders Archive button in edit mode and allows toggling to archive", () => {
+    const onSubmit = vi.fn();
+    renderWithProviders(
+      <TaskModal
+        open={true}
+        onClose={vi.fn()}
+        task={mockTask}
+        members={mockMembers}
+        onSubmit={onSubmit}
+      />
+    );
+
+    const archiveBtn = screen.getByRole("button", { name: /archive/i });
+    expect(archiveBtn).toBeInTheDocument();
+    fireEvent.click(archiveBtn);
+
+    const submitBtn = screen.getByRole("button", { name: /update task/i });
+    fireEvent.click(submitBtn);
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "archive",
+      })
+    );
+  });
+
+  it("does not render Delete or Archive button in readOnly mode", () => {
+    renderWithProviders(
+      <TaskModal
+        open={true}
+        onClose={vi.fn()}
+        task={mockTask}
+        members={mockMembers}
+        readOnly={true}
+        onDelete={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: /delete task/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /archive/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /update task/i })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /close/i }).length).toBeGreaterThanOrEqual(1);
+  });
 });

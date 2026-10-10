@@ -12,8 +12,11 @@ import {
   MessageChatSquare as MessageSquare,
   Send01 as Send,
   Trash01 as Trash2,
+  Edit01 as Edit2,
   AtSign,
   Loading01 as Loader2,
+  Check,
+  XClose as X,
 } from "@untitledui/icons";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -23,19 +26,22 @@ interface TaskCommentsProps {
   taskId: string;
   boardMembers: BoardMember[];
   readOnly?: boolean;
+  canDeleteAnyComment?: boolean;
 }
 
 function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsProps) {
+export function TaskComments({ taskId, boardMembers, readOnly, canDeleteAnyComment }: TaskCommentsProps) {
   const { user: currentUser } = useAuth();
   const { settings } = useSettings();
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [cursorPos, setCursorPos] = useState<number>(0);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState<string>("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: comments = [], isLoading } = useQuery<Comment[]>({
@@ -53,6 +59,20 @@ export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsPro
     },
     onError: (err: Error) => {
       toast.error(err.message || "Failed to post comment");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ commentId, newContent }: { commentId: string; newContent: string }) =>
+      commentApi.updateComment(commentId, newContent),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["taskComments", taskId] });
+      setEditingCommentId(null);
+      setEditContent("");
+      toast.success("Comment updated");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to update comment");
     },
   });
 
@@ -208,11 +228,19 @@ export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsPro
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                       <span className="font-bold text-foreground truncate">{authorName}</span>
                       {isOwn && (
                         <span className="text-[9px] bg-primary/10 text-primary font-bold px-1 rounded">
                           You
+                        </span>
+                      )}
+                      {c.isEdited && (
+                        <span
+                          className="text-[10px] text-muted-foreground/70 italic cursor-help"
+                          title={c.originalContent ? `Original: ${c.originalContent}` : "Edited"}
+                        >
+                          (edited)
                         </span>
                       )}
                     </div>
@@ -221,23 +249,80 @@ export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsPro
                     </span>
                   </div>
 
-                  <div className="text-foreground/90 whitespace-pre-wrap leading-relaxed">
-                    {renderFormattedContent(c.content)}
-                  </div>
+                  {editingCommentId === c.id ? (
+                    <div className="space-y-1.5 mt-1.5">
+                      <Textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="text-xs min-h-[60px] bg-background/80"
+                        autoFocus
+                      />
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          className="h-6 px-2 text-[11px] gap-1"
+                          onClick={() => {
+                            if (editContent.trim()) {
+                              updateMutation.mutate({ commentId: c.id, newContent: editContent.trim() });
+                            }
+                          }}
+                          disabled={!editContent.trim() || updateMutation.isPending}
+                        >
+                          <Check className="h-3 w-3" />
+                          <span>Save</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-[11px] gap-1 text-muted-foreground"
+                          onClick={() => {
+                            setEditingCommentId(null);
+                            setEditContent("");
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                          <span>Cancel</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                      {renderFormattedContent(c.content)}
+                    </div>
+                  )}
                 </div>
 
-                {!readOnly && isOwn && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      if (confirm("Delete this comment?")) deleteMutation.mutate(c.id);
-                    }}
-                    className="h-6 w-6 opacity-0 group-hover/comment:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0 cursor-pointer"
-                    title="Delete comment"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                {editingCommentId !== c.id && (
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover/comment:opacity-100 transition-opacity shrink-0">
+                    {!readOnly && isOwn && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setEditingCommentId(c.id);
+                          setEditContent(c.content);
+                        }}
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Edit comment"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </Button>
+                    )}
+
+                    {((!readOnly && isOwn) || canDeleteAnyComment) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          if (confirm("Delete this comment?")) deleteMutation.mutate(c.id);
+                        }}
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive cursor-pointer"
+                        title="Delete comment"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             );
@@ -246,7 +331,11 @@ export function TaskComments({ taskId, boardMembers, readOnly }: TaskCommentsPro
       </div>
 
       {/* Comment Composer */}
-      {!readOnly && (
+      {readOnly ? (
+        <div className="p-3 text-center text-xs text-muted-foreground bg-muted/20 rounded-xl border border-border/40">
+          Commenting is disabled for viewers
+        </div>
+      ) : (
         <div className="space-y-2 relative pt-1">
           {/* @Mentions Autocomplete Popover */}
           {mentionQuery !== null && filteredMembers.length > 0 && (

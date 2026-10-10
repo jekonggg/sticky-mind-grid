@@ -122,3 +122,55 @@ class CommentService:
             })
 
         return True, None
+
+    @staticmethod
+    def update_comment(comment_id, user_id, new_content):
+        comment = db.session.get(Comment, comment_id)
+        if not comment:
+            return None, "Comment not found"
+
+        # Comments are editable only by their author
+        if comment.user_id != user_id:
+            return None, "You can only edit your own comments"
+
+        if not new_content or not new_content.strip():
+            return None, "Comment content cannot be empty"
+
+        from datetime import datetime
+        task = comment.task
+        board_id = task.board_id if task else None
+
+        # Store original content if not already stored
+        if not comment.original_content:
+            comment.original_content = comment.content
+
+        comment.content = new_content.strip()
+        comment.is_edited = True
+        comment.updated_at = datetime.utcnow()
+
+        # Audit log keeping record of the comment edit
+        from app.models.user import User
+        author = db.session.get(User, user_id)
+        author_name = (author.full_name or author.email) if author else "User"
+        activity = None
+        if board_id and task:
+            activity = Activity(
+                type='update',
+                task_title=task.title,
+                message=f'{author_name} edited a comment on "{task.title}"',
+                board_id=board_id,
+                user_id=user_id
+            )
+            db.session.add(activity)
+
+        db.session.commit()
+
+        if board_id:
+            broadcaster.broadcast(board_id, "comment:updated", {
+                "taskId": comment.task_id,
+                "comment": comment.to_dict()
+            })
+            if activity:
+                broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
+
+        return comment, None

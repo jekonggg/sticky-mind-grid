@@ -71,10 +71,10 @@ describe("TaskDetailWorkspace Component", () => {
     expect(screen.getByDisplayValue("Create TaskDetailWorkspace")).toBeInTheDocument();
   });
 
-  it("handles progress slider change", () => {
+  it("handles progress slider change when no checklist exists", () => {
     renderWithProviders(
       <TaskDetailWorkspace
-        task={mockTask}
+        task={{ ...mockTask, checklist: [] }}
         board={mockBoard}
         members={[]}
         onClose={onClose}
@@ -174,7 +174,7 @@ describe("TaskDetailWorkspace Component", () => {
   it("displays Saved status indicator after updating task property", async () => {
     renderWithProviders(
       <TaskDetailWorkspace
-        task={mockTask}
+        task={{ ...mockTask, checklist: [] }}
         board={mockBoard}
         members={[]}
         onClose={onClose}

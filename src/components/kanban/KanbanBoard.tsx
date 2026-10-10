@@ -39,6 +39,7 @@ import {
   Calendar,
   File06 as FileText,
   BarChart01 as BarChart3,
+  Download01 as Download,
 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -214,8 +215,27 @@ export function KanbanBoard() {
       const updated = await boardApi.updateBoard(boardId, data);
       setBoard(updated);
       toast.success("Board updated");
-    } catch (error) {
-      toast.error("Failed to update board");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update board");
+    }
+  };
+
+  const handleExportBoard = async () => {
+    if (!board) return;
+    try {
+      const data = await boardApi.exportBoard(board.id);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${board.name.replace(/[^a-zA-Z0-9_-]/g, "_")}_export.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Board data exported successfully");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to export board data");
     }
   };
 
@@ -596,17 +616,19 @@ export function KanbanBoard() {
                     <h1 className="text-lg md:text-2xl font-black text-foreground tracking-tight truncate">
                       {board.name}
                     </h1>
-                    {permissions.isReadOnly ? (
-                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 gap-1 text-[11px] font-bold py-0.5 px-2.5 shrink-0">
-                        <Eye className="h-3 w-3" /> View Only
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 capitalize text-[10px] font-bold py-0.5 px-2 shrink-0">
-                        {devSettings.disableEmojiCustomization
-                          ? permissions.role
-                          : permissions.role === "owner" ? "👑 Owner" : permissions.role === "admin" ? "🛡️ Admin" : "👤 Member"}
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 capitalize text-[10px] font-bold py-0.5 px-2 shrink-0">
+                      {devSettings.disableEmojiCustomization
+                        ? permissions.role
+                        : permissions.role === "owner"
+                        ? "👑 Owner"
+                        : permissions.role === "admin"
+                        ? "🛡️ Admin"
+                        : permissions.role === "commenter"
+                        ? "💬 Commenter"
+                        : permissions.role === "viewer"
+                        ? "👁️ Viewer"
+                        : "✏️ Editor"}
+                    </Badge>
                     {isConnected && (
                       <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 gap-1 text-[10px] font-bold py-0.5 px-2 shrink-0">
                         <Radio className="h-3 w-3 animate-pulse text-emerald-500" /> Live
@@ -621,6 +643,17 @@ export function KanbanBoard() {
                         title="Edit Board & Icon"
                       >
                         <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {permissions.canExportBoard && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0 text-muted-foreground hover:text-foreground" 
+                        onClick={handleExportBoard} 
+                        title="Export Board Data (JSON)"
+                      >
+                        <Download className="h-3.5 w-3.5" />
                       </Button>
                     )}
                   </div>
@@ -731,14 +764,16 @@ export function KanbanBoard() {
                 </div>
 
                 {/* Trash Bin Trigger on the right */}
-                <button
-                  onClick={() => setIsTrashOpen(true)}
-                  className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border border-border/50 bg-background/80 text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 shrink-0 cursor-pointer"
-                  title="View Trash Bin"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span>Trash</span>
-                </button>
+                {permissions.canViewTrash && (
+                  <button
+                    onClick={() => setIsTrashOpen(true)}
+                    className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border border-border/50 bg-background/80 text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 shrink-0 cursor-pointer"
+                    title="View Trash Bin"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Trash</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -803,6 +838,7 @@ export function KanbanBoard() {
               board={board}
               members={members}
               readOnly={permissions.isReadOnly}
+              canComment={permissions.canComment}
               onClose={() => {
                 setSelectedTaskId(null);
                 setCreatedDraftTask(null);
@@ -831,6 +867,7 @@ export function KanbanBoard() {
           boardId={board.id}
           columns={board.columns}
           members={members}
+          canComment={permissions.canComment}
           onSave={handleCreateTaskFromModal}
         />
       )}
@@ -846,7 +883,7 @@ export function KanbanBoard() {
         open={isTrashOpen}
         onClose={() => setIsTrashOpen(false)}
         boardId={board.id}
-        canManage={permissions.isAdmin || permissions.isOwner}
+        canManage={permissions.canPurgeTask}
       />
     </div>
   );

@@ -29,11 +29,18 @@ class BoardMember(db.Model):
         self.role = role
         self.status = status
 
-    def to_dict(self):
+    def to_dict(self, redact_user=False):
         # Allow expanding user details if joined
         user_data = None
         if getattr(self, 'user', None):
-             user_data = self.user.to_dict()
+             if redact_user:
+                 user_data = {
+                     'id': self.user.id,
+                     'fullName': self.user.full_name,
+                     'avatarUrl': self.user.avatar_url,
+                 }
+             else:
+                 user_data = self.user.to_dict()
              
         return {
             'id': self.id,

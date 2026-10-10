@@ -3,10 +3,12 @@ from app.models.activity import Activity
 
 class ActivityService:
     @staticmethod
-    def get_activities(board_id=None, limit=50):
+    def get_activities(board_id=None, limit=50, task_title=None):
         query = Activity.query
         if board_id:
             query = query.filter_by(board_id=board_id)
+        if task_title:
+            query = query.filter_by(task_title=task_title)
         
         return query.order_by(Activity.timestamp.desc()).limit(limit).all()
 

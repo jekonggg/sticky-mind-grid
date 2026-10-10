@@ -12,13 +12,16 @@ import { TaskActivityLog } from "./TaskActivityLog";
 import { TaskComments } from "../kanban/TaskComments";
 import { formatDistanceToNow } from "date-fns";
 import { Clock, Loading01 as Loader2, Check, Cloud01 as Cloud } from "@untitledui/icons";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { boardApi } from "@/services/boardApi";
+import { useBoardPermissions } from "@/hooks/useBoardPermissions";
 
 interface TaskDetailWorkspaceProps {
   task: Task;
   board: Board;
   members: BoardMember[];
   readOnly?: boolean;
+  canComment?: boolean;
   onClose: () => void;
   onUpdateTask: (updates: Partial<Task>) => void;
   onDeleteTask: (id: string) => void;
@@ -29,12 +32,14 @@ export function TaskDetailWorkspace({
   board,
   members,
   readOnly = false,
+  canComment,
   onClose,
   onUpdateTask,
   onDeleteTask,
 }: TaskDetailWorkspaceProps) {
   const { playSound } = useSettings();
   const { addActivity } = useActivity();
+  const permissions = useBoardPermissions(board, members);
 
   // Local state initialized with current task prop
   const [localTitle, setLocalTitle] = useState(task.title);
@@ -175,7 +180,15 @@ export function TaskDetailWorkspace({
 
   const handleChecklistChange = (newChecklist: ChecklistItem[]) => {
     setLocalChecklist(newChecklist);
-    performUpdate({ checklist: newChecklist });
+    if (newChecklist.length > 0) {
+      const calcProgress = Math.round(
+        (newChecklist.filter((c) => c.completed).length / newChecklist.length) * 100
+      );
+      setLocalProgress(calcProgress);
+      performUpdate({ checklist: newChecklist, progress: calcProgress });
+    } else {
+      performUpdate({ checklist: newChecklist });
+    }
   };
 
   const handleAttachmentsChange = (newAttachments: Attachment[]) => {
@@ -183,8 +196,41 @@ export function TaskDetailWorkspace({
     performUpdate({ attachments: newAttachments });
   };
 
+  const { data: userBoards = [] } = useQuery<Board[]>({
+    queryKey: ["boards"],
+    queryFn: () => boardApi.getBoards(),
+    staleTime: 60000,
+  });
+
   const handleDelete = () => {
     onDeleteTask(task.id);
+  };
+
+  const handleMoveToColumn = (colId: string) => {
+    handleStatusChange(colId);
+  };
+
+  const handleMoveToBoard = async (targetBoardId: string) => {
+    const targetBoard = userBoards.find((b) => b.id === targetBoardId);
+    try {
+      await onUpdateTask({ boardId: targetBoardId });
+      toast.success(`Moved task to ${targetBoard?.name || "board"}`);
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to move task to target board");
+    }
+  };
+
+  const handleArchiveToggle = () => {
+    const isArchived = localStatus === "archive";
+    if (isArchived) {
+      const defaultCol = board.columns?.find((c) => c.id !== "archive")?.id || "todo";
+      handleStatusChange(defaultCol);
+      toast.success("Task unarchived");
+    } else {
+      handleStatusChange("archive");
+      toast.success("Task archived");
+    }
   };
 
   return (
@@ -198,11 +244,18 @@ export function TaskDetailWorkspace({
           title={localTitle}
           emoji={localEmoji}
           readOnly={readOnly}
+          columns={board.columns || []}
+          currentColumnId={localStatus}
+          availableBoards={userBoards}
+          isArchived={localStatus === "archive"}
           onClose={onClose}
           onTitleChange={handleTitleChange}
           onTitleBlur={handleTitleBlur}
           onEmojiChange={handleEmojiChange}
           onDelete={handleDelete}
+          onMoveToColumn={handleMoveToColumn}
+          onMoveToBoard={permissions.canMoveCrossBoard ? handleMoveToBoard : undefined}
+          onArchiveToggle={handleArchiveToggle}
         />
 
         {/* Notion-Style Properties Grid */}
@@ -218,6 +271,7 @@ export function TaskDetailWorkspace({
           createdAt={task.createdAt}
           updatedAt={task.updatedAt}
           readOnly={readOnly}
+          checklist={localChecklist}
           onStatusChange={handleStatusChange}
           onPriorityChange={handlePriorityChange}
           onAssigneeChange={handleAssigneeChange}
@@ -245,6 +299,8 @@ export function TaskDetailWorkspace({
         <TaskAttachments
           attachments={localAttachments}
           readOnly={readOnly}
+          canUploadAttachment={permissions.canUploadAttachment}
+          canDeleteAnyAttachment={permissions.canDeleteAnyAttachment}
           onChange={handleAttachmentsChange}
         />
 
@@ -253,7 +309,8 @@ export function TaskDetailWorkspace({
           <TaskComments
             taskId={task.id}
             boardMembers={members}
-            readOnly={readOnly}
+            readOnly={canComment !== undefined ? !canComment : readOnly}
+            canDeleteAnyComment={permissions.canDeleteAnyComment}
           />
         </div>
 

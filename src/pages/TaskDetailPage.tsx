@@ -242,6 +242,7 @@ export default function TaskDetailPage() {
         board={board}
         members={members}
         readOnly={permissions.isReadOnly}
+        canComment={permissions.canComment}
         onClose={() => navigate(`/boards/${board.id}`)}
         onUpdateTask={(updates) => saveTaskUpdates(updates)}
         onDeleteTask={handleDeleteTask}

@@ -7,6 +7,14 @@ from app.models.notification import Notification
 from app.utils.event_broadcaster import broadcaster
 from datetime import datetime
 
+def _get_column_name(board, column_id):
+    if not board or not board.columns:
+        return column_id
+    for col in board.columns:
+        if isinstance(col, dict) and col.get('id') == column_id:
+            return col.get('title', column_id)
+    return column_id
+
 class TaskService:
     @staticmethod
     def get_tasks(board_id):
@@ -33,6 +41,18 @@ class TaskService:
     def get_deleted_tasks(board_id):
         if not board_id:
             return []
+        from datetime import timedelta
+        # 30-day auto-purge for soft-deleted tasks
+        cutoff = datetime.utcnow() - timedelta(days=30)
+        expired_tasks = Task.query.filter(
+            Task.board_id == board_id,
+            Task.is_deleted == True,
+            Task.deleted_at < cutoff
+        ).all()
+        if expired_tasks:
+            for t in expired_tasks:
+                db.session.delete(t)
+            db.session.commit()
         return Task.query.filter_by(board_id=board_id, is_deleted=True).order_by(Task.deleted_at.desc()).all()
 
     @staticmethod
@@ -121,6 +141,7 @@ class TaskService:
             return None
 
         # Track previous values for granular audit logging
+        old_board_id = task.board_id
         old_status = task.status
         old_assigned_to = task.assigned_to
         old_title = task.title
@@ -128,8 +149,8 @@ class TaskService:
         if 'boardId' in data: task.board_id = data['boardId']
         if 'title' in data: task.title = data['title']
         if 'emoji' in data: task.emoji = data['emoji']
-        if 'description' in data: task.description = data['description']
-        if 'status' in data: task.status = data['status']
+        status_val = data.get('status') if 'status' in data else data.get('columnId')
+        if status_val is not None: task.status = status_val
         if 'priority' in data: task.priority = data['priority']
         if 'progress' in data: task.progress = data['progress']
         if 'position' in data and data['position'] is not None: task.position = float(data['position'])
@@ -146,17 +167,41 @@ class TaskService:
             else:
                 task.due_date = None
 
+        is_board_changed = str(old_board_id) != str(task.board_id)
         is_status_changed = old_status != task.status
         is_assigned_changed = old_assigned_to != task.assigned_to
         is_title_changed = old_title != task.title
 
         # Generate automated audit log based on what changed
         activity = None
-        if is_status_changed:
+        source_board_activity = None
+
+        if is_board_changed:
+            # Cross-board move tenancy rule: target members only see "moved from another board"
             activity = Activity(
                 type='move',
                 task_title=task.title,
-                message=f'Moved "{task.title}" to {task.status}',
+                message=f'Card "{task.title}" moved from another board',
+                board_id=task.board_id,
+                user_id=user_id
+            )
+            db.session.add(activity)
+
+            source_board_activity = Activity(
+                type='move',
+                task_title=task.title,
+                message=f'Card "{task.title}" moved to another board',
+                board_id=old_board_id,
+                user_id=user_id
+            )
+            db.session.add(source_board_activity)
+        elif is_status_changed:
+            old_col_name = _get_column_name(task.board, old_status)
+            new_col_name = _get_column_name(task.board, task.status)
+            activity = Activity(
+                type='move',
+                task_title=task.title,
+                message=f'Moved "{task.title}" from {old_col_name} to {new_col_name}',
                 board_id=task.board_id,
                 user_id=user_id
             )
@@ -206,13 +251,22 @@ class TaskService:
         db.session.flush()
         task_dict = task.to_dict()
         activity_dict = activity.to_dict() if activity else None
+        source_act_dict = source_board_activity.to_dict() if source_board_activity else None
         db.session.commit()
 
         # Real-time event broadcast
-        event_name = "task:moved" if is_status_changed else "task:updated"
-        broadcaster.broadcast(task.board_id, event_name, task_dict)
-        if activity_dict:
-            broadcaster.broadcast(task.board_id, "activity:new", activity_dict)
+        if is_board_changed:
+            broadcaster.broadcast(old_board_id, "task:deleted", {"taskId": task.id})
+            if source_act_dict:
+                broadcaster.broadcast(old_board_id, "activity:new", source_act_dict)
+            broadcaster.broadcast(task.board_id, "task:created", task_dict)
+            if activity_dict:
+                broadcaster.broadcast(task.board_id, "activity:new", activity_dict)
+        else:
+            event_name = "task:moved" if is_status_changed else "task:updated"
+            broadcaster.broadcast(task.board_id, event_name, task_dict)
+            if activity_dict:
+                broadcaster.broadcast(task.board_id, "activity:new", activity_dict)
 
         return task
 
@@ -222,15 +276,32 @@ class TaskService:
         if not board_id or not items:
             return []
 
+        board = db.session.get(Board, board_id)
         updated_tasks = []
+        new_activities = []
         for item in items:
             t_id = item.get('id')
             if not t_id:
                 continue
             task = Task.query.filter_by(id=t_id, board_id=board_id).first()
             if task:
+                old_status = task.status
                 if 'status' in item and item['status']:
-                    task.status = item['status']
+                    if old_status != item['status']:
+                        task.status = item['status']
+                        old_col_name = _get_column_name(board, old_status)
+                        new_col_name = _get_column_name(board, task.status)
+                        act = Activity(
+                            type='move',
+                            task_title=task.title,
+                            message=f'Moved "{task.title}" from {old_col_name} to {new_col_name}',
+                            board_id=board_id,
+                            user_id=user_id
+                        )
+                        db.session.add(act)
+                        new_activities.append(act)
+                    else:
+                        task.status = item['status']
                 if 'position' in item and item['position'] is not None:
                     try:
                         task.position = float(item['position'])
@@ -240,18 +311,19 @@ class TaskService:
 
         if updated_tasks:
             try:
-                board = db.session.get(Board, board_id)
                 if board:
                     board.touch()
-                db.session.commit()
-
-                # Pre-serialize tasks before session detachment/expiration issues
+                db.session.flush()
+                serialized_activities = [a.to_dict() for a in new_activities]
                 serialized_tasks = [t.to_dict() for t in updated_tasks]
+                db.session.commit()
 
                 # Broadcast batch reorder event
                 broadcaster.broadcast(board_id, "tasks:reordered", {
                     "tasks": serialized_tasks
                 })
+                for act_dict in serialized_activities:
+                    broadcaster.broadcast(board_id, "activity:new", act_dict)
             except Exception as e:
                 db.session.rollback()
                 raise e
