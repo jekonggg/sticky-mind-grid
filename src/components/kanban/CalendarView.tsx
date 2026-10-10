@@ -11,7 +11,8 @@ import {
   Attachment01 as Paperclip,
   File06 as FileText,
 } from "@untitledui/icons";
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDevMode } from "@/contexts/DevModeContext";
@@ -85,11 +86,112 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
   const completedTasks = contextTasks
     .filter((task) => task.progress === 100);
 
-  const navigate = (direction: 'next' | 'prev') => {
+  const [slideDirection, setSlideDirection] = useState<number>(1);
+  const calendarGridRef = useRef<HTMLDivElement>(null);
+  const lastScrollTimeRef = useRef<number>(0);
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
+  const navigate = useCallback((direction: 'next' | 'prev') => {
     const amount = direction === 'next' ? 1 : -1;
-    if (viewMode === 'month') setCurrentDate(addMonths(currentDate, amount));
-    else if (viewMode === 'week') setCurrentDate(addWeeks(currentDate, amount));
-    else setCurrentDate(addDays(currentDate, amount));
+    setSlideDirection(amount);
+    if (viewMode === 'month') setCurrentDate((prev) => addMonths(prev, amount));
+    else if (viewMode === 'week') setCurrentDate((prev) => addWeeks(prev, amount));
+    else setCurrentDate((prev) => addDays(prev, amount));
+  }, [viewMode]);
+
+  const handleToday = useCallback(() => {
+    const today = new Date();
+    if (isSameMonth(today, currentDate) && viewMode === 'month') return;
+    if (isSameDay(today, currentDate) && (viewMode === 'day' || viewMode === 'week')) return;
+    setSlideDirection(today.getTime() >= currentDate.getTime() ? 1 : -1);
+    setCurrentDate(today);
+  }, [currentDate, viewMode]);
+
+  useEffect(() => {
+    const el = calendarGridRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (viewMode === "month") {
+        const target = e.target as HTMLElement | null;
+        const scrollable = target?.closest(".overflow-y-auto") as HTMLElement | null;
+        if (scrollable && scrollable !== el) {
+          const hasOverflow = scrollable.scrollHeight > scrollable.clientHeight + 2;
+          if (hasOverflow && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+            // Allow inner task list to scroll if hovering over an overflowing task cell
+            return;
+          }
+        }
+
+        if (Math.abs(e.deltaY) < 20 && Math.abs(e.deltaX) < 20) {
+          return;
+        }
+
+        const now = Date.now();
+        if (now - lastScrollTimeRef.current < 400) {
+          if (e.cancelable) e.preventDefault();
+          return;
+        }
+
+        const isNext = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX > 0 : e.deltaY > 0;
+        if (e.cancelable) e.preventDefault();
+        lastScrollTimeRef.current = now;
+        navigate(isNext ? "next" : "prev");
+      } else {
+        // Week or Day view: horizontal wheel navigation
+        if (Math.abs(e.deltaX) > 25 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+          const now = Date.now();
+          if (now - lastScrollTimeRef.current < 400) {
+            if (e.cancelable) e.preventDefault();
+            return;
+          }
+          if (e.cancelable) e.preventDefault();
+          lastScrollTimeRef.current = now;
+          navigate(e.deltaX > 0 ? "next" : "prev");
+        }
+      }
+    };
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", handleWheel);
+    };
+  }, [viewMode, navigate]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartYRef.current;
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+
+    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      const now = Date.now();
+      if (now - lastScrollTimeRef.current < 400) return;
+      lastScrollTimeRef.current = now;
+      navigate(deltaX < 0 ? "next" : "prev");
+    }
+  };
+
+  const slideVariants = {
+    enter: (dir: number) => ({
+      x: devSettings.forceReducedMotion ? 0 : dir > 0 ? 60 : -60,
+      opacity: devSettings.forceReducedMotion ? 1 : 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (dir: number) => ({
+      x: devSettings.forceReducedMotion ? 0 : dir > 0 ? -60 : 60,
+      opacity: devSettings.forceReducedMotion ? 1 : 0,
+    }),
   };
 
   const getTitle = () => {
@@ -112,9 +214,30 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
             <CalendarIcon className="h-5 w-5" />
           </div>
           <div className="flex flex-col">
-            <h2 className="text-xl font-black text-foreground leading-tight">
-              {getTitle()}
-            </h2>
+            <div className="overflow-hidden">
+              <AnimatePresence mode="popLayout" custom={slideDirection} initial={false}>
+                <motion.h2
+                  key={getTitle()}
+                  custom={slideDirection}
+                  initial={{
+                    y: devSettings.forceReducedMotion ? 0 : slideDirection > 0 ? 8 : -8,
+                    opacity: devSettings.forceReducedMotion ? 1 : 0,
+                  }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{
+                    y: devSettings.forceReducedMotion ? 0 : slideDirection > 0 ? -8 : 8,
+                    opacity: devSettings.forceReducedMotion ? 1 : 0,
+                  }}
+                  transition={{
+                    duration: devSettings.forceReducedMotion ? 0 : 0.16,
+                    ease: "easeOut",
+                  }}
+                  className="text-xl font-black text-foreground leading-tight"
+                >
+                  {getTitle()}
+                </motion.h2>
+              </AnimatePresence>
+            </div>
             <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">
               {viewMode} View
             </span>
@@ -147,13 +270,30 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
           <div className="h-8 w-px bg-border/50 mx-1" />
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => navigate('prev')}>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Previous"
+              className="h-9 w-9 rounded-full"
+              onClick={() => navigate('prev')}
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" className="font-bold px-4" onClick={() => setCurrentDate(new Date())}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-bold px-4"
+              onClick={handleToday}
+            >
               Today
             </Button>
-            <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => navigate('next')}>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Next"
+              className="h-9 w-9 rounded-full"
+              onClick={() => navigate('next')}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -162,8 +302,32 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
 
       <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch h-full">
         {/* Calendar Grid Side */}
-        <div className="flex-1 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden shadow-sm flex flex-col">
-          {viewMode === 'week' ? (
+        <div
+          ref={calendarGridRef}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          data-testid="calendar-grid-container"
+          className="flex-1 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden shadow-sm flex flex-col relative"
+        >
+          <AnimatePresence mode="popLayout" custom={slideDirection} initial={false}>
+            <motion.div
+              key={`${viewMode}-${format(currentDate, viewMode === 'month' ? 'yyyy-MM' : viewMode === 'week' ? 'yyyy-MM-dd' : 'yyyy-MM-dd-HH')}`}
+              custom={slideDirection}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{
+                x: devSettings.forceReducedMotion
+                  ? { duration: 0 }
+                  : { type: "spring", stiffness: 320, damping: 30, mass: 0.8 },
+                opacity: devSettings.forceReducedMotion
+                  ? { duration: 0 }
+                  : { duration: 0.16 },
+              }}
+              className="flex-1 flex flex-col w-full h-full"
+            >
+              {viewMode === 'week' ? (
             <div className="flex flex-col h-full overflow-x-auto custom-scrollbar">
               <div className="min-w-[700px] flex flex-col h-full">
                 {/* Week Day Header */}
@@ -568,6 +732,8 @@ export function CalendarView({ tasks, columns = [], selectedTaskId, onTaskClick 
               </div>
             </div>
           )}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* Sidebar Side */}

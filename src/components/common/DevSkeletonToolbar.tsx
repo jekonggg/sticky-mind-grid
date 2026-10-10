@@ -102,6 +102,18 @@ export function DevSkeletonToolbar() {
                     🚫 No Emojis
                   </Badge>
                 )}
+
+                {(devSettings.customPadding !== null && devSettings.customPadding !== undefined ||
+                  devSettings.customInnerRadius !== null && devSettings.customInnerRadius !== undefined ||
+                  devSettings.customOuterRadius !== null && devSettings.customOuterRadius !== undefined) && (
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 font-bold font-mono">
+                    📐 Geometry (
+                    {devSettings.customOuterRadius !== null && devSettings.customOuterRadius !== undefined
+                      ? `${devSettings.customOuterRadius}o / ${devSettings.customInnerRadius ?? "def"}i / ${devSettings.customPadding ?? "def"}p`
+                      : `${devSettings.customInnerRadius ?? "def"}r / ${devSettings.customPadding ?? "def"}p`}
+                    )
+                  </Badge>
+                )}
               </div>
             </div>
           </div>

@@ -28,4 +28,7 @@ export interface DevSettings {
   forceReducedMotion: boolean;
   fontFamily: DevFontFamily;
   disableEmojiCustomization: boolean;
+  customPadding?: number | null;
+  customInnerRadius?: number | null;
+  customOuterRadius?: number | null;
 }

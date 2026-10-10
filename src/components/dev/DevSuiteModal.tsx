@@ -20,6 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDevMode } from "@/contexts/DevModeContext";
+import { useSettings } from "@/contexts/SettingsContext";
+import { getContainerGeometry } from "@/utils/geometryUtils";
 import { ChaosErrorMode, SimulatedRole, DevFontFamily } from "@/types/devMode";
 import { DEV_FONT_OPTIONS } from "@/constants/fonts";
 import { taskApi } from "@/services/api";
@@ -46,9 +48,12 @@ import {
   PlusCircle,
   Type01,
   Check,
+  Square,
 } from "@untitledui/icons";
 
 export function DevSuiteModal() {
+  const { settings } = useSettings();
+  const isCompact = settings.uiDensity === "compact";
   const {
     devSettings,
     updateDevSetting,
@@ -59,6 +64,13 @@ export function DevSuiteModal() {
     clearSseLogs,
     activeDevModesCount,
   } = useDevMode();
+
+  const geom = getContainerGeometry(
+    isCompact,
+    devSettings.customPadding,
+    devSettings.customInnerRadius,
+    devSettings.customOuterRadius
+  );
 
   const [activeTab, setActiveTab] = useState("network");
   const [isSeeding, setIsSeeding] = useState(false);
@@ -199,10 +211,14 @@ export function DevSuiteModal() {
         {/* Tabbed Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="px-3 sm:px-5 pt-2 sm:pt-3 border-b border-border/40 bg-muted/10 shrink-0 overflow-x-auto custom-scrollbar">
-            <TabsList className="flex sm:grid sm:grid-cols-5 w-max sm:w-full bg-muted/40 p-1 gap-1 min-w-full">
+            <TabsList className="flex sm:grid sm:grid-cols-6 w-max sm:w-full bg-muted/40 p-1 gap-1 min-w-full">
               <TabsTrigger value="network" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
                 <Zap className="h-3.5 w-3.5 shrink-0" />
                 <span>Skeletons & Latency</span>
+              </TabsTrigger>
+              <TabsTrigger value="geometry" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
+                <Square className="h-3.5 w-3.5 shrink-0" />
+                <span>Geometry & Radii</span>
               </TabsTrigger>
               <TabsTrigger value="typography" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
                 <Type01 className="h-3.5 w-3.5 shrink-0" />
@@ -371,7 +387,256 @@ export function DevSuiteModal() {
               </Card>
             </TabsContent>
 
-            {/* TAB 2: Dynamic Typography & Font Switcher */}
+            {/* TAB: Concentric Container Geometry & Radii */}
+            <TabsContent value="geometry" className="space-y-4 m-0">
+              <Card className="border-border/60 bg-muted/20">
+                <CardContent className="p-4 space-y-4">
+                  {/* Title & Status */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Square className="h-4 w-4 text-primary" />
+                        <h4 className="text-sm font-bold text-foreground">
+                          Concentric Container Geometry
+                        </h4>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Directly customize outer border radius, inner border radius, and container padding across board pods and task cards.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {geom.isCustom ? (
+                        <Badge className="text-[10px] font-bold bg-primary text-primary-foreground">
+                          Custom Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] font-bold text-muted-foreground border-border/80">
+                          Default ({isCompact ? "Compact: 18px outer / 10px inner / 8px pad" : "Comfortable: 24px outer / 12px inner / 12px pad"})
+                        </Badge>
+                      )}
+
+                      {geom.isCustom && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            updateDevSetting("customOuterRadius", null);
+                            updateDevSetting("customPadding", null);
+                            updateDevSetting("customInnerRadius", null);
+                            toast.success("Container geometry reset to default");
+                          }}
+                          className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          <span>Reset to Default</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Control 1: Outer Border Radius (R_outer) */}
+                  <div className="p-3.5 rounded-xl bg-background border border-border/60 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-bold text-foreground">
+                          Outer Border Radius (Outer Border)
+                        </span>
+                        <p className="text-[11px] text-muted-foreground">
+                          Corner radius applied to outer pod/column containers.
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="font-mono text-xs font-bold bg-background">
+                        {geom.outerRadius}px {geom.outerRadius === (isCompact ? 18 : 24) && !devSettings.customOuterRadius ? "(Default)" : ""}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {[
+                        { label: "0px (Sharp)", val: 0 },
+                        { label: "8px", val: 8 },
+                        { label: "12px", val: 12 },
+                        { label: "16px", val: 16 },
+                        { label: "18px", val: 18 },
+                        { label: "24px", val: 24 },
+                        { label: "28px", val: 28 },
+                        { label: "32px", val: 32 },
+                      ].map((preset) => (
+                        <Button
+                          key={preset.label}
+                          size="sm"
+                          variant={geom.outerRadius === preset.val ? "default" : "outline"}
+                          className="h-6 text-[11px] font-bold px-2"
+                          onClick={() => updateDevSetting("customOuterRadius", preset.val)}
+                        >
+                          {preset.label}
+                        </Button>
+                      ))}
+                    </div>
+
+                    <Slider
+                      value={[geom.outerRadius]}
+                      min={0}
+                      max={48}
+                      step={1}
+                      onValueChange={([val]) => updateDevSetting("customOuterRadius", val)}
+                    />
+                  </div>
+
+                  {/* Control 2: Inner Border Radius (R_inner) */}
+                  <div className="p-3.5 rounded-xl bg-background border border-border/60 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-bold text-foreground">
+                          Inner Border Radius (Inner Border)
+                        </span>
+                        <p className="text-[11px] text-muted-foreground">
+                          Corner radius applied to inner task cards and empty stage floors.
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="font-mono text-xs font-bold bg-background">
+                        {geom.innerRadius}px {geom.innerRadius === (isCompact ? 10 : 12) && !devSettings.customInnerRadius ? "(Default)" : ""}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {[
+                        { label: "0px (Sharp)", val: 0 },
+                        { label: "6px", val: 6 },
+                        { label: "8px", val: 8 },
+                        { label: "10px", val: 10 },
+                        { label: "12px", val: 12 },
+                        { label: "16px", val: 16 },
+                        { label: "20px", val: 20 },
+                      ].map((preset) => (
+                        <Button
+                          key={preset.label}
+                          size="sm"
+                          variant={geom.innerRadius === preset.val ? "default" : "outline"}
+                          className="h-6 text-[11px] font-bold px-2"
+                          onClick={() => updateDevSetting("customInnerRadius", preset.val)}
+                        >
+                          {preset.label}
+                        </Button>
+                      ))}
+                    </div>
+
+                    <Slider
+                      value={[geom.innerRadius]}
+                      min={0}
+                      max={32}
+                      step={1}
+                      onValueChange={([val]) => updateDevSetting("customInnerRadius", val)}
+                    />
+                  </div>
+
+                  {/* Control 2: Container Padding (P) */}
+                  <div className="p-3.5 rounded-xl bg-background border border-border/60 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-bold text-foreground">
+                          Container Padding (Padding)
+                        </span>
+                        <p className="text-[11px] text-muted-foreground">
+                          Internal padding between outer pod and inner cards.
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="font-mono text-xs font-bold bg-background">
+                        {geom.padding}px {geom.padding === (isCompact ? 8 : 12) && !devSettings.customPadding ? "(Default)" : ""}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {[
+                        { label: "0px (Flush)", val: 0 },
+                        { label: "4px", val: 4 },
+                        { label: "8px", val: 8 },
+                        { label: "12px", val: 12 },
+                        { label: "16px", val: 16 },
+                        { label: "20px", val: 20 },
+                        { label: "24px", val: 24 },
+                      ].map((preset) => (
+                        <Button
+                          key={preset.label}
+                          size="sm"
+                          variant={geom.padding === preset.val ? "default" : "outline"}
+                          className="h-6 text-[11px] font-bold px-2"
+                          onClick={() => updateDevSetting("customPadding", preset.val)}
+                        >
+                          {preset.label}
+                        </Button>
+                      ))}
+                    </div>
+
+                    <Slider
+                      value={[geom.padding]}
+                      min={0}
+                      max={32}
+                      step={1}
+                      onValueChange={([val]) => updateDevSetting("customPadding", val)}
+                    />
+                  </div>
+
+                  {/* Live Concentric Specimen Preview */}
+                  <div className="pt-2 space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Live Concentric Preview:
+                    </span>
+                    <div
+                      style={{
+                        borderRadius: `${geom.outerRadius}px`,
+                        padding: `${geom.padding}px`,
+                        gap: `${geom.padding}px`,
+                      }}
+                      className="border border-primary/40 bg-primary/5 transition-all duration-150 flex flex-col max-w-sm mx-auto shadow-xs"
+                    >
+                      <div className="text-[10px] font-bold text-primary px-1 flex items-center justify-between">
+                        <span>Outer Pod (Border: {geom.outerRadius}px)</span>
+                        <span>Padding & Gaps: {geom.padding}px</span>
+                      </div>
+                      <div
+                        style={{
+                          borderRadius: `${geom.innerRadius}px`,
+                          padding: `${Math.max(6, Math.round(geom.padding * 0.75))}px`,
+                        }}
+                        className="bg-card text-card-foreground border border-border/80 shadow-xs space-y-1.5 transition-all duration-150"
+                      >
+                        <div className="flex items-center justify-between text-[11px] font-bold">
+                          <span>Task Card 1 (Inner Border: {geom.innerRadius}px)</span>
+                          <Badge className="text-[9px] h-4 px-1 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                            Custom Preview
+                          </Badge>
+                        </div>
+                        <div
+                          style={{
+                            borderRadius: `${geom.imageRadius}px`,
+                          }}
+                          className="h-8 bg-muted/60 border border-border/50 flex items-center justify-center text-[9px] font-mono text-muted-foreground"
+                        >
+                          Inner Inset (R: {geom.imageRadius}px)
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          borderRadius: `${geom.innerRadius}px`,
+                          padding: `${Math.max(6, Math.round(geom.padding * 0.75))}px`,
+                        }}
+                        className="bg-card text-card-foreground border border-border/80 shadow-xs space-y-1 transition-all duration-150"
+                      >
+                        <div className="flex items-center justify-between text-[11px] font-bold">
+                          <span>Task Card 2 (Inter-card Gap: {geom.padding}px)</span>
+                          <span className="text-[9px] font-mono font-bold text-muted-foreground">
+                            gap: {geom.padding}px
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* TAB 3: Dynamic Typography & Font Switcher */}
             <TabsContent value="typography" className="space-y-4 m-0">
               <Card className="border-border/60 bg-muted/20">
                 <CardContent className="p-4 space-y-3">

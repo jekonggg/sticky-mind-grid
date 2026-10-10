@@ -41,4 +41,26 @@ describe("TaskCard Component", () => {
     rerender(<TaskCard task={mockTask} isSelected={false} onClick={vi.fn()} />);
     expect(card.className).toContain("border-border");
   });
+
+  it("attaches drag-and-drop sortable attributes and grab cursor to the entire task container", () => {
+    const { container } = render(<TaskCard task={mockTask} onClick={vi.fn()} />);
+    const card = container.firstChild as HTMLElement;
+
+    expect(card.className).toContain("cursor-grab");
+    expect(card.className).toContain("active:cursor-grabbing");
+    expect(card.getAttribute("role")).toBe("button");
+    expect(card.getAttribute("tabindex")).toBe("0");
+    expect(card.getAttribute("aria-roledescription")).toBe("sortable");
+  });
+
+  it("disables drag attributes and uses pointer cursor when isDragDisabled is true", () => {
+    const { container } = render(
+      <TaskCard task={mockTask} isDragDisabled={true} onClick={vi.fn()} />
+    );
+    const card = container.firstChild as HTMLElement;
+
+    expect(card.className).toContain("cursor-pointer");
+    expect(card.className).not.toContain("cursor-grab");
+    expect(card.getAttribute("aria-roledescription")).toBeNull();
+  });
 });

@@ -117,7 +117,7 @@ export function TaskAttachments({ attachments, readOnly, onChange }: TaskAttachm
                 className="group relative flex items-center gap-3 p-2.5 rounded-xl border border-border/60 bg-card hover:bg-muted/40 transition-all shadow-xs overflow-hidden"
               >
                 {/* Thumbnail / Icon */}
-                <div className="w-12 h-12 rounded-lg bg-muted/80 border border-border/40 flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="w-12 h-12 rounded-md bg-muted/80 border border-border/40 flex items-center justify-center shrink-0 overflow-hidden">
                   {isImage ? (
                     <img src={att.url} alt={att.name} className="w-full h-full object-cover" />
                   ) : (

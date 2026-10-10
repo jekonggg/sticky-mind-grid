@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Task, CreateTaskData, UpdateTaskData, TaskStatus, Column } from "@/types/task";
 import { taskApi } from "@/services/api";
 import { useActivity } from "./useActivity";
@@ -15,6 +15,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
   const [columns, setColumns] = useState<Column[]>(initialColumns);
   const [loading, setLoading] = useState(true);
   const { addActivity } = useActivity();
+  const hasLoadedRef = useRef(false);
 
   // Sync columns when board updates
   useEffect(() => {
@@ -23,12 +24,15 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     }
   }, [initialColumns]);
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (forceLoading = false) => {
     if (!boardId) return;
     try {
-      setLoading(true);
+      if (forceLoading || !hasLoadedRef.current) {
+        setLoading(true);
+      }
       const data = await taskApi.getTasks(boardId);
       setTasks(data);
+      hasLoadedRef.current = true;
     } catch (err) {
       console.error("Failed to fetch tasks:", err);
     } finally {
@@ -37,6 +41,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
   }, [boardId]);
 
   useEffect(() => {
+    hasLoadedRef.current = false;
     fetchTasks();
     const interval = setInterval(() => {
       if (document.visibilityState === "visible" && boardId) {

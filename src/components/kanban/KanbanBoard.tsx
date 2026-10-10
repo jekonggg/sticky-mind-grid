@@ -52,6 +52,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { useBoardPermissions } from "@/hooks/useBoardPermissions";
 import { useBoardRealtime } from "@/hooks/useBoardRealtime";
+import { getContainerGeometry } from "@/utils/geometryUtils";
 
 import { BoardOverview } from "./BoardOverview";
 import { TaskListView } from "./TaskListView";
@@ -149,8 +150,8 @@ export function KanbanBoard() {
   const { isConnected } = useBoardRealtime({
     boardId,
     onTaskChange: () => {
-      // Suppress full board reload if the edit was made locally in this window within last 2 seconds
-      if (Date.now() - lastLocalEditTimeRef.current < 2000) return;
+      // Suppress full board reload if the edit was made locally in this window within last 3 seconds
+      if (Date.now() - lastLocalEditTimeRef.current < 3000) return;
       fetchTasks();
     },
     onActivityChange: () => refreshActivities(),
@@ -257,7 +258,10 @@ export function KanbanBoard() {
     handleBoardUpdate({ columns: updatedColumns });
   };
 
+  const isDraggingTaskRef = useRef<boolean>(false);
+
   const handleDragStart = useCallback((event: DragStartEvent) => {
+    isDraggingTaskRef.current = true;
     const task = event.active.data.current?.task as Task | undefined;
     if (task) {
       setActiveTask(task);
@@ -273,8 +277,15 @@ export function KanbanBoard() {
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      lastLocalEditTimeRef.current = Date.now();
       const { active, over } = event;
       setActiveTask(null);
+
+      // Prevent mouseup/click from immediately opening task detail modal
+      setTimeout(() => {
+        isDraggingTaskRef.current = false;
+      }, 150);
+
       if (permissions.isReadOnly || !over) return;
 
       const activeId = active.id as string;
@@ -342,6 +353,7 @@ export function KanbanBoard() {
   );
 
   const handleTaskClick = useCallback((task: Task) => {
+    if (isDraggingTaskRef.current) return;
     setCreatedDraftTask(null);
     setSelectedTaskId((prev) => (prev === task.id ? null : task.id));
   }, []);
@@ -463,9 +475,20 @@ export function KanbanBoard() {
           </div>
         );
       case "board":
-      default:
+      default: {
+        const geom = getContainerGeometry(
+          isCompact,
+          devSettings.customPadding,
+          devSettings.customInnerRadius,
+          devSettings.customOuterRadius
+        );
+
         return (
-          <main ref={scrollRef} className={`${isCompact ? "p-3.5 md:p-4" : "p-6 md:p-8"} flex-1 min-h-0 overflow-x-auto overflow-y-auto custom-scrollbar h-full density-kanban-board`}>
+          <main
+            ref={scrollRef}
+            style={geom.isCustom ? { padding: `${geom.padding}px` } : undefined}
+            className={`${isCompact ? "p-2" : "p-3"} flex-1 min-h-0 overflow-x-auto overflow-y-hidden custom-scrollbar h-full density-kanban-board`}
+          >
             <DndContext
               sensors={sensors}
               collisionDetection={closestCorners}
@@ -473,7 +496,10 @@ export function KanbanBoard() {
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
             >
-              <div className={`flex ${isCompact ? "gap-3.5 md:gap-4" : "gap-6 md:gap-8"} h-full min-w-max pb-28 items-start`}>
+              <div
+                style={geom.isCustom ? { gap: `${geom.padding}px` } : undefined}
+                className={`flex ${isCompact ? "gap-2" : "gap-3"} h-full min-w-max pb-20 md:pb-24 items-stretch`}
+              >
                 {columns
                   .filter((col) => col.id !== "archive")
                   .map((col) => (
@@ -494,13 +520,17 @@ export function KanbanBoard() {
                   ))}
 
                 {permissions.canEditBoard && (
-                  <div className={`${isCompact ? "w-64" : "w-80"} shrink-0`}>
+                  <div className={`${isCompact ? "w-60" : "w-72"} shrink-0 h-full min-h-[220px]`}>
                     <button
                       onClick={handleAddNewState}
-                      className="w-full flex items-center justify-center gap-2 p-4 text-muted-foreground hover:text-foreground hover:bg-background rounded-xl border border-dashed border-border/60 transition-all group bg-white/40"
+                      style={geom.isCustom ? { borderRadius: `${geom.outerRadius}px` } : undefined}
+                      className={`w-full h-full min-h-[140px] flex flex-col items-center justify-center gap-2 p-4 text-muted-foreground/70 hover:text-primary hover:bg-background/80 ${
+                        isCompact ? "rounded-[18px]" : "rounded-[24px]"
+                      } border border-dashed border-border/70 hover:border-primary/40 transition-all group bg-slate-100/40 dark:bg-slate-900/30 cursor-pointer shadow-xs`}
+                      title="Add new column stage"
                     >
-                      <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
-                      <span className="text-sm font-bold">New State</span>
+                      <Plus className="h-5 w-5 transition-transform group-hover:rotate-90 text-primary" />
+                      <span className="text-xs sm:text-sm font-bold">New Stage</span>
                     </button>
                   </div>
                 )}
@@ -509,13 +539,14 @@ export function KanbanBoard() {
               <DragOverlay>
                 {activeTask ? (
                   <div className="drag-overlay">
-                    <TaskCard task={activeTask} onClick={() => {}} />
+                    <TaskCard task={activeTask} isDragDisabled={true} onClick={() => {}} />
                   </div>
                 ) : null}
               </DragOverlay>
             </DndContext>
           </main>
         );
+      }
     }
   };
 

@@ -106,15 +106,17 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                     onClick={() => onTaskClick(task)}
                   >
                     <TableCell className={`${isCompact ? "py-2 px-3" : "py-4 px-4"}`}>
-                      <div className={`flex items-center ${isCompact ? "gap-2" : "gap-3"}`}>
-                        {/* Uniform leading icon container */}
-                        <div className={`${isCompact ? "h-6 w-6 rounded-md" : "h-7 w-7 rounded-lg"} flex items-center justify-center shrink-0 border transition-all duration-200 select-none bg-muted/20 border-border/40 group-hover:border-primary/30 group-hover:bg-primary/5`}>
-                          {!devSettings.disableEmojiCustomization && task.emoji ? (
-                            <span className={`${isCompact ? "text-sm" : "text-base"} leading-none`}>{task.emoji}</span>
-                          ) : (
-                            <FileText className={`${isCompact ? "h-3 w-3" : "h-3.5 w-3.5"} text-muted-foreground/60 group-hover:text-primary transition-colors`} />
-                          )}
-                        </div>
+                      <div className={`flex items-center ${!devSettings.disableEmojiCustomization ? (isCompact ? "gap-2" : "gap-3") : ""}`}>
+                        {/* Uniform leading icon container: hidden completely when Clean UI is active */}
+                        {!devSettings.disableEmojiCustomization && (
+                          <div className={`${isCompact ? "h-6 w-6 rounded-md" : "h-7 w-7 rounded-lg"} flex items-center justify-center shrink-0 border transition-all duration-200 select-none bg-muted/20 border-border/40 group-hover:border-primary/30 group-hover:bg-primary/5`}>
+                            {task.emoji ? (
+                              <span className={`${isCompact ? "text-sm" : "text-base"} leading-none`}>{task.emoji}</span>
+                            ) : (
+                              <FileText className={`${isCompact ? "h-3 w-3" : "h-3.5 w-3.5"} text-muted-foreground/60 group-hover:text-primary transition-colors`} />
+                            )}
+                          </div>
+                        )}
 
                         <div className="flex flex-col gap-0.5 min-w-0">
                           <span className={`font-bold text-foreground ${isCompact ? "text-xs" : "text-sm"} group-hover:text-primary transition-colors truncate`}>

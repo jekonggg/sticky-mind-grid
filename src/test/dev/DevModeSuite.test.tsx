@@ -89,6 +89,32 @@ describe("Developer Mode Suite", () => {
           >
             Set No Emojis
           </button>
+          <button
+            onClick={() => {
+              updateDevSetting("customPadding", 16);
+              updateDevSetting("customInnerRadius", 14);
+            }}
+          >
+            Set Geometry 16p 14r
+          </button>
+          <button
+            onClick={() => {
+              updateDevSetting("customPadding", 16);
+              updateDevSetting("customInnerRadius", 14);
+              updateDevSetting("customOuterRadius", 22);
+            }}
+          >
+            Set Geometry with Outer Radius
+          </button>
+          <button
+            onClick={() => {
+              updateDevSetting("customPadding", null);
+              updateDevSetting("customInnerRadius", null);
+              updateDevSetting("customOuterRadius", null);
+            }}
+          >
+            Reset Geometry
+          </button>
           <button onClick={() => setIsDevModalOpen(true)}>Open Modal</button>
           <DevSkeletonToolbar />
         </div>
@@ -121,6 +147,18 @@ describe("Developer Mode Suite", () => {
       // Trigger No Emojis
       fireEvent.click(screen.getByText("Set No Emojis"));
       expect(screen.getByText(/🚫 No Emojis/i)).toBeInTheDocument();
+
+      // Trigger Geometry
+      fireEvent.click(screen.getByText("Set Geometry 16p 14r"));
+      expect(screen.getByText(/📐 Geometry \(14r \/ 16p\)/i)).toBeInTheDocument();
+
+      // Trigger Geometry with explicit Outer Radius
+      fireEvent.click(screen.getByText("Set Geometry with Outer Radius"));
+      expect(screen.getByText(/📐 Geometry \(22o \/ 14i \/ 16p\)/i)).toBeInTheDocument();
+
+      // Reset Geometry
+      fireEvent.click(screen.getByText("Reset Geometry"));
+      expect(screen.queryByText(/📐 Geometry/i)).not.toBeInTheDocument();
     });
 
     it("updates documentElement --app-font and body fontFamily when font is toggled", () => {
@@ -135,13 +173,14 @@ describe("Developer Mode Suite", () => {
       expect(document.body.style.fontFamily).toContain("Fraunces");
     });
 
-    it("opens the Developer Mode Suite modal and displays the typography tab", () => {
+    it("opens the Developer Mode Suite modal and displays the geometry and typography tabs", () => {
       renderWithProviders(<DevTestConsumer />);
 
       fireEvent.click(screen.getByText("Open Modal"));
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByText("Developer Mode Suite")).toBeInTheDocument();
       expect(screen.getByText("Freeze Skeleton Loading")).toBeInTheDocument();
+      expect(screen.getByText("Geometry & Radii")).toBeInTheDocument();
       expect(screen.getByText("Typography")).toBeInTheDocument();
     });
 

@@ -193,23 +193,24 @@ export function TaskHeader({
       )}
 
       {/* Notion-style Page Action Helpers (Add Icon, Add Cover) */}
-      <div className={`max-w-4xl mx-auto px-6 sm:px-12 ${selectedCover ? "-mt-10" : "pt-8"}`}>
-        <div className="flex items-center gap-2 mb-3">
-          {/* Emoji Icon Button */}
-          {!devSettings.disableEmojiCustomization && (
-            !readOnly ? (
-              <EmojiSelector
-                selectedEmoji={emoji}
-                onSelect={onEmojiChange}
-                size="lg"
-                className={`transition-transform hover:scale-105 shadow-sm ${
-                  selectedCover ? "bg-background border-2 border-background ring-2 ring-border/30 rounded-2xl" : ""
-                }`}
-              />
-            ) : emoji ? (
-              <div className="text-4xl">{emoji}</div>
-            ) : null
-          )}
+      <div className={`max-w-4xl mx-auto px-6 sm:px-12 ${selectedCover ? "-mt-10" : devSettings.disableEmojiCustomization ? "pt-4" : "pt-8"}`}>
+        {(!devSettings.disableEmojiCustomization || !readOnly) && (
+          <div className="flex items-center gap-2 mb-2">
+            {/* Emoji Icon Button */}
+            {!devSettings.disableEmojiCustomization && (
+              !readOnly ? (
+                <EmojiSelector
+                  selectedEmoji={emoji}
+                  onSelect={onEmojiChange}
+                  size="lg"
+                  className={`transition-transform hover:scale-105 shadow-sm ${
+                    selectedCover ? "bg-background border-2 border-background ring-2 ring-border/30 rounded-2xl" : ""
+                  }`}
+                />
+              ) : emoji ? (
+                <div className="text-4xl">{emoji}</div>
+              ) : null
+            )}
 
           {/* Quick Notion-style hover controls if no icon / cover */}
           {!readOnly && (
@@ -239,6 +240,7 @@ export function TaskHeader({
             </div>
           )}
         </div>
+        )}
 
         {/* Notion-Style Huge Page Title Input */}
         <div className="w-full">

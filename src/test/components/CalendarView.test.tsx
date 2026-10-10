@@ -85,4 +85,104 @@ describe("CalendarView Component", () => {
     expect(screen.getByText("Progress")).toBeInTheDocument();
     expect(screen.getByText("40%")).toBeInTheDocument();
   });
+
+  it("shifts months when clicking Next and Previous buttons", () => {
+    renderWithProviders(
+      <CalendarView tasks={mockTasks} onTaskClick={vi.fn()} />
+    );
+
+    const now = new Date();
+    const currentMonthLabel = now.toLocaleString("default", { month: "long", year: "numeric" });
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const nextMonthLabel = nextMonth.toLocaleString("default", { month: "long", year: "numeric" });
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthLabel = prevMonth.toLocaleString("default", { month: "long", year: "numeric" });
+
+    // Initially in current month
+    expect(screen.getByRole("heading", { name: currentMonthLabel })).toBeInTheDocument();
+
+    // Click Next
+    const nextBtn = screen.getByRole("button", { name: /next/i });
+    fireEvent.click(nextBtn);
+    expect(screen.getByRole("heading", { name: nextMonthLabel })).toBeInTheDocument();
+
+    // Click Prev twice to reach previous month
+    const prevBtn = screen.getByRole("button", { name: /previous/i });
+    fireEvent.click(prevBtn);
+    expect(screen.getByRole("heading", { name: currentMonthLabel })).toBeInTheDocument();
+    fireEvent.click(prevBtn);
+    expect(screen.getByRole("heading", { name: prevMonthLabel })).toBeInTheDocument();
+
+    // Click Today to return
+    const todayBtn = screen.getByRole("button", { name: "Today" });
+    fireEvent.click(todayBtn);
+    expect(screen.getByRole("heading", { name: currentMonthLabel })).toBeInTheDocument();
+  });
+
+  it("shifts months when scrolling (wheel down/up) over the calendar grid", () => {
+    renderWithProviders(
+      <CalendarView tasks={mockTasks} onTaskClick={vi.fn()} />
+    );
+
+    const now = new Date();
+    const currentMonthLabel = now.toLocaleString("default", { month: "long", year: "numeric" });
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const nextMonthLabel = nextMonth.toLocaleString("default", { month: "long", year: "numeric" });
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthLabel = prevMonth.toLocaleString("default", { month: "long", year: "numeric" });
+
+    const gridContainer = screen.getByTestId("calendar-grid-container");
+
+    // Wheel down -> Next month
+    fireEvent(
+      gridContainer,
+      new WheelEvent("wheel", { deltaY: 100, bubbles: true, cancelable: true })
+    );
+    expect(screen.getByRole("heading", { name: nextMonthLabel })).toBeInTheDocument();
+
+    // Advancing system time to bypass the 400ms throttle
+    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 500);
+
+    // Wheel up -> Back to current month
+    fireEvent(
+      gridContainer,
+      new WheelEvent("wheel", { deltaY: -100, bubbles: true, cancelable: true })
+    );
+    expect(screen.getByRole("heading", { name: currentMonthLabel })).toBeInTheDocument();
+
+    // Advancing system time again
+    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 1000);
+
+    // Wheel up -> Previous month
+    fireEvent(
+      gridContainer,
+      new WheelEvent("wheel", { deltaY: -100, bubbles: true, cancelable: true })
+    );
+    expect(screen.getByRole("heading", { name: prevMonthLabel })).toBeInTheDocument();
+
+    vi.restoreAllMocks();
+  });
+
+  it("shifts months on horizontal touch swipe", () => {
+    renderWithProviders(
+      <CalendarView tasks={mockTasks} onTaskClick={vi.fn()} />
+    );
+
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const nextMonthLabel = nextMonth.toLocaleString("default", { month: "long", year: "numeric" });
+
+    const gridContainer = screen.getByTestId("calendar-grid-container");
+
+    // Swipe left (finger moves right to left: clientX from 200 to 100) -> Next month
+    fireEvent.touchStart(gridContainer, {
+      touches: [{ clientX: 200, clientY: 150 }],
+    });
+    fireEvent.touchEnd(gridContainer, {
+      changedTouches: [{ clientX: 100, clientY: 150 }],
+    });
+
+    expect(screen.getByRole("heading", { name: nextMonthLabel })).toBeInTheDocument();
+  });
 });
+

@@ -16,6 +16,9 @@ export const defaultDevSettings: DevSettings = {
   forceReducedMotion: false,
   fontFamily: "helvetica",
   disableEmojiCustomization: false,
+  customPadding: null,
+  customInnerRadius: null,
+  customOuterRadius: null,
 };
 
 // Global synchronous getter for API services & non-React files
@@ -179,7 +182,10 @@ export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     (devSettings.simulateSseDisconnect ? 1 : 0) +
     (devSettings.forceReducedMotion ? 1 : 0) +
     (devSettings.fontFamily && devSettings.fontFamily !== "helvetica" ? 1 : 0) +
-    (devSettings.disableEmojiCustomization ? 1 : 0);
+    (devSettings.disableEmojiCustomization ? 1 : 0) +
+    (devSettings.customPadding !== null && devSettings.customPadding !== undefined ? 1 : 0) +
+    (devSettings.customInnerRadius !== null && devSettings.customInnerRadius !== undefined ? 1 : 0) +
+    (devSettings.customOuterRadius !== null && devSettings.customOuterRadius !== undefined ? 1 : 0);
 
   return (
     <DevModeContext.Provider
