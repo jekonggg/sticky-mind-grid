@@ -31,7 +31,26 @@ class Comment(db.Model):
         self.original_content = original_content
 
     def to_dict(self):
-        user_data = self.user.to_dict() if self.user else {
+        is_active_member = False
+        if self.user:
+            board_id = self.task.board_id if self.task else None
+            if not board_id:
+                is_active_member = True
+            else:
+                from app.models.board import Board
+                from app.models.board_member import BoardMember
+                board = db.session.get(Board, board_id)
+                if board and str(board.owner_id) == str(self.user_id):
+                    is_active_member = True
+                else:
+                    bm = BoardMember.query.filter_by(
+                        board_id=board_id,
+                        user_id=self.user_id,
+                        status='accepted'
+                    ).first()
+                    is_active_member = bm is not None
+
+        user_data = self.user.to_dict() if (self.user and is_active_member) else {
             'id': self.user_id,
             'fullName': 'Former member',
             'email': '',
@@ -47,5 +66,5 @@ class Comment(db.Model):
             'isEdited': self.is_edited,
             'originalContent': self.original_content,
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None,
-            'updatedAt': self.updated_at.isoformat() + 'Z' if self.updated_at else None
+            'updatedAt': self.updated_at.isoformat() + 'Z' if self.created_at and self.updated_at else None
         }

@@ -14,6 +14,8 @@ import {
   XClose as X,
   ArrowRight,
   Archive,
+  Bell01 as Bell,
+  BellOff01 as BellOff,
 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +42,7 @@ interface TaskHeaderProps {
   currentColumnId?: string;
   availableBoards?: { id: string; name: string; emoji?: string }[];
   isArchived?: boolean;
+  isFollowing?: boolean;
   onClose?: () => void;
   onTitleChange: (title: string) => void;
   onTitleBlur?: () => void;
@@ -49,6 +52,7 @@ interface TaskHeaderProps {
   onMoveToColumn?: (colId: string) => void;
   onMoveToBoard?: (targetBoardId: string) => void;
   onArchiveToggle?: () => void;
+  onFollowToggle?: () => void;
 }
 
 const COVER_GRADIENTS = [
@@ -73,6 +77,7 @@ export function TaskHeader({
   currentColumnId,
   availableBoards,
   isArchived,
+  isFollowing,
   onClose,
   onTitleChange,
   onTitleBlur,
@@ -82,6 +87,7 @@ export function TaskHeader({
   onMoveToColumn,
   onMoveToBoard,
   onArchiveToggle,
+  onFollowToggle,
 }: TaskHeaderProps) {
   const { devSettings } = useDevMode();
   const navigate = useNavigate();
@@ -143,6 +149,24 @@ export function TaskHeader({
         </div>
 
         <div className="flex items-center gap-1.5">
+          {onFollowToggle && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onFollowToggle}
+              className={`h-8 gap-1.5 text-xs font-medium ${
+                isFollowing
+                  ? "text-primary border-primary/40 bg-primary/5 hover:bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title={isFollowing ? "Unfollow card notifications" : "Follow card notifications"}
+              data-testid="task-follow-button"
+            >
+              {isFollowing ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{isFollowing ? "Following" : "Follow"}</span>
+            </Button>
+          )}
+
           <Button
             variant="outline"
             size="sm"

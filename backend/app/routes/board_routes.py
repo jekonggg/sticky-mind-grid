@@ -286,4 +286,17 @@ def resend_board_invitation(board_id, invitation_id):
         return jsonify({'error': error}), 400
     return jsonify({'message': 'Invitation resent successfully'}), 200
 
+@bp.route('/<board_id>/mute', methods=['PATCH', 'PUT', 'POST'])
+@jwt_required()
+@require_board_access('viewer')
+def set_board_mute(board_id):
+    user_id = get_jwt_identity()
+    data = request.json or {}
+    is_muted = bool(data.get('isMuted', False))
+    membership, error = BoardService.set_board_mute(board_id, user_id, is_muted)
+    if error:
+        return jsonify({'error': error}), 400
+    return jsonify({'boardId': str(board_id), 'isMuted': bool(membership.is_muted)}), 200
+
+
 

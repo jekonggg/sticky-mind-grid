@@ -21,6 +21,7 @@ import {
   CheckCircle as CheckCircle2,
   XCircle,
   LogOut01 as LogOut,
+  ArrowRight,
 } from "@untitledui/icons";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
@@ -113,6 +114,8 @@ export function NotificationBell() {
         return <UserMinus className="h-3.5 w-3.5 text-destructive" />;
       case "task_comment":
         return <MessageSquare className="h-3.5 w-3.5 text-amber-500" />;
+      case "task_move":
+        return <ArrowRight className="h-3.5 w-3.5 text-indigo-500" />;
       default:
         return <Bell className="h-3.5 w-3.5 text-primary" />;
     }

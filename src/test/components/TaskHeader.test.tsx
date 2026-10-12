@@ -93,4 +93,61 @@ describe("TaskHeader Component", () => {
     expect(screen.queryByTitle("More task actions")).not.toBeInTheDocument();
     expect(screen.queryByTitle("Delete Task")).not.toBeInTheDocument();
   });
+
+  it("renders Follow/Following toggle button and triggers onFollowToggle even in readOnly mode", () => {
+    const onFollowToggle = vi.fn();
+
+    const { rerender } = renderWithProviders(
+      <TaskHeader
+        boardId="board-1"
+        boardName="Main Project"
+        title="Followed Task"
+        emoji="🔔"
+        readOnly={true}
+        columns={mockColumns}
+        currentColumnId="todo"
+        availableBoards={mockBoards}
+        isArchived={false}
+        isFollowing={false}
+        onFollowToggle={onFollowToggle}
+        onTitleChange={vi.fn()}
+        onEmojiChange={vi.fn()}
+        onDelete={vi.fn()}
+        onMoveToColumn={vi.fn()}
+        onMoveToBoard={vi.fn()}
+        onArchiveToggle={vi.fn()}
+      />
+    );
+
+    const followBtn = screen.getByTitle("Follow card notifications");
+    expect(followBtn).toHaveTextContent("Follow");
+    fireEvent.click(followBtn);
+    expect(onFollowToggle).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <TaskHeader
+        boardId="board-1"
+        boardName="Main Project"
+        title="Followed Task"
+        emoji="🔔"
+        readOnly={true}
+        columns={mockColumns}
+        currentColumnId="todo"
+        availableBoards={mockBoards}
+        isArchived={false}
+        isFollowing={true}
+        onFollowToggle={onFollowToggle}
+        onTitleChange={vi.fn()}
+        onEmojiChange={vi.fn()}
+        onDelete={vi.fn()}
+        onMoveToColumn={vi.fn()}
+        onMoveToBoard={vi.fn()}
+        onArchiveToggle={vi.fn()}
+      />
+    );
+
+    const followingBtn = screen.getByTitle("Unfollow card notifications");
+    expect(followingBtn).toHaveTextContent("Following");
+  });
 });
+

@@ -597,6 +597,17 @@ For each agent:
 
 ---
 
+---
+
+## 22. Deployed Environment Diagnostics & Render Logs
+
+When diagnosing issues on the deployed application (Render):
+1. **Never guess deployed runtime errors:** Use `python scripts/fetch_render_logs.py [limit]` to pull live server logs, build status, and unhandled exceptions from the Render API.
+2. **Configuration:** The script automatically reads `RENDER_API_KEY` and optional `RENDER_SERVICE_ID` from the local `.env` or `backend/.env` file.
+3. **Log Analysis:** Inspect the output for HTTP 500 errors, database connection timeouts, CORS header mismatches, or unhandled tracebacks.
+
+---
+
 ## Key Files Reference
 
 | Purpose | Path |
@@ -614,4 +625,6 @@ For each agent:
 | Flask app factory | `backend/app/__init__.py` |
 | Flask config | `backend/config.py` |
 | Database seeder | `backend/seed.py` |
+| Render log fetcher | `scripts/fetch_render_logs.py` |
 | E2E test specs | `e2e/` |
+

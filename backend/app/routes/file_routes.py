@@ -33,8 +33,10 @@ def upload_file():
     if not file or file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
+    user_id = get_jwt_identity()
     purpose = request.args.get('purpose') or request.form.get('purpose')
-    result, error = FileService.save_file(file, purpose=purpose)
+    board_id = request.args.get('boardId') or request.form.get('boardId')
+    result, error = FileService.save_file(file, purpose=purpose, user_id=user_id, board_id=board_id)
     if error:
         return jsonify({'error': error}), 400
 

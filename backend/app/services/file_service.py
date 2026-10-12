@@ -1,4 +1,5 @@
 import os
+import json
 import uuid
 import base64
 from werkzeug.utils import secure_filename
@@ -6,10 +7,13 @@ from flask import current_app, send_from_directory, abort
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+UPLOADER_META_PATH = os.path.join(UPLOAD_FOLDER, '.uploaders.json')
 
 MAX_BANNER_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB strict limit for board banners
 ALLOWED_BANNER_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp', 'gif'}
 ALLOWED_BANNER_MIMES = {'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'}
+
+EICAR_SIGNATURE = b'X5O!P%@AP[4\\PZX54(P^)7CC)7}$' + b'EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*'
 
 def format_size(size_bytes: int) -> str:
     if size_bytes < 1024:
@@ -22,6 +26,39 @@ def format_size(size_bytes: int) -> str:
         return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
 
 class FileService:
+    _uploaders_cache = {}
+
+    @staticmethod
+    def _record_uploader(stored_filename: str, user_id):
+        if not user_id or not stored_filename:
+            return
+        FileService._uploaders_cache[stored_filename] = str(user_id)
+        try:
+            data = {}
+            if os.path.exists(UPLOADER_META_PATH):
+                with open(UPLOADER_META_PATH, 'r', encoding='utf-8') as f:
+                    data = json.load(f) or {}
+            data[stored_filename] = str(user_id)
+            with open(UPLOADER_META_PATH, 'w', encoding='utf-8') as f:
+                json.dump(data, f)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _get_uploader(stored_filename: str):
+        if stored_filename in FileService._uploaders_cache:
+            return FileService._uploaders_cache[stored_filename]
+        try:
+            if os.path.exists(UPLOADER_META_PATH):
+                with open(UPLOADER_META_PATH, 'r', encoding='utf-8') as f:
+                    data = json.load(f) or {}
+                if stored_filename in data:
+                    FileService._uploaders_cache[stored_filename] = str(data[stored_filename])
+                    return str(data[stored_filename])
+        except Exception:
+            pass
+        return None
+
     @staticmethod
     def is_valid_image_bytes(data: bytes) -> bool:
         if not data or len(data) < 12:
@@ -39,6 +76,179 @@ class FileService:
         if data[:4] == b'RIFF' and data[8:12] == b'WEBP':
             return True
         return False
+
+    @staticmethod
+    def scan_bytes_for_malware(sample: bytes, ext: str = ''):
+        """
+        Perform signature and heuristic malware/virus scanning on file bytes in memory
+        before writing to disk. Rejects EICAR test signatures, disguised executable binaries
+        (PE/MZ, ELF, Mach-O, shell scripts), and embedded script payloads.
+        """
+        if not sample:
+            return True, None
+
+        # 1. Check EICAR antivirus signature
+        if EICAR_SIGNATURE in sample:
+            return False, "Virus/malware signature detected (EICAR)"
+
+        # 2. Check disguised executable magic bytes
+        if sample[:2] == b'MZ':
+            return False, "Executable binary content (Windows PE/MZ) is not permitted"
+        if sample[:4] == b'\x7fELF':
+            return False, "Executable binary content (ELF) is not permitted"
+        if sample[:4] in (b'\xfe\xed\xfa\xce', b'\xfe\xed\xfa\xcf', b'\xce\xfa\xed\xfe', b'\xcf\xfa\xed\xfe'):
+            return False, "Executable binary content (Mach-O) is not permitted"
+        if sample[:2] == b'#!':
+            return False, "Executable script content (shebang) is not permitted"
+
+        # 3. Check embedded <script> or javascript: payloads in text/image/document files
+        lower_sample = sample[:65536].lower()
+        if b'<script' in lower_sample or b'javascript:' in lower_sample:
+            return False, "Embedded script payload detected in file"
+
+        return True, None
+
+    @staticmethod
+    def scan_file_for_malware(filepath: str, ext: str = ''):
+        try:
+            with open(filepath, 'rb') as f:
+                sample = f.read(2 * 1024 * 1024)
+        except OSError:
+            return False, "Unable to read file for virus scan"
+        return FileService.scan_bytes_for_malware(sample, ext)
+
+    @staticmethod
+    def get_attachment_size_bytes(att: dict) -> int:
+        if not isinstance(att, dict):
+            return 0
+        size_bytes = att.get('sizeBytes')
+        if isinstance(size_bytes, int) and size_bytes >= 0:
+            return size_bytes
+        stored_name = att.get('storedName')
+        if not stored_name and att.get('url') and '/api/files/' in str(att.get('url')):
+            stored_name = str(att.get('url')).split('/api/files/', 1)[1].split('?', 1)[0]
+        if stored_name:
+            safe_name = secure_filename(stored_name)
+            fpath = os.path.join(UPLOAD_FOLDER, safe_name)
+            if os.path.exists(fpath):
+                try:
+                    return os.path.getsize(fpath)
+                except OSError:
+                    return 0
+        return 0
+
+    @staticmethod
+    def get_board_storage_usage(board_id, exclude_task_id=None) -> int:
+        if not board_id:
+            return 0
+        from app.models.task import Task
+        tasks = Task.query.filter(Task.board_id == board_id, Task.attachments.isnot(None)).all()
+        total = 0
+        for t in tasks:
+            if exclude_task_id and str(t.id) == str(exclude_task_id):
+                continue
+            if isinstance(t.attachments, list):
+                for att in t.attachments:
+                    total += FileService.get_attachment_size_bytes(att)
+        return total
+
+    @staticmethod
+    def get_owner_storage_usage(owner_id, exclude_task_id=None) -> int:
+        if not owner_id:
+            return 0
+        from app.models.board import Board
+        from app.models.task import Task
+        board_ids = [
+            b.id for b in Board.query.filter_by(owner_id=owner_id, is_deleted=False).all()
+        ]
+        if not board_ids:
+            return 0
+        tasks = Task.query.filter(Task.board_id.in_(board_ids), Task.attachments.isnot(None)).all()
+        total = 0
+        for t in tasks:
+            if exclude_task_id and str(t.id) == str(exclude_task_id):
+                continue
+            if isinstance(t.attachments, list):
+                for att in t.attachments:
+                    total += FileService.get_attachment_size_bytes(att)
+        return total
+
+    @staticmethod
+    def check_board_and_owner_quota(board_id, candidate_attachments=None, additional_bytes=0, exclude_task_id=None):
+        """
+        Verify that adding `candidate_attachments` or `additional_bytes` to `board_id` does not exceed:
+        - MAX_BOARD_STORAGE_BYTES (default 100 MB per board)
+        - MAX_OWNER_STORAGE_BYTES (default 500 MB per board owner)
+        """
+        if not board_id:
+            return True, None
+        from app import db
+        from app.models.board import Board
+        board = db.session.get(Board, board_id)
+        if not board:
+            return True, None
+
+        candidate_bytes = int(additional_bytes or 0)
+        if isinstance(candidate_attachments, list):
+            for att in candidate_attachments:
+                candidate_bytes += FileService.get_attachment_size_bytes(att)
+
+        max_board_bytes = current_app.config.get('MAX_BOARD_STORAGE_BYTES', 100 * 1024 * 1024)
+        current_board_bytes = FileService.get_board_storage_usage(board_id, exclude_task_id=exclude_task_id)
+        if current_board_bytes + candidate_bytes > max_board_bytes:
+            return False, f"Board storage quota exceeded (limit: {format_size(max_board_bytes)})"
+
+        if board.owner_id:
+            max_owner_bytes = current_app.config.get('MAX_OWNER_STORAGE_BYTES', 500 * 1024 * 1024)
+            current_owner_bytes = FileService.get_owner_storage_usage(board.owner_id, exclude_task_id=exclude_task_id)
+            if current_owner_bytes + candidate_bytes > max_owner_bytes:
+                return False, f"Owner storage quota exceeded (limit: {format_size(max_owner_bytes)})"
+
+        return True, None
+
+    @staticmethod
+    def cleanup_task_attachments(task):
+        """
+        Delete physical attachment files from disk when a task is permanently deleted
+        or purged after the 30-day Trash retention period, provided no other task references the file.
+        """
+        if not task or not isinstance(task.attachments, list):
+            return
+        from app.models.task import Task
+        other_tasks = Task.query.filter(Task.id != task.id, Task.attachments.isnot(None)).all()
+        referenced_names = set()
+        for ot in other_tasks:
+            if isinstance(ot.attachments, list):
+                for att in ot.attachments:
+                    if isinstance(att, dict):
+                        if att.get('storedName'):
+                            referenced_names.add(secure_filename(str(att['storedName'])))
+                        elif att.get('url') and '/api/files/' in str(att['url']):
+                            fname = str(att['url']).split('/api/files/', 1)[1].split('?', 1)[0]
+                            referenced_names.add(secure_filename(fname))
+
+        for att in task.attachments:
+            if not isinstance(att, dict):
+                continue
+            stored_name = att.get('storedName')
+            if not stored_name and att.get('url') and '/api/files/' in str(att.get('url')):
+                stored_name = str(att.get('url')).split('/api/files/', 1)[1].split('?', 1)[0]
+            if not stored_name:
+                continue
+            safe_name = secure_filename(str(stored_name))
+            if not safe_name or safe_name in referenced_names:
+                continue
+            fpath = os.path.join(UPLOAD_FOLDER, safe_name)
+            if os.path.exists(fpath):
+                try:
+                    os.remove(fpath)
+                except OSError:
+                    import gc
+                    gc.collect()
+                    try:
+                        os.remove(fpath)
+                    except OSError:
+                        pass
 
     @staticmethod
     def save_base64_image(data_url: str):
@@ -60,6 +270,10 @@ class FileService:
         if not FileService.is_valid_image_bytes(raw_bytes):
             return None, "Uploaded file content is not a valid raster image (JPG, PNG, WebP, or GIF)"
 
+        is_clean, scan_err = FileService.scan_bytes_for_malware(raw_bytes)
+        if not is_clean:
+            return None, scan_err
+
         ext_map = {
             'image/jpeg': 'jpg',
             'image/jpg': 'jpg',
@@ -77,7 +291,7 @@ class FileService:
         return f"/api/files/{stored_filename}", None
 
     @staticmethod
-    def save_file(file_storage, purpose=None):
+    def save_file(file_storage, purpose=None, user_id=None, board_id=None):
         if not file_storage or not file_storage.filename:
             return None, "No file provided"
 
@@ -94,6 +308,19 @@ class FileService:
             allowed = current_app.config.get('ALLOWED_UPLOAD_EXTENSIONS') or []
             if not ext or (allowed and ext not in allowed):
                 return None, f"File type '.{ext or 'unknown'}' is not allowed. Allowed types: {', .'.join(allowed[:12])} ..."
+
+        # Pre-write in-memory stream inspection for size, malware signatures, and quotas
+        stream = getattr(file_storage, 'stream', file_storage)
+        try:
+            stream.seek(0)
+            sample_bytes = stream.read(2 * 1024 * 1024)
+            stream.seek(0)
+        except Exception:
+            sample_bytes = b''
+
+        is_clean, scan_error = FileService.scan_bytes_for_malware(sample_bytes, ext)
+        if not is_clean:
+            return None, scan_error
 
         unique_id = str(uuid.uuid4())
         stored_ext = f".{ext}" if ext else ""
@@ -124,6 +351,19 @@ class FileService:
                 except OSError:
                     pass
                 return None, "File content is not a valid image (JPG, PNG, WebP, or GIF)"
+
+        # Optional per-board / per-owner storage quota check if board_id is provided on upload
+        if board_id:
+            quota_ok, quota_err = FileService.check_board_and_owner_quota(board_id, additional_bytes=size_bytes)
+            if not quota_ok:
+                try:
+                    os.remove(filepath)
+                except OSError:
+                    pass
+                return None, quota_err
+
+        if user_id:
+            FileService._record_uploader(stored_filename, user_id)
 
         formatted_size = format_size(size_bytes)
         url = f"/api/files/{stored_filename}"
@@ -211,7 +451,11 @@ class FileService:
                 return False, "You do not have permission to access board assets", 403
             return True, None, 200
 
-        # 4. User avatars and newly uploaded staging files: permitted for authenticated users
+        # 4. Unattached staging files: only accessible by the uploader who uploaded them
+        uploader_id = FileService._get_uploader(safe_name)
+        if uploader_id and str(uploader_id) != str(user_id):
+            return False, "You do not have permission to access this file", 403
+
         return True, None, 200
 
     @staticmethod
@@ -226,3 +470,4 @@ class FileService:
             as_attachment=as_attachment,
             download_name=download_name or safe_name
         )
+

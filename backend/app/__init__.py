@@ -122,6 +122,7 @@ def _auto_sync_schema(app):
                 "VARCHAR(20) DEFAULT 'accepted' NOT NULL",
                 "UPDATE board_members SET status = 'accepted' WHERE status IS NULL OR status = ''"
             )
+            _add_col_if_missing('board_members', 'is_muted', "BOOLEAN DEFAULT FALSE NOT NULL")
 
             # Ensure missing columns in boards table
             _add_col_if_missing('boards', 'owner_id', "VARCHAR(36) NULL")
@@ -136,8 +137,15 @@ def _auto_sync_schema(app):
             _add_col_if_missing('tasks', 'checklist', "JSON NULL")
             _add_col_if_missing('tasks', 'tags', "JSON NULL")
             _add_col_if_missing('tasks', 'attachments', "JSON NULL")
+            _add_col_if_missing('tasks', 'followers', "JSON NULL")
             _add_col_if_missing('tasks', 'is_deleted', "BOOLEAN DEFAULT FALSE NOT NULL")
             _add_col_if_missing('tasks', 'deleted_at', "DATETIME NULL")
+
+            # Ensure missing columns in activities table
+            _add_col_if_missing('activities', 'target_type', "VARCHAR(50) DEFAULT 'task' NULL")
+            _add_col_if_missing('activities', 'target_id', "VARCHAR(36) NULL")
+            _add_col_if_missing('activities', 'before_value', "TEXT NULL")
+            _add_col_if_missing('activities', 'after_value', "TEXT NULL")
 
             # Ensure missing columns in comments table
             _add_col_if_missing('comments', 'mentions', "JSON NULL")

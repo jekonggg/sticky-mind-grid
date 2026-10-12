@@ -1,32 +1,74 @@
-import React from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useActivity } from "@/hooks/useActivity";
+import { Activity } from "@/types/task";
+import { authenticatedFetch } from "@/services/apiUtils";
 import {
   ClockRewind as History,
-  Activity as ActivityIcon,
   ArrowRight,
-  CheckCircle as CheckCircle2,
-  User01 as User,
-  Clock,
 } from "@untitledui/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 
 interface TaskActivityLogProps {
   taskTitle: string;
+  taskId?: string;
+  boardId?: string;
 }
 
-export function TaskActivityLog({ taskTitle }: TaskActivityLogProps) {
-  const { activities } = useActivity();
+export function TaskActivityLog({ taskTitle, taskId, boardId }: TaskActivityLogProps) {
+  const { activities: contextActivities } = useActivity();
+  const [cardActivities, setCardActivities] = useState<Activity[]>([]);
 
-  // Filter activities relevant to this task (by title match or general task actions)
-  const taskActivities = activities.filter((act) => {
-    if (!taskTitle) return false;
-    return (
-      act.taskTitle?.toLowerCase() === taskTitle.toLowerCase() ||
-      act.message?.toLowerCase().includes(taskTitle.toLowerCase())
+  useEffect(() => {
+    if (!boardId || (!taskTitle && !taskId)) return;
+    let cancelled = false;
+    const params = new URLSearchParams({ boardId });
+    if (taskTitle) params.set("taskTitle", taskTitle);
+    if (taskId) params.set("taskId", taskId);
+
+    authenticatedFetch(`/activities?${params.toString()}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) {
+          setCardActivities(
+            data.map((a: any) => ({
+              ...a,
+              timestamp: new Date(a.timestamp),
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [boardId, taskTitle, taskId, contextActivities.length]);
+
+  // Merge card-specific fetched activities with context activities matching this card
+  const taskActivities = useMemo(() => {
+    const matchedFromContext = contextActivities.filter((act) => {
+      if (taskId && act.targetId && String(act.targetId) === String(taskId)) {
+        return true;
+      }
+      if (!taskTitle) return false;
+      return (
+        act.taskTitle?.toLowerCase() === taskTitle.toLowerCase() ||
+        act.message?.toLowerCase().includes(taskTitle.toLowerCase())
+      );
+    });
+
+    const map = new Map<string, Activity>();
+    for (const act of [...cardActivities, ...matchedFromContext]) {
+      if (act.id && !map.has(act.id)) {
+        map.set(act.id, act);
+      }
+    }
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
-  });
+  }, [cardActivities, contextActivities, taskTitle, taskId]);
 
   return (
     <div className="w-full max-w-4xl mx-auto px-6 sm:px-12 py-6">
@@ -42,7 +84,7 @@ export function TaskActivityLog({ taskTitle }: TaskActivityLogProps) {
       ) : (
         <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[2px] before:bg-border/60">
           {taskActivities.map((act) => {
-            const userName = act.user?.fullName || act.user?.email || "User";
+            const userName = act.user?.fullName || act.user?.email || "Former member";
             const initial = userName.charAt(0).toUpperCase();
             const date = new Date(act.timestamp);
             const formattedTime = !isNaN(date.getTime())
@@ -85,6 +127,21 @@ export function TaskActivityLog({ taskTitle }: TaskActivityLogProps) {
                   <p className="text-muted-foreground mt-0.5 text-[11px] leading-relaxed">
                     {act.message}
                   </p>
+                  {(act.beforeValue || act.afterValue) && act.beforeValue !== act.afterValue && (
+                    <div className="mt-1 inline-flex items-center gap-1.5 text-[10px] bg-muted/50 border border-border/50 rounded px-2 py-0.5 text-muted-foreground max-w-full overflow-hidden">
+                      {act.beforeValue && (
+                        <span className="line-through opacity-75 truncate max-w-[160px]" title={act.beforeValue}>
+                          {act.beforeValue}
+                        </span>
+                      )}
+                      {act.beforeValue && act.afterValue && <ArrowRight className="h-2.5 w-2.5 shrink-0" />}
+                      {act.afterValue && (
+                        <span className="font-medium text-foreground truncate max-w-[160px]" title={act.afterValue}>
+                          {act.afterValue}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -94,3 +151,4 @@ export function TaskActivityLog({ taskTitle }: TaskActivityLogProps) {
     </div>
   );
 }
+

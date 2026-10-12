@@ -190,5 +190,18 @@ export const boardApi = {
     }
     return res.json();
   },
+
+  async setBoardMute(boardId: string, isMuted: boolean): Promise<{ boardId: string; isMuted: boolean }> {
+    const res = await authenticatedFetch(`/boards/${boardId}/mute`, {
+      method: "PATCH",
+      body: JSON.stringify({ isMuted }),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to update board notification mute preference");
+    }
+    return res.json();
+  },
 };
+
 

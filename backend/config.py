@@ -51,8 +51,12 @@ class Config:
         if origin.strip()
     ]
 
-    # Upload limits (25MB default)
+    # Upload limits (25MB default per file, 100MB per board, 500MB per owner)
     MAX_CONTENT_LENGTH = int(os.environ.get('MAX_UPLOAD_MB', '25')) * 1024 * 1024
+    MAX_BOARD_STORAGE_BYTES = int(os.environ.get('MAX_BOARD_STORAGE_MB', '100')) * 1024 * 1024
+    MAX_OWNER_STORAGE_BYTES = int(os.environ.get('MAX_OWNER_STORAGE_MB', '500')) * 1024 * 1024
+    # Activity retention policy: 0 means retain forever by default
+    ACTIVITY_RETENTION_DAYS = int(os.environ.get('ACTIVITY_RETENTION_DAYS', '0'))
     ALLOWED_UPLOAD_EXTENSIONS = [
         ext.strip().lower()
         for ext in os.environ.get(

@@ -257,3 +257,300 @@ def test_board_workspace_id_field(create_test_user):
     saved_board = db.session.get(Board, board.id)
     assert saved_board.workspace_id == "workspace-uuid-123"
     assert saved_board.to_dict()["workspaceId"] == "workspace-uuid-123"
+
+
+def test_section_f_mentions_followers_mute_and_comment_audit(client, create_test_user, auth_headers):
+    """
+    Section F:
+    - @mentions only notify and resolve accepted board members (never non-members or pending invitees).
+    - Card followers receive task_comment and task_move notifications.
+    - Per-board mute suppresses notifications for that board.
+    - Comment edits and deletions record original content in the immutable Activity audit log.
+    - Viewers cannot post comments (403).
+    """
+    from app.models.notification import Notification
+
+    owner = create_test_user(email="f_owner@smg.com", full_name="Owner Olivia")
+    editor = create_test_user(email="f_editor@smg.com", full_name="Editor Ethan")
+    viewer = create_test_user(email="f_viewer@smg.com", full_name="Viewer Vicky")
+    outsider = create_test_user(email="f_outsider@smg.com", full_name="Outsider Oscar")
+
+    board = Board(
+        name="Section F Board",
+        owner_id=owner.id,
+        columns=[
+            {"id": "todo", "title": "To Do"},
+            {"id": "done", "title": "Done"},
+        ],
+    )
+    db.session.add(board)
+    db.session.commit()
+    db.session.add(BoardMember(board_id=board.id, user_id=owner.id, role="owner", status="accepted"))
+    db.session.add(BoardMember(board_id=board.id, user_id=editor.id, role="editor", status="accepted"))
+    db.session.add(BoardMember(board_id=board.id, user_id=viewer.id, role="viewer", status="accepted"))
+    db.session.commit()
+
+    # Create task as owner
+    task_res = client.post(
+        "/api/tasks",
+        headers=auth_headers(owner.id),
+        json={"boardId": board.id, "title": "Design Notifications", "status": "todo"},
+    )
+    assert task_res.status_code == 201
+    task_id = task_res.get_json()["id"]
+
+    # Viewer cannot comment (403)
+    viewer_comment_res = client.post(
+        f"/api/tasks/{task_id}/comments",
+        headers=auth_headers(viewer.id),
+        json={"content": "Can I comment?"},
+    )
+    assert viewer_comment_res.status_code == 403
+
+    # Viewer can follow the card
+    follow_res = client.post(
+        f"/api/tasks/{task_id}/follow",
+        headers=auth_headers(viewer.id),
+        json={"follow": True},
+    )
+    assert follow_res.status_code == 200
+    assert viewer.id in follow_res.get_json()["followers"]
+
+    # Editor posts a comment mentioning @Editor Ethan (self), @Owner Olivia (member), and @Outsider Oscar (non-member)
+    comment_res = client.post(
+        f"/api/tasks/{task_id}/comments",
+        headers=auth_headers(editor.id),
+        json={"content": "Hello @Owner Olivia and @Outsider Oscar!"},
+    )
+    assert comment_res.status_code == 201
+    comment_data = comment_res.get_json()
+    assert owner.id in comment_data["mentions"]
+    assert outsider.id not in comment_data["mentions"]
+
+    # Outsider MUST NOT receive a mention notification
+    assert Notification.query.filter_by(user_id=outsider.id).count() == 0
+    # Owner received a mention notification
+    assert Notification.query.filter_by(user_id=owner.id, type="mention").count() == 1
+    # Viewer (following the card) received a task_comment notification
+    assert Notification.query.filter_by(user_id=viewer.id, type="task_comment").count() == 1
+
+    # Viewer mutes the board
+    mute_res = client.patch(
+        f"/api/boards/{board.id}/mute",
+        headers=auth_headers(viewer.id),
+        json={"isMuted": True},
+    )
+    assert mute_res.status_code == 200
+    assert mute_res.get_json()["isMuted"] is True
+
+    # Editor moves card from To Do to Done -> Owner (creator/follower) gets task_move, but muted Viewer does NOT
+    move_res = client.patch(
+        f"/api/tasks/{task_id}",
+        headers=auth_headers(editor.id),
+        json={"status": "done"},
+    )
+    assert move_res.status_code == 200
+    assert Notification.query.filter_by(user_id=owner.id, type="task_move").count() == 1
+    assert Notification.query.filter_by(user_id=viewer.id, type="task_move").count() == 0
+
+    # Editor edits their comment -> shows isEdited and logs before_value / after_value in Activity
+    comment_id = comment_data["id"]
+    edit_res = client.patch(
+        f"/api/comments/{comment_id}",
+        headers=auth_headers(editor.id),
+        json={"content": "Updated comment text"},
+    )
+    assert edit_res.status_code == 200
+    edited_comment = edit_res.get_json()
+    assert edited_comment["isEdited"] is True
+    assert edited_comment["originalContent"] == "Hello @Owner Olivia and @Outsider Oscar!"
+
+    # Owner deletes Editor's comment -> original text preserved in Activity audit log
+    del_res = client.delete(
+        f"/api/comments/{comment_id}",
+        headers=auth_headers(owner.id),
+    )
+    assert del_res.status_code == 200
+
+    activities = Activity.query.filter_by(board_id=board.id, target_type="comment").all()
+    assert any(a.before_value == "Hello @Owner Olivia and @Outsider Oscar!" and a.after_value == "Updated comment text" for a in activities)
+    assert any(a.type == "delete" and a.before_value == "Hello @Owner Olivia and @Outsider Oscar!" for a in activities)
+
+
+def test_section_g_malware_scan_quotas_and_file_retention(client, app, create_test_user, auth_headers):
+    """
+    Section G:
+    - Virus/malware scan rejects EICAR signature, PE executables, and script payloads.
+    - Storage quotas per board and per owner are enforced.
+    - Staging files are only accessible to their uploader.
+    - Files remain intact when archived or soft-deleted in Trash, and are deleted from disk upon permanent deletion.
+    """
+    import os
+    from app.services.file_service import UPLOAD_FOLDER
+
+    owner = create_test_user(email="g_owner@smg.com", full_name="Owner Grace")
+    other = create_test_user(email="g_other@smg.com", full_name="Other User")
+
+    board = Board(name="Section G Board", owner_id=owner.id)
+    db.session.add(board)
+    db.session.commit()
+    db.session.add(BoardMember(board_id=board.id, user_id=owner.id, role="owner", status="accepted"))
+    db.session.commit()
+
+    # 1. EICAR virus test file rejected
+    eicar_bytes = b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$" + b"EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+    eicar_res = client.post(
+        "/api/files/upload",
+        headers=auth_headers(owner.id),
+        data={"file": (io.BytesIO(eicar_bytes), "infected.txt")},
+        content_type="multipart/form-data",
+    )
+    assert eicar_res.status_code == 400
+    assert "EICAR" in eicar_res.get_json()["error"]
+
+    # 2. Disguised Windows PE executable rejected
+    pe_res = client.post(
+        "/api/files/upload",
+        headers=auth_headers(owner.id),
+        data={"file": (io.BytesIO(b"MZ\x90\x00\x03\x00\x00\x00"), "disguised.pdf")},
+        content_type="multipart/form-data",
+    )
+    assert pe_res.status_code == 400
+    assert "Executable" in pe_res.get_json()["error"]
+
+    # 3. Clean file upload succeeds and unattached staging file is restricted to uploader
+    clean_res = client.post(
+        f"/api/files/upload?boardId={board.id}",
+        headers=auth_headers(owner.id),
+        data={"file": (io.BytesIO(b"Clean attachment content 12345"), "notes.txt")},
+        content_type="multipart/form-data",
+    )
+    assert clean_res.status_code == 201
+    att_info = clean_res.get_json()
+    stored_name = att_info["storedName"]
+    disk_path = os.path.join(UPLOAD_FOLDER, stored_name)
+    assert os.path.exists(disk_path)
+
+    # Other user cannot access unattached staging file
+    other_staging_res = client.get(f"/api/files/{stored_name}", headers=auth_headers(other.id))
+    assert other_staging_res.status_code == 403
+
+    # Uploader can access staging file
+    owner_staging_res = client.get(f"/api/files/{stored_name}", headers=auth_headers(owner.id))
+    assert owner_staging_res.status_code == 200
+    owner_staging_res.close()
+
+    # 4. Storage quota check
+    orig_board_quota = app.config.get("MAX_BOARD_STORAGE_BYTES")
+    try:
+        app.config["MAX_BOARD_STORAGE_BYTES"] = 10  # 10 bytes quota
+        quota_res = client.post(
+            "/api/tasks",
+            headers=auth_headers(owner.id),
+            json={"boardId": board.id, "title": "Over Quota Task", "attachments": [att_info]},
+        )
+        assert quota_res.status_code == 400
+        assert "quota exceeded" in quota_res.get_json()["error"].lower()
+    finally:
+        app.config["MAX_BOARD_STORAGE_BYTES"] = orig_board_quota
+
+    # 5. File retention on archive / soft-delete vs permanent delete
+    task_res = client.post(
+        "/api/tasks",
+        headers=auth_headers(owner.id),
+        json={"boardId": board.id, "title": "Retention Task", "attachments": [att_info]},
+    )
+    assert task_res.status_code == 201
+    task_id = task_res.get_json()["id"]
+
+    # Archive task -> file still exists
+    client.patch(f"/api/tasks/{task_id}", headers=auth_headers(owner.id), json={"status": "archive"})
+    assert os.path.exists(disk_path)
+
+    # Soft delete to trash -> file still exists (for 30-day retention)
+    client.delete(f"/api/tasks/{task_id}", headers=auth_headers(owner.id))
+    assert os.path.exists(disk_path)
+
+    # Permanent delete -> physical file removed from disk
+    perm_res = client.delete(f"/api/tasks/{task_id}/permanent", headers=auth_headers(owner.id))
+    assert perm_res.status_code == 200
+    assert not os.path.exists(disk_path)
+
+
+def test_section_h_immutable_activity_log_former_member_and_visibility(client, create_test_user, auth_headers):
+    """
+    Section H:
+    - Activity log is append-only and immutable (DELETE/PUT/PATCH return 403 even for Owner).
+    - Leaving a board anonymizes historical Activity, Comment, and Task creator entries as 'Former member'.
+    - Full board log is restricted to Admin/Owner (403 for Viewer/Editor), while card history is accessible to Viewer+.
+    """
+    owner = create_test_user(email="h_owner@smg.com", full_name="Owner Henry")
+    editor = create_test_user(email="h_editor@smg.com", full_name="Editor Emma")
+    viewer = create_test_user(email="h_viewer@smg.com", full_name="Viewer Victor")
+
+    board = Board(name="Section H Board", owner_id=owner.id)
+    db.session.add(board)
+    db.session.commit()
+    db.session.add(BoardMember(board_id=board.id, user_id=owner.id, role="owner", status="accepted"))
+    db.session.add(BoardMember(board_id=board.id, user_id=editor.id, role="editor", status="accepted"))
+    db.session.add(BoardMember(board_id=board.id, user_id=viewer.id, role="viewer", status="accepted"))
+    db.session.commit()
+
+    # Editor creates a task and comments on it
+    t_res = client.post(
+        "/api/tasks",
+        headers=auth_headers(editor.id),
+        json={"boardId": board.id, "title": "Audit Card"},
+    )
+    assert t_res.status_code == 201
+    task_id = t_res.get_json()["id"]
+
+    c_res = client.post(
+        f"/api/tasks/{task_id}/comments",
+        headers=auth_headers(editor.id),
+        json={"content": "Editor comment before leaving"},
+    )
+    assert c_res.status_code == 201
+
+    # 1. Immutability: Owner cannot DELETE, PUT, or PATCH /api/activities
+    assert client.delete(f"/api/activities?boardId={board.id}", headers=auth_headers(owner.id)).status_code == 403
+    assert client.put("/api/activities", headers=auth_headers(owner.id), json={}).status_code == 403
+    assert client.patch("/api/activities", headers=auth_headers(owner.id), json={}).status_code == 403
+
+    # 2. Visibility: Viewer and Editor get 403 on full board log, but 200 on card-specific history
+    assert client.get(f"/api/activities?boardId={board.id}", headers=auth_headers(viewer.id)).status_code == 403
+    assert client.get(f"/api/activities?boardId={board.id}", headers=auth_headers(editor.id)).status_code == 403
+    assert client.get(f"/api/activities?boardId={board.id}", headers=auth_headers(owner.id)).status_code == 200
+
+    card_hist_res = client.get(
+        f"/api/activities?boardId={board.id}&taskId={task_id}",
+        headers=auth_headers(viewer.id),
+    )
+    assert card_hist_res.status_code == 200
+    card_hist = card_hist_res.get_json()
+    assert len(card_hist) >= 2
+
+    # 3. Editor leaves the board -> historical Activity, Comment, and Task creator show as 'Former member'
+    leave_res = client.delete(f"/api/boards/{board.id}/members/{editor.id}", headers=auth_headers(editor.id))
+    assert leave_res.status_code == 200
+
+    after_leave_hist = client.get(
+        f"/api/activities?boardId={board.id}&taskId={task_id}",
+        headers=auth_headers(viewer.id),
+    ).get_json()
+    editor_acts = [a for a in after_leave_hist if a["userId"] == editor.id]
+    assert len(editor_acts) >= 1
+    assert all(a["user"]["fullName"] == "Former member" for a in editor_acts)
+
+    after_leave_comments = client.get(
+        f"/api/tasks/{task_id}/comments",
+        headers=auth_headers(viewer.id),
+    ).get_json()
+    assert after_leave_comments[0]["user"]["fullName"] == "Former member"
+
+    after_leave_task = client.get(
+        f"/api/tasks/{task_id}",
+        headers=auth_headers(viewer.id),
+    ).get_json()
+    assert after_leave_task["creator"]["fullName"] == "Former member"
+

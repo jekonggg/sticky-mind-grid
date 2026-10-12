@@ -25,6 +25,7 @@ class Task(db.Model):
     checklist = db.Column(db.JSON, default=list) # [{id, title, completed}]
     tags = db.Column(db.JSON, default=list) # [{id, name, color}]
     attachments = db.Column(db.JSON, default=list)
+    followers = db.Column(db.JSON, default=list)
     is_deleted = db.Column(db.Boolean, default=False, nullable=False)
     deleted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -34,7 +35,7 @@ class Task(db.Model):
     creator = db.relationship('User', foreign_keys=[created_by], back_populates='created_tasks')
     assignee = db.relationship('User', foreign_keys=[assigned_to], back_populates='assigned_tasks')
 
-    def __init__(self, board_id: str, title: str, emoji: str = None, description: str = None, status: str = 'todo', priority: str = 'medium', progress: int = 0, due_date: datetime = None, assigned_to: str = None, created_by: str = None, position: float = 0.0, checklist: list = None, tags: list = None, attachments: list = None, is_deleted: bool = False, deleted_at: datetime = None, **kwargs):
+    def __init__(self, board_id: str, title: str, emoji: str = None, description: str = None, status: str = 'todo', priority: str = 'medium', progress: int = 0, due_date: datetime = None, assigned_to: str = None, created_by: str = None, position: float = 0.0, checklist: list = None, tags: list = None, attachments: list = None, followers: list = None, is_deleted: bool = False, deleted_at: datetime = None, **kwargs):
         super().__init__(**kwargs)
         self.board_id = board_id
         self.title = title
@@ -50,12 +51,37 @@ class Task(db.Model):
         self.checklist = checklist if checklist is not None else []
         self.tags = tags if tags is not None else []
         self.attachments = attachments if attachments is not None else []
+        if followers is not None:
+            self.followers = followers
+        else:
+            initial_followers = []
+            if created_by:
+                initial_followers.append(str(created_by))
+            if assigned_to and str(assigned_to) not in initial_followers:
+                initial_followers.append(str(assigned_to))
+            self.followers = initial_followers
         self.is_deleted = is_deleted
         self.deleted_at = deleted_at
 
     def to_dict(self):
         assignee_data = self.assignee.to_dict() if self.assignee else None
-        creator_data = self.creator.to_dict() if self.creator else {
+        creator_active = False
+        if self.creator:
+            if not self.board_id:
+                creator_active = True
+            else:
+                from app.models.board_member import BoardMember
+                if self.board and str(self.board.owner_id) == str(self.created_by):
+                    creator_active = True
+                else:
+                    bm = BoardMember.query.filter_by(
+                        board_id=self.board_id,
+                        user_id=self.created_by,
+                        status='accepted'
+                    ).first()
+                    creator_active = bm is not None
+
+        creator_data = self.creator.to_dict() if (self.creator and creator_active) else {
             'id': self.created_by,
             'fullName': 'Former member',
             'avatarUrl': None
@@ -82,6 +108,7 @@ class Task(db.Model):
             'createdBy': self.created_by,
             'creator': creator_data,
             'attachments': self.attachments,
+            'followers': self.followers or [],
             'isDeleted': self.is_deleted,
             'deletedAt': self.deleted_at.isoformat() + 'Z' if self.deleted_at else None,
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None,

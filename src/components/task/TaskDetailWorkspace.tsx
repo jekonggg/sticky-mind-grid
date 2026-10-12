@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Task, Priority, ChecklistItem, Tag, Attachment, UpdateTaskData } from "@/types/task";
 import { Board, BoardMember } from "@/types/board";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useActivity } from "@/hooks/useActivity";
 import { TaskHeader } from "./TaskHeader";
 import { TaskProperties } from "./TaskProperties";
@@ -14,6 +15,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Clock, Loading01 as Loader2, Check, Cloud01 as Cloud } from "@untitledui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { boardApi } from "@/services/boardApi";
+import { taskApi } from "@/services/api";
 import { useBoardPermissions } from "@/hooks/useBoardPermissions";
 import { toast } from "sonner";
 
@@ -38,6 +40,7 @@ export function TaskDetailWorkspace({
   onUpdateTask,
   onDeleteTask,
 }: TaskDetailWorkspaceProps) {
+  const { user: currentUser } = useAuth();
   const { playSound } = useSettings();
   const { addActivity } = useActivity();
   const permissions = useBoardPermissions(board, members);
@@ -56,6 +59,7 @@ export function TaskDetailWorkspace({
   const [localTags, setLocalTags] = useState<Tag[]>(task.tags || []);
   const [localChecklist, setLocalChecklist] = useState<ChecklistItem[]>(task.checklist || []);
   const [localAttachments, setLocalAttachments] = useState<Attachment[]>(task.attachments || []);
+  const [localFollowers, setLocalFollowers] = useState<string[]>(task.followers || []);
   const [localUpdatedAt, setLocalUpdatedAt] = useState<Date | string | undefined>(task.updatedAt);
 
   const [isStatusHighlighted, setIsStatusHighlighted] = useState(false);
@@ -107,6 +111,7 @@ export function TaskDetailWorkspace({
     setLocalTags(task.tags || []);
     setLocalChecklist(task.checklist || []);
     setLocalAttachments(task.attachments || []);
+    setLocalFollowers(task.followers || []);
     setLocalUpdatedAt(task.updatedAt);
     setSaveStatus("idle");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -255,6 +260,30 @@ export function TaskDetailWorkspace({
     performUpdate({ attachments: newAttachments });
   };
 
+  const isFollowing = Boolean(
+    currentUser?.id && localFollowers.includes(String(currentUser.id))
+  );
+
+  const handleFollowToggle = async () => {
+    if (!currentUser?.id) return;
+    const nextFollow = !isFollowing;
+    const prevFollowers = localFollowers;
+    const nextFollowers = nextFollow
+      ? Array.from(new Set([...localFollowers, String(currentUser.id)]))
+      : localFollowers.filter((id) => id !== String(currentUser.id));
+    setLocalFollowers(nextFollowers);
+    try {
+      const updated = await taskApi.followTask(task.id, nextFollow);
+      if (updated?.followers) {
+        setLocalFollowers(updated.followers);
+      }
+      toast.success(nextFollow ? "Following card updates" : "Unfollowed card");
+    } catch (err: any) {
+      setLocalFollowers(prevFollowers);
+      toast.error(err?.message || "Failed to update follow status");
+    }
+  };
+
   const { data: userBoards = [] } = useQuery<Board[]>({
     queryKey: ["boards"],
     queryFn: () => boardApi.getBoards(),
@@ -307,6 +336,7 @@ export function TaskDetailWorkspace({
           currentColumnId={localStatus}
           availableBoards={userBoards}
           isArchived={localStatus === "archive"}
+          isFollowing={isFollowing}
           onClose={onClose}
           onTitleChange={handleTitleChange}
           onTitleBlur={handleTitleBlur}
@@ -315,6 +345,7 @@ export function TaskDetailWorkspace({
           onMoveToColumn={handleMoveToColumn}
           onMoveToBoard={permissions.canMoveCrossBoard ? handleMoveToBoard : undefined}
           onArchiveToggle={handleArchiveToggle}
+          onFollowToggle={currentUser ? handleFollowToggle : undefined}
         />
 
         {/* Notion-Style Properties Grid */}
@@ -358,6 +389,7 @@ export function TaskDetailWorkspace({
         {/* Attachments Section */}
         <TaskAttachments
           attachments={localAttachments}
+          boardId={board.id}
           readOnly={readOnly}
           canUploadAttachment={permissions.canUploadAttachment}
           canDeleteAnyAttachment={permissions.canDeleteAnyAttachment}
@@ -375,7 +407,7 @@ export function TaskDetailWorkspace({
         </div>
 
         {/* Task Audit & Activity History */}
-        <TaskActivityLog taskTitle={localTitle} />
+        <TaskActivityLog taskTitle={localTitle} taskId={task.id} boardId={board.id} />
       </div>
 
       {/* Sticky Micro-Status Bar Footer (Option 1) */}

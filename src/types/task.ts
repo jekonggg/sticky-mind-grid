@@ -55,6 +55,7 @@ export interface Task {
   checklist?: ChecklistItem[];
   tags?: Tag[];
   attachments: Attachment[];
+  followers?: string[];
   isDeleted?: boolean;
   deletedAt?: Date;
   createdAt: Date;
@@ -75,6 +76,7 @@ export interface CreateTaskData {
   checklist?: ChecklistItem[];
   tags?: Tag[];
   attachments?: Attachment[];
+  followers?: string[];
 }
 
 export interface UpdateTaskData {
@@ -94,6 +96,7 @@ export interface UpdateTaskData {
   checklist?: ChecklistItem[];
   tags?: Tag[];
   attachments?: Attachment[];
+  followers?: string[];
 }
 
 export type TaskFormData = CreateTaskData;
@@ -103,7 +106,11 @@ export type ActivityType = "create" | "move" | "update" | "delete";
 export interface Activity {
   id: string;
   type: ActivityType;
+  targetType?: string;
+  targetId?: string | null;
   taskTitle: string;
+  beforeValue?: string | null;
+  afterValue?: string | null;
   message: string;
   timestamp: Date;
   userId?: string;
@@ -145,6 +152,7 @@ export type NotificationType =
   | "mention"
   | "assignment"
   | "task_comment"
+  | "task_move"
   | "invite"
   | "board_invite"
   | "invite_accepted"

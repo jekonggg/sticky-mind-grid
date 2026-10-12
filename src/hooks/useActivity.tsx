@@ -103,17 +103,8 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 
   const clearActivities = useCallback(async () => {
-    if (!currentBoardId) return;
-    try {
-      const url = `/activities?boardId=${currentBoardId}`;
-      const res = await authenticatedFetch(url, { method: "DELETE" });
-      if (res.ok) {
-        setActivities([]);
-      }
-    } catch (err) {
-      console.error("Failed to clear activities:", err);
-    }
-  }, [currentBoardId]);
+    // Activity logs are append-only and immutable; manual clearing is prohibited.
+  }, []);
 
   return (
     <ActivityContext.Provider

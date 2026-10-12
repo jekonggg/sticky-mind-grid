@@ -38,7 +38,23 @@ export const taskApi = {
       method: "POST",
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error("Failed to create task");
+    if (!res.ok) {
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.error || "Failed to create task");
+    }
+    const task = await res.json();
+    return mapTask(task);
+  },
+
+  async followTask(id: string, follow?: boolean): Promise<Task> {
+    const res = await authenticatedFetch(`/tasks/${id}/follow`, {
+      method: "POST",
+      body: JSON.stringify(follow !== undefined ? { follow } : {}),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.error || "Failed to update follow status");
+    }
     const task = await res.json();
     return mapTask(task);
   },

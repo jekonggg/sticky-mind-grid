@@ -10,6 +10,7 @@ bp = Blueprint('activity_routes', __name__, url_prefix='/api/activities')
 def get_activities():
     board_id = request.args.get('boardId')
     task_title = request.args.get('taskTitle')
+    task_id = request.args.get('taskId')
     user_id = get_jwt_identity()
     limit = request.args.get('limit', 50, type=int)
 
@@ -22,11 +23,11 @@ def get_activities():
         return jsonify({'error': 'Unauthorized to view activities for this board'}), 403
 
     # Viewing the full board activity log requires Admin or Owner.
-    # Viewing a card's history (taskTitle provided) is allowed for all board roles (Viewer+).
-    if not task_title and effective_role < ROLE_HIERARCHY['admin']:
+    # Viewing a card's history (taskTitle or taskId provided) is allowed for all board roles (Viewer+).
+    if not task_title and not task_id and effective_role < ROLE_HIERARCHY['admin']:
         return jsonify({'error': 'Only board admins and owners can view the full board activity log'}), 403
 
-    activities = ActivityService.get_activities(board_id, limit, task_title=task_title)
+    activities = ActivityService.get_activities(board_id, limit, task_title=task_title, task_id=task_id)
     return jsonify([activity.to_dict() for activity in activities]), 200
 
 @bp.route('', methods=['POST'])
@@ -47,8 +48,10 @@ def add_activity():
     activity = ActivityService.add_activity(data)
     return jsonify(activity.to_dict()), 201
 
-@bp.route('', methods=['DELETE'])
+@bp.route('', methods=['PUT', 'PATCH', 'DELETE'])
+@bp.route('/<activity_id>', methods=['PUT', 'PATCH', 'DELETE'])
 @jwt_required()
-def clear_history():
+def block_activity_mutations(activity_id=None):
     return jsonify({'error': 'Activity log entries are immutable and cannot be edited or deleted'}), 403
+
 

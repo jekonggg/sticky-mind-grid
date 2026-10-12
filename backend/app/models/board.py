@@ -58,15 +58,17 @@ class Board(db.Model):
         owner_count = len(owners)
 
         user_role = None
+        user_is_muted = False
         if user_id:
             user_id_str = str(user_id)
             if self.owner_id and str(self.owner_id) == user_id_str:
                 user_role = 'owner'
-            else:
-                for m in (self.memberships or []):
-                    if str(m.user_id) == user_id_str and m.status == 'accepted':
+            for m in (self.memberships or []):
+                if str(m.user_id) == user_id_str and m.status == 'accepted':
+                    if not user_role:
                         user_role = m.role
-                        break
+                    user_is_muted = bool(getattr(m, 'is_muted', False))
+                    break
 
         # Task counts (exclude trashed and archived tasks)
         active_tasks = [
@@ -132,6 +134,7 @@ class Board(db.Model):
             'memberCount': len(members_preview),
             'isShared': len(members_preview) > 1,
             'membersPreview': members_preview[:6],
+            'isMuted': user_is_muted,
             'isDeleted': bool(self.is_deleted),
             'deletedAt': self.deleted_at.isoformat() + 'Z' if self.deleted_at else None,
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None,

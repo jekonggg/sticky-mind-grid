@@ -896,21 +896,28 @@ class BoardService:
             )
             db.session.add(removed_notif)
 
-        # Automatically remove user from all assigned tasks on this board and log it
+        # Automatically remove user from all assigned tasks and followers on this board and log it
         from app.models.task import Task
-        assigned_tasks = Task.query.filter_by(board_id=board_id, assigned_to=user_id, is_deleted=False).all()
-        for t in assigned_tasks:
-            t.assigned_to = None
-            task_act = Activity(
-                type='update',
-                task_title=t.title,
-                message=f'Removed assignee {user_name} from "{t.title}" because member was removed from the board',
-                board_id=board_id,
-                user_id=actor_id
-            )
-            db.session.add(task_act)
-            broadcaster.broadcast(board_id, "task:updated", t.to_dict())
-            broadcaster.broadcast(board_id, "activity:new", task_act.to_dict())
+        board_tasks = Task.query.filter_by(board_id=board_id, is_deleted=False).all()
+        for t in board_tasks:
+            if t.followers and isinstance(t.followers, list) and str(user_id) in [str(f) for f in t.followers]:
+                t.followers = [str(f) for f in t.followers if str(f) != str(user_id)]
+            if str(t.assigned_to) == str(user_id):
+                t.assigned_to = None
+                task_act = Activity(
+                    type='update',
+                    target_type='task',
+                    target_id=t.id,
+                    task_title=t.title,
+                    before_value=user_name,
+                    after_value='Unassigned',
+                    message=f'Removed assignee {user_name} from "{t.title}" because member was removed from the board',
+                    board_id=board_id,
+                    user_id=actor_id
+                )
+                db.session.add(task_act)
+                broadcaster.broadcast(board_id, "task:updated", t.to_dict())
+                broadcaster.broadcast(board_id, "activity:new", task_act.to_dict())
 
         db.session.delete(membership)
         db.session.commit()
@@ -920,6 +927,33 @@ class BoardService:
         broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
 
         return True, None
+
+    @staticmethod
+    def set_board_mute(board_id, user_id, is_muted: bool):
+        board = db.session.get(Board, board_id)
+        if not board or board.is_deleted:
+            return None, "Board not found"
+
+        membership = BoardMember.query.filter_by(
+            board_id=board_id, user_id=user_id, status='accepted'
+        ).first()
+        if not membership:
+            if str(board.owner_id) == str(user_id):
+                membership = BoardMember(
+                    board_id=board_id,
+                    user_id=user_id,
+                    role='owner',
+                    status='accepted',
+                    is_muted=bool(is_muted)
+                )
+                db.session.add(membership)
+            else:
+                return None, "Active board membership not found"
+        else:
+            membership.is_muted = bool(is_muted)
+
+        db.session.commit()
+        return membership, None
 
     @staticmethod
     def update_member_role(board_id, user_id, new_role, actor_id=None):
@@ -955,6 +989,7 @@ class BoardService:
             if BoardService.count_owners(board_id) <= 1:
                 return None, "A board must always have at least one Owner. The last Owner cannot be demoted."
 
+        old_role = membership.role
         membership.role = new_role
 
         # If target was board.owner_id and demoted, reassign board.owner_id to another owner
@@ -973,7 +1008,11 @@ class BoardService:
         # Audit log
         activity = Activity(
             type='update',
+            target_type='member',
+            target_id=str(user_id),
             task_title=user_name,
+            before_value=old_role,
+            after_value=new_role,
             message=f'Updated role for {user_name} to {new_role}',
             board_id=board_id,
             user_id=actor_id
@@ -988,7 +1027,11 @@ class BoardService:
                 t.assigned_to = None
                 task_act = Activity(
                     type='update',
+                    target_type='task',
+                    target_id=t.id,
                     task_title=t.title,
+                    before_value=user_name,
+                    after_value='Unassigned',
                     message=f'Removed assignee {user_name} from "{t.title}" because role was demoted to {new_role}',
                     board_id=board_id,
                     user_id=actor_id
@@ -1041,7 +1084,10 @@ class BoardService:
         new_owner_name = new_owner.full_name or new_owner.email
         activity = Activity(
             type='update',
+            target_type='board',
+            target_id=str(board_id),
             task_title=board.name,
+            after_value=new_owner_name,
             message=f'Transferred board ownership to {new_owner_name}',
             board_id=board_id,
             user_id=actor_id

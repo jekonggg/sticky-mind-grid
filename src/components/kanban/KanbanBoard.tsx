@@ -40,6 +40,8 @@ import {
   File06 as FileText,
   BarChart01 as BarChart3,
   Download01 as Download,
+  Bell01 as Bell,
+  BellOff01 as BellOff,
 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -864,6 +866,33 @@ export function KanbanBoard() {
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0 ${
+                        board.isMuted ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      onClick={async () => {
+                        const nextMuted = !board.isMuted;
+                        setBoard((prev) => (prev ? { ...prev, isMuted: nextMuted } : prev));
+                        try {
+                          await boardApi.setBoardMute(board.id, nextMuted);
+                          toast.success(
+                            nextMuted
+                              ? `Muted notifications for "${board.name}"`
+                              : `Unmuted notifications for "${board.name}"`
+                          );
+                        } catch (err: any) {
+                          setBoard((prev) => (prev ? { ...prev, isMuted: !nextMuted } : prev));
+                          toast.error(err?.message || "Failed to update notification mute setting");
+                        }
+                      }}
+                      title={board.isMuted ? "Unmute board notifications" : "Mute board notifications"}
+                      aria-label={board.isMuted ? "Unmute board notifications" : "Mute board notifications"}
+                      data-testid="board-mute-toggle"
+                    >
+                      {board.isMuted ? <BellOff className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
+                    </Button>
                     {permissions.canExportBoard && (
                       <Button 
                         variant="ghost" 

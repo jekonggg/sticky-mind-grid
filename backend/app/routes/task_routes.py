@@ -78,9 +78,24 @@ def create_task():
     try:
         task = TaskService.create_task(data, user_id=user_id)
         return jsonify(task.to_dict()), 201
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/tasks/<task_id>/follow', methods=['POST', 'PATCH', 'PUT'])
+@jwt_required()
+@require_task_access('viewer')
+def follow_task(task_id):
+    user_id = get_jwt_identity()
+    data = request.json or {}
+    follow = data.get('follow')
+    task = TaskService.toggle_follow_task(task_id, user_id, follow=follow)
+    if not task:
+        return jsonify({'error': 'Task not found'}), 404
+    return jsonify(task.to_dict()), 200
 
 @bp.route('/tasks/reorder', methods=['PATCH'])
 @jwt_required()
@@ -141,6 +156,9 @@ def update_task(task_id):
 
     try:
         task = TaskService.update_task(task_id, data, user_id=user_id)
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except TaskConflictError as e:
         return jsonify({
             'error': e.message,

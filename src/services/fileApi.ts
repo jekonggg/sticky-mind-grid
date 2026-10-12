@@ -12,12 +12,15 @@ export interface UploadedFileResponse {
 }
 
 export const fileApi = {
-  async uploadFile(file: File, purpose?: string): Promise<UploadedFileResponse> {
+  async uploadFile(file: File, purpose?: string, boardId?: string): Promise<UploadedFileResponse> {
     const token = getStoredToken();
     const formData = new FormData();
     formData.append("file", file);
     if (purpose) {
       formData.append("purpose", purpose);
+    }
+    if (boardId) {
+      formData.append("boardId", boardId);
     }
 
     const headers: Record<string, string> = {};
@@ -25,7 +28,10 @@ export const fileApi = {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const query = purpose ? `?purpose=${encodeURIComponent(purpose)}` : "";
+    const params = new URLSearchParams();
+    if (purpose) params.set("purpose", purpose);
+    if (boardId) params.set("boardId", boardId);
+    const query = params.toString() ? `?${params.toString()}` : "";
     const res = await fetch(`${API_BASE}/files/upload${query}`, {
       method: "POST",
       headers,

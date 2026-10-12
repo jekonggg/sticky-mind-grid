@@ -29,6 +29,7 @@ export interface Board {
   membersPreview?: BoardMemberPreview[];
   ownerCount?: number;
   isPinned?: boolean;
+  isMuted?: boolean;
   isDeleted?: boolean;
   deletedAt?: string | Date | null;
   createdAt: Date;
@@ -74,6 +75,7 @@ export interface BoardMember {
   userId: string;
   role: BoardRole;
   status: BoardMemberStatus;
+  isMuted?: boolean;
   user?: User;
   createdAt: string;
   expiresAt?: string;

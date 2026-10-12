@@ -13,6 +13,7 @@ class BoardMember(db.Model):
     user_id = db.Column(db.String(36), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='member') # 'owner', 'admin', 'member', 'viewer'
     status = db.Column(db.String(20), nullable=False, default='accepted') # 'pending', 'accepted', 'declined'
+    is_muted = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     board = db.relationship('Board', back_populates='memberships')
@@ -22,12 +23,13 @@ class BoardMember(db.Model):
         db.UniqueConstraint('board_id', 'user_id', name='uq_board_user'),
     )
 
-    def __init__(self, board_id: str, user_id: str, role: str = 'member', status: str = 'accepted', **kwargs):
+    def __init__(self, board_id: str, user_id: str, role: str = 'member', status: str = 'accepted', is_muted: bool = False, **kwargs):
         super().__init__(**kwargs)
         self.board_id = board_id
         self.user_id = user_id
         self.role = role
         self.status = status
+        self.is_muted = bool(is_muted)
 
     def to_dict(self, redact_user=False):
         # Allow expanding user details if joined
@@ -48,6 +50,7 @@ class BoardMember(db.Model):
             'userId': self.user_id,
             'role': self.role,
             'status': self.status,
+            'isMuted': bool(getattr(self, 'is_muted', False)),
             'user': user_data,
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None
         }

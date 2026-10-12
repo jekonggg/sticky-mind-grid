@@ -130,9 +130,15 @@ export function TaskComments({ taskId, boardMembers, readOnly, canDeleteAnyComme
     }
   };
 
+  // Only accepted members of this board can be @mentioned
+  const acceptedBoardMembers = useMemo(
+    () => boardMembers.filter((m) => !m.status || m.status === "accepted"),
+    [boardMembers]
+  );
+
   const filteredMembers =
     mentionQuery !== null
-      ? boardMembers.filter((m) => {
+      ? acceptedBoardMembers.filter((m) => {
           const name = (m.user?.fullName || "").toLowerCase();
           const email = (m.user?.email || "").toLowerCase();
           return name.includes(mentionQuery) || email.includes(mentionQuery);
@@ -145,35 +151,35 @@ export function TaskComments({ taskId, boardMembers, readOnly, canDeleteAnyComme
     addMutation.mutate(content.trim());
   };
 
-  // Render comment text highlighting full-name @mentions
+  // Render comment text highlighting @mentions only for accepted board members
   const renderFormattedContent = (text: string) => {
     if (!text) return null;
 
-    // Collect all valid member target strings (fullName, email, and first names)
+    // Collect valid accepted board member target strings (fullName, email, and email local-part)
     const mentionTargets: string[] = [];
-    boardMembers.forEach((m) => {
+    acceptedBoardMembers.forEach((m) => {
       if (m.user?.fullName) {
         mentionTargets.push(m.user.fullName);
       }
       if (m.user?.email) {
         mentionTargets.push(m.user.email);
+        const prefix = m.user.email.split("@")[0];
+        if (prefix) mentionTargets.push(prefix);
       }
     });
 
     // Deduplicate and sort longest first so "John Doe" matches before "John"
     const uniqueTargets = Array.from(new Set(mentionTargets)).sort((a, b) => b.length - a.length);
 
-    let mentionRegex: RegExp;
-    if (uniqueTargets.length > 0) {
-      const targetsPattern = uniqueTargets.map((t) => escapeRegExp(t)).join("|");
-      // Matches @Target (case-insensitive) OR generic @username / @word
-      mentionRegex = new RegExp(
-        `(@(?:${targetsPattern}|[a-zA-Z0-9._-]+(?:\\s+[a-zA-Z0-9._-]+)?))(?=\\s|$|[.,!?;:])`,
-        "gi"
-      );
-    } else {
-      mentionRegex = /(@[a-zA-Z0-9._-]+(?:\s+[a-zA-Z0-9._-]+)?)(?=\\s|$|[.,!?;:])/gi;
+    if (uniqueTargets.length === 0) {
+      return <span>{text}</span>;
     }
+
+    const targetsPattern = uniqueTargets.map((t) => escapeRegExp(t)).join("|");
+    const mentionRegex = new RegExp(
+      `(@(?:${targetsPattern}))(?=\\s|$|[.,!?;:])`,
+      "gi"
+    );
 
     const parts = text.split(mentionRegex);
 

@@ -20,6 +20,7 @@ import { getMediaUrl } from "@/components/ui/avatar";
 
 interface TaskAttachmentsProps {
   attachments: Attachment[];
+  boardId?: string;
   readOnly?: boolean;
   canUploadAttachment?: boolean;
   canDeleteAnyAttachment?: boolean;
@@ -28,6 +29,7 @@ interface TaskAttachmentsProps {
 
 export function TaskAttachments({
   attachments,
+  boardId,
   readOnly,
   canUploadAttachment = true,
   canDeleteAnyAttachment = false,
@@ -48,7 +50,7 @@ export function TaskAttachments({
 
     for (const file of Array.from(files)) {
       try {
-        const uploaded = await fileApi.uploadFile(file);
+        const uploaded = await fileApi.uploadFile(file, undefined, boardId);
         newAttachments.push({
           id: uploaded.id,
           name: uploaded.name || file.name,
@@ -162,10 +164,16 @@ export function TaskAttachments({
                 {/* Actions */}
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <a
-                    href={att.url}
+                    href={getMediaUrl(att.url)}
                     target="_blank"
                     rel="noreferrer"
                     download={att.name}
+                    onClick={(e) => {
+                      if (att.url?.includes("/api/files/")) {
+                        e.preventDefault();
+                        fileApi.downloadFile(att.url, att.name);
+                      }
+                    }}
                     className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors"
                     title="Download / View"
                   >

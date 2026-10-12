@@ -88,4 +88,38 @@ describe("TaskComments Component", () => {
     // Textarea receives full name
     expect(textarea).toHaveValue("Hello @John Doe ");
   });
+
+  it("excludes pending/unaccepted members from @mention autocomplete", async () => {
+    const membersWithPending: BoardMember[] = [
+      ...mockMembers,
+      {
+        id: "bm-pending",
+        boardId: "board-1",
+        userId: "user-pending",
+        role: "member",
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        user: {
+          id: "user-pending",
+          email: "pending@example.com",
+          fullName: "Pending Invitee",
+        },
+      },
+    ];
+
+    renderWithProviders(
+      <TaskComments taskId="task-1" boardMembers={membersWithPending} />
+    );
+
+    const textarea = screen.getByPlaceholderText(/Write a comment/i);
+    fireEvent.change(textarea, { target: { value: "Hi @" } });
+
+    await waitFor(() => {
+      expect(screen.getByText("Mention Team Member")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("John Doe")).toBeInTheDocument();
+    expect(screen.queryByText("Pending Invitee")).not.toBeInTheDocument();
+  });
 });
+
