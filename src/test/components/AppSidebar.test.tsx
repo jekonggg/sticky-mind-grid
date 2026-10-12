@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { BoardHeader } from "@/components/kanban/BoardHeader";
 import { renderWithProviders, mockUser } from "@/test/test-utils";
 import { boardApi } from "@/services/boardApi";
 import { taskApi } from "@/services/api";
@@ -218,6 +219,40 @@ describe("AppSidebar Component", () => {
     expect(onToggleCollapse).toHaveBeenCalledTimes(1);
     expect(onOpenSearch).not.toHaveBeenCalled();
   });
+
+  it("renders consolidated User menu dropdown with 3-way theme switcher, settings, My Boards, Developer Suite, and Log Out", async () => {
+    renderWithProviders(
+      <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />
+    );
+
+    const userMenuBtn = screen.getByRole("button", { name: /user menu/i });
+    expect(userMenuBtn).toBeInTheDocument();
+
+    fireEvent.keyDown(userMenuBtn, { key: "Enter" });
+
+    expect(await screen.findByText("Account Profile")).toBeInTheDocument();
+    expect(screen.getByText("Appearance & Theme")).toBeInTheDocument();
+    expect(screen.getByText("All Settings")).toBeInTheDocument();
+    expect(screen.getByText("My Boards")).toBeInTheDocument();
+    expect(screen.getByText("Developer Suite")).toBeInTheDocument();
+    expect(screen.getByText("Log Out")).toBeInTheDocument();
+
+    // 3-way quick theme switcher options
+    expect(screen.getByRole("button", { name: /light/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /dark/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /auto/i })).toBeInTheDocument();
+
+    // Profile card is not duplicated inside the dropdown
+    expect(screen.getAllByText(mockUser.fullName)).toHaveLength(1);
+    expect(screen.getAllByText(mockUser.email)).toHaveLength(1);
+  });
+
+  it("does not render a duplicate User menu avatar in BoardHeader", () => {
+    renderWithProviders(<BoardHeader />);
+
+    expect(screen.queryByRole("button", { name: /user menu/i })).not.toBeInTheDocument();
+  });
 });
+
 
 

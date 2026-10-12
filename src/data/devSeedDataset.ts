@@ -67,6 +67,16 @@ interface SeedSandboxStore {
 
 let activeSandboxStore: SeedSandboxStore | null = null;
 
+export const SEED_AVATARS = {
+  alex: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
+  sarah: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
+  marcus: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+  elena: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
+  david: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+  maya: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+  jordan: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80",
+};
+
 function getCurrentAuthUser(): SeedUser {
   if (typeof window !== "undefined") {
     try {
@@ -78,7 +88,7 @@ function getCurrentAuthUser(): SeedUser {
             id: String(parsed.id),
             email: parsed.email || "alex.rivera@stickymind.dev",
             fullName: parsed.fullName || "Alex Rivera",
-            avatarUrl: parsed.avatarUrl,
+            avatarUrl: parsed.avatarUrl || SEED_AVATARS.alex,
           };
         }
       }
@@ -90,6 +100,7 @@ function getCurrentAuthUser(): SeedUser {
     id: "seed-user-me",
     email: "alex.rivera@stickymind.dev",
     fullName: "Alex Rivera",
+    avatarUrl: SEED_AVATARS.alex,
   };
 }
 
@@ -98,21 +109,25 @@ const TEAMMATES: SeedUser[] = [
     id: "seed-user-sarah",
     email: "sarah.chen@stickymind.dev",
     fullName: "Sarah Chen",
+    avatarUrl: SEED_AVATARS.sarah,
   },
   {
     id: "seed-user-marcus",
     email: "marcus.vance@acmecorp.io",
     fullName: "Marcus Vance",
+    avatarUrl: SEED_AVATARS.marcus,
   },
   {
     id: "seed-user-elena",
     email: "elena.rostova@secops.io",
     fullName: "Elena Rostova",
+    avatarUrl: SEED_AVATARS.elena,
   },
   {
     id: "seed-user-david",
     email: "david.kim@stickymind.dev",
     fullName: "David Kim",
+    avatarUrl: SEED_AVATARS.david,
   },
 ];
 
@@ -239,6 +254,17 @@ function buildSeedStore(preset: SeedTakeoverPreset, me: SeedUser): SeedSandboxSt
       role: "owner",
       ownerCount: 1,
       taskCount: 8,
+      openTaskCount: 7,
+      overdueCount: 1,
+      dueSoonCount: 1,
+      isShared: true,
+      memberCount: 4,
+      membersPreview: [
+        { id: me.id, fullName: me.fullName, avatarUrl: me.avatarUrl, role: "owner" },
+        { id: sarah.id, fullName: sarah.fullName, avatarUrl: sarah.avatarUrl, role: "admin" },
+        { id: marcus.id, fullName: marcus.fullName, avatarUrl: marcus.avatarUrl, role: "editor" },
+        { id: elena.id, fullName: elena.fullName, avatarUrl: elena.avatarUrl, role: "commenter" },
+      ],
       columns: [
         { id: "backlog", title: "Backlog", emoji: "📂" },
         { id: "design", title: "Architecture", emoji: "📐" },
@@ -262,6 +288,16 @@ function buildSeedStore(preset: SeedTakeoverPreset, me: SeedUser): SeedSandboxSt
       role: "owner",
       ownerCount: 2,
       taskCount: 6,
+      openTaskCount: 5,
+      overdueCount: 0,
+      dueSoonCount: 1,
+      isShared: true,
+      memberCount: 3,
+      membersPreview: [
+        { id: me.id, fullName: me.fullName, avatarUrl: me.avatarUrl, role: "owner" },
+        { id: sarah.id, fullName: sarah.fullName, avatarUrl: sarah.avatarUrl, role: "owner" },
+        { id: david.id, fullName: david.fullName, avatarUrl: david.avatarUrl, role: "editor" },
+      ],
       columns: [
         { id: "todo", title: "To Do", emoji: "📝" },
         { id: "in_progress", title: "In Progress", emoji: "🎨" },
@@ -284,6 +320,17 @@ function buildSeedStore(preset: SeedTakeoverPreset, me: SeedUser): SeedSandboxSt
       role: "admin",
       ownerCount: 1,
       taskCount: 5,
+      openTaskCount: 4,
+      overdueCount: 1,
+      dueSoonCount: 1,
+      isShared: true,
+      memberCount: 4,
+      membersPreview: [
+        { id: sarah.id, fullName: sarah.fullName, avatarUrl: sarah.avatarUrl, role: "owner" },
+        { id: me.id, fullName: me.fullName, avatarUrl: me.avatarUrl, role: "admin" },
+        { id: marcus.id, fullName: marcus.fullName, avatarUrl: marcus.avatarUrl, role: "editor" },
+        { id: david.id, fullName: david.fullName, avatarUrl: david.avatarUrl, role: "viewer" },
+      ],
       columns: [
         { id: "todo", title: "Briefing", emoji: "📋" },
         { id: "in_progress", title: "Production", emoji: "🎬" },
@@ -304,6 +351,16 @@ function buildSeedStore(preset: SeedTakeoverPreset, me: SeedUser): SeedSandboxSt
       role: "editor",
       ownerCount: 1,
       taskCount: 5,
+      openTaskCount: 4,
+      overdueCount: 0,
+      dueSoonCount: 2,
+      isShared: true,
+      memberCount: 3,
+      membersPreview: [
+        { id: marcus.id, fullName: marcus.fullName, avatarUrl: marcus.avatarUrl, role: "owner" },
+        { id: me.id, fullName: me.fullName, avatarUrl: me.avatarUrl, role: "editor" },
+        { id: sarah.id, fullName: sarah.fullName, avatarUrl: sarah.avatarUrl, role: "admin" },
+      ],
       columns: [
         { id: "todo", title: "To Do", emoji: "📥" },
         { id: "in_progress", title: "In Progress", emoji: "⚙️" },
@@ -324,6 +381,16 @@ function buildSeedStore(preset: SeedTakeoverPreset, me: SeedUser): SeedSandboxSt
       role: "commenter",
       ownerCount: 1,
       taskCount: 3,
+      openTaskCount: 2,
+      overdueCount: 0,
+      dueSoonCount: 1,
+      isShared: true,
+      memberCount: 3,
+      membersPreview: [
+        { id: elena.id, fullName: elena.fullName, avatarUrl: elena.avatarUrl, role: "owner" },
+        { id: me.id, fullName: me.fullName, avatarUrl: me.avatarUrl, role: "commenter" },
+        { id: sarah.id, fullName: sarah.fullName, avatarUrl: sarah.avatarUrl, role: "admin" },
+      ],
       columns: [
         { id: "todo", title: "Pending Evidence", emoji: "📂" },
         { id: "in_progress", title: "Auditor Review", emoji: "🕵️" },
@@ -343,6 +410,17 @@ function buildSeedStore(preset: SeedTakeoverPreset, me: SeedUser): SeedSandboxSt
       role: "viewer",
       ownerCount: 1,
       taskCount: 3,
+      openTaskCount: 2,
+      overdueCount: 0,
+      dueSoonCount: 1,
+      isShared: true,
+      memberCount: 4,
+      membersPreview: [
+        { id: david.id, fullName: david.fullName, avatarUrl: david.avatarUrl, role: "owner" },
+        { id: me.id, fullName: me.fullName, avatarUrl: me.avatarUrl, role: "viewer" },
+        { id: sarah.id, fullName: sarah.fullName, avatarUrl: sarah.avatarUrl, role: "admin" },
+        { id: elena.id, fullName: elena.fullName, avatarUrl: elena.avatarUrl, role: "viewer" },
+      ],
       columns: [
         { id: "todo", title: "Planned", emoji: "🎯" },
         { id: "in_progress", title: "On Track", emoji: "📊" },

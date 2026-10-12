@@ -104,6 +104,22 @@ export function useBoardRealtime({
       return;
     }
 
+    // In Seed Sandbox Mode (e.g. Full System Showcase), mock boards do not exist on the backend SSE server.
+    // Simulate active connection without triggering reconnect loops or read-only locks.
+    if (devSettings.seedTakeoverPreset && devSettings.seedTakeoverPreset !== "none") {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      setIsConnected(true);
+      setIsReconnecting(false);
+      return;
+    }
+
     if (!boardId || !userId) {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
@@ -318,7 +334,7 @@ export function useBoardRealtime({
       }
       setIsConnected(false);
     };
-  }, [boardId, userId, authToken, devSettings.simulateSseDisconnect]);
+  }, [boardId, userId, authToken, devSettings.simulateSseDisconnect, devSettings.seedTakeoverPreset]);
 
   return { isConnected, isReconnecting };
 }

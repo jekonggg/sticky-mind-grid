@@ -45,7 +45,6 @@ export function AppLayoutSkeleton() {
           <Skeleton className="h-8 w-48 rounded-xl" />
           <div className="flex items-center gap-3">
             <Skeleton className="h-8 w-8 rounded-xl" />
-            <Skeleton className="h-8 w-8 rounded-xl" />
           </div>
         </div>
 

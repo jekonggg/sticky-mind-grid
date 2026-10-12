@@ -24,7 +24,8 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { getContainerGeometry } from "@/utils/geometryUtils";
 import { ChaosErrorMode, SimulatedRole, DevFontFamily, SeedTakeoverPreset } from "@/types/devMode";
 import { DEV_FONT_OPTIONS } from "@/constants/fonts";
-import { SEED_PRESET_OPTIONS } from "@/data/devSeedDataset";
+import { SEED_PRESET_OPTIONS, SEED_AVATARS } from "@/data/devSeedDataset";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { taskApi } from "@/services/api";
 import { Tag } from "@/types/task";
 import { toast } from "sonner";
@@ -823,36 +824,48 @@ export function DevSuiteModal() {
                         role: "none",
                         title: "Actual Role (Live)",
                         desc: "Uses real database membership",
+                        personaName: "Live Account",
+                        avatarUrl: undefined,
                         icon: UserCheck,
                       },
                       {
                         role: "owner",
                         title: devSettings.disableEmojiCustomization ? "Owner" : "Owner 👑",
                         desc: "Full board deletion, invite & edit",
+                        personaName: "Alex Rivera",
+                        avatarUrl: SEED_AVATARS.alex,
                         icon: Shield,
                       },
                       {
                         role: "admin",
                         title: devSettings.disableEmojiCustomization ? "Admin" : "Admin 🛡️",
                         desc: "Manage members, tasks & columns",
+                        personaName: "Sarah Chen",
+                        avatarUrl: SEED_AVATARS.sarah,
                         icon: Shield,
                       },
                       {
                         role: "editor",
                         title: devSettings.disableEmojiCustomization ? "Editor" : "Editor ✏️",
                         desc: "Create, move & edit tasks",
+                        personaName: "Marcus Vance",
+                        avatarUrl: SEED_AVATARS.marcus,
                         icon: Edit,
                       },
                       {
                         role: "commenter",
                         title: devSettings.disableEmojiCustomization ? "Commenter" : "Commenter 💬",
                         desc: "View & comment on tasks",
+                        personaName: "Elena Rostova",
+                        avatarUrl: SEED_AVATARS.elena,
                         icon: MessageSquare,
                       },
                       {
                         role: "viewer",
                         title: devSettings.disableEmojiCustomization ? "Viewer" : "Viewer 👁️",
                         desc: "Read-only. DND & edits disabled",
+                        personaName: "David Kim",
+                        avatarUrl: SEED_AVATARS.david,
                         icon: Eye,
                       },
                     ].map((item) => (
@@ -867,10 +880,28 @@ export function DevSuiteModal() {
                             : "bg-background/80 border-border/60 hover:border-primary/40"
                         }`}
                       >
-                        <item.icon className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        {item.avatarUrl ? (
+                          <Avatar className="h-8 w-8 rounded-full border border-border/70 shrink-0 mt-0.5">
+                            <AvatarImage src={item.avatarUrl} alt={item.personaName} />
+                            <AvatarFallback className="text-[10px] font-bold">
+                              {item.personaName?.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <div className="h-8 w-8 rounded-full bg-muted/60 border border-border/60 flex items-center justify-center shrink-0 mt-0.5 text-primary">
+                            <item.icon className="h-4 w-4" />
+                          </div>
+                        )}
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-bold text-foreground flex items-center justify-between">
-                            <span>{item.title}</span>
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span>{item.title}</span>
+                              {item.personaName && item.role !== "none" && (
+                                <span className="text-[10px] text-muted-foreground font-normal truncate">
+                                  ({item.personaName})
+                                </span>
+                              )}
+                            </div>
                             {devSettings.simulatedRole === item.role && (
                               <Badge className="text-[9px] h-4 px-1 bg-primary">Active</Badge>
                             )}
