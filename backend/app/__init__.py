@@ -46,6 +46,9 @@ def create_app(config_class=Config):
 
     @app.errorhandler(Exception)
     def handle_global_exception(e):
+        from werkzeug.exceptions import HTTPException
+        if isinstance(e, HTTPException):
+            return jsonify({'error': e.description}), e.code
         import traceback
         traceback.print_exc()
         # Never leak internal error details to clients outside debug mode
