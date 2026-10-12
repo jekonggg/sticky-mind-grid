@@ -432,3 +432,34 @@ def test_board_column_wip_limits_and_delete_protection(client, create_test_user,
     assert "active cards" in del_col_resp.get_json()["error"].lower()
 
 
+def test_auto_sync_schema_adds_missing_columns(app):
+    from sqlalchemy import inspect as sa_inspect, text
+    from app import _auto_sync_schema
+
+    with app.app_context():
+        # Simulate a legacy boards table without workspace_id, is_deleted, deleted_at
+        db.session.execute(text("DROP TABLE IF EXISTS boards"))
+        db.session.execute(
+            text(
+                "CREATE TABLE boards ("
+                "id VARCHAR(36) PRIMARY KEY, "
+                "name VARCHAR(255) NOT NULL, "
+                "emoji VARCHAR(50), "
+                "description TEXT, "
+                "color VARCHAR(50) NOT NULL, "
+                "hero_image_url TEXT, "
+                "columns JSON, "
+                "created_at DATETIME, "
+                "updated_at DATETIME)"
+            )
+        )
+        db.session.commit()
+
+        _auto_sync_schema(app)
+
+        inspector = sa_inspect(db.engine)
+        board_cols = {c["name"] for c in inspector.get_columns("boards")}
+        assert "owner_id" in board_cols
+        assert "workspace_id" in board_cols
+        assert "is_deleted" in board_cols
+        assert "deleted_at" in board_cols

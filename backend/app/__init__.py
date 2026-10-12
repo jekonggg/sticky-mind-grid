@@ -92,68 +92,70 @@ def _auto_sync_schema(app):
     with app.app_context():
         try:
             from sqlalchemy import inspect as sa_inspect, text
+            import app.models  # noqa: F401 - ensure all models are registered before create_all
             db.create_all()
             inspector = sa_inspect(db.engine)
             tables = inspector.get_table_names()
 
+            def _add_col_if_missing(table_name, col_name, col_ddl, post_sql=None):
+                if table_name not in tables:
+                    return
+                existing_cols = {c['name'] for c in inspector.get_columns(table_name)}
+                if col_name not in existing_cols:
+                    try:
+                        db.session.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_ddl}"))
+                        if post_sql:
+                            db.session.execute(text(post_sql))
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+
             # Ensure missing columns in users table
-            if 'users' in tables:
-                user_cols = {c['name'] for c in inspector.get_columns('users')}
-                if 'auth_provider' not in user_cols:
-                    try:
-                        db.session.execute(text("ALTER TABLE users ADD COLUMN auth_provider VARCHAR(50) DEFAULT 'local'"))
-                        db.session.commit()
-                    except Exception:
-                        db.session.rollback()
-                if 'auth_provider_id' not in user_cols:
-                    try:
-                        db.session.execute(text("ALTER TABLE users ADD COLUMN auth_provider_id VARCHAR(255) NULL"))
-                        db.session.commit()
-                    except Exception:
-                        db.session.rollback()
+            _add_col_if_missing('users', 'avatar_url', "VARCHAR(500) NULL")
+            _add_col_if_missing('users', 'auth_provider', "VARCHAR(50) DEFAULT 'local'")
+            _add_col_if_missing('users', 'auth_provider_id', "VARCHAR(255) NULL")
 
             # Ensure missing columns in board_members table
-            if 'board_members' in tables:
-                bm_cols = {c['name'] for c in inspector.get_columns('board_members')}
-                if 'status' not in bm_cols:
-                    try:
-                        db.session.execute(text("ALTER TABLE board_members ADD COLUMN status VARCHAR(20) DEFAULT 'accepted' NOT NULL"))
-                        db.session.execute(text("UPDATE board_members SET status = 'accepted' WHERE status IS NULL OR status = ''"))
-                        db.session.commit()
-                    except Exception:
-                        db.session.rollback()
+            _add_col_if_missing(
+                'board_members',
+                'status',
+                "VARCHAR(20) DEFAULT 'accepted' NOT NULL",
+                "UPDATE board_members SET status = 'accepted' WHERE status IS NULL OR status = ''"
+            )
 
             # Ensure missing columns in boards table
-            if 'boards' in tables:
-                board_cols = {c['name'] for c in inspector.get_columns('boards')}
-                if 'is_deleted' not in board_cols:
-                    try:
-                        db.session.execute(text("ALTER TABLE boards ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE NOT NULL"))
+            _add_col_if_missing('boards', 'owner_id', "VARCHAR(36) NULL")
+            _add_col_if_missing('boards', 'workspace_id', "VARCHAR(36) NULL")
+            _add_col_if_missing('boards', 'is_deleted', "BOOLEAN DEFAULT FALSE NOT NULL")
+            _add_col_if_missing('boards', 'deleted_at', "DATETIME NULL")
+
+            # Ensure missing columns in tasks table
+            _add_col_if_missing('tasks', 'emoji', "VARCHAR(50) NULL")
+            _add_col_if_missing('tasks', 'created_by', "VARCHAR(36) NULL")
+            _add_col_if_missing('tasks', 'position', "FLOAT DEFAULT 0.0 NOT NULL")
+            _add_col_if_missing('tasks', 'checklist', "JSON NULL")
+            _add_col_if_missing('tasks', 'tags', "JSON NULL")
+            _add_col_if_missing('tasks', 'attachments', "JSON NULL")
+            _add_col_if_missing('tasks', 'is_deleted', "BOOLEAN DEFAULT FALSE NOT NULL")
+            _add_col_if_missing('tasks', 'deleted_at', "DATETIME NULL")
+
+            # Ensure missing columns in comments table
+            _add_col_if_missing('comments', 'mentions', "JSON NULL")
+            _add_col_if_missing('comments', 'is_edited', "BOOLEAN DEFAULT FALSE NOT NULL")
+            _add_col_if_missing('comments', 'original_content', "TEXT NULL")
+            if 'comments' in tables:
+                try:
+                    comment_cols = {c['name']: c for c in inspector.get_columns('comments')}
+                    if 'user_id' in comment_cols and not comment_cols['user_id'].get('nullable', True):
+                        db.session.execute(text("ALTER TABLE comments MODIFY COLUMN user_id VARCHAR(36) NULL"))
                         db.session.commit()
-                    except Exception:
-                        db.session.rollback()
-                if 'deleted_at' not in board_cols:
-                    try:
-                        db.session.execute(text("ALTER TABLE boards ADD COLUMN deleted_at DATETIME NULL"))
-                        db.session.commit()
-                    except Exception:
-                        db.session.rollback()
+                except Exception:
+                    db.session.rollback()
 
             # Ensure missing columns in messages table
-            if 'messages' in tables:
-                msg_cols = {c['name'] for c in inspector.get_columns('messages')}
-                if 'is_forwarded' not in msg_cols:
-                    try:
-                        db.session.execute(text("ALTER TABLE messages ADD COLUMN is_forwarded BOOLEAN DEFAULT FALSE NOT NULL"))
-                        db.session.commit()
-                    except Exception:
-                        db.session.rollback()
-                if 'is_pinned' not in msg_cols:
-                    try:
-                        db.session.execute(text("ALTER TABLE messages ADD COLUMN is_pinned BOOLEAN DEFAULT FALSE NOT NULL"))
-                        db.session.commit()
-                    except Exception:
-                        db.session.rollback()
+            _add_col_if_missing('messages', 'is_forwarded', "BOOLEAN DEFAULT FALSE NOT NULL")
+            _add_col_if_missing('messages', 'is_pinned', "BOOLEAN DEFAULT FALSE NOT NULL")
+            _add_col_if_missing('messages', 'is_deleted', "BOOLEAN DEFAULT FALSE NOT NULL")
         except Exception:
             # Non-blocking schema check
             pass
