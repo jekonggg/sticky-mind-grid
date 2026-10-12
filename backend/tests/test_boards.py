@@ -373,3 +373,62 @@ def test_soft_delete_board_grace_period_and_restore(client, create_test_user, au
     assert db.session.get(Board, board_id) is None
 
 
+def test_board_column_wip_limits_and_delete_protection(client, create_test_user, auth_headers):
+    owner = create_test_user(email="wip_owner@example.com")
+    headers = auth_headers(owner.id)
+
+    # Create board with valid WIP limit
+    create_resp = client.post(
+        "/api/boards",
+        headers=headers,
+        data=json.dumps({
+            "name": "WIP Board",
+            "columns": [
+                {"id": "todo", "title": "To Do", "wipLimit": None},
+                {"id": "doing", "title": "Doing", "wipLimit": 3},
+                {"id": "done", "title": "Done"},
+            ],
+        }),
+        content_type="application/json",
+    )
+    assert create_resp.status_code == 201
+    board_id = create_resp.get_json()["id"]
+    doing_col = next(c for c in create_resp.get_json()["columns"] if c["id"] == "doing")
+    assert doing_col["wipLimit"] == 3
+
+    # Reject invalid WIP limit (0 or negative)
+    bad_wip_resp = client.patch(
+        f"/api/boards/{board_id}",
+        headers=headers,
+        data=json.dumps({
+            "columns": [
+                {"id": "todo", "title": "To Do"},
+                {"id": "doing", "title": "Doing", "wipLimit": 0},
+                {"id": "done", "title": "Done"},
+            ]
+        }),
+        content_type="application/json",
+    )
+    assert bad_wip_resp.status_code == 400
+    assert "wip limit" in bad_wip_resp.get_json()["error"].lower()
+
+    # Block deleting a column that contains active cards
+    task = Task(id="active-in-doing", board_id=board_id, title="Active Task", status="doing")
+    db.session.add(task)
+    db.session.commit()
+
+    del_col_resp = client.patch(
+        f"/api/boards/{board_id}",
+        headers=headers,
+        data=json.dumps({
+            "columns": [
+                {"id": "todo", "title": "To Do"},
+                {"id": "done", "title": "Done"},
+            ]
+        }),
+        content_type="application/json",
+    )
+    assert del_col_resp.status_code == 400
+    assert "active cards" in del_col_resp.get_json()["error"].lower()
+
+

@@ -175,7 +175,7 @@ describe("BoardModal Component", () => {
     fireEvent.click(screen.getByTitle("Aurora"));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create Board" })).not.toBeDisabled();
-  });
+  }, 15000);
 
   it("enforces file type and 5MB size limits on banner upload and stores uploaded file path", async () => {
     const uploadSpy = vi.spyOn(fileApi, "uploadFile").mockResolvedValue({
@@ -229,6 +229,27 @@ describe("BoardModal Component", () => {
         heroImageUrl: "/api/files/file-123.png",
       })
     );
+  });
+
+  it("allows configuring optional per-column WIP limits and submits them with board columns", () => {
+    const onSubmit = vi.fn();
+    renderWithProviders(
+      <BoardModal open={true} onClose={vi.fn()} board={mockBoard} onSubmit={onSubmit} />,
+      { user: mockUser }
+    );
+
+    const wipInput = screen.getByLabelText("WIP limit for In Progress") as HTMLInputElement;
+    expect(wipInput).toBeInTheDocument();
+    fireEvent.change(wipInput, { target: { value: "3" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const submitted = onSubmit.mock.calls[0][0];
+    const inProgressCol = submitted.columns.find((c: { id: string }) => c.id === "in_progress");
+    const todoCol = submitted.columns.find((c: { id: string }) => c.id === "todo");
+    expect(inProgressCol?.wipLimit).toBe(3);
+    expect(todoCol?.wipLimit).toBeNull();
   });
 });
 

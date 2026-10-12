@@ -410,9 +410,10 @@ export function KanbanBoard() {
     const oldCol = board.columns.find(c => c.id === id);
     if (!oldCol) return;
     
-    if (oldCol.title === newTitle && oldCol.emoji === emoji) return;
+    const nextEmoji = emoji !== undefined ? emoji : oldCol.emoji;
+    if (oldCol.title === newTitle && oldCol.emoji === nextEmoji) return;
 
-    const updatedColumns = board.columns.map(c => c.id === id ? { ...c, title: newTitle, emoji } : c);
+    const updatedColumns = board.columns.map(c => c.id === id ? { ...c, title: newTitle, emoji: nextEmoji } : c);
     
     if (oldCol.title !== newTitle) {
       addActivity("update", board.name, `Renamed state from "${oldCol.title}" ➔ "${newTitle}"`, boardId);
@@ -547,6 +548,32 @@ export function KanbanBoard() {
     setCreatedDraftTask(null);
     setSelectedTaskId((prev) => (prev === task.id ? null : task.id));
   }, []);
+
+  const handleArchiveTask = useCallback(
+    async (task: Task) => {
+      if (!permissions.canEditTask || effectiveReadOnly) return;
+      lastLocalEditTimeRef.current = Date.now();
+      const nextStatus =
+        task.status === "archive"
+          ? board?.columns?.find((c) => c.id !== "archive")?.id || "todo"
+          : "archive";
+      await updateTask(task.id, { status: nextStatus });
+      toast.success(nextStatus === "archive" ? "Task archived" : "Task unarchived");
+    },
+    [permissions.canEditTask, effectiveReadOnly, board?.columns, updateTask]
+  );
+
+  const handleQuickDeleteTask = useCallback(
+    (task: Task) => {
+      if (!permissions.canDeleteTask || effectiveReadOnly) return;
+      deleteTask(task.id);
+      if (selectedTaskId === task.id) {
+        setSelectedTaskId(null);
+        setCreatedDraftTask(null);
+      }
+    },
+    [permissions.canDeleteTask, effectiveReadOnly, deleteTask, selectedTaskId]
+  );
 
   const openNewModal = useCallback((targetStatus?: TaskStatus) => {
     if (!permissions.canCreateTask || effectiveReadOnly || !board) return;
@@ -719,6 +746,7 @@ export function KanbanBoard() {
                       id={col.id}
                       title={col.title}
                       emoji={col.emoji}
+                      wipLimit={col.wipLimit}
                       tasks={filteredTasksByStatus(col.id)}
                       canRename={permissions.canEditBoard && !effectiveReadOnly}
                       canCreateTask={permissions.canCreateTask && !effectiveReadOnly}
@@ -728,6 +756,14 @@ export function KanbanBoard() {
                       onTaskClick={handleTaskClick}
                       onAddTask={openNewModal}
                       onRename={handleRenameColumn}
+                      onArchiveTask={
+                        permissions.canEditTask && !effectiveReadOnly ? handleArchiveTask : undefined
+                      }
+                      onDeleteTask={
+                        permissions.canDeleteTask && !effectiveReadOnly
+                          ? handleQuickDeleteTask
+                          : undefined
+                      }
                     />
                   ))}
 

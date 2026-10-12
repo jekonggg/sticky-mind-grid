@@ -15,7 +15,7 @@ describe("TaskHeader Component", () => {
     { id: "board-2", name: "Secondary Project" },
   ];
 
-  it("renders Move, Archive, and Delete buttons when not read-only", () => {
+  it("renders Move, Archive, and Delete buttons when not read-only", async () => {
     const onMoveToColumn = vi.fn();
     const onMoveToBoard = vi.fn();
     const onArchiveToggle = vi.fn();
@@ -44,21 +44,25 @@ describe("TaskHeader Component", () => {
     // Title input is editable
     expect(screen.getByDisplayValue("Implement Task Header")).toBeInTheDocument();
 
-    // Move, Archive, and Delete buttons are present
+    // Move, Archive, and More task actions overflow trigger are present
     expect(screen.getByTitle("Move task")).toBeInTheDocument();
     expect(screen.getByTitle("Archive task")).toBeInTheDocument();
-    expect(screen.getByTitle("Delete Task")).toBeInTheDocument();
+    const moreActionsBtn = screen.getByTitle("More task actions");
+    expect(moreActionsBtn).toBeInTheDocument();
 
-    // Trigger Archive
+    // Trigger Archive directly (primary action)
     fireEvent.click(screen.getByTitle("Archive task"));
     expect(onArchiveToggle).toHaveBeenCalledTimes(1);
 
-    // Trigger Delete
-    fireEvent.click(screen.getByTitle("Delete Task"));
+    // Open secondary overflow menu to trigger Move to Trash
+    fireEvent.keyDown(moreActionsBtn, { key: "Enter" });
+    const moveToTrashItem = await screen.findByTitle("Delete Task");
+    expect(moveToTrashItem).toHaveTextContent("Move to Trash");
+    fireEvent.click(moveToTrashItem);
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
-  it("does not render Move, Archive, or Delete buttons in readOnly mode (Commenter/Viewer)", () => {
+  it("does not render Move, Archive, or More task actions buttons in readOnly mode (Commenter/Viewer)", () => {
     renderWithProviders(
       <TaskHeader
         boardId="board-1"
@@ -86,6 +90,7 @@ describe("TaskHeader Component", () => {
     // Action buttons must be hidden for readOnly roles
     expect(screen.queryByTitle("Move task")).not.toBeInTheDocument();
     expect(screen.queryByTitle("Archive task")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("More task actions")).not.toBeInTheDocument();
     expect(screen.queryByTitle("Delete Task")).not.toBeInTheDocument();
   });
 });

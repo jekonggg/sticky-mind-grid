@@ -109,6 +109,7 @@ export function TaskDetailWorkspace({
     setLocalAttachments(task.attachments || []);
     setLocalUpdatedAt(task.updatedAt);
     setSaveStatus("idle");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.id, task.updatedAt]);
 
   useEffect(() => {

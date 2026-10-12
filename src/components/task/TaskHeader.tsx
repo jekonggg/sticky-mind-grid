@@ -231,16 +231,30 @@ export function TaskHeader({
           )}
 
           {!readOnly && onDelete && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onDelete}
-              className="h-8 gap-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 hover:text-destructive"
-              title="Delete Task"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Delete Task</span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                  title="More task actions"
+                  aria-label="More task actions"
+                  data-testid="task-header-more-actions"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem
+                  onClick={onDelete}
+                  title="Delete Task"
+                  className="text-xs cursor-pointer gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 font-medium"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Move to Trash</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {onClose && (

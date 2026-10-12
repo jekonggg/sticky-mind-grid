@@ -13,6 +13,7 @@ interface KanbanColumnProps {
   id: TaskStatus;
   title: string;
   emoji?: string;
+  wipLimit?: number | null;
   tasks: Task[];
   canRename?: boolean;
   canCreateTask?: boolean;
@@ -22,6 +23,8 @@ interface KanbanColumnProps {
   onTaskClick: (task: Task) => void;
   onAddTask?: (status: TaskStatus) => void;
   onRename?: (id: string, newTitle: string, emoji?: string) => void;
+  onArchiveTask?: (task: Task) => void;
+  onDeleteTask?: (task: Task) => void;
 }
 
 // Map column status to indicator color
@@ -46,6 +49,7 @@ export function KanbanColumn({
   id,
   title,
   emoji,
+  wipLimit,
   tasks,
   canRename = true,
   canCreateTask = false,
@@ -55,6 +59,8 @@ export function KanbanColumn({
   onTaskClick,
   onAddTask,
   onRename,
+  onArchiveTask,
+  onDeleteTask,
 }: KanbanColumnProps) {
   const { devSettings } = useDevMode();
   const { settings } = useSettings();
@@ -90,6 +96,10 @@ export function KanbanColumn({
   };
 
   const statusColor = getStatusIndicatorColor(id || title);
+  const hasWipLimit = typeof wipLimit === "number" && wipLimit >= 1;
+  const isOverWipLimit = hasWipLimit && tasks.length > wipLimit;
+  const isAtWipLimit = hasWipLimit && tasks.length === wipLimit;
+
   const geom = getContainerGeometry(
     isCompact,
     devSettings.customPadding,
@@ -99,6 +109,8 @@ export function KanbanColumn({
 
   return (
     <div
+      data-testid={`kanban-column-${id}`}
+      data-wip-status={isOverWipLimit ? "exceeded" : isAtWipLimit ? "reached" : "normal"}
       style={geom.isCustom ? { borderRadius: `${geom.outerRadius}px` } : undefined}
       className={`flex flex-col group/column density-kanban-column ${
         isCompact
@@ -107,6 +119,10 @@ export function KanbanColumn({
       } shrink-0 border transition-all duration-200 overflow-hidden h-full max-h-full ${
         isOver
           ? "bg-primary/5 border-primary/40 ring-2 ring-primary/20 shadow-md"
+          : isOverWipLimit
+          ? "bg-rose-500/5 dark:bg-rose-950/20 border-rose-500/40 shadow-xs"
+          : isAtWipLimit
+          ? "bg-amber-500/5 dark:bg-amber-950/20 border-amber-500/40 shadow-xs"
           : "bg-slate-100/75 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800/80 shadow-xs"
       }`}
     >
@@ -150,9 +166,27 @@ export function KanbanColumn({
             </h3>
           )}
 
-          {/* Item Count Pill Badge */}
-          <span className="text-[10px] font-bold bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full px-2 py-0.5 min-w-[20px] text-center shrink-0">
-            {tasks.length}
+          {/* Item Count / WIP Limit Pill Badge */}
+          <span
+            data-testid={`column-wip-badge-${id}`}
+            title={
+              isOverWipLimit
+                ? `WIP limit exceeded (${tasks.length}/${wipLimit})`
+                : isAtWipLimit
+                ? `WIP limit reached (${tasks.length}/${wipLimit})`
+                : hasWipLimit
+                ? `WIP limit: ${tasks.length}/${wipLimit}`
+                : `${tasks.length} tasks`
+            }
+            className={`text-[10px] font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center shrink-0 transition-colors ${
+              isOverWipLimit
+                ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30"
+                : isAtWipLimit
+                ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
+                : "bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+            }`}
+          >
+            {hasWipLimit ? `${tasks.length}/${wipLimit}` : tasks.length}
           </span>
         </div>
 
@@ -216,6 +250,8 @@ export function KanbanColumn({
                       : highlightedTaskIds?.has(task.id)
                   }
                   onClick={onTaskClick}
+                  onArchive={onArchiveTask}
+                  onDelete={onDeleteTask}
                   isDragDisabled={isDragDisabled}
                 />
               ))}

@@ -231,4 +231,26 @@ describe("TaskCard Component", () => {
     fireEvent.click(optionsBtn);
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  it("renders Archive card and Move to Trash in options menu when callbacks are provided", async () => {
+    const onArchive = vi.fn();
+    const onDelete = vi.fn();
+    render(
+      <TaskCard
+        task={mockTask}
+        onClick={vi.fn()}
+        onArchive={onArchive}
+        onDelete={onDelete}
+      />
+    );
+
+    const optionsBtn = screen.getByRole("button", { name: "Task options" });
+    fireEvent.keyDown(optionsBtn, { key: "Enter" });
+
+    const archiveItem = await screen.findByText("Archive card");
+    expect(archiveItem).toBeInTheDocument();
+    expect(screen.getByText("Move to Trash")).toBeInTheDocument();
+    fireEvent.click(archiveItem);
+    expect(onArchive).toHaveBeenCalledWith(mockTask);
+  });
 });

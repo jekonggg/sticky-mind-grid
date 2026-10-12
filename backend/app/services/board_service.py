@@ -163,6 +163,20 @@ class BoardService:
         return trimmed
 
     @staticmethod
+    def _validate_columns_wip_limits(columns):
+        if not isinstance(columns, list):
+            return
+        for col in columns:
+            if not isinstance(col, dict):
+                continue
+            if 'wipLimit' in col:
+                raw_limit = col['wipLimit']
+                if raw_limit is None or raw_limit == '':
+                    col['wipLimit'] = None
+                elif isinstance(raw_limit, bool) or not isinstance(raw_limit, int) or raw_limit < 1:
+                    raise ValueError("Column WIP limit must be a positive integer")
+
+    @staticmethod
     def create_board(data, owner_id):
         default_columns = [
             {"id": "todo", "title": "To Do", "emoji": "📝"},
@@ -175,6 +189,7 @@ class BoardService:
             non_archive = [c for c in columns if isinstance(c, dict) and c.get('id') != 'archive']
             if len(non_archive) < 1:
                 raise ValueError("Board must have at least 1 workflow column")
+            BoardService._validate_columns_wip_limits(columns)
 
         validated_hero_url = BoardService.validate_hero_image_url(data.get('heroImageUrl'))
 
@@ -247,6 +262,7 @@ class BoardService:
                 non_archive = [c for c in new_columns if isinstance(c, dict) and c.get('id') != 'archive']
                 if len(non_archive) < 1:
                     raise ValueError("Board must have at least 1 workflow column")
+                BoardService._validate_columns_wip_limits(new_columns)
                 new_column_ids = {c.get('id') for c in new_columns if isinstance(c, dict) and 'id' in c}
                 old_columns = board.columns or []
                 for col in old_columns:

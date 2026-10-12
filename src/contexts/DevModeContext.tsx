@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { QueryClientContext } from "@tanstack/react-query";
 import { DevSettings, SseLogEntry } from "@/types/devMode";
 import { FONT_STACK_MAP } from "@/constants/fonts";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -57,12 +57,7 @@ const DevModeContext = createContext<DevModeContextValue | undefined>(undefined)
 
 export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { settings, updateLocalSetting } = useSettings();
-  let queryClient: ReturnType<typeof useQueryClient> | null = null;
-  try {
-    queryClient = useQueryClient();
-  } catch {
-    queryClient = null;
-  }
+  const queryClient = useContext(QueryClientContext) ?? null;
 
   // Initialize dev settings
   const [devSettings, setDevSettings] = useState<DevSettings>(() => {

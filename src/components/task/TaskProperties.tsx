@@ -112,8 +112,10 @@ export function TaskProperties({
 
   const assignedMember = members.find((m) => m.userId === assignedTo);
   const currentColumn = columns.find((c) => c.id === status);
-  const assignableMembers = members.filter((m) =>
-    ["owner", "admin", "editor", "member"].includes(m.role)
+  const assignableMembers = members.filter(
+    (m) =>
+      (!m.status || m.status === "accepted") &&
+      ["owner", "admin", "editor", "member"].includes(m.role)
   );
 
   return (

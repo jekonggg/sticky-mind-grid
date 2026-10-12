@@ -183,9 +183,62 @@ describe("TaskModal Component", () => {
       />
     );
 
-    expect(screen.queryByRole("button", { name: /delete task/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /move to trash/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /archive/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /update task/i })).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /close/i }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("excludes viewers, commenters, and pending invitees from assignable members", () => {
+    const mixedMembers: BoardMember[] = [
+      ...mockMembers,
+      {
+        id: "bm-editor-accepted",
+        boardId: "board-1",
+        userId: "user-2",
+        role: "editor",
+        status: "accepted",
+        createdAt: new Date().toISOString(),
+        user: { id: "user-2", email: "editor@example.com", fullName: "Accepted Editor" },
+      },
+      {
+        id: "bm-editor-pending",
+        boardId: "board-1",
+        userId: "user-3",
+        role: "editor",
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        user: { id: "user-3", email: "pending@example.com", fullName: "Pending Editor" },
+      },
+      {
+        id: "bm-viewer",
+        boardId: "board-1",
+        userId: "user-4",
+        role: "viewer",
+        status: "accepted",
+        createdAt: new Date().toISOString(),
+        user: { id: "user-4", email: "viewer@example.com", fullName: "Viewer User" },
+      },
+    ];
+
+    renderWithProviders(
+      <TaskModal
+        open={true}
+        onClose={vi.fn()}
+        task={mockTask}
+        members={mixedMembers}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    // Open Assignee select
+    const comboboxes = screen.getAllByRole("combobox");
+    const assigneeTrigger = comboboxes[comboboxes.length - 1];
+    fireEvent.click(assigneeTrigger);
+
+    expect(screen.getAllByText(/Alex Rivera/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Accepted Editor/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText(/Pending Editor/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Viewer User/i)).not.toBeInTheDocument();
   });
 });

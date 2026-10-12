@@ -11,6 +11,8 @@ import {
   Tag as TagIcon,
   MessageSquare,
   Check,
+  Archive,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage, getMediaUrl } from "@/components/ui/avatar";
@@ -18,6 +20,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useDevMode } from "@/contexts/DevModeContext";
@@ -29,6 +32,8 @@ interface TaskCardProps {
   isSelected?: boolean;
   isHighlighted?: boolean;
   onClick: (task: Task) => void;
+  onArchive?: (task: Task) => void;
+  onDelete?: (task: Task) => void;
   isDragDisabled?: boolean;
 }
 
@@ -87,6 +92,8 @@ export function TaskCard({
   isSelected = false,
   isHighlighted = false,
   onClick,
+  onArchive,
+  onDelete,
   isDragDisabled = false,
 }: TaskCardProps) {
   const { devSettings } = useDevMode();
@@ -375,7 +382,7 @@ export function TaskCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-40"
+              className="w-44"
               onClick={(e) => e.stopPropagation()}
             >
               <DropdownMenuItem
@@ -402,6 +409,35 @@ export function TaskCard({
               >
                 Copy task ID
               </DropdownMenuItem>
+              {onArchive && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onArchive(task);
+                    }}
+                  >
+                    <Archive className="h-3.5 w-3.5 mr-2" />
+                    {task.status === "archive" ? "Unarchive card" : "Archive card"}
+                  </DropdownMenuItem>
+                </>
+              )}
+              {onDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(task);
+                    }}
+                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                    Move to Trash
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

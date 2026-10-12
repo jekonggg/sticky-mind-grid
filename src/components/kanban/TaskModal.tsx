@@ -102,8 +102,10 @@ export function TaskModal({
   const { user: currentUser } = useAuth();
   const isModalOpen = open ?? isOpen ?? false;
   const [boardMembers, setBoardMembers] = useState<BoardMember[]>(members);
-  const assignableMembers = boardMembers.filter((m) =>
-    ["owner", "admin", "editor", "member"].includes(m.role)
+  const assignableMembers = boardMembers.filter(
+    (m) =>
+      (!m.status || m.status === "accepted") &&
+      ["owner", "admin", "editor", "member"].includes(m.role)
   );
   const [userBoards, setUserBoards] = useState<Board[]>(availableBoards || []);
   const [selectedBoardId, setSelectedBoardId] = useState<string>(task?.boardId || boardId || "");
@@ -867,21 +869,6 @@ export function TaskModal({
             <>
               {isEditing ? (
                 <div className="flex items-center gap-1.5">
-                  {onDelete && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-9 px-3 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs font-bold"
-                      onClick={() => {
-                        onDelete(task.id);
-                        onClose();
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1.5" />
-                      Delete Task
-                    </Button>
-                  )}
                   <Button
                     type="button"
                     variant="outline"
@@ -902,6 +889,22 @@ export function TaskModal({
                     <Archive className="h-3.5 w-3.5" />
                     <span>{status === "archive" ? "Unarchive" : "Archive"}</span>
                   </Button>
+                  {onDelete && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      title="Delete Task"
+                      className="h-9 px-3 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs font-bold"
+                      onClick={() => {
+                        onDelete(task.id);
+                        onClose();
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1.5" />
+                      Move to Trash
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div />

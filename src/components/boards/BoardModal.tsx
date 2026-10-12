@@ -339,6 +339,19 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
     setColumns(columns.map((c) => (c.id === id ? { ...c, title, emoji: colEmoji } : c)));
   };
 
+  const handleColumnWipLimitChange = (id: string, rawValue: string) => {
+    if (!canManageColumns) return;
+    const trimmed = rawValue.trim();
+    if (!trimmed) {
+      setColumns(columns.map((c) => (c.id === id ? { ...c, wipLimit: null } : c)));
+      return;
+    }
+    const parsed = parseInt(trimmed, 10);
+    if (!isNaN(parsed) && parsed >= 1) {
+      setColumns(columns.map((c) => (c.id === id ? { ...c, wipLimit: parsed } : c)));
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -399,6 +412,14 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
     const finalColumns = columns.map((col) => ({
       ...col,
       emoji: devSettings.disableEmojiCustomization ? undefined : col.emoji,
+      ...(col.id !== "archive"
+        ? {
+            wipLimit:
+              typeof col.wipLimit === "number" && col.wipLimit >= 1
+                ? Math.floor(col.wipLimit)
+                : null,
+          }
+        : {}),
     }));
     if (!finalColumns.some((c) => c.id === "archive")) {
       finalColumns.push({
@@ -599,6 +620,17 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
                           className="h-9 flex-1 text-xs font-medium"
                           disabled={!canManageColumns}
                         />
+                        <Input
+                          type="number"
+                          min={1}
+                          value={col.wipLimit ?? ""}
+                          onChange={(e) => handleColumnWipLimitChange(col.id, e.target.value)}
+                          placeholder="WIP"
+                          aria-label={`WIP limit for ${col.title}`}
+                          title="Optional WIP limit (max cards before soft warning)"
+                          className="h-9 w-20 text-xs font-medium text-center shrink-0"
+                          disabled={!canManageColumns}
+                        />
                         {canManageColumns && (
                           <Button
                             type="button"
@@ -630,7 +662,7 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
                   })}
                 </div>
                 <p className="text-[10px] text-muted-foreground font-medium italic">
-                  Minimum {MIN_COLUMNS} state required.{" "}
+                  Minimum {MIN_COLUMNS} state required. Optional WIP limits highlight columns when at or over capacity.{" "}
                   {!canManageColumns && "Only Admins and Owners can modify workflow states."}
                 </p>
               </div>

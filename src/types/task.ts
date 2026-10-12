@@ -120,6 +120,7 @@ export interface Column {
   title: string;
   emoji?: string;
   color?: string;
+  wipLimit?: number | null;
 }
 
 export interface Comment {

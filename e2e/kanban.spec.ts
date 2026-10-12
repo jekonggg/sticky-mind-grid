@@ -103,7 +103,8 @@ test.describe("Kanban Board", () => {
     test("deletes a task from right-side workspace (soft delete)", async ({ page }) => {
       await createTask(page, "Delete Me");
       await page.locator("main").getByText("Delete Me").click();
-      await page.getByRole("button", { name: "Delete Task" }).click();
+      await page.getByTestId("task-header-more-actions").click();
+      await page.getByRole("menuitem", { name: "Move to Trash" }).click();
       await expect(page.locator("main").getByText("Delete Me")).not.toBeVisible({ timeout: 5000 });
     });
 
