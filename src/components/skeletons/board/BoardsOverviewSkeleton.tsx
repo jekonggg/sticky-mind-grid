@@ -7,10 +7,10 @@ export function BoardsOverviewSkeleton() {
     <div
       role="status"
       aria-label="Loading boards"
-      className="w-full animate-in fade-in duration-300"
+      className="w-full shrink-0 animate-in fade-in duration-300"
     >
       {/* 1. Hero Banner Skeleton */}
-      <div className="relative w-full h-[280px] md:h-[340px] overflow-hidden bg-background">
+      <div className="relative w-full h-[280px] md:h-[340px] shrink-0 overflow-hidden bg-background">
         <div className="absolute inset-0 bg-primary/10" />
         
         {/* Ambient Grid Pattern Overlay */}

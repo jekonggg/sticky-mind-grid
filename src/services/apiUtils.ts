@@ -1,6 +1,7 @@
 import { API_BASE, TOKEN_STORAGE_KEY, getStoredToken } from "@/config/api";
 import { getDevSettings } from "@/contexts/DevModeContext";
 import { isJwtExpired } from "@/utils/authUtils";
+import { handleSeedTakeoverRequest } from "@/data/devSeedDataset";
 
 export async function authenticatedFetch(endpoint: string, options: RequestInit = {}) {
   // DEV Mode Interception
@@ -37,11 +38,25 @@ export async function authenticatedFetch(endpoint: string, options: RequestInit 
       }
     }
 
-    // 3. Simulate Empty State for list endpoints (GET requests)
+    // 3. Predefined Seed Takeover (In-Memory Sandbox)
+    if (devSettings.seedTakeoverPreset && devSettings.seedTakeoverPreset !== "none") {
+      const seedResponse = handleSeedTakeoverRequest(
+        endpoint,
+        options,
+        devSettings.seedTakeoverPreset
+      );
+      if (seedResponse) {
+        return seedResponse;
+      }
+    }
+
+    // 4. Simulate Empty State for list endpoints (GET requests)
     if (devSettings.simulateEmptyState && (!options.method || options.method === "GET")) {
       if (
         endpoint === "/boards" ||
+        endpoint === "/boards/invitations" ||
         endpoint === "/tasks" ||
+        endpoint.startsWith("/tasks?") ||
         (endpoint.startsWith("/boards") && endpoint.endsWith("/tasks"))
       ) {
         return new Response(JSON.stringify([]), {

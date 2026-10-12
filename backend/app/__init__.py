@@ -123,6 +123,22 @@ def _auto_sync_schema(app):
                     except Exception:
                         db.session.rollback()
 
+            # Ensure missing columns in boards table
+            if 'boards' in tables:
+                board_cols = {c['name'] for c in inspector.get_columns('boards')}
+                if 'is_deleted' not in board_cols:
+                    try:
+                        db.session.execute(text("ALTER TABLE boards ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE NOT NULL"))
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+                if 'deleted_at' not in board_cols:
+                    try:
+                        db.session.execute(text("ALTER TABLE boards ADD COLUMN deleted_at DATETIME NULL"))
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+
             # Ensure missing columns in messages table
             if 'messages' in tables:
                 msg_cols = {c['name'] for c in inspector.get_columns('messages')}
@@ -141,3 +157,4 @@ def _auto_sync_schema(app):
         except Exception:
             # Non-blocking schema check
             pass
+

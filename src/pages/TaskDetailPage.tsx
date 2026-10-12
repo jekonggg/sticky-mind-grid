@@ -91,11 +91,16 @@ export default function TaskDetailPage() {
   }, [boardId, taskId, navigate]);
 
   // Real-time SSE updates for task & board
-  useBoardRealtime({
+  const { isConnected, isReconnecting } = useBoardRealtime({
     boardId: boardId || "",
     onTaskUpdate: (updatedTask: Task) => {
       if (updatedTask.id === taskId) {
         setTask((prev) => (prev ? { ...prev, ...updatedTask } : updatedTask));
+      }
+    },
+    onTaskMoved: (movedTask: Task) => {
+      if (movedTask.id === taskId) {
+        setTask((prev) => (prev ? { ...prev, ...movedTask } : movedTask));
       }
     },
     onTaskDelete: (deletedTaskId: string) => {
@@ -104,7 +109,70 @@ export default function TaskDetailPage() {
         navigate(`/boards/${boardId}`);
       }
     },
-  });
+    onMemberChange: (data) => {
+      if (
+        data?.eventType === "member:removed" &&
+        currentUser?.id !== undefined &&
+        String(data?.userId) === String(currentUser.id)
+      ) {
+        toast.error("You no longer have access to this board.");
+        navigate("/");
+        return;
+      }
+      if (
+        data?.eventType === "member:role_updated" &&
+        currentUser?.id !== undefined &&
+        String(data?.userId) === String(currentUser.id) &&
+        data?.role
+      ) {
+        toast.info(`Your role on this board was updated to ${data.role}.`);
+        queryClient.setQueryData<BoardMember[]>(["boardMembers", boardId], (prev) =>
+          prev
+            ? prev.map((m) =>
+                String(m.userId) === String(currentUser.id) ? { ...m, role: data.role } : m
+              )
+            : prev
+        );
+        setBoard((prev) =>
+          prev
+            ? {
+                ...prev,
+                role: data.role,
+                ownerId:
+                  data.role !== "owner" && String(prev.ownerId) === String(currentUser.id)
+                    ? ""
+                    : prev.ownerId,
+              }
+            : prev
+        );
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["boardMembers", boardId] });
+      if (boardId) {
+        boardApi.getBoard(boardId).then((b) => {
+          if (!b) {
+            toast.error("You no longer have access to this board.");
+            navigate("/");
+            return;
+          }
+          setBoard(b);
+        });
+      }
+    },
+    onForceDisconnect: () => {
+      toast.error("You no longer have access to this board.");
+      navigate("/");
+    },
+    onReconnect: () => {
+      if (boardId && taskId) {
+        boardApi.getBoard(boardId).then((b) => b && setBoard(b)).catch(() => {});
+        taskApi.getTask(taskId).then((t) => t && setTask(t)).catch(() => {});
+        queryClient.invalidateQueries({ queryKey: ["boardMembers", boardId] });
+      }
+    },
+  }) || { isConnected: true, isReconnecting: false };
+
+  const effectiveReadOnly = permissions.isReadOnly || Boolean(isReconnecting);
 
   // Keyboard shortcut: Escape to return to board
   useEffect(() => {
@@ -123,22 +191,31 @@ export default function TaskDetailPage() {
   // Debounced / immediate update dispatcher
   const saveTaskUpdates = useCallback(
     async (updates: Partial<Task>, logActivity = false, activityMsg = "") => {
-      if (!taskId || permissions.isReadOnly) return;
+      if (!taskId || effectiveReadOnly) return;
 
       // Optimistically update local state
       setTask((prev) => (prev ? { ...prev, ...updates } : null));
 
       try {
-        await taskApi.updateTask(taskId, updates as any);
+        const updated = await taskApi.updateTask(taskId, updates as any);
+        if (updated && updated.id) {
+          setTask(updated);
+        }
         if (logActivity && activityMsg && boardId) {
           addActivity("update", updates.title || task?.title || "Task", activityMsg, boardId);
         }
       } catch (err: any) {
+        if (err?.status === 409) {
+          if (err?.currentTask) {
+            setTask(err.currentTask);
+          }
+          throw err;
+        }
         toast.error("Failed to save changes");
         console.error("Update task error:", err);
       }
     },
-    [taskId, permissions.isReadOnly, boardId, task?.title, addActivity]
+    [taskId, effectiveReadOnly, boardId, task?.title, addActivity]
   );
 
   // Field change handlers
@@ -202,7 +279,7 @@ export default function TaskDetailPage() {
   };
 
   const handleDeleteTask = async () => {
-    if (!taskId || !boardId || permissions.isReadOnly) return;
+    if (!taskId || !boardId || effectiveReadOnly) return;
     try {
       await taskApi.deleteTask(taskId);
       addActivity("delete", task?.title || "Task", `Moved task "${task?.title}" to trash`, boardId);
@@ -237,12 +314,20 @@ export default function TaskDetailPage() {
 
   return (
     <div className="h-full bg-background text-foreground flex flex-col overflow-hidden selection:bg-primary/20">
+      {isReconnecting && (
+        <div
+          data-testid="realtime-reconnecting-badge"
+          className="bg-amber-500/10 border-b border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold py-1.5 px-4 text-center shrink-0"
+        >
+          Read-only • Reconnecting...
+        </div>
+      )}
       <TaskDetailWorkspace
         task={task}
         board={board}
         members={members}
-        readOnly={permissions.isReadOnly}
-        canComment={permissions.canComment}
+        readOnly={effectiveReadOnly}
+        canComment={permissions.canComment && !isReconnecting}
         onClose={() => navigate(`/boards/${board.id}`)}
         onUpdateTask={(updates) => saveTaskUpdates(updates)}
         onDeleteTask={handleDeleteTask}

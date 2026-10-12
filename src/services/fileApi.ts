@@ -12,17 +12,21 @@ export interface UploadedFileResponse {
 }
 
 export const fileApi = {
-  async uploadFile(file: File): Promise<UploadedFileResponse> {
+  async uploadFile(file: File, purpose?: string): Promise<UploadedFileResponse> {
     const token = getStoredToken();
     const formData = new FormData();
     formData.append("file", file);
+    if (purpose) {
+      formData.append("purpose", purpose);
+    }
 
     const headers: Record<string, string> = {};
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE}/files/upload`, {
+    const query = purpose ? `?purpose=${encodeURIComponent(purpose)}` : "";
+    const res = await fetch(`${API_BASE}/files/upload${query}`, {
       method: "POST",
       headers,
       body: formData,

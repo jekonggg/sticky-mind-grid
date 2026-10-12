@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 from app import db
 
@@ -19,6 +19,8 @@ class Board(db.Model):
     columns = db.Column(db.JSON, default=list)
     owner_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True) # Temporarily nullable for migration
     workspace_id = db.Column(db.String(36), nullable=True, index=True)
+    is_deleted = db.Column(db.Boolean, default=False, nullable=False)
+    deleted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -36,6 +38,8 @@ class Board(db.Model):
         self.columns = columns if columns is not None else []
         self.owner_id = owner_id
         self.workspace_id = workspace_id
+        if self.is_deleted is None:
+            self.is_deleted = False
 
     def touch(self):
         self.updated_at = datetime.utcnow()
@@ -64,6 +68,52 @@ class Board(db.Model):
                         user_role = m.role
                         break
 
+        # Task counts (exclude trashed and archived tasks)
+        active_tasks = [
+            t for t in (self.tasks or [])
+            if not getattr(t, 'is_deleted', False) and getattr(t, 'status', '') != 'archive'
+        ]
+        open_tasks = [
+            t for t in active_tasks
+            if getattr(t, 'status', '') != 'done' and (getattr(t, 'progress', 0) or 0) < 100
+        ]
+        now = datetime.utcnow()
+        soon_threshold = now + timedelta(days=3)
+        overdue_count = sum(
+            1 for t in open_tasks
+            if getattr(t, 'due_date', None) and t.due_date < now
+        )
+        due_soon_count = sum(
+            1 for t in open_tasks
+            if getattr(t, 'due_date', None) and now <= t.due_date <= soon_threshold
+        )
+
+        # Card-level member cues (never expose email in membersPreview)
+        members_preview = []
+        seen_member_ids = set()
+        for m in (self.memberships or []):
+            if m.status == 'accepted' and m.user:
+                u = m.user
+                uid = str(u.id)
+                if uid not in seen_member_ids:
+                    seen_member_ids.add(uid)
+                    members_preview.append({
+                        'id': uid,
+                        'fullName': u.full_name or (u.email.split('@')[0] if u.email else 'User'),
+                        'avatarUrl': u.avatar_url,
+                        'role': m.role
+                    })
+        if self.owner and str(self.owner.id) not in seen_member_ids:
+            u = self.owner
+            uid = str(u.id)
+            seen_member_ids.add(uid)
+            members_preview.insert(0, {
+                'id': uid,
+                'fullName': u.full_name or (u.email.split('@')[0] if u.email else 'User'),
+                'avatarUrl': u.avatar_url,
+                'role': 'owner'
+            })
+
         data = {
             'id': self.id,
             'name': self.name,
@@ -74,11 +124,20 @@ class Board(db.Model):
             'columns': self.columns,
             'ownerId': self.owner_id,
             'workspaceId': getattr(self, 'workspace_id', None),
-            'taskCount': len(self.tasks),
+            'taskCount': len(active_tasks),
+            'openTaskCount': len(open_tasks),
+            'overdueCount': overdue_count,
+            'dueSoonCount': due_soon_count,
             'ownerCount': owner_count,
+            'memberCount': len(members_preview),
+            'isShared': len(members_preview) > 1,
+            'membersPreview': members_preview[:6],
+            'isDeleted': bool(self.is_deleted),
+            'deletedAt': self.deleted_at.isoformat() + 'Z' if self.deleted_at else None,
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None,
             'updatedAt': self.updated_at.isoformat() + 'Z' if self.updated_at else None
         }
         if user_role:
             data['role'] = user_role
         return data
+

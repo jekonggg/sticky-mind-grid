@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { BoardModal } from "@/components/boards/BoardModal";
 import { renderWithProviders, mockUser } from "@/test/test-utils";
 import { Board } from "@/types/board";
+import { fileApi } from "@/services/fileApi";
 
 const mockBoard: Board = {
   id: "board-1",
@@ -23,6 +24,7 @@ const mockBoard: Board = {
 describe("BoardModal Component", () => {
   beforeEach(() => {
     localStorage.removeItem("sticky_mind_grid_dev_settings");
+    vi.restoreAllMocks();
   });
 
   it("renders Edit Board dialog when open with owner permissions", () => {
@@ -85,4 +87,148 @@ describe("BoardModal Component", () => {
     expect(screen.getByRole("heading", { name: "Create Board" })).toBeInTheDocument();
     expect(screen.queryByText("Permission Denied")).not.toBeInTheDocument();
   });
+
+  it("uses progressive disclosure in Create Board mode: hides description, templates, columns, banner, and color behind Customize", () => {
+    renderWithProviders(
+      <BoardModal open={true} onClose={vi.fn()} board={null} onSubmit={vi.fn()} />,
+      { user: mockUser }
+    );
+
+    // Visible by default: Name input and Customize button
+    expect(screen.getByPlaceholderText("Project or Board name…")).toBeInTheDocument();
+    const customizeBtn = screen.getByRole("button", { name: /customize/i });
+    expect(customizeBtn).toBeInTheDocument();
+
+    // Hidden by default
+    expect(screen.queryByPlaceholderText("What is this board for?")).not.toBeInTheDocument();
+    expect(screen.queryByText("Starter Templates")).not.toBeInTheDocument();
+    expect(screen.queryByText("Theme Accent Color")).not.toBeInTheDocument();
+
+    // Click Customize to reveal advanced options
+    fireEvent.click(customizeBtn);
+
+    expect(screen.getByPlaceholderText("What is this board for?")).toBeInTheDocument();
+    expect(screen.getByText("Starter Templates")).toBeInTheDocument();
+    expect(screen.getByText("Theme Accent Color")).toBeInTheDocument();
+  });
+
+  it("supports starter templates (Kanban, Sprint, Personal to-do, Ideas / Doing) and minimum 1 column", () => {
+    const onSubmit = vi.fn();
+    renderWithProviders(
+      <BoardModal open={true} onClose={vi.fn()} board={null} onSubmit={onSubmit} />,
+      { user: mockUser }
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /customize/i }));
+
+    // Select "Ideas / Doing" template (2 columns)
+    fireEvent.click(screen.getByRole("button", { name: /ideas \/ doing/i }));
+    expect(screen.getByDisplayValue("Ideas")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Doing")).toBeInTheDocument();
+
+    // Remove "Doing" column so only 1 column ("Ideas") remains
+    const removeDoingBtn = screen.getByRole("button", { name: "Remove Doing" });
+    expect(removeDoingBtn).not.toBeDisabled();
+    fireEvent.click(removeDoingBtn);
+
+    expect(screen.queryByDisplayValue("Doing")).not.toBeInTheDocument();
+    // Now at 1 column, the remaining remove button should be disabled
+    const removeIdeasBtn = screen.getByRole("button", { name: "Remove Ideas" });
+    expect(removeIdeasBtn).toBeDisabled();
+
+    // Submit the 1-column board
+    fireEvent.change(screen.getByPlaceholderText("Project or Board name…"), {
+      target: { value: "Simple Ideas" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create Board" }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const submitted = onSubmit.mock.calls[0][0];
+    expect(submitted.name).toBe("Simple Ideas");
+    const nonArchiveCols = submitted.columns.filter((c: { id: string }) => c.id !== "archive");
+    expect(nonArchiveCols).toHaveLength(1);
+    expect(nonArchiveCols[0].title).toBe("Ideas");
+  });
+
+  it("blocks third-party tracking banner URLs and allows preset themes", () => {
+    const onSubmit = vi.fn();
+    renderWithProviders(
+      <BoardModal open={true} onClose={vi.fn()} board={null} onSubmit={onSubmit} />,
+      { user: mockUser }
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Project or Board name…"), {
+      target: { value: "Privacy Board" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /customize/i }));
+    fireEvent.click(screen.getByRole("button", { name: /use preset url/i }));
+
+    const urlInput = screen.getByPlaceholderText(/paste an unsplash url/i);
+    fireEvent.change(urlInput, {
+      target: { value: "https://tracker.evil.example.com/spy.png" },
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/third-party image urls are blocked/i);
+    expect(screen.getByRole("button", { name: "Create Board" })).toBeDisabled();
+
+    // Selecting a preset clears the error and allows submission
+    fireEvent.click(screen.getByTitle("Aurora"));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create Board" })).not.toBeDisabled();
+  });
+
+  it("enforces file type and 5MB size limits on banner upload and stores uploaded file path", async () => {
+    const uploadSpy = vi.spyOn(fileApi, "uploadFile").mockResolvedValue({
+      id: "file-123",
+      name: "banner.png",
+      storedName: "file-123.png",
+      url: "http://127.0.0.1:5000/api/files/file-123.png",
+      type: "image/png",
+      size: "12 KB",
+      sizeBytes: 12288,
+    });
+    const onSubmit = vi.fn();
+
+    renderWithProviders(
+      <BoardModal open={true} onClose={vi.fn()} board={null} onSubmit={onSubmit} />,
+      { user: mockUser }
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Project or Board name…"), {
+      target: { value: "Banner Board" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /customize/i }));
+
+    const fileInput = screen.getByTestId("banner-file-input");
+
+    // 1. Reject invalid file type (.svg)
+    const invalidTypeFile = new File(["<svg></svg>"], "vector.svg", { type: "image/svg+xml" });
+    fireEvent.change(fileInput, { target: { files: [invalidTypeFile] } });
+    expect(screen.getByRole("alert")).toHaveTextContent(/only jpg, png, webp, and gif/i);
+    expect(uploadSpy).not.toHaveBeenCalled();
+
+    // 2. Reject oversized file (> 5MB)
+    const oversizedFile = new File(["x"], "huge.png", { type: "image/png" });
+    Object.defineProperty(oversizedFile, "size", { value: 6 * 1024 * 1024 });
+    fireEvent.change(fileInput, { target: { files: [oversizedFile] } });
+    expect(screen.getByRole("alert")).toHaveTextContent(/exceeds the 5mb size limit/i);
+    expect(uploadSpy).not.toHaveBeenCalled();
+
+    // 3. Accept valid PNG under 5MB and store /api/files/<storedName>
+    const validFile = new File(["valid-png"], "banner.png", { type: "image/png" });
+    fireEvent.change(fileInput, { target: { files: [validFile] } });
+
+    await waitFor(() => {
+      expect(uploadSpy).toHaveBeenCalledWith(validFile, "banner");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Create Board" }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Banner Board",
+        heroImageUrl: "/api/files/file-123.png",
+      })
+    );
+  });
 });
+

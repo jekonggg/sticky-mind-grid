@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.services.task_service import TaskService
+from app.services.task_service import TaskService, TaskConflictError
 from app.utils.decorators import require_task_access, get_effective_role, ROLE_HIERARCHY
 from app.models.task import Task
 from app.models.board import Board
@@ -139,7 +139,15 @@ def update_task(task_id):
             if assignee_level < ROLE_HIERARCHY['editor']:
                 return jsonify({'error': 'Cards can only be assigned to members with Editor role or above'}), 400
 
-    task = TaskService.update_task(task_id, data, user_id=user_id)
+    try:
+        task = TaskService.update_task(task_id, data, user_id=user_id)
+    except TaskConflictError as e:
+        return jsonify({
+            'error': e.message,
+            'conflict': True,
+            'currentTask': e.task.to_dict()
+        }), 409
+
     if not task:
         return jsonify({'error': 'Task not found'}), 404
     return jsonify(task.to_dict()), 200

@@ -2,6 +2,8 @@ export type ChaosErrorMode = "none" | "500" | "403" | "401" | "network_error";
 
 export type SimulatedRole = "none" | "owner" | "admin" | "editor" | "member" | "commenter" | "viewer";
 
+export type SeedTakeoverPreset = "none" | "full_showcase" | "scale_stress" | "onboarding_invites";
+
 export type DevFontFamily =
   | "helvetica"
   | "inter"
@@ -23,6 +25,7 @@ export interface DevSettings {
   networkLatencyMs: number;
   chaosErrorMode: ChaosErrorMode;
   simulateEmptyState: boolean;
+  seedTakeoverPreset: SeedTakeoverPreset;
   simulatedRole: SimulatedRole;
   simulateSseDisconnect: boolean;
   forceReducedMotion: boolean;

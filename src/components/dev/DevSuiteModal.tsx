@@ -22,8 +22,9 @@ import {
 import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { getContainerGeometry } from "@/utils/geometryUtils";
-import { ChaosErrorMode, SimulatedRole, DevFontFamily } from "@/types/devMode";
+import { ChaosErrorMode, SimulatedRole, DevFontFamily, SeedTakeoverPreset } from "@/types/devMode";
 import { DEV_FONT_OPTIONS } from "@/constants/fonts";
+import { SEED_PRESET_OPTIONS } from "@/data/devSeedDataset";
 import { taskApi } from "@/services/api";
 import { Tag } from "@/types/task";
 import { toast } from "sonner";
@@ -51,6 +52,7 @@ import {
   Square,
   Edit01 as Edit,
   MessageChatSquare as MessageSquare,
+  Database01 as Database,
 } from "@untitledui/icons";
 
 export function DevSuiteModal() {
@@ -60,6 +62,7 @@ export function DevSuiteModal() {
     devSettings,
     updateDevSetting,
     resetDevSettings,
+    resetSeedSandbox,
     isDevModalOpen,
     setIsDevModalOpen,
     sseLogs,
@@ -212,29 +215,29 @@ export function DevSuiteModal() {
 
         {/* Tabbed Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="px-3 sm:px-5 pt-2 sm:pt-3 border-b border-border/40 bg-muted/10 shrink-0 overflow-x-auto custom-scrollbar">
-            <TabsList className="flex sm:grid sm:grid-cols-6 w-max sm:w-full bg-muted/40 p-1 gap-1 min-w-full">
-              <TabsTrigger value="network" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
+          <div className="px-3 sm:px-5 pt-2 sm:pt-3 pb-2 border-b border-border/40 bg-muted/10 shrink-0 overflow-x-auto custom-scrollbar">
+            <TabsList className="inline-flex h-auto w-max min-w-full justify-start bg-muted/40 p-1 gap-1 rounded-xl">
+              <TabsTrigger value="network" className="flex-none text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0 rounded-lg">
                 <Zap className="h-3.5 w-3.5 shrink-0" />
                 <span>Skeletons & Latency</span>
               </TabsTrigger>
-              <TabsTrigger value="geometry" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
+              <TabsTrigger value="geometry" className="flex-none text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0 rounded-lg">
                 <Square className="h-3.5 w-3.5 shrink-0" />
                 <span>Geometry & Radii</span>
               </TabsTrigger>
-              <TabsTrigger value="typography" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
+              <TabsTrigger value="typography" className="flex-none text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0 rounded-lg">
                 <Type01 className="h-3.5 w-3.5 shrink-0" />
                 <span>Typography</span>
               </TabsTrigger>
-              <TabsTrigger value="rbac" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
+              <TabsTrigger value="rbac" className="flex-none text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0 rounded-lg">
                 <Shield className="h-3.5 w-3.5 shrink-0" />
                 <span>Role Preview</span>
               </TabsTrigger>
-              <TabsTrigger value="sse" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
+              <TabsTrigger value="sse" className="flex-none text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0 rounded-lg">
                 <Radio className="h-3.5 w-3.5 shrink-0" />
                 <span>Real-Time SSE</span>
               </TabsTrigger>
-              <TabsTrigger value="sandbox" className="text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0">
+              <TabsTrigger value="sandbox" className="flex-none text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0 rounded-lg">
                 <Layers className="h-3.5 w-3.5 shrink-0" />
                 <span>Helpers & Stress</span>
               </TabsTrigger>
@@ -1038,6 +1041,108 @@ export function DevSuiteModal() {
 
             {/* TAB 4: Helpers & Stress Testing */}
             <TabsContent value="sandbox" className="space-y-4 m-0">
+              {/* Predefined Seed Takeover (In-Memory Sandbox) */}
+              <Card
+                data-testid="seed-takeover-card"
+                className="border-border/60 bg-muted/20"
+              >
+                <CardContent className="p-4 space-y-3.5">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Database className="h-4 w-4 text-primary" />
+                        <h4 className="text-sm font-bold text-foreground">
+                          Predefined Seed Takeover (In-Memory Sandbox)
+                        </h4>
+                        {devSettings.seedTakeoverPreset &&
+                        devSettings.seedTakeoverPreset !== "none" ? (
+                          <Badge className="text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                            Active:{" "}
+                            {SEED_PRESET_OPTIONS.find(
+                              (p) => p.id === devSettings.seedTakeoverPreset
+                            )?.shortBadge || "Seed"}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] font-bold text-muted-foreground border-border/80"
+                          >
+                            Off (Live Backend)
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Temporarily overrides API responses in memory with a rich predefined seed dataset so you can inspect how the system looks with data without mutating your database.
+                      </p>
+                    </div>
+
+                    {devSettings.seedTakeoverPreset &&
+                      devSettings.seedTakeoverPreset !== "none" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-testid="reset-seed-snapshot-btn"
+                          onClick={resetSeedSandbox}
+                          className="h-7 px-2.5 text-xs font-bold gap-1.5 border-border/80 hover:bg-background shrink-0 cursor-pointer"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          <span>Reset Seed Snapshot</span>
+                        </Button>
+                      )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {SEED_PRESET_OPTIONS.map((preset) => {
+                      const activePreset = devSettings.seedTakeoverPreset || "none";
+                      const isSelected = activePreset === preset.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          data-testid={`seed-preset-${preset.id}`}
+                          onClick={() => {
+                            updateDevSetting(
+                              "seedTakeoverPreset",
+                              preset.id as SeedTakeoverPreset
+                            );
+                            toast.success(
+                              preset.id === "none"
+                                ? "Restored live backend data"
+                                : `Seed Takeover active: ${preset.name}`
+                            );
+                          }}
+                          className={`relative flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? "border-primary bg-primary/10 ring-2 ring-primary/20 shadow-xs"
+                              : "border-border/60 bg-background/80 hover:bg-muted/40 hover:border-primary/40"
+                          }`}
+                        >
+                          {isSelected && (
+                            <div className="absolute top-2.5 right-2.5 h-4 w-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                              <Check className="h-2.5 w-2.5 stroke-[3]" />
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 pr-6 mb-1">
+                            <span className="text-xs font-bold text-foreground">
+                              {preset.name}
+                            </span>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] px-1.5 py-0 h-4 mb-1.5 bg-muted/60 text-muted-foreground border-border/60 font-mono"
+                          >
+                            {preset.statsLabel}
+                          </Badge>
+                          <p className="text-[11px] text-muted-foreground leading-snug">
+                            {preset.description}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Force Reduced Motion */}
               <Card className="border-border/60 bg-muted/20">
                 <CardContent className="p-4 flex items-center justify-between gap-4">
@@ -1063,7 +1168,7 @@ export function DevSuiteModal() {
                 <CardContent className="p-4 space-y-3">
                   <div>
                     <h4 className="text-sm font-bold text-foreground">
-                      Stress-Test Dataset Generator
+                      Stress-Test Dataset Generator (Live Board Write)
                     </h4>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Instantly generates 15 synthetic tasks with diverse tags, priorities, and progress values into the active board to benchmark performance.

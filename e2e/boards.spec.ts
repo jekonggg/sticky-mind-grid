@@ -51,8 +51,11 @@ test.describe("Boards Overview", () => {
       await card.locator("button").last().click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
       await expect(page.getByText(/Delete "Delete Me"\?/)).toBeVisible();
-      await expect(page.getByText(/This will permanently delete this board/)).toBeVisible();
-      await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
+      const deleteBtn = page.getByRole("alertdialog").getByRole("button", { name: "Delete" });
+      await expect(deleteBtn).toBeDisabled();
+      await page.getByTestId("confirm-delete-board-input").fill("Delete Me");
+      await expect(deleteBtn).toBeEnabled();
+      await deleteBtn.click();
       await expect(page.getByText("No boards yet")).toBeVisible({ timeout: 5000 });
     });
 

@@ -81,7 +81,10 @@ export interface UpdateTaskData {
   title?: string;
   emoji?: string;
   description?: string;
+  baseDescription?: string;
+  forceOverwrite?: boolean;
   status?: TaskStatus;
+  fromStatus?: TaskStatus;
   priority?: Priority;
   assignedTo?: string | null;
   boardId?: string;

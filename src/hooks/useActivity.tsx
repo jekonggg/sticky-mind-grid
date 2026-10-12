@@ -39,12 +39,19 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     if (user) {
       fetchActivities(currentBoardId);
+      const handleDataModeChange = () => {
+        fetchActivities(currentBoardId);
+      };
+      window.addEventListener("smg-dev-data-mode-changed", handleDataModeChange);
       const interval = setInterval(() => {
         if (document.visibilityState === "visible") {
           fetchActivities(currentBoardId);
         }
       }, 5000);
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener("smg-dev-data-mode-changed", handleDataModeChange);
+      };
     }
   }, [currentBoardId, fetchActivities, user]);
 

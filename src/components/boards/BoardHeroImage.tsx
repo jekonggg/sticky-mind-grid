@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { getMediaUrl } from "@/components/ui/avatar";
 
 interface BoardHeroImageProps {
   src?: string;
@@ -36,7 +37,9 @@ export const BoardHeroImage: React.FC<BoardHeroImageProps> = ({
     auto: "",
   };
 
-  if (!src || error) {
+  const resolvedSrc = getMediaUrl(src);
+
+  if (!resolvedSrc || error) {
     return (
       <div
         className={cn(
@@ -59,8 +62,10 @@ export const BoardHeroImage: React.FC<BoardHeroImageProps> = ({
   return (
     <div className={cn("w-full overflow-hidden shrink-0 bg-muted relative", aspectClasses[aspectRatio], className)}>
       <img
-        src={src}
+        src={resolvedSrc}
         alt={alt}
+        loading="lazy"
+        decoding="async"
         className="w-full h-full object-cover transition-opacity duration-300"
         onError={() => setError(true)}
       />

@@ -45,9 +45,29 @@ export const boardApi = {
     return mapBoard(board);
   },
 
-  async deleteBoard(id: string): Promise<void> {
-    const res = await authenticatedFetch(`/boards/${id}`, { method: "DELETE" });
+  async deleteBoard(id: string, options?: { soft?: boolean }): Promise<void> {
+    const url = options?.soft ? `/boards/${id}?soft=true` : `/boards/${id}`;
+    const res = await authenticatedFetch(url, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to delete board");
+  },
+
+  async getTrashedBoards(): Promise<Board[]> {
+    const res = await authenticatedFetch("/boards/trash");
+    if (!res.ok) throw new Error("Failed to fetch trashed boards");
+    const data = await res.json();
+    return Array.isArray(data) ? data.map(mapBoard) : [];
+  },
+
+  async restoreBoard(id: string): Promise<Board> {
+    const res = await authenticatedFetch(`/boards/${id}/restore`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to restore board");
+    }
+    const board = await res.json();
+    return mapBoard(board);
   },
 
   async getMembers(boardId: string): Promise<BoardMember[]> {

@@ -12,10 +12,23 @@ from app.utils.decorators import get_effective_role, ROLE_HIERARCHY
 class BoardService:
     @staticmethod
     def get_user_boards(user_id):
+        cutoff = datetime.utcnow() - timedelta(days=30)
+        expired_boards = Board.query.filter(
+            Board.is_deleted.is_(True),
+            Board.deleted_at.isnot(None),
+            Board.deleted_at < cutoff
+        ).all()
+        if expired_boards:
+            for b in expired_boards:
+                db.session.delete(b)
+            db.session.commit()
+
         return db.session.query(Board).join(BoardMember).filter(
             BoardMember.user_id == user_id,
-            BoardMember.status == 'accepted'
+            BoardMember.status == 'accepted',
+            Board.is_deleted.is_(False)
         ).all()
+
 
     @staticmethod
     def get_user_invitations(user_id):
@@ -107,8 +120,47 @@ class BoardService:
         return active_invites
 
     @staticmethod
-    def get_board_by_id(board_id):
-        return db.session.get(Board, board_id)
+    def get_board_by_id(board_id, include_deleted=False):
+        board = db.session.get(Board, board_id)
+        if not board:
+            return None
+        if board.is_deleted and not include_deleted:
+            return None
+        return board
+
+
+    ALLOWED_BANNER_HOSTS = {'images.unsplash.com', 'plus.unsplash.com'}
+
+    @staticmethod
+    def validate_hero_image_url(raw_url):
+        if raw_url is None:
+            return None
+        trimmed = str(raw_url).strip()
+        if not trimmed:
+            return None
+
+        if trimmed.startswith('data:image/'):
+            from app.services.file_service import FileService
+            stored_url, error = FileService.save_base64_image(trimmed)
+            if error:
+                raise ValueError(error)
+            return stored_url
+
+        if '/api/files/' in trimmed:
+            from werkzeug.utils import secure_filename
+            after_files = trimmed.split('/api/files/', 1)[1].split('?', 1)[0].split('#', 1)[0]
+            safe_name = secure_filename(after_files)
+            if not safe_name:
+                raise ValueError("Invalid board banner file reference")
+            return f"/api/files/{safe_name}"
+
+        from urllib.parse import urlparse
+        parsed = urlparse(trimmed)
+        if parsed.scheme != 'https' or (parsed.hostname or '').lower() not in BoardService.ALLOWED_BANNER_HOSTS:
+            raise ValueError(
+                "Remote banner URLs are restricted to prevent third-party tracking. Please upload an image or choose a preset banner."
+            )
+        return trimmed
 
     @staticmethod
     def create_board(data, owner_id):
@@ -118,13 +170,21 @@ class BoardService:
             {"id": "done", "title": "Done", "emoji": "✅"},
             {"id": "archive", "title": "Archive", "emoji": "📦"}
         ]
+        columns = data.get('columns', default_columns)
+        if isinstance(columns, list):
+            non_archive = [c for c in columns if isinstance(c, dict) and c.get('id') != 'archive']
+            if len(non_archive) < 1:
+                raise ValueError("Board must have at least 1 workflow column")
+
+        validated_hero_url = BoardService.validate_hero_image_url(data.get('heroImageUrl'))
+
         new_board = Board(
             name=data.get('name'),
             emoji=data.get('emoji'),
             description=data.get('description'),
             color=data.get('color') or 'hsl(220, 80%, 56%)',
-            hero_image_url=data.get('heroImageUrl'),
-            columns=data.get('columns', default_columns),
+            hero_image_url=validated_hero_url,
+            columns=columns,
             owner_id=owner_id
         )
         db.session.add(new_board)
@@ -175,7 +235,8 @@ class BoardService:
         if 'emoji' in data: board.emoji = data['emoji']
         if 'description' in data: board.description = data['description']
         if 'color' in data: board.color = data['color']
-        if 'heroImageUrl' in data: board.hero_image_url = data['heroImageUrl']
+        if 'heroImageUrl' in data:
+            board.hero_image_url = BoardService.validate_hero_image_url(data['heroImageUrl'])
         if 'columns' in data:
             if user_id:
                 actor_level = get_effective_role(board_id, user_id)
@@ -183,6 +244,9 @@ class BoardService:
                     raise ValueError("Requires admin privileges to modify board columns")
             new_columns = data['columns']
             if isinstance(new_columns, list):
+                non_archive = [c for c in new_columns if isinstance(c, dict) and c.get('id') != 'archive']
+                if len(non_archive) < 1:
+                    raise ValueError("Board must have at least 1 workflow column")
                 new_column_ids = {c.get('id') for c in new_columns if isinstance(c, dict) and 'id' in c}
                 old_columns = board.columns or []
                 for col in old_columns:
@@ -214,13 +278,77 @@ class BoardService:
             raise e
 
     @staticmethod
+    def soft_delete_board(board_id, actor_id=None):
+        board = db.session.get(Board, board_id)
+        if not board:
+            return False
+        board.is_deleted = True
+        board.deleted_at = datetime.utcnow()
+        activity = Activity(
+            type='delete',
+            task_title=board.name,
+            message=f'Moved board "{board.name}" to trash (30-day grace period)',
+            board_id=board.id,
+            user_id=actor_id
+        )
+        db.session.add(activity)
+        db.session.commit()
+        broadcaster.broadcast(board_id, "board:deleted", {"boardId": board_id})
+        return True
+
+    @staticmethod
+    def get_trashed_boards(user_id):
+        cutoff = datetime.utcnow() - timedelta(days=30)
+        expired_boards = Board.query.filter(
+            Board.is_deleted.is_(True),
+            Board.deleted_at.isnot(None),
+            Board.deleted_at < cutoff
+        ).all()
+        if expired_boards:
+            for b in expired_boards:
+                db.session.delete(b)
+            db.session.commit()
+
+        trashed = Board.query.filter(Board.is_deleted.is_(True)).all()
+        result = []
+        for b in trashed:
+            if str(b.owner_id) == str(user_id) or any(
+                str(m.user_id) == str(user_id) and m.role == 'owner' and m.status == 'accepted'
+                for m in (b.memberships or [])
+            ):
+                result.append(b)
+        return result
+
+    @staticmethod
+    def restore_board(board_id, user_id):
+        board = db.session.get(Board, board_id)
+        if not board or not board.is_deleted:
+            return None
+        if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['owner']:
+            return None
+        board.is_deleted = False
+        board.deleted_at = None
+        activity = Activity(
+            type='update',
+            task_title=board.name,
+            message=f'Restored board "{board.name}" from trash',
+            board_id=board.id,
+            user_id=user_id
+        )
+        db.session.add(activity)
+        db.session.commit()
+        return board
+
+    @staticmethod
     def delete_board(board_id):
         board = db.session.get(Board, board_id)
         if not board:
             return False
         db.session.delete(board)
         db.session.commit()
+        broadcaster.broadcast(board_id, "board:deleted", {"boardId": board_id})
         return True
+
 
     ALLOWED_INVITE_ROLES = ('admin', 'editor', 'commenter', 'viewer', 'member')
     ALLOWED_ROLES = ('owner', 'admin', 'editor', 'commenter', 'viewer', 'member')
@@ -472,7 +600,8 @@ class BoardService:
             membership.status = 'declined'
         db.session.commit()
 
-        broadcaster.broadcast(board_id, "member:removed", {"userId": user_id})
+        broadcaster.broadcast(board_id, "member:removed", {"boardId": str(board_id), "userId": str(user_id)})
+        broadcaster.disconnect_user(board_id, user_id)
         broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
 
         return True, None
@@ -523,7 +652,8 @@ class BoardService:
         db.session.add(activity)
         db.session.commit()
 
-        broadcaster.broadcast(board_id, "member:removed", {"userId": user_id})
+        broadcaster.broadcast(board_id, "member:removed", {"boardId": str(board_id), "userId": str(user_id)})
+        broadcaster.disconnect_user(board_id, user_id)
         return True, None
 
     @staticmethod
@@ -769,7 +899,8 @@ class BoardService:
         db.session.delete(membership)
         db.session.commit()
 
-        broadcaster.broadcast(board_id, "member:removed", {"userId": user_id})
+        broadcaster.broadcast(board_id, "member:removed", {"boardId": str(board_id), "userId": str(user_id)})
+        broadcaster.disconnect_user(board_id, user_id)
         broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
 
         return True, None
@@ -852,7 +983,10 @@ class BoardService:
 
         try:
             db.session.commit()
-            broadcaster.broadcast(board_id, "member:role_updated", membership.to_dict())
+            broadcaster.broadcast(board_id, "member:role_updated", {
+                **membership.to_dict(),
+                "actorId": str(actor_id) if actor_id else None
+            })
             broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
             return membership, None
         except Exception as e:

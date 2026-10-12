@@ -89,13 +89,18 @@ export function KanbanBoard() {
       navigate("/");
       return;
     }
-    boardApi.getBoard(boardId).then((b) => {
-      if (!b) {
-        navigate("/");
-        return;
-      }
-      setBoard(b);
-    });
+    const loadBoard = () => {
+      boardApi.getBoard(boardId).then((b) => {
+        if (!b) {
+          navigate("/");
+          return;
+        }
+        setBoard(b);
+      });
+    };
+    loadBoard();
+    window.addEventListener("smg-dev-data-mode-changed", loadBoard);
+    return () => window.removeEventListener("smg-dev-data-mode-changed", loadBoard);
   }, [boardId, navigate]);
 
   // Fetch Board Members for Assignee & Filters
@@ -108,6 +113,7 @@ export function KanbanBoard() {
   const {
     loading,
     tasks,
+    setTasks,
     columns,
     addTask,
     updateTask,
@@ -121,6 +127,8 @@ export function KanbanBoard() {
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [highlightedTaskIds, setHighlightedTaskIds] = useState<Set<string>>(new Set());
+  const highlightTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const [searchTerm, setSearchTerm] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all"); // 'all' | 'me' | userId
   const [tagFilter, setTagFilter] = useState<string>("all"); // 'all' | tagName
@@ -132,6 +140,34 @@ export function KanbanBoard() {
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [newTaskStatus, setNewTaskStatus] = useState<string>("todo");
   const [createdDraftTask, setCreatedDraftTask] = useState<Task | null>(null);
+
+  const triggerTaskHighlight = useCallback((taskId: string) => {
+    if (!taskId) return;
+    setHighlightedTaskIds((prev) => {
+      const next = new Set(prev);
+      next.add(taskId);
+      return next;
+    });
+    const existing = highlightTimeoutsRef.current.get(taskId);
+    if (existing) clearTimeout(existing);
+    const timeout = setTimeout(() => {
+      setHighlightedTaskIds((prev) => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+      highlightTimeoutsRef.current.delete(taskId);
+    }, 2500);
+    highlightTimeoutsRef.current.set(taskId, timeout);
+  }, []);
+
+  useEffect(() => {
+    const timeouts = highlightTimeoutsRef.current;
+    return () => {
+      timeouts.forEach((t) => clearTimeout(t));
+      timeouts.clear();
+    };
+  }, []);
 
   const selectedTask = useMemo(() => {
     if (!selectedTaskId) return null;
@@ -157,17 +193,141 @@ export function KanbanBoard() {
   const lastLocalEditTimeRef = useRef<number>(0);
 
   // Real-time Server-Sent Events (SSE) stream synchronization
-  const { isConnected } = useBoardRealtime({
+  const { isConnected, isReconnecting } = useBoardRealtime({
     boardId,
-    onTaskChange: () => {
-      // Suppress full board reload if the edit was made locally in this window within last 3 seconds
-      if (Date.now() - lastLocalEditTimeRef.current < 3000) return;
-      fetchTasks();
+    onTaskChange: (data) => {
+      const isRemoteActor =
+        data?.actorId !== undefined &&
+        currentUser?.id !== undefined &&
+        String(data.actorId) !== String(currentUser.id);
+      if (!isRemoteActor && Date.now() - lastLocalEditTimeRef.current < 3000) return;
+      fetchTasks?.();
     },
-    onActivityChange: () => refreshActivities(),
-    onMemberChange: () => queryClient.invalidateQueries({ queryKey: ["boardMembers", boardId] }),
+    onTaskUpdate: (updatedTask) => {
+      if (updatedTask?.id) {
+        setTasks?.((prev) =>
+          prev.map((t) =>
+            t.id === updatedTask.id
+              ? {
+                  ...t,
+                  ...updatedTask,
+                  updatedAt: updatedTask.updatedAt ? new Date(updatedTask.updatedAt) : new Date(),
+                }
+              : t
+          )
+        );
+      }
+    },
+    onTaskMoved: (movedTask) => {
+      if (movedTask?.id) {
+        setTasks?.((prev) =>
+          prev.map((t) =>
+            t.id === movedTask.id
+              ? {
+                  ...t,
+                  ...movedTask,
+                  updatedAt: movedTask.updatedAt ? new Date(movedTask.updatedAt) : new Date(),
+                }
+              : t
+          )
+        );
+        if (!movedTask.actorId || String(movedTask.actorId) !== String(currentUser?.id)) {
+          triggerTaskHighlight(movedTask.id);
+        }
+      }
+    },
+    onTasksReordered: (data) => {
+      if (Array.isArray(data?.tasks)) {
+        const isRemote = !data.actorId || String(data.actorId) !== String(currentUser?.id);
+        if (isRemote) {
+          data.tasks.forEach((rt: any) => {
+            const existing = tasks.find((t) => t.id === rt.id);
+            if (!existing || (rt.status && existing.status !== rt.status)) {
+              triggerTaskHighlight(rt.id);
+            }
+          });
+        }
+        fetchTasks?.();
+      }
+    },
+    onActivityChange: () => refreshActivities?.(),
+    onMemberChange: (data) => {
+      if (
+        data?.eventType === "member:removed" &&
+        currentUser?.id !== undefined &&
+        String(data?.userId) === String(currentUser.id)
+      ) {
+        toast.error("You no longer have access to this board.");
+        navigate("/");
+        return;
+      }
+
+      if (
+        data?.eventType === "member:role_updated" &&
+        currentUser?.id !== undefined &&
+        String(data?.userId) === String(currentUser.id) &&
+        data?.role
+      ) {
+        toast.info(`Your role on this board was updated to ${data.role}.`);
+        if (data.role === "viewer" || data.role === "commenter") {
+          setIsNewTaskModalOpen(false);
+          setIsBoardModalOpen(false);
+          setIsTrashOpen(false);
+        }
+        queryClient.setQueryData<BoardMember[]>(["boardMembers", boardId], (prev) =>
+          prev
+            ? prev.map((m) =>
+                String(m.userId) === String(currentUser.id) ? { ...m, role: data.role } : m
+              )
+            : prev
+        );
+        setBoard((prev) =>
+          prev
+            ? {
+                ...prev,
+                role: data.role,
+                ownerId:
+                  data.role !== "owner" && String(prev.ownerId) === String(currentUser.id)
+                    ? ""
+                    : prev.ownerId,
+              }
+            : prev
+        );
+        return;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["boardMembers", boardId] });
+      if (boardId) {
+        boardApi.getBoard(boardId).then((b) => {
+          if (!b) {
+            toast.error("You no longer have access to this board.");
+            navigate("/");
+            return;
+          }
+          setBoard(b);
+        });
+      }
+    },
+    onForceDisconnect: () => {
+      toast.error("You no longer have access to this board.");
+      navigate("/");
+    },
+    onReconnect: () => {
+      fetchTasks?.();
+      refreshActivities?.();
+      queryClient.invalidateQueries({ queryKey: ["boardMembers", boardId] });
+      if (boardId) {
+        boardApi.getBoard(boardId).then((b) => b && setBoard(b)).catch(() => {});
+      }
+    },
     onBoardChange: (updated) => setBoard(updated),
-  });
+    onBoardDeleted: () => {
+      toast.error("This board was deleted by its owner.");
+      navigate("/");
+    },
+  }) || { isConnected: true, isReconnecting: false };
+
+  const effectiveReadOnly = permissions.isReadOnly || Boolean(isReconnecting);
 
   useEffect(() => {
     if (boardId) {
@@ -315,7 +475,7 @@ export function KanbanBoard() {
         isDraggingTaskRef.current = false;
       }, 150);
 
-      if (permissions.isReadOnly || !over) return;
+      if (effectiveReadOnly || !over) return;
 
       const activeId = active.id as string;
       const overId = over.id as string;
@@ -373,12 +533,13 @@ export function KanbanBoard() {
       const reorderItems = newTasksInTarget.map((t, idx) => ({
         id: t.id,
         status: targetStatus,
+        fromStatus: t.id === activeId ? activeTaskItem.status : t.status,
         position: (idx + 1) * 1000.0,
       }));
 
       reorderTasks(reorderItems);
     },
-    [permissions.isReadOnly, tasks, columns, reorderTasks, playSound]
+    [effectiveReadOnly, tasks, columns, reorderTasks, playSound]
   );
 
   const handleTaskClick = useCallback((task: Task) => {
@@ -388,11 +549,11 @@ export function KanbanBoard() {
   }, []);
 
   const openNewModal = useCallback((targetStatus?: TaskStatus) => {
-    if (!permissions.canCreateTask || !board) return;
+    if (!permissions.canCreateTask || effectiveReadOnly || !board) return;
     const defaultStatus = targetStatus || (board.columns && board.columns.length > 0 ? board.columns[0].id : "todo");
     setNewTaskStatus(defaultStatus);
     setIsNewTaskModalOpen(true);
-  }, [permissions.canCreateTask, board]);
+  }, [permissions.canCreateTask, effectiveReadOnly, board]);
 
   const handleCreateTaskFromModal = async (data: TaskFormData) => {
     try {
@@ -498,7 +659,7 @@ export function KanbanBoard() {
       case "documents":
         return (
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28">
-            <DocumentsView tasks={filteredAllTasks} boardId={board.id} readOnly={permissions.isReadOnly} onTaskClick={handleTaskClick} />
+            <DocumentsView tasks={filteredAllTasks} boardId={board.id} readOnly={effectiveReadOnly} onTaskClick={handleTaskClick} />
           </div>
         );
       case "members":
@@ -509,7 +670,7 @@ export function KanbanBoard() {
                 <h2 className={`${isCompact ? "text-2xl" : "text-3xl"} font-black tracking-tight text-foreground`}>Board Members</h2>
                 <p className="text-sm text-muted-foreground mt-1">Manage who has access to this board</p>
               </div>
-              {permissions.canManageMembers && <InviteMemberDialog boardId={board.id} />}
+              {permissions.canManageMembers && !effectiveReadOnly && <InviteMemberDialog boardId={board.id} />}
             </div>
             <div className={`bg-card rounded-xl border border-border/50 shadow-sm ${isCompact ? "p-4" : "p-6"} max-h-[70vh] overflow-y-auto`}>
               <BoardMembers boardId={board.id} />
@@ -559,17 +720,18 @@ export function KanbanBoard() {
                       title={col.title}
                       emoji={col.emoji}
                       tasks={filteredTasksByStatus(col.id)}
-                      canRename={permissions.canEditBoard}
-                      canCreateTask={permissions.canCreateTask}
-                      isDragDisabled={permissions.isReadOnly}
+                      canRename={permissions.canEditBoard && !effectiveReadOnly}
+                      canCreateTask={permissions.canCreateTask && !effectiveReadOnly}
+                      isDragDisabled={effectiveReadOnly}
                       selectedTaskId={selectedTaskId}
+                      highlightedTaskIds={highlightedTaskIds}
                       onTaskClick={handleTaskClick}
                       onAddTask={openNewModal}
                       onRename={handleRenameColumn}
                     />
                   ))}
 
-                {permissions.canEditBoard && (
+                {permissions.canEditBoard && !effectiveReadOnly && (
                   <div
                     className={`${
                       isCompact
@@ -641,12 +803,21 @@ export function KanbanBoard() {
                         ? "👁️ Viewer"
                         : "✏️ Editor"}
                     </Badge>
-                    {isConnected && (
+                    {isConnected && !isReconnecting && (
                       <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 gap-1 text-[10px] font-bold py-0.5 px-2 shrink-0">
                         <Radio className="h-3 w-3 animate-pulse text-emerald-500" /> Live
                       </Badge>
                     )}
-                    {permissions.canEditBoard && (
+                    {isReconnecting && (
+                      <Badge
+                        data-testid="realtime-reconnecting-badge"
+                        variant="outline"
+                        className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1 text-[10px] font-bold py-0.5 px-2 shrink-0"
+                      >
+                        <Radio className="h-3 w-3 animate-pulse text-amber-500" /> Read-only • Reconnecting...
+                      </Badge>
+                    )}
+                    {permissions.canEditBoard && !effectiveReadOnly && (
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -864,7 +1035,7 @@ export function KanbanBoard() {
           />
 
           {/* Adjacent Add Task Button: Left-to-Right Expansion */}
-          {permissions.canCreateTask && (
+          {permissions.canCreateTask && !effectiveReadOnly && (
             <button
               type="button"
               onClick={() => openNewModal()}
@@ -906,8 +1077,8 @@ export function KanbanBoard() {
               task={selectedTask}
               board={board}
               members={members}
-              readOnly={permissions.isReadOnly}
-              canComment={permissions.canComment}
+              readOnly={effectiveReadOnly}
+              canComment={permissions.canComment && !isReconnecting}
               onClose={() => {
                 setSelectedTaskId(null);
                 setCreatedDraftTask(null);

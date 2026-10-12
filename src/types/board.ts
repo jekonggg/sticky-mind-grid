@@ -2,6 +2,13 @@ import { Column } from "./task";
 
 export type BoardRole = 'owner' | 'admin' | 'editor' | 'member' | 'commenter' | 'viewer';
 
+export interface BoardMemberPreview {
+  id: string;
+  fullName: string;
+  avatarUrl?: string;
+  role?: BoardRole;
+}
+
 export interface Board {
   id: string;
   name: string;
@@ -14,8 +21,16 @@ export interface Board {
   workspaceId?: string;
   role?: BoardRole;
   taskCount?: number;
+  openTaskCount?: number;
+  overdueCount?: number;
+  dueSoonCount?: number;
+  memberCount?: number;
+  isShared?: boolean;
+  membersPreview?: BoardMemberPreview[];
   ownerCount?: number;
   isPinned?: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string | Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

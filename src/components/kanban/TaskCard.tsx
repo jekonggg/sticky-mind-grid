@@ -27,6 +27,7 @@ import { getContainerGeometry } from "@/utils/geometryUtils";
 interface TaskCardProps {
   task: Task;
   isSelected?: boolean;
+  isHighlighted?: boolean;
   onClick: (task: Task) => void;
   isDragDisabled?: boolean;
 }
@@ -84,6 +85,7 @@ const PRIORITY_CONFIG: Record<
 export function TaskCard({
   task,
   isSelected = false,
+  isHighlighted = false,
   onClick,
   isDragDisabled = false,
 }: TaskCardProps) {
@@ -200,6 +202,7 @@ export function TaskCard({
   return (
     <div
       ref={setNodeRef}
+      data-highlighted={isHighlighted ? "true" : undefined}
       style={{
         ...style,
         ...(geom.isCustom ? { borderRadius: `${geom.innerRadius}px` } : {}),
@@ -210,7 +213,9 @@ export function TaskCard({
         isSelected
           ? "border-primary ring-2 ring-primary/20 shadow-md"
           : "border-border"
-      } ${isDragging ? "opacity-50 shadow-xl scale-[1.02]" : ""}`}
+      } ${isHighlighted ? "ring-2 ring-primary shadow-lg shadow-primary/20 animate-pulse" : ""} ${
+        isDragging ? "opacity-50 shadow-xl scale-[1.02]" : ""
+      }`}
       {...(!isDragDisabled ? attributes : {})}
       {...(!isDragDisabled ? listeners : {})}
       onClick={(e) => {

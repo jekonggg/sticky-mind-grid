@@ -75,6 +75,40 @@ test.describe("Board Members", () => {
       await page.getByRole("button", { name: "Send Invite" }).click();
       await expect(page.getByText(/Member invited successfully/)).toBeVisible({ timeout: 10000 });
     });
+
+    test("promoting a member to Owner requires typing the board name to confirm", async ({
+      page,
+      request,
+    }) => {
+      const inviteeEmail = uniqueEmail("member-promote-owner");
+      await request.post("http://127.0.0.1:5000/api/auth/register", {
+        data: {
+          email: inviteeEmail,
+          password: "password123",
+          fullName: "Promotable Colleague",
+        },
+      });
+
+      await page.getByRole("button", { name: "Members", exact: true }).click();
+      await page.getByRole("button", { name: "Invite Member" }).click();
+      await page.locator("#email").fill(inviteeEmail);
+      await page.getByRole("button", { name: "Send Invite" }).click();
+      await expect(page.getByText("Promotable Colleague")).toBeVisible({ timeout: 10000 });
+
+      const roleTrigger = page.getByRole("combobox").first();
+      await roleTrigger.click();
+      await page.getByRole("option", { name: /Owner/i }).click();
+
+      await expect(page.getByText(/Promote Promotable Colleague to Owner\?/)).toBeVisible();
+      const confirmBtn = page.getByTestId("confirm-promote-owner-btn");
+      await expect(confirmBtn).toBeDisabled();
+
+      await page.getByTestId("confirm-promote-owner-input").fill("Members Test Board");
+      await expect(confirmBtn).toBeEnabled();
+      await confirmBtn.click();
+
+      await expect(page.getByText(/Role updated to owner/i)).toBeVisible({ timeout: 10000 });
+    });
   });
 
   test.describe("Role badge", () => {

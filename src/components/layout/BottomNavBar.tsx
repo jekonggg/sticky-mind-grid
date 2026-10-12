@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Columns03 as FolderKanban,
   LayoutGrid01 as LayoutDashboard,
@@ -27,6 +27,7 @@ interface NavItem {
 export function BottomNavBar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const shouldReduceMotion = useReducedMotion();
 
   // Fetch unread messages for real-time badge on Chat
   const { data: unreadMessagesCount = 0 } = useUnreadMessageCount();
@@ -88,7 +89,7 @@ export function BottomNavBar() {
       aria-label="Mobile Bottom Navigation"
       className="md:hidden fixed bottom-3 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[480px] z-40 select-none pointer-events-auto"
     >
-      <div className="relative flex items-center justify-around px-2 py-1.5 rounded-3xl bg-card/90 dark:bg-card/85 backdrop-blur-2xl border border-border/80 shadow-[0_8px_32px_rgba(0,0,0,0.18)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
+      <div className="relative flex items-center justify-around px-1.5 sm:px-2 py-1.5 rounded-3xl bg-card/90 dark:bg-card/85 backdrop-blur-2xl border border-border/80 shadow-[0_8px_32px_rgba(0,0,0,0.18)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = item.isActive(location.pathname);
@@ -100,9 +101,9 @@ export function BottomNavBar() {
                 key={item.id}
                 type="button"
                 onClick={() => navigate(item.path)}
-                whileTap={{ scale: 0.9 }}
-                whileHover={{ scale: 1.05 }}
-                className="relative -top-3.5 flex flex-col items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-2xl group cursor-pointer"
+                whileTap={shouldReduceMotion ? undefined : { scale: 0.9 }}
+                whileHover={shouldReduceMotion ? undefined : { scale: 1.05 }}
+                className="relative -top-3.5 min-h-[44px] min-w-[44px] px-1.5 sm:px-2 flex flex-col items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-2xl group cursor-pointer"
                 aria-label={`${item.label} (Most Used)`}
                 aria-current={active ? "page" : undefined}
               >
@@ -117,7 +118,7 @@ export function BottomNavBar() {
                 {/* Central Button Core */}
                 <div
                   className={cn(
-                    "relative h-13 w-13 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 shadow-lg",
+                    "relative h-12 w-12 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 shadow-lg",
                     active
                       ? "bg-primary text-primary-foreground shadow-primary/40 ring-2 ring-background scale-105"
                       : "bg-primary/90 text-primary-foreground hover:bg-primary shadow-primary/25"
@@ -143,8 +144,8 @@ export function BottomNavBar() {
 
                 <span
                   className={cn(
-                    "text-[10px] font-bold mt-1 tracking-tight transition-colors",
-                    active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                    "text-[11px] leading-tight font-semibold whitespace-nowrap mt-1 tracking-tight transition-colors",
+                    active ? "text-primary font-bold" : "text-foreground/80 group-hover:text-foreground"
                   )}
                 >
                   {item.label}
@@ -159,8 +160,8 @@ export function BottomNavBar() {
               key={item.id}
               type="button"
               onClick={() => navigate(item.path)}
-              whileTap={{ scale: 0.92 }}
-              className="relative flex flex-col items-center justify-center py-1 px-3 min-w-[56px] rounded-2xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group cursor-pointer"
+              whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
+              className="relative flex flex-col items-center justify-center py-1.5 px-1.5 sm:px-3 min-h-[44px] min-w-[44px] rounded-2xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group cursor-pointer"
               aria-label={item.label}
               aria-current={active ? "page" : undefined}
             >
@@ -169,7 +170,11 @@ export function BottomNavBar() {
                 <motion.div
                   layoutId="bottomNavActivePill"
                   className="absolute inset-0 bg-primary/10 dark:bg-primary/20 rounded-2xl"
-                  transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                  transition={
+                    shouldReduceMotion
+                      ? { duration: 0 }
+                      : { type: "spring", stiffness: 450, damping: 32 }
+                  }
                 />
               )}
 
@@ -193,10 +198,10 @@ export function BottomNavBar() {
 
               <span
                 className={cn(
-                  "text-[10px] font-semibold mt-1 tracking-tight transition-colors z-10",
+                  "text-[11px] leading-tight font-semibold whitespace-nowrap mt-1 tracking-tight transition-colors z-10",
                   active
                     ? "text-primary font-bold"
-                    : "text-muted-foreground group-hover:text-foreground"
+                    : "text-foreground/80 group-hover:text-foreground"
                 )}
               >
                 {item.label}

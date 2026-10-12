@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DevSettings, SseLogEntry } from "@/types/devMode";
 import { FONT_STACK_MAP } from "@/constants/fonts";
 import { useSettings } from "@/contexts/SettingsContext";
+import { resetSeedSandboxStore } from "@/data/devSeedDataset";
 import { toast } from "sonner";
 
 export const DEV_SETTINGS_STORAGE_KEY = "sticky_mind_grid_dev_settings";
@@ -11,6 +13,7 @@ export const defaultDevSettings: DevSettings = {
   networkLatencyMs: 0,
   chaosErrorMode: "none",
   simulateEmptyState: false,
+  seedTakeoverPreset: "none",
   simulatedRole: "none",
   simulateSseDisconnect: false,
   forceReducedMotion: false,
@@ -41,6 +44,7 @@ interface DevModeContextValue {
   devSettings: DevSettings;
   updateDevSetting: <K extends keyof DevSettings>(key: K, val: DevSettings[K]) => void;
   resetDevSettings: () => void;
+  resetSeedSandbox: () => void;
   isDevModalOpen: boolean;
   setIsDevModalOpen: (open: boolean) => void;
   sseLogs: SseLogEntry[];
@@ -53,6 +57,12 @@ const DevModeContext = createContext<DevModeContextValue | undefined>(undefined)
 
 export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { settings, updateLocalSetting } = useSettings();
+  let queryClient: ReturnType<typeof useQueryClient> | null = null;
+  try {
+    queryClient = useQueryClient();
+  } catch {
+    queryClient = null;
+  }
 
   // Initialize dev settings
   const [devSettings, setDevSettings] = useState<DevSettings>(() => {
@@ -65,6 +75,15 @@ export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [isDevModalOpen, setIsDevModalOpen] = useState(false);
   const [sseLogs, setSseLogs] = useState<SseLogEntry[]>([]);
+
+  const notifyDataModeChanged = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("smg-dev-data-mode-changed"));
+    }
+    if (queryClient) {
+      queryClient.invalidateQueries();
+    }
+  }, [queryClient]);
 
   const addSseLog = useCallback((event: string, payload: any) => {
     const newEntry: SseLogEntry = {
@@ -144,7 +163,19 @@ export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateDevSetting = useCallback(
     <K extends keyof DevSettings>(key: K, val: DevSettings[K]) => {
       setDevSettings((prev) => {
-        const next = { ...prev, [key]: val };
+        const next: DevSettings = { ...prev, [key]: val };
+
+        // Mutual exclusion between Predefined Seed Takeover and Simulate Empty State
+        if (key === "seedTakeoverPreset" && val !== "none") {
+          next.simulateEmptyState = false;
+          resetSeedSandboxStore(val as DevSettings["seedTakeoverPreset"]);
+        } else if (key === "seedTakeoverPreset" && val === "none") {
+          resetSeedSandboxStore("none");
+        } else if (key === "simulateEmptyState" && val === true) {
+          next.seedTakeoverPreset = "none";
+          resetSeedSandboxStore("none");
+        }
+
         try {
           localStorage.setItem(DEV_SETTINGS_STORAGE_KEY, JSON.stringify(next));
         } catch {
@@ -157,20 +188,32 @@ export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (key === "simulateSkeletonLoading") {
         updateLocalSetting("simulateSkeletonLoading", val as boolean);
       }
+
+      if (key === "seedTakeoverPreset" || key === "simulateEmptyState") {
+        setTimeout(() => notifyDataModeChanged(), 0);
+      }
     },
-    [updateLocalSetting]
+    [updateLocalSetting, notifyDataModeChanged]
   );
 
+  const resetSeedSandbox = useCallback(() => {
+    resetSeedSandboxStore(devSettings.seedTakeoverPreset);
+    notifyDataModeChanged();
+    toast.success("Seed sandbox snapshot restored to initial state");
+  }, [devSettings.seedTakeoverPreset, notifyDataModeChanged]);
+
   const resetDevSettings = useCallback(() => {
-    setDevSettings(defaultDevSettings);
-    updateLocalSetting("simulateSkeletonLoading", false);
+    resetSeedSandboxStore("none");
     try {
       localStorage.removeItem(DEV_SETTINGS_STORAGE_KEY);
     } catch {
       // Ignore
     }
+    setDevSettings(defaultDevSettings);
+    updateLocalSetting("simulateSkeletonLoading", false);
+    setTimeout(() => notifyDataModeChanged(), 0);
     toast.success("Developer settings reset to default");
-  }, [updateLocalSetting]);
+  }, [updateLocalSetting, notifyDataModeChanged]);
 
   // Calculate active developer features count (excluding default/off states)
   const activeDevModesCount =
@@ -178,6 +221,7 @@ export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     (devSettings.networkLatencyMs > 0 ? 1 : 0) +
     (devSettings.chaosErrorMode !== "none" ? 1 : 0) +
     (devSettings.simulateEmptyState ? 1 : 0) +
+    (devSettings.seedTakeoverPreset && devSettings.seedTakeoverPreset !== "none" ? 1 : 0) +
     (devSettings.simulatedRole !== "none" ? 1 : 0) +
     (devSettings.simulateSseDisconnect ? 1 : 0) +
     (devSettings.forceReducedMotion ? 1 : 0) +
@@ -193,6 +237,7 @@ export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
         devSettings,
         updateDevSetting,
         resetDevSettings,
+        resetSeedSandbox,
         isDevModalOpen,
         setIsDevModalOpen,
         sseLogs,
@@ -214,6 +259,7 @@ export const useDevMode = () => {
       devSettings: getDevSettings(),
       updateDevSetting: () => {},
       resetDevSettings: () => {},
+      resetSeedSandbox: () => {},
       isDevModalOpen: false,
       setIsDevModalOpen: () => {},
       sseLogs: [],

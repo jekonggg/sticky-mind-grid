@@ -14,6 +14,14 @@ def get_boards():
     boards = BoardService.get_user_boards(user_id)
     return jsonify([board.to_dict(user_id=user_id) for board in boards]), 200
 
+@bp.route('/trash', methods=['GET'])
+@jwt_required()
+def get_trashed_boards():
+    user_id = get_jwt_identity()
+    boards = BoardService.get_trashed_boards(user_id)
+    return jsonify([board.to_dict(user_id=user_id) for board in boards]), 200
+
+
 @bp.route('/invitations', methods=['GET'])
 @jwt_required()
 def get_invitations():
@@ -85,12 +93,14 @@ def stream_board_events(board_id):
         return jsonify({'error': 'Unauthorized to subscribe to events for this board'}), 403
 
     def event_stream():
-        q = broadcaster.subscribe(board_id)
+        q = broadcaster.subscribe(board_id, user_id=user_id)
         yield f"data: {{\"type\":\"connected\",\"boardId\":\"{board_id}\"}}\n\n"
         try:
             while True:
                 try:
                     msg = q.get(timeout=25.0)
+                    if msg is None:
+                        break
                     yield msg
                 except Exception:
                     # Keep-alive comment
@@ -116,8 +126,11 @@ def create_board():
     if not data or not data.get('name'):
         return jsonify({'error': 'Board name is required'}), 400
     
-    board = BoardService.create_board(data, owner_id=user_id)
-    return jsonify(board.to_dict(user_id=user_id)), 201
+    try:
+        board = BoardService.create_board(data, owner_id=user_id)
+        return jsonify(board.to_dict(user_id=user_id)), 201
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
 
 @bp.route('/<board_id>', methods=['PATCH', 'PUT'])
 @jwt_required()
@@ -137,10 +150,26 @@ def update_board(board_id):
 @jwt_required()
 @require_board_access('owner')
 def delete_board(board_id):
+    if request.args.get('soft') == 'true':
+        success = BoardService.soft_delete_board(board_id, actor_id=get_jwt_identity())
+        if not success:
+            return jsonify({'error': 'Board not found'}), 404
+        return jsonify({'message': 'Board moved to trash (30-day grace period)', 'isDeleted': True}), 200
     success = BoardService.delete_board(board_id)
     if not success:
         return jsonify({'error': 'Board not found'}), 404
     return jsonify({'message': 'Board deleted successfully'}), 200
+
+@bp.route('/<board_id>/restore', methods=['POST'])
+@jwt_required()
+@require_board_access('owner')
+def restore_board(board_id):
+    user_id = get_jwt_identity()
+    board = BoardService.restore_board(board_id, user_id)
+    if not board:
+        return jsonify({'error': 'Board not found in trash'}), 404
+    return jsonify(board.to_dict(user_id=user_id)), 200
+
 
 @bp.route('/<board_id>/export', methods=['GET'])
 @jwt_required()

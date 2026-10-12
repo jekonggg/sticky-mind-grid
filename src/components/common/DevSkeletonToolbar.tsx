@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DevSuiteModal } from "@/components/dev/DevSuiteModal";
 import { DEV_FONT_OPTIONS } from "@/constants/fonts";
+import { SEED_PRESET_OPTIONS } from "@/data/devSeedDataset";
 import {
   Stars01 as Sparkles,
   EyeOff,
@@ -76,6 +77,18 @@ export function DevSkeletonToolbar() {
                 {devSettings.simulatedRole !== "none" && (
                   <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 font-bold">
                     🎭 {devSettings.simulatedRole}
+                  </Badge>
+                )}
+
+                {devSettings.seedTakeoverPreset && devSettings.seedTakeoverPreset !== "none" && (
+                  <Badge
+                    data-testid="toolbar-seed-badge"
+                    variant="outline"
+                    className="text-[9px] px-1.5 py-0 h-4 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-bold"
+                  >
+                    🌱 Seed:{" "}
+                    {SEED_PRESET_OPTIONS.find((p) => p.id === devSettings.seedTakeoverPreset)
+                      ?.shortBadge || devSettings.seedTakeoverPreset}
                   </Badge>
                 )}
 

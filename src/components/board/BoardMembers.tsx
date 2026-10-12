@@ -1,8 +1,10 @@
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { boardApi } from "@/services/boardApi";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -10,6 +12,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   UserMinus01 as UserMinus,
   ShieldZap as ShieldAlert,
@@ -42,6 +54,21 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
   const { boards } = useBoards();
   const currentBoard = boards.find((b) => b.id === boardId);
   const queryClient = useQueryClient();
+
+  const [pendingOwnerPromotion, setPendingOwnerPromotion] = useState<{
+    member: BoardMember;
+    mode: "role_update" | "transfer_ownership";
+  } | null>(null);
+  const [confirmBoardName, setConfirmBoardName] = useState("");
+
+  useEffect(() => {
+    setConfirmBoardName("");
+  }, [pendingOwnerPromotion]);
+
+  const boardNameToConfirm = currentBoard?.name || "Board";
+  const isOwnerPromotionConfirmed =
+    Boolean(pendingOwnerPromotion) &&
+    confirmBoardName.trim() === boardNameToConfirm.trim();
 
   const { data: members, isLoading } = useQuery({
     queryKey: ["boardMembers", boardId],
@@ -242,9 +269,16 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                 {canEditThisMember ? (
                   <Select
                     value={member.role}
-                    onValueChange={(newRole) =>
-                      updateRoleMutation.mutate({ userId: member.userId || member.id, role: newRole })
-                    }
+                    onValueChange={(newRole) => {
+                      if (newRole === "owner") {
+                        setPendingOwnerPromotion({
+                          member,
+                          mode: "role_update",
+                        });
+                        return;
+                      }
+                      updateRoleMutation.mutate({ userId: member.userId || member.id, role: newRole });
+                    }}
                     disabled={updateRoleMutation.isPending}
                   >
                     <SelectTrigger className="h-8 w-28 text-xs font-semibold capitalize bg-background/50 border-border/70">
@@ -316,10 +350,10 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                     className="h-8 px-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 rounded-lg gap-1"
                     title="Transfer board ownership"
                     onClick={() => {
-                      const targetName = member.user?.fullName || member.user?.email || "this member";
-                      if (confirm(`Transfer full board ownership to ${targetName}?`)) {
-                        transferOwnershipMutation.mutate(member.userId || member.id);
-                      }
+                      setPendingOwnerPromotion({
+                        member,
+                        mode: "transfer_ownership",
+                      });
                     }}
                     disabled={transferOwnershipMutation.isPending}
                   >
@@ -385,6 +419,80 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
           );
         })}
       </div>
+
+      {/* Promote to Owner Confirmation with Type-to-Confirm */}
+      <AlertDialog
+        open={!!pendingOwnerPromotion}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingOwnerPromotion(null);
+            setConfirmBoardName("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Promote{" "}
+              {pendingOwnerPromotion?.member.user?.fullName ||
+                pendingOwnerPromotion?.member.user?.email ||
+                "this member"}{" "}
+              to Owner?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Granting <span className="font-semibold text-foreground">Owner</span> permissions gives{" "}
+              <span className="font-semibold text-foreground">
+                {pendingOwnerPromotion?.member.user?.fullName ||
+                  pendingOwnerPromotion?.member.user?.email ||
+                  "this member"}
+              </span>{" "}
+              full control over this board, including managing owners and admins, modifying workflow
+              states, and deleting the board. Please type{" "}
+              <span className="font-semibold text-foreground">"{boardNameToConfirm}"</span> below to
+              confirm.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <Input
+              placeholder={boardNameToConfirm}
+              value={confirmBoardName}
+              onChange={(e) => setConfirmBoardName(e.target.value)}
+              aria-label="Type board name to confirm owner promotion"
+              data-testid="confirm-promote-owner-input"
+              autoFocus
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={
+                !isOwnerPromotionConfirmed ||
+                updateRoleMutation.isPending ||
+                transferOwnershipMutation.isPending
+              }
+              data-testid="confirm-promote-owner-btn"
+              className="bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:pointer-events-none"
+              onClick={(e) => {
+                if (!isOwnerPromotionConfirmed || !pendingOwnerPromotion) {
+                  e.preventDefault();
+                  return;
+                }
+                const targetId =
+                  pendingOwnerPromotion.member.userId || pendingOwnerPromotion.member.id;
+                if (pendingOwnerPromotion.mode === "transfer_ownership") {
+                  transferOwnershipMutation.mutate(targetId);
+                } else {
+                  updateRoleMutation.mutate({ userId: targetId, role: "owner" });
+                }
+                setPendingOwnerPromotion(null);
+                setConfirmBoardName("");
+              }}
+            >
+              Promote to Owner
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -33,7 +33,8 @@ def upload_file():
     if not file or file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
-    result, error = FileService.save_file(file)
+    purpose = request.args.get('purpose') or request.form.get('purpose')
+    result, error = FileService.save_file(file, purpose=purpose)
     if error:
         return jsonify({'error': error}), 400
 

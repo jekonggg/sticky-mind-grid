@@ -84,12 +84,16 @@ export function BoardHeader({
   }, [user?.id]);
 
   useEffect(() => {
-    // Load available boards for quick switcher
-    boardApi.getBoards().then((data) => {
-      setBoards(data || []);
-    }).catch(() => {
-      // Silently catch in header
-    });
+    const loadBoards = () => {
+      boardApi.getBoards().then((data) => {
+        setBoards(data || []);
+      }).catch(() => {
+        // Silently catch in header
+      });
+    };
+    loadBoards();
+    window.addEventListener("smg-dev-data-mode-changed", loadBoards);
+    return () => window.removeEventListener("smg-dev-data-mode-changed", loadBoards);
   }, [boardId]);
 
   const currentBoard = boards.find((b) => b.id === boardId);

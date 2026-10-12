@@ -43,12 +43,21 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
   useEffect(() => {
     hasLoadedRef.current = false;
     fetchTasks();
+    const handleRefresh = () => {
+      fetchTasks();
+    };
+    window.addEventListener("smg-dev-data-mode-changed", handleRefresh);
+    window.addEventListener("task-updated", handleRefresh);
     const interval = setInterval(() => {
       if (document.visibilityState === "visible" && boardId) {
         taskApi.getTasks(boardId).then((data) => setTasks(data)).catch(() => {});
       }
     }, 4000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("smg-dev-data-mode-changed", handleRefresh);
+      window.removeEventListener("task-updated", handleRefresh);
+    };
   }, [fetchTasks, boardId]);
 
   const addTask = useCallback(async (data: CreateTaskData) => {
@@ -70,12 +79,21 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     try {
       const updated = await taskApi.updateTask(id, data);
       setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
-    } catch {
+      return updated;
+    } catch (err: any) {
+      if (err?.status === 409) {
+        if (err.currentTask) {
+          setTasks((prev) => prev.map((t) => (t.id === id ? err.currentTask : t)));
+        } else {
+          fetchTasks();
+        }
+        throw err;
+      }
       fetchTasks();
     }
   }, [fetchTasks, tasks]);
 
-  const reorderTasks = useCallback(async (items: Array<{ id: string; status?: string; position: number }>) => {
+  const reorderTasks = useCallback(async (items: Array<{ id: string; status?: string; fromStatus?: string; position: number }>) => {
     if (!boardId || items.length === 0) return;
 
     // Optimistic local reorder

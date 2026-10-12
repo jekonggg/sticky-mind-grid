@@ -11,6 +11,7 @@ vi.mock("@/services/boardApi", () => ({
     getMembers: vi.fn(),
     removeMember: vi.fn(),
     updateMemberRole: vi.fn(),
+    transferOwnership: vi.fn(),
     getBoard: vi.fn(),
   },
 }));
@@ -126,5 +127,165 @@ describe("BoardMembers Component", () => {
     // The role select trigger should show "member" or clean label
     const triggers = screen.getAllByRole("combobox");
     expect(triggers.length).toBeGreaterThan(0);
+  });
+
+  it("requires typing the board name to confirm when clicking Make Owner button", async () => {
+    const ownerUser = {
+      id: "owner-user-id",
+      email: "owner@example.com",
+      fullName: "Owner User",
+      createdAt: new Date().toISOString(),
+    };
+
+    vi.mocked(boardApi.getMembers).mockResolvedValue(mockMembers);
+    vi.mocked(boardApi.transferOwnership).mockResolvedValue();
+
+    renderWithProviders(<BoardMembers boardId="board-1" />, { user: ownerUser });
+
+    const makeOwnerBtn = await screen.findByRole("button", { name: /make owner/i });
+    fireEvent.click(makeOwnerBtn);
+
+    expect(
+      await screen.findByText(/Promote Test User to Owner\?/i)
+    ).toBeInTheDocument();
+
+    const input = screen.getByTestId("confirm-promote-owner-input");
+    const confirmBtn = screen.getByTestId("confirm-promote-owner-btn");
+
+    // Disabled initially and when wrong board name is typed
+    expect(confirmBtn).toBeDisabled();
+    fireEvent.change(input, { target: { value: "Wrong Board" } });
+    expect(confirmBtn).toBeDisabled();
+    expect(boardApi.transferOwnership).not.toHaveBeenCalled();
+
+    // Enabled once exact board name is typed
+    fireEvent.change(input, { target: { value: "Test Board" } });
+    expect(confirmBtn).not.toBeDisabled();
+
+    fireEvent.click(confirmBtn);
+    await waitFor(() => {
+      expect(boardApi.transferOwnership).toHaveBeenCalledWith("board-1", mockUser.id);
+    });
+  });
+
+  it("cancelling the owner promotion dialog does not promote the member", async () => {
+    const ownerUser = {
+      id: "owner-user-id",
+      email: "owner@example.com",
+      fullName: "Owner User",
+      createdAt: new Date().toISOString(),
+    };
+
+    vi.mocked(boardApi.getMembers).mockResolvedValue(mockMembers);
+
+    renderWithProviders(<BoardMembers boardId="board-1" />, { user: ownerUser });
+
+    const makeOwnerBtn = await screen.findByRole("button", { name: /make owner/i });
+    fireEvent.click(makeOwnerBtn);
+
+    expect(
+      await screen.findByText(/Promote Test User to Owner\?/i)
+    ).toBeInTheDocument();
+
+    const cancelBtn = screen.getByRole("button", { name: /cancel/i });
+    fireEvent.click(cancelBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/Promote Test User to Owner\?/i)
+      ).not.toBeInTheDocument();
+    });
+    expect(boardApi.transferOwnership).not.toHaveBeenCalled();
+    expect(boardApi.updateMemberRole).not.toHaveBeenCalled();
+  });
+
+  it("requires typing the board name to confirm when selecting Owner from the role dropdown", async () => {
+    const ownerUser = {
+      id: "owner-user-id",
+      email: "owner@example.com",
+      fullName: "Owner User",
+      createdAt: new Date().toISOString(),
+    };
+
+    vi.mocked(boardApi.getMembers).mockResolvedValue(mockMembers);
+    vi.mocked(boardApi.updateMemberRole).mockResolvedValue({
+      ...mockMembers[1],
+      role: "owner",
+    });
+
+    renderWithProviders(<BoardMembers boardId="board-1" />, { user: ownerUser });
+
+    await waitFor(() => {
+      expect(screen.getByText("Test User")).toBeInTheDocument();
+    });
+
+    const triggers = screen.getAllByRole("combobox");
+    fireEvent.keyDown(triggers[0], { key: "ArrowDown" });
+
+    const ownerOption = await screen.findByRole("option", { name: /Owner/i });
+    fireEvent.click(ownerOption);
+
+    // Should NOT mutate immediately
+    expect(boardApi.updateMemberRole).not.toHaveBeenCalled();
+
+    // Confirmation dialog opens
+    expect(
+      await screen.findByText(/Promote Test User to Owner\?/i)
+    ).toBeInTheDocument();
+
+    const input = screen.getByTestId("confirm-promote-owner-input");
+    const confirmBtn = screen.getByTestId("confirm-promote-owner-btn");
+    expect(confirmBtn).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: "Test Board" } });
+    expect(confirmBtn).not.toBeDisabled();
+
+    fireEvent.click(confirmBtn);
+    await waitFor(() => {
+      expect(boardApi.updateMemberRole).toHaveBeenCalledWith(
+        "board-1",
+        mockUser.id,
+        "owner"
+      );
+    });
+  });
+
+  it("updates non-Owner roles directly without opening the Owner confirmation dialog", async () => {
+    const ownerUser = {
+      id: "owner-user-id",
+      email: "owner@example.com",
+      fullName: "Owner User",
+      createdAt: new Date().toISOString(),
+    };
+
+    vi.mocked(boardApi.getMembers).mockResolvedValue(mockMembers);
+    vi.mocked(boardApi.updateMemberRole).mockResolvedValue({
+      ...mockMembers[1],
+      role: "admin",
+    });
+
+    renderWithProviders(<BoardMembers boardId="board-1" />, { user: ownerUser });
+
+    await waitFor(() => {
+      expect(screen.getByText("Test User")).toBeInTheDocument();
+    });
+
+    const triggers = screen.getAllByRole("combobox");
+    fireEvent.keyDown(triggers[0], { key: "ArrowDown" });
+
+    const adminOption = await screen.findByRole("option", { name: /Admin/i });
+    fireEvent.click(adminOption);
+
+    expect(
+      screen.queryByText(/Promote Test User to Owner\?/i)
+    ).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(boardApi.updateMemberRole).toHaveBeenCalledWith(
+        "board-1",
+        mockUser.id,
+        "admin"
+      );
+    });
   });
 });

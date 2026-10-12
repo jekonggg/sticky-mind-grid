@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Priority, Column, Tag } from "@/types/task";
+import { Priority, Column, Tag, ChecklistItem } from "@/types/task";
 import { BoardMember } from "@/types/board";
 import {
   Select,
@@ -38,6 +38,7 @@ interface TaskPropertiesProps {
   createdAt?: Date;
   updatedAt?: Date;
   readOnly?: boolean;
+  isStatusHighlighted?: boolean;
   checklist?: ChecklistItem[];
   onStatusChange: (status: string) => void;
   onPriorityChange: (priority: Priority) => void;
@@ -70,6 +71,7 @@ export function TaskProperties({
   createdAt,
   updatedAt,
   readOnly,
+  isStatusHighlighted = false,
   checklist,
   onStatusChange,
   onPriorityChange,
@@ -118,12 +120,19 @@ export function TaskProperties({
     <div className="w-full max-w-4xl mx-auto px-6 sm:px-10 py-5 border-b border-border/40 space-y-3.5">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5 text-sm">
         {/* Status Property */}
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div
+          data-testid={isStatusHighlighted ? "task-status-live-highlight" : undefined}
+          className={`flex items-center gap-2.5 min-w-0 ${
+            isStatusHighlighted
+              ? "ring-2 ring-primary/50 bg-primary/10 rounded-lg px-2 py-1 -mx-2 transition-all duration-500 animate-pulse"
+              : ""
+          }`}
+        >
           <div className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 select-none">
             <ListTodo className="h-4 w-4 text-muted-foreground shrink-0" />
             <span>Status</span>
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex items-center gap-2">
             {readOnly ? (
               <Badge variant="outline" className="font-bold text-xs capitalize gap-1.5 py-1 px-2.5 bg-card/60 border-border/60 truncate">
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: currentColumn?.color || "var(--primary)" }} />
@@ -145,6 +154,11 @@ export function TaskProperties({
                   ))}
                 </SelectContent>
               </Select>
+            )}
+            {isStatusHighlighted && (
+              <span className="text-[10px] font-bold text-primary animate-in fade-in shrink-0">
+                Moved live
+              </span>
             )}
           </div>
         </div>

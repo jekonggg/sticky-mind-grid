@@ -575,6 +575,28 @@ Update project documentation when:
 
 ---
 
+## 21. Parallel Agentic Rules & Lead Coordinator Protocol
+
+Act as the lead coordinator for Sticky Mind Grid. Break the task into independent subtasks and delegate them to parallel agents whenever appropriate.
+
+### Subagent Delegation Guidelines
+For each agent:
+- Assign a specific responsibility and clearly defined scope.
+- Identify relevant files and source line numbers before making changes.
+- Avoid overlapping file modifications.
+- Require a summary of findings, changed files, tests run, and unresolved issues.
+
+### Concurrency & Isolation
+- Prefer isolated Git worktrees for agents making concurrent code changes.
+- Keep investigation-only agents read-only where possible.
+
+### Post-Execution Review & Integration
+- After the agents finish, review their results, integrate compatible changes, and resolve conflicts.
+- Run relevant Vitest and Playwright tests before concluding.
+- Report the final outcome accurately. Do not claim tests passed unless they were actually executed successfully.
+
+---
+
 ## Key Files Reference
 
 | Purpose | Path |

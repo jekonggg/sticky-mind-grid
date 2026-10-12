@@ -15,6 +15,12 @@ def _get_column_name(board, column_id):
             return col.get('title', column_id)
     return column_id
 
+class TaskConflictError(Exception):
+    def __init__(self, task, message="Conflict: Description was modified by another user"):
+        super().__init__(message)
+        self.task = task
+        self.message = message
+
 class TaskService:
     @staticmethod
     def get_tasks(board_id):
@@ -128,7 +134,10 @@ class TaskService:
         db.session.commit()
 
         # Real-time event broadcast
-        broadcaster.broadcast(new_task.board_id, "task:created", task_dict)
+        broadcaster.broadcast(new_task.board_id, "task:created", {
+            **task_dict,
+            "actorId": str(creator_id) if creator_id else None
+        })
         if activity_dict:
             broadcaster.broadcast(new_task.board_id, "activity:new", activity_dict)
 
@@ -145,10 +154,17 @@ class TaskService:
         old_status = task.status
         old_assigned_to = task.assigned_to
         old_title = task.title
+        old_description = task.description
+
+        # Check for concurrent description conflict
+        if 'description' in data and 'baseDescription' in data and not data.get('forceOverwrite'):
+            if (old_description or "") != (data.get('baseDescription') or "") and (data.get('description') or "") != (old_description or ""):
+                raise TaskConflictError(task)
 
         if 'boardId' in data: task.board_id = data['boardId']
         if 'title' in data: task.title = data['title']
         if 'emoji' in data: task.emoji = data['emoji']
+        if 'description' in data: task.description = data['description']
         status_val = data.get('status') if 'status' in data else data.get('columnId')
         if status_val is not None: task.status = status_val
         if 'priority' in data: task.priority = data['priority']
@@ -167,10 +183,12 @@ class TaskService:
             else:
                 task.due_date = None
 
+        effective_old_status = data.get('fromStatus') or old_status
         is_board_changed = str(old_board_id) != str(task.board_id)
-        is_status_changed = old_status != task.status
+        is_status_changed = (old_status != task.status) or bool(data.get('fromStatus') and data['fromStatus'] != task.status)
         is_assigned_changed = old_assigned_to != task.assigned_to
         is_title_changed = old_title != task.title
+        is_description_changed = (old_description or "") != (task.description or "")
 
         # Generate automated audit log based on what changed
         activity = None
@@ -196,7 +214,7 @@ class TaskService:
             )
             db.session.add(source_board_activity)
         elif is_status_changed:
-            old_col_name = _get_column_name(task.board, old_status)
+            old_col_name = _get_column_name(task.board, effective_old_status)
             new_col_name = _get_column_name(task.board, task.status)
             activity = Activity(
                 type='move',
@@ -243,6 +261,15 @@ class TaskService:
                 user_id=user_id
             )
             db.session.add(activity)
+        elif is_description_changed:
+            activity = Activity(
+                type='update',
+                task_title=task.title,
+                message=f'Updated description for "{task.title}"',
+                board_id=task.board_id,
+                user_id=user_id
+            )
+            db.session.add(activity)
 
         # Update board timestamp
         if task.board:
@@ -259,12 +286,19 @@ class TaskService:
             broadcaster.broadcast(old_board_id, "task:deleted", {"taskId": task.id})
             if source_act_dict:
                 broadcaster.broadcast(old_board_id, "activity:new", source_act_dict)
-            broadcaster.broadcast(task.board_id, "task:created", task_dict)
+            broadcaster.broadcast(task.board_id, "task:created", {
+                **task_dict,
+                "actorId": str(user_id) if user_id else None
+            })
             if activity_dict:
                 broadcaster.broadcast(task.board_id, "activity:new", activity_dict)
         else:
             event_name = "task:moved" if is_status_changed else "task:updated"
-            broadcaster.broadcast(task.board_id, event_name, task_dict)
+            broadcaster.broadcast(task.board_id, event_name, {
+                **task_dict,
+                "actorId": str(user_id) if user_id else None,
+                "previousStatus": effective_old_status
+            })
             if activity_dict:
                 broadcaster.broadcast(task.board_id, "activity:new", activity_dict)
 
@@ -286,10 +320,12 @@ class TaskService:
             task = Task.query.filter_by(id=t_id, board_id=board_id).first()
             if task:
                 old_status = task.status
+                from_status = item.get('fromStatus')
                 if 'status' in item and item['status']:
-                    if old_status != item['status']:
+                    effective_old_status = from_status if from_status else old_status
+                    if old_status != item['status'] or (from_status and from_status != item['status']):
                         task.status = item['status']
-                        old_col_name = _get_column_name(board, old_status)
+                        old_col_name = _get_column_name(board, effective_old_status)
                         new_col_name = _get_column_name(board, task.status)
                         act = Activity(
                             type='move',
@@ -320,7 +356,8 @@ class TaskService:
 
                 # Broadcast batch reorder event
                 broadcaster.broadcast(board_id, "tasks:reordered", {
-                    "tasks": serialized_tasks
+                    "tasks": serialized_tasks,
+                    "actorId": str(user_id) if user_id else None
                 })
                 for act_dict in serialized_activities:
                     broadcaster.broadcast(board_id, "activity:new", act_dict)

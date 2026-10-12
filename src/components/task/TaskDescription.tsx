@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 interface TaskDescriptionProps {
   description: string;
   readOnly?: boolean;
-  onChange: (description: string) => void;
+  onChange: (description: string, options?: { forceOverwrite?: boolean }) => void | Promise<void>;
 }
 
 export function TaskDescription({ description, readOnly, onChange }: TaskDescriptionProps) {
@@ -37,9 +37,18 @@ export function TaskDescription({ description, readOnly, onChange }: TaskDescrip
     }
   }, [draft]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setHasConflict(false);
-    onChange(draft);
+    try {
+      await onChange(draft);
+    } catch (err: any) {
+      if (err?.status === 409) {
+        const remote = err?.currentTask?.description ?? description;
+        setRemoteContent(remote);
+        prevDescriptionRef.current = remote;
+        setHasConflict(true);
+      }
+    }
   };
 
   const handleCancel = () => {
@@ -76,6 +85,7 @@ export function TaskDescription({ description, readOnly, onChange }: TaskDescrip
               className="h-6 text-[11px] px-2"
               onClick={() => {
                 setDraft(remoteContent);
+                prevDescriptionRef.current = remoteContent;
                 setHasConflict(false);
               }}
             >
@@ -84,7 +94,15 @@ export function TaskDescription({ description, readOnly, onChange }: TaskDescrip
             <Button
               size="sm"
               className="h-6 text-[11px] px-2 bg-amber-600 hover:bg-amber-700 text-white"
-              onClick={handleSave}
+              onClick={async () => {
+                setHasConflict(false);
+                prevDescriptionRef.current = draft;
+                try {
+                  await onChange(draft, { forceOverwrite: true });
+                } catch {
+                  // Handled by caller
+                }
+              }}
             >
               Overwrite With Mine
             </Button>

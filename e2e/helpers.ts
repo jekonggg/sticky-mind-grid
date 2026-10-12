@@ -20,7 +20,11 @@ export async function createBoard(page: Page, name: string, description = "") {
   await page.getByRole("button", { name: /create board/i }).first().click();
   await page.getByPlaceholder("Project or Board name…").fill(name);
   if (description) {
-    await page.getByPlaceholder("What is this board for?").fill(description);
+    const descField = page.getByPlaceholder("What is this board for?");
+    if (!(await descField.isVisible())) {
+      await page.getByRole("dialog").getByRole("button", { name: /customize/i }).click();
+    }
+    await descField.fill(description);
   }
   await page.getByRole("dialog").getByRole("button", { name: "Create Board" }).click();
   await expectToast(page, /created/);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Task, Priority, ChecklistItem, Tag, Attachment } from "@/types/task";
+import { Task, Priority, ChecklistItem, Tag, Attachment, UpdateTaskData } from "@/types/task";
 import { Board, BoardMember } from "@/types/board";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useActivity } from "@/hooks/useActivity";
@@ -15,6 +15,7 @@ import { Clock, Loading01 as Loader2, Check, Cloud01 as Cloud } from "@untitledu
 import { useQuery } from "@tanstack/react-query";
 import { boardApi } from "@/services/boardApi";
 import { useBoardPermissions } from "@/hooks/useBoardPermissions";
+import { toast } from "sonner";
 
 interface TaskDetailWorkspaceProps {
   task: Task;
@@ -23,7 +24,7 @@ interface TaskDetailWorkspaceProps {
   readOnly?: boolean;
   canComment?: boolean;
   onClose: () => void;
-  onUpdateTask: (updates: Partial<Task>) => void;
+  onUpdateTask: (updates: Partial<Task> & UpdateTaskData) => void | Promise<any>;
   onDeleteTask: (id: string) => void;
 }
 
@@ -57,16 +58,47 @@ export function TaskDetailWorkspace({
   const [localAttachments, setLocalAttachments] = useState<Attachment[]>(task.attachments || []);
   const [localUpdatedAt, setLocalUpdatedAt] = useState<Date | string | undefined>(task.updatedAt);
 
+  const [isStatusHighlighted, setIsStatusHighlighted] = useState(false);
+  const statusHighlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const prevStatusRef = useRef(task.status);
+  const prevTaskIdRef = useRef(task.id);
+  const baseDescriptionRef = useRef(task.description || "");
+
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const titleDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const descDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Detect remote status movement while viewing the same task
+  useEffect(() => {
+    const isSameTask = task.id === prevTaskIdRef.current;
+    if (isSameTask && task.status !== prevStatusRef.current && task.status !== localStatus) {
+      setIsStatusHighlighted(true);
+      if (statusHighlightTimeoutRef.current) {
+        clearTimeout(statusHighlightTimeoutRef.current);
+      }
+      statusHighlightTimeoutRef.current = setTimeout(() => {
+        setIsStatusHighlighted(false);
+      }, 2500);
+    } else if (!isSameTask) {
+      setIsStatusHighlighted(false);
+    }
+    setLocalStatus(task.status);
+    prevStatusRef.current = task.status;
+    prevTaskIdRef.current = task.id;
+  }, [task.id, task.status, localStatus]);
+
+  // Sync description when task.id or task.description changes remotely
+  useEffect(() => {
+    baseDescriptionRef.current = task.description || "";
+    setLocalDescription(task.description || "");
+  }, [task.id, task.description]);
 
   // Sync state whenever the selected task changes (e.g. user clicked another card)
   useEffect(() => {
     setLocalTitle(task.title);
     setLocalEmoji(task.emoji || "");
     setLocalDescription(task.description || "");
+    baseDescriptionRef.current = task.description || "";
     setLocalStatus(task.status);
     setLocalPriority(task.priority);
     setLocalAssignedTo(task.assignedTo || "unassigned");
@@ -79,9 +111,23 @@ export function TaskDetailWorkspace({
     setSaveStatus("idle");
   }, [task.id, task.updatedAt]);
 
+  useEffect(() => {
+    return () => {
+      if (statusHighlightTimeoutRef.current) {
+        clearTimeout(statusHighlightTimeoutRef.current);
+      }
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      if (titleDebounceRef.current) {
+        clearTimeout(titleDebounceRef.current);
+      }
+    };
+  }, []);
+
   // Unified silent background update handler
   const performUpdate = useCallback(
-    async (updates: Partial<Task>) => {
+    async (updates: Partial<Task> & UpdateTaskData) => {
       setSaveStatus("saving");
       setLocalUpdatedAt(new Date());
       try {
@@ -93,6 +139,13 @@ export function TaskDetailWorkspace({
         }, 2000);
       } catch (err: any) {
         setSaveStatus("idle");
+        if (err?.status === 409) {
+          if (err?.currentTask) {
+            baseDescriptionRef.current = err.currentTask.description || "";
+            setLocalDescription(err.currentTask.description || "");
+          }
+          throw err;
+        }
         toast.error(err?.message || "Failed to update task");
       }
     },
@@ -132,12 +185,17 @@ export function TaskDetailWorkspace({
     }
   };
 
-  const handleDescriptionChange = (newDesc: string) => {
+  const handleDescriptionChange = async (
+    newDesc: string,
+    options?: { forceOverwrite?: boolean }
+  ) => {
+    await performUpdate({
+      description: newDesc,
+      baseDescription: baseDescriptionRef.current,
+      forceOverwrite: options?.forceOverwrite,
+    });
+    baseDescriptionRef.current = newDesc;
     setLocalDescription(newDesc);
-    if (descDebounceRef.current) clearTimeout(descDebounceRef.current);
-    descDebounceRef.current = setTimeout(() => {
-      performUpdate({ description: newDesc });
-    }, 800);
   };
 
   const handleEmojiChange = (newEmoji: string) => {
@@ -271,6 +329,7 @@ export function TaskDetailWorkspace({
           createdAt={task.createdAt}
           updatedAt={task.updatedAt}
           readOnly={readOnly}
+          isStatusHighlighted={isStatusHighlighted}
           checklist={localChecklist}
           onStatusChange={handleStatusChange}
           onPriorityChange={handlePriorityChange}

@@ -54,7 +54,12 @@ export const taskApi = {
     });
     if (!res.ok) {
       const errData = await res.json().catch(() => null);
-      throw new Error(errData?.error || "Failed to update task");
+      const err: any = new Error(errData?.error || "Failed to update task");
+      err.status = res.status;
+      if (res.status === 409) {
+        err.currentTask = errData?.currentTask ? mapTask(errData.currentTask) : undefined;
+      }
+      throw err;
     }
     const task = await res.json();
     return mapTask(task);
@@ -69,7 +74,7 @@ export const taskApi = {
     if (!res.ok) throw new Error("Failed to delete task");
   },
 
-  async reorderTasks(boardId: string, items: Array<{ id: string; status?: string; position: number }>): Promise<Task[]> {
+  async reorderTasks(boardId: string, items: Array<{ id: string; status?: string; fromStatus?: string; position: number }>): Promise<Task[]> {
     if (USE_MOCK) {
       return [];
     }

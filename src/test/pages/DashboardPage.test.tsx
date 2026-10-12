@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, fireEvent } from "@testing-library/react";
 import DashboardPage from "@/pages/DashboardPage";
 import { renderWithProviders, mockUser } from "@/test/test-utils";
 import { boardApi } from "@/services/boardApi";
@@ -82,6 +82,27 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Implement Global Search").length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText("Upcoming Deadlines")).toBeInTheDocument();
+      expect(screen.getByText("Workspace Audit Stream")).toBeInTheDocument();
     });
   });
+
+  it("allows filtering My Priority Tasks via quick filter pills", async () => {
+    renderWithProviders(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Implement Global Search").length).toBeGreaterThanOrEqual(1);
+    });
+
+    const doneFilterBtn = screen.getByRole("button", { name: "Done" });
+    fireEvent.click(doneFilterBtn);
+
+    expect(screen.getByText(/no tasks match the current view/i)).toBeInTheDocument();
+
+    const allFilterBtn = screen.getByRole("button", { name: "All" });
+    fireEvent.click(allFilterBtn);
+
+    expect(screen.getAllByText("Implement Global Search").length).toBeGreaterThanOrEqual(1);
+  });
 });
+
+

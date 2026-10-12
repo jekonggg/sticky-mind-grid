@@ -291,9 +291,133 @@ describe("BoardsOverview Page", () => {
       createBoard: vi.fn(),
       updateBoard: vi.fn(),
       deleteBoard: vi.fn(),
-    });
+    } as any);
 
     renderWithProviders(<BoardsOverview />);
     expect(screen.getByRole("status", { name: "Loading boards" })).toBeInTheDocument();
   });
+
+  it("requires typing the board name to confirm deletion and explains 30-day grace period", async () => {
+    const deleteBoardMock = vi.fn();
+    vi.mocked(useBoards).mockReturnValue({
+      boards: [
+        {
+          id: "board-1",
+          name: "My First Board",
+          ownerId: mockUser.id,
+          role: "owner",
+          emoji: "🚀",
+          color: "hsl(220, 80%, 56%)",
+          columns: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      trashedBoards: [
+        {
+          id: "board-trashed-1",
+          name: "Archived Project",
+          ownerId: mockUser.id,
+          role: "owner",
+          color: "hsl(220, 80%, 56%)",
+          columns: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      loading: false,
+      search: "",
+      setSearch: vi.fn(),
+      sort: "updated",
+      setSort: vi.fn(),
+      createBoard: vi.fn(),
+      updateBoard: vi.fn(),
+      deleteBoard: deleteBoardMock,
+      restoreBoard: vi.fn(),
+      permanentlyDeleteBoard: vi.fn(),
+    } as any);
+
+    renderWithProviders(<BoardsOverview />, { user: mockUser });
+
+    // Verify Recently Deleted section renders trashed boards
+    expect(screen.getByTestId("recently-deleted-section")).toBeInTheDocument();
+    expect(screen.getByText("Archived Project")).toBeInTheDocument();
+
+    // Open board options menu and click Delete
+    const menuButton = screen.getByRole("button", { name: "Board options" });
+    fireEvent.keyDown(menuButton, { key: "ArrowDown" });
+    const deleteMenuItem = await screen.findByText("Delete");
+    fireEvent.click(deleteMenuItem);
+
+    // Dialog explains 30-day grace period and renders confirmation input
+    expect(await screen.findByText(/Recently Deleted for 30 days/i)).toBeInTheDocument();
+    const input = screen.getByTestId("confirm-delete-board-input");
+    const confirmDeleteBtn = screen.getByRole("button", { name: /^Delete$/i });
+
+    // Initially disabled until exact board name is typed
+    expect(confirmDeleteBtn).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: "Wrong Name" } });
+    expect(confirmDeleteBtn).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: "My First Board" } });
+    expect(confirmDeleteBtn).not.toBeDisabled();
+
+    fireEvent.click(confirmDeleteBtn);
+    expect(deleteBoardMock).toHaveBeenCalledWith("board-1");
+  });
+
+  it("persists sort and filter preferences per user in localStorage", () => {
+    const prefsKey = `sticky_mind_grid_board_prefs_${mockUser.id}`;
+    localStorage.setItem(
+      prefsKey,
+      JSON.stringify({ sort: "name", filter: "owned", view: "grid" })
+    );
+
+    vi.mocked(useBoards).mockReturnValue({
+      boards: [
+        {
+          id: "board-owned",
+          name: "Alpha Owned",
+          ownerId: mockUser.id,
+          role: "owner",
+          color: "hsl(220, 80%, 56%)",
+          columns: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: "board-shared",
+          name: "Beta Shared",
+          ownerId: "other-user",
+          role: "editor",
+          color: "hsl(142, 60%, 45%)",
+          columns: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      loading: false,
+      search: "",
+      setSearch: vi.fn(),
+      sort: "name",
+      setSort: vi.fn(),
+      createBoard: vi.fn(),
+      updateBoard: vi.fn(),
+      deleteBoard: vi.fn(),
+    } as any);
+
+    renderWithProviders(<BoardsOverview />, { user: mockUser });
+
+    // Restores 'owned' filter from user preferences
+    expect(screen.getByTestId("filter-tab-owned")).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Alpha Owned")).toBeInTheDocument();
+    expect(screen.queryByText("Beta Shared")).not.toBeInTheDocument();
+
+    // Switching to 'shared' persists to localStorage for this user
+    fireEvent.click(screen.getByTestId("filter-tab-shared"));
+    const saved = JSON.parse(localStorage.getItem(prefsKey) || "{}");
+    expect(saved.filter).toBe("shared");
+  });
 });
+

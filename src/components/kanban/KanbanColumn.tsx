@@ -18,6 +18,7 @@ interface KanbanColumnProps {
   canCreateTask?: boolean;
   isDragDisabled?: boolean;
   selectedTaskId?: string | null;
+  highlightedTaskIds?: Set<string> | string[];
   onTaskClick: (task: Task) => void;
   onAddTask?: (status: TaskStatus) => void;
   onRename?: (id: string, newTitle: string, emoji?: string) => void;
@@ -50,6 +51,7 @@ export function KanbanColumn({
   canCreateTask = false,
   isDragDisabled = false,
   selectedTaskId,
+  highlightedTaskIds,
   onTaskClick,
   onAddTask,
   onRename,
@@ -208,6 +210,11 @@ export function KanbanColumn({
                   key={task.id}
                   task={task}
                   isSelected={selectedTaskId === task.id}
+                  isHighlighted={
+                    Array.isArray(highlightedTaskIds)
+                      ? highlightedTaskIds.includes(task.id)
+                      : highlightedTaskIds?.has(task.id)
+                  }
                   onClick={onTaskClick}
                   isDragDisabled={isDragDisabled}
                 />
