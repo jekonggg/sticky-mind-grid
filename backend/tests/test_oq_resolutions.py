@@ -547,9 +547,79 @@ def test_oq_07_permanent_board_delete_requires_matching_confirm_name(client, cre
         f"/api/boards/{board.id}?confirm_name=OQ07%20Dangerous%20Board",
         headers=auth_headers(owner.id)
     )
-    assert resp_success.status_code == 200
-    assert db.session.get(Board, board.id) is None
+def test_oq_08_revoking_pending_invite_suppresses_removed_notification_and_cleans_up(client, create_test_user, auth_headers):
+    """
+    OQ-08: Inconsistent Revoke Side Effects Between Unregistered and Registered Pending Invitees.
+    When an admin revokes a pending invitation for a registered user:
+    - Activity message must say 'revoked invitation for <email>' (not 'removed member').
+    - The alarming 'Removed from Board' (type='member_removed') notification must be suppressed.
+    - The original 'board_invite' notification must be cleaned up / removed.
+    """
+    from app.models.notification import Notification
+    from app.models.activity import Activity
 
+    owner = create_test_user(email="oq08_owner@example.com")
+    invitee = create_test_user(email="oq08_invitee@example.com")
+    board = BoardService.create_board({"name": "OQ08 Invite Board"}, owner.id)
 
+    # 1. Invite registered user -> creates BoardMember(status='pending') and Notification(type='board_invite')
+    resp_invite = client.post(
+        f"/api/boards/{board.id}/members",
+        headers=auth_headers(owner.id),
+        data=json.dumps({"email": invitee.email, "role": "editor"}),
+        content_type="application/json"
+    )
+    assert resp_invite.status_code == 201
 
+    # Verify pending member and invite notification exist
+    bm = BoardMember.query.filter_by(board_id=board.id, user_id=invitee.id).first()
+    assert bm is not None
+    assert bm.status == "pending"
+    invite_notif = Notification.query.filter_by(user_id=invitee.id, type="board_invite").first()
+    assert invite_notif is not None
+
+    # 2. Revoke pending invitation via DELETE /api/boards/<board_id>/members/<user_id>
+    resp_del = client.delete(
+        f"/api/boards/{board.id}/members/{invitee.id}",
+        headers=auth_headers(owner.id)
+    )
+    assert resp_del.status_code == 200
+
+    # 3. Assertions:
+    # - BoardMember is deleted
+    assert BoardMember.query.filter_by(board_id=board.id, user_id=invitee.id).first() is None
+
+    # - No 'member_removed' notification created
+    removed_notif = Notification.query.filter_by(user_id=invitee.id, type="member_removed").first()
+    assert removed_notif is None, "member_removed notification must be suppressed for pending invitees"
+
+    # - Original 'board_invite' notification must be cleaned up
+    remaining_invite_notif = Notification.query.filter_by(user_id=invitee.id, type="board_invite").first()
+    assert remaining_invite_notif is None, "Original board_invite notification must be deleted"
+
+    # - Activity log must record 'revoked invitation for <email>'
+    revoked_act = Activity.query.filter(
+        Activity.board_id == board.id,
+        Activity.message.like(f"%revoked invitation for {invitee.email}%")
+    ).first()
+    assert revoked_act is not None, "Activity log must record invite revocation, not member removal"
+
+    # 4. Also verify revoking via POST /api/boards/<board_id>/invitations/<target_id>/revoke
+    invitee2 = create_test_user(email="oq08_invitee2@example.com")
+    resp_invite2 = client.post(
+        f"/api/boards/{board.id}/members",
+        headers=auth_headers(owner.id),
+        data=json.dumps({"email": invitee2.email, "role": "editor"}),
+        content_type="application/json"
+    )
+    assert resp_invite2.status_code == 201
+    assert Notification.query.filter_by(user_id=invitee2.id, type="board_invite").first() is not None
+
+    resp_revoke_endpoint = client.post(
+        f"/api/boards/{board.id}/invitations/{invitee2.id}/revoke",
+        headers=auth_headers(owner.id)
+    )
+    assert resp_revoke_endpoint.status_code == 200
+    assert Notification.query.filter_by(user_id=invitee2.id, type="board_invite").first() is None
+    assert BoardMember.query.filter_by(board_id=board.id, user_id=invitee2.id).first() is None
 

@@ -792,6 +792,7 @@ class BoardService:
                 bm = BoardMember.query.filter_by(board_id=board_id, user_id=user.id, status='pending').first()
                 if bm:
                     db.session.delete(bm)
+                Notification.query.filter_by(user_id=user.id, type='board_invite', link=f'/boards/{board_id}').delete()
         else:
             user = db.session.get(User, target_id_or_email)
             if user:
@@ -799,6 +800,7 @@ class BoardService:
                 bm = BoardMember.query.filter_by(board_id=board_id, user_id=user.id, status='pending').first()
                 if bm:
                     db.session.delete(bm)
+                Notification.query.filter_by(user_id=user.id, type='board_invite', link=f'/boards/{board_id}').delete()
             else:
                 return False, "Invitation not found"
 
@@ -850,15 +852,16 @@ class BoardService:
             if BoardService.count_owners(board_id) <= 1:
                 return False, "A board must always have at least one Owner. The last Owner cannot leave or be removed. You must transfer ownership or delete the board."
 
-        # If pending, also mark BoardInvitation revoked
-        if membership.status == 'pending':
-            user_obj = db.session.get(User, user_id)
+        # If pending, also mark BoardInvitation revoked and clean up original invite notification
+        is_pending = membership.status == 'pending'
+        user_obj = db.session.get(User, user_id)
+        if is_pending:
             if user_obj:
                 inv = BoardInvitation.query.filter_by(board_id=board_id, email=user_obj.email.strip().lower()).first()
                 if inv:
                     inv.status = 'revoked'
                     inv.revoked_at = datetime.utcnow()
-
+                Notification.query.filter_by(user_id=user_obj.id, type='board_invite', link=f'/boards/{board_id}').delete()
 
         user_name = membership.user.full_name or membership.user.email if membership.user else "Member"
         actor = db.session.get(User, actor_id) if actor_id else None
@@ -885,6 +888,18 @@ class BoardService:
                     link=f'/boards/{board_id}'
                 )
                 db.session.add(owner_notif)
+        elif is_pending:
+            # Revoking a pending invitation
+            target_email = user_obj.email if user_obj else user_name
+            activity = Activity(
+                type='update',
+                task_title=target_email,
+                message=f'{actor_name} revoked invitation for {target_email}',
+                board_id=board_id,
+                user_id=actor_id
+            )
+            db.session.add(activity)
+            # Suppress member_removed notification for pending invitees
         else:
             # Admin or Owner removed member
             activity = Activity(

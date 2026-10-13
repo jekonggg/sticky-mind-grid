@@ -112,14 +112,16 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ---
 
-### OQ-08: Inconsistent Revoke Side Effects Between Unregistered and Registered Pending Invitees
+### OQ-08 [RESOLVED]: Inconsistent Revoke Side Effects Between Unregistered and Registered Pending Invitees
+- **Status:** RESOLVED.
+- **Resolution:**
+  1. Updated `BoardService.remove_member` (`backend/app/services/board_service.py`) and `BoardService.revoke_invitation` so that revoking a member whose status is `'pending'` logs `"revoked invitation for <email>"` and suppresses the alarming `'Removed from Board'` (`type='member_removed'`) notification.
+  2. Cleans up any existing `'board_invite'` `Notification` records associated with the pending invitation.
+  3. Updated `BoardMembers.tsx` (`src/components/board/BoardMembers.tsx`) pending rows to call `boardApi.revokeInvitation` (`revokeInviteMutation`).
+  4. Added regression test `backend/tests/test_oq_resolutions.py:test_oq_08_revoking_pending_invite_suppresses_removed_notification_and_cleans_up`.
 - **Where in Code:**
-  - `src/components/board/BoardMembers.tsx:L378`: Clicking Revoke (`X`) on a row in "Pending Invitations" calls `removeMember({ boardId, userId: member.id })`.
-  - `backend/app/services/board_service.py:L752-L897`:
-    - For **unregistered** invitees, delegates to `revoke_invitation`, sets `status = 'revoked'`, logs `"revoked invitation"`, and sends no notification.
-    - For **registered** invitees, deletes `BoardMember(status='pending')`, logs `"<actor> removed member <name>"`, and sends an alarming `'Removed from Board'` notification to a user who never accepted the invite.
-- **Recommendation:**
-  - When `remove_member` is called on a member with `status == 'pending'`, log `"revoked invitation"` and suppress the `'member_removed'` notification.
+  - `src/components/board/BoardMembers.tsx:L106-L115, L384-L396`: Revoke button calls `revokeInviteMutation` (`boardApi.revokeInvitation`).
+  - `backend/app/services/board_service.py:L785-L815, L850-L900`: `BoardService.remove_member` and `revoke_invitation` handle pending status cleanly.
 
 ---
 

@@ -103,6 +103,17 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
     },
   });
 
+  const revokeInviteMutation = useMutation({
+    mutationFn: (targetId: string) => boardApi.revokeInvitation(boardId, targetId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["boardMembers", boardId] });
+      toast.success("Invitation revoked");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to revoke invitation");
+    },
+  });
+
   const updateRoleMutation = useMutation({
     mutationFn: (data: { userId: string; role: string }) =>
       boardApi.updateMemberRole(boardId, data.userId, data.role),
@@ -375,10 +386,14 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                         ? `Revoke invitation for ${member.user?.fullName || member.user?.email || "this invitee"}?`
                         : `Remove ${member.user?.fullName || member.user?.email || "this member"} from this board?`;
                       if (confirm(promptMsg)) {
-                        removeMutation.mutate(member.userId || member.id);
+                        if (isPendingOrExpired) {
+                          revokeInviteMutation.mutate(member.userId || member.id);
+                        } else {
+                          removeMutation.mutate(member.userId || member.id);
+                        }
                       }
                     }}
-                    disabled={removeMutation.isPending}
+                    disabled={removeMutation.isPending || revokeInviteMutation.isPending}
                   >
                     <UserMinus className="h-4 w-4" />
                   </Button>
