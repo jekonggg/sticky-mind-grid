@@ -211,12 +211,19 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ---
 
-### OQ-16: Single-Process In-Memory SSE Scalability
+### OQ-16 [RESOLVED]: Single-Process In-Memory SSE Scalability & Deployment Pinning
+- **Status:** RESOLVED.
+- **Resolution:**
+  1. Verified that `EventBroadcaster` (`backend/app/utils/event_broadcaster.py`) uses in-memory Python threading queues (`queue.Queue`) and locks (`threading.Lock()`).
+  2. To prevent multi-worker process partition of real-time SSE broadcasts, created `backend/gunicorn.conf.py` strictly pinning `workers = 1` and using `worker_class = "gthread"` with multi-threading (`threads = 8`, configurable via `GUNICORN_THREADS`) and extended streaming timeout (`timeout = 120`).
+  3. Added root `Procfile` declaring the pinned deployment entry point (`web: gunicorn --config backend/gunicorn.conf.py --chdir backend run:app`).
+  4. Created verification test `backend/tests/test_deployment_config.py:test_gunicorn_config_pins_single_process_multithreaded_sse` enforcing `workers == 1`, `worker_class == 'gthread'`, and `threads >= 4`.
+  5. Documented the operational boundary: horizontal multi-worker scaling requires transitioning `EventBroadcaster` to Redis Pub/Sub.
 - **Where in Code:**
-  - `backend/app/utils/event_broadcaster.py:L7-L20`: SSE queues use Python `threading.Lock()` and memory queues.
-  - In a multi-worker WSGI deployment (Gunicorn `-w 4`) or multi-instance container setup, broadcast events only reach clients connected to the same worker process.
-- **Recommendation:**
-  - Plan roadmap migration to Redis Pub/Sub for multi-worker production scalability.
+  - `backend/app/utils/event_broadcaster.py:L7-L20`: In-process SSE broadcaster implementation.
+  - `backend/gunicorn.conf.py`: Pinned deployment configuration (`workers = 1`, `worker_class = 'gthread'`).
+  - `Procfile`: Gunicorn launch command.
+  - `backend/tests/test_deployment_config.py`: Deployment config test assertion.
 
 ---
 
