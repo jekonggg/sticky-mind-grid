@@ -331,6 +331,11 @@ class TaskService:
         source_board_activity = None
 
         if is_board_changed:
+            # Tenancy rule: strip tags and comments on cross-board move
+            task.tags = []
+            from app.models.comment import Comment
+            Comment.query.filter_by(task_id=task.id).delete()
+
             # Cross-board move tenancy rule: target members only see "moved from another board"
             activity = Activity(
                 type='move',

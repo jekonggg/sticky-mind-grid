@@ -24,7 +24,7 @@ This document consolidates every unresolved question, UI-only business rule lack
 | **OQ-12:** Should `TeamsPage.tsx` gate member invitation buttons by `canInviteMembers` permission? | `src/pages/TeamsPage.tsx:L195, L402`, `backend/app/routes/board_routes.py:L206-L208` | Non-admin users see active invite buttons on `/teams` that trigger unexpected HTTP 403 error toasts upon submission. | Frontend Engineering | Agent 2 / Agent 1 |
 | **OQ-13:** Should `useBoardRealtime.ts` implement event handlers and React Query cache invalidation for the 9 unhandled backend SSE event types? | `src/hooks/useBoardRealtime.ts:L182-L279`, `backend/app/services/*.py` | Comments, notes, trash emptying, and new invitations do not update in real time for other connected clients, requiring manual page refreshes. | Frontend Lead | Agent 3 |
 | **OQ-14:** Should `TaskService.update_task` require `lastKnownUpdatedAt` on description edits to prevent silent overwrite of concurrent edits? | `backend/app/services/task_service.py:L205-L242`, `src/components/task/TaskDescription.tsx:L73-L111` | Conflict detection (`HTTP 409`) only triggers if `baseDescription` or `lastKnownUpdatedAt` is provided; omitting it blindly overwrites remote changes. | Backend Engineering | Agent 3 / Agent 4 |
-| **OQ-15:** Does cross-board task move violate tenancy isolation by retaining comments and tags from the source board? | `backend/app/services/task_service.py:L313-L398`, `docs/02-business-rules.md:BR-28` | Comments authored by users who are not members of the target board, and tag strings outside the target board's schema, persist on moved tasks. | Backend Security Lead | Agent 3 / Agent 4 |
+| **OQ-15 [RESOLVED]:** Does cross-board task move violate tenancy isolation by retaining comments and tags from the source board? | `backend/app/services/task_service.py:L313-L398`, `docs/02-business-rules.md:BR-28` | **RESOLVED:** Server now strips comments and tags on cross-board task moves to maintain tenant isolation. | Backend Security Lead | Agent 3 / Agent 4 |
 | **OQ-16:** How will real-time SSE streaming scale beyond a single worker process given `EventBroadcaster`'s in-memory thread lock architecture? | `backend/app/utils/event_broadcaster.py:L7-L20`, `docs/07-architecture.md:L174` | `EventBroadcaster` uses process-local memory queues; multi-process deployments (Gunicorn workers, multi-instance Render) lose events and cannot broadcast cross-instance without Redis Pub/Sub. | Backend / DevOps Lead | Agent 3 / Agent 5 |
 | **OQ-17:** Should local user registration require an email verification token flow before auto-linking pending board invitations? | `backend/app/models/user.py:L11-L18`, `backend/app/routes/auth_routes.py:L12-L52, L137-L162` | Any user registering with an unverified email address immediately acquires pending board invitations addressed to that email without cryptographic proof of mailbox ownership. | Security Lead | Agent 4 / Agent 2 |
 | **OQ-18:** Should activity logs enforce the 90-day retention cleanup (`ACTIVITY_RETENTION_DAYS`), or should activity records remain strictly permanent and immutable? | `backend/config.py:L59`, `backend/app/services/activity_service.py:L11-L26`, `backend/app/routes/activity_routes.py:L51-L55`, `src/hooks/useActivity.tsx:L103-L111` | Architectural contradiction between unused 90-day cleanup code and immutable HTTP 403 API policy, plus dead frontend `clearActivities` code. | Compliance / Backend Lead | Agent 4 / Agent 1 |
@@ -176,12 +176,10 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ---
 
-### OQ-15: Cross-Board Move Tenancy & Data Portability
-- **Where in Code:**
-  - `backend/app/services/task_service.py:L313-L398`: Cross-board moves clear invalid assignees and remap columns, but leave existing comments and tags intact.
-  - Comments written by source-board members remain visible on the destination board even if those users are not members of the target board.
-- **Recommendation:**
-  - Review security policies to determine whether task comments and activity history should be archived or cleansed when moved between distinct tenant boards.
+### OQ-15 [RESOLVED]: Cross-Board Move Tenancy & Data Portability
+- **Resolution Status:** RESOLVED.
+- **Fix Implemented:** Updated `TaskService.update_task` (`backend/app/services/task_service.py`) when `is_board_changed` is true to clear tags (`task.tags = []`) and delete all existing task comments (`Comment.query.filter_by(task_id=task.id).delete()`).
+- **Regression Test:** `backend/tests/test_oq_resolutions.py:test_oq_15_cross_board_move_strips_comments_and_tags`.
 
 ---
 
