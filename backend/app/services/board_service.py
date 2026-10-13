@@ -494,6 +494,18 @@ class BoardService:
 
         db.session.commit()
 
+        # Outbound email invitation
+        try:
+            from app.services.email_service import EmailService
+            EmailService.send_board_invitation(
+                to_email=clean_email,
+                board_name=board.name,
+                inviter_name=actor_name,
+                role=role
+            )
+        except Exception as e:
+            logger.error(f"Failed to send invitation email to {clean_email}: {e}")
+
         # Real-time broadcasts
         broadcast_payload = membership.to_dict() if membership else invitation.to_dict()
         broadcaster.broadcast(board_id, "member:invited", broadcast_payload)
@@ -767,6 +779,20 @@ class BoardService:
             )
 
         db.session.commit()
+
+        # Outbound reminder email
+        try:
+            from app.services.email_service import EmailService
+            target_email = invitation.email if invitation else (user.email if user else None)
+            if target_email:
+                EmailService.send_board_invitation(
+                    to_email=target_email,
+                    board_name=board.name,
+                    inviter_name=actor_name,
+                    role=target_role
+                )
+        except Exception as e:
+            logger.error(f"Failed to resend invitation email: {e}")
 
         broadcaster.broadcast(board_id, "member:invite_resent", invitation.to_dict())
         return True, None
