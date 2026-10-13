@@ -103,6 +103,14 @@ def create_app(config_class=Config):
     if not app.config.get('TESTING', False):
         _auto_sync_schema(app)
 
+    # Start background scheduler if enabled and not in testing
+    if app.config.get('SCHEDULER_ENABLED') and not app.config.get('TESTING', False):
+        try:
+            from app.services.scheduler_service import SchedulerService
+            SchedulerService.start_scheduler(app)
+        except Exception as e:
+            app.logger.warning(f"Failed to start scheduler: {e}")
+
     return app
 
 def _auto_sync_schema(app):

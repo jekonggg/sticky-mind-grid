@@ -29,6 +29,10 @@ class FileService:
     _uploaders_cache = {}
 
     @staticmethod
+    def get_upload_dir():
+        return UPLOAD_FOLDER
+
+    @staticmethod
     def _record_uploader(stored_filename: str, user_id):
         if not user_id or not stored_filename:
             return

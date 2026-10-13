@@ -11,13 +11,14 @@ from app.utils.decorators import get_effective_role, ROLE_HIERARCHY
 
 class BoardService:
     @staticmethod
-    def get_user_boards(user_id):
-        cutoff = datetime.utcnow() - timedelta(days=30)
+    def purge_expired_boards(retention_days=30):
+        cutoff = datetime.utcnow() - timedelta(days=retention_days)
         expired_boards = Board.query.filter(
             Board.is_deleted.is_(True),
             Board.deleted_at.isnot(None),
             Board.deleted_at < cutoff
         ).all()
+        purged_count = len(expired_boards)
         if expired_boards:
             from app.services.file_service import FileService
             for b in expired_boards:
@@ -25,6 +26,11 @@ class BoardService:
                     FileService.cleanup_task_attachments(task)
                 db.session.delete(b)
             db.session.commit()
+        return purged_count
+
+    @staticmethod
+    def get_user_boards(user_id):
+        BoardService.purge_expired_boards(retention_days=30)
 
         return db.session.query(Board).join(BoardMember).filter(
             BoardMember.user_id == user_id,
@@ -317,19 +323,7 @@ class BoardService:
 
     @staticmethod
     def get_trashed_boards(user_id):
-        cutoff = datetime.utcnow() - timedelta(days=30)
-        expired_boards = Board.query.filter(
-            Board.is_deleted.is_(True),
-            Board.deleted_at.isnot(None),
-            Board.deleted_at < cutoff
-        ).all()
-        if expired_boards:
-            from app.services.file_service import FileService
-            for b in expired_boards:
-                for task in (b.tasks or []):
-                    FileService.cleanup_task_attachments(task)
-                db.session.delete(b)
-            db.session.commit()
+        BoardService.purge_expired_boards(retention_days=30)
 
         trashed = Board.query.filter(Board.is_deleted.is_(True)).all()
         result = []
