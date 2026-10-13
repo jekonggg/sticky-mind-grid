@@ -397,3 +397,55 @@ def test_oq_04_transfer_ownership_demotes_former_owner_to_admin(client, create_t
     assert bm_owner_after.role == 'admin', "Former owner must be demoted to admin"
     assert BoardService.count_owners(board.id) == 1, "Only 1 owner should exist"
 
+def test_oq_05_wip_limits_are_non_blocking_visual_telemetry(client, create_test_user, auth_headers):
+    """
+    OQ-05: WIP Limits as Soft Visual Telemetry.
+    Columns with wipLimit do NOT block card creation or card moves on the server.
+    """
+    owner = create_test_user(email="oq05_owner@example.com")
+    board = BoardService.create_board({
+        "name": "OQ05 WIP Board",
+        "columns": [
+            {"id": "wip_col", "title": "WIP Column", "wipLimit": 1},
+            {"id": "other_col", "title": "Other Column"}
+        ]
+    }, owner.id)
+
+    # 1. Create 1st task in wip_col (meets limit)
+    resp1 = client.post(
+        "/api/tasks",
+        headers=auth_headers(owner.id),
+        data=json.dumps({"boardId": board.id, "title": "Task 1", "status": "wip_col"}),
+        content_type="application/json"
+    )
+    assert resp1.status_code == 201
+
+    # 2. Create 2nd task in wip_col (exceeds limit: 2 > 1) -> must not be blocked
+    resp2 = client.post(
+        "/api/tasks",
+        headers=auth_headers(owner.id),
+        data=json.dumps({"boardId": board.id, "title": "Task 2", "status": "wip_col"}),
+        content_type="application/json"
+    )
+    assert resp2.status_code == 201, "Server must not block task creation when WIP limit is exceeded"
+
+    # 3. Create 3rd task in other_col and move it to wip_col -> must not be blocked
+    resp3 = client.post(
+        "/api/tasks",
+        headers=auth_headers(owner.id),
+        data=json.dumps({"boardId": board.id, "title": "Task 3", "status": "other_col"}),
+        content_type="application/json"
+    )
+    assert resp3.status_code == 201
+    task3_id = resp3.get_json()["id"]
+
+    resp_move = client.patch(
+        f"/api/tasks/{task3_id}",
+        headers=auth_headers(owner.id),
+        data=json.dumps({"status": "wip_col"}),
+        content_type="application/json"
+    )
+    assert resp_move.status_code == 200
+    assert resp_move.get_json()["status"] == "wip_col", "Server must allow moving task into column exceeding WIP limit"
+
+
