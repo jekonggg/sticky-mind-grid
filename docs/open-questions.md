@@ -28,7 +28,7 @@ This document consolidates every unresolved question, UI-only business rule lack
 | **OQ-16:** How will real-time SSE streaming scale beyond a single worker process given `EventBroadcaster`'s in-memory thread lock architecture? | `backend/app/utils/event_broadcaster.py:L7-L20`, `docs/07-architecture.md:L174` | `EventBroadcaster` uses process-local memory queues; multi-process deployments (Gunicorn workers, multi-instance Render) lose events and cannot broadcast cross-instance without Redis Pub/Sub. | Backend / DevOps Lead | Agent 3 / Agent 5 |
 | **OQ-17:** Should local user registration require an email verification token flow before auto-linking pending board invitations? | `backend/app/models/user.py:L11-L18`, `backend/app/routes/auth_routes.py:L12-L52, L137-L162` | Any user registering with an unverified email address immediately acquires pending board invitations addressed to that email without cryptographic proof of mailbox ownership. | Security Lead | Agent 4 / Agent 2 |
 | **OQ-18:** Should activity logs enforce the 90-day retention cleanup (`ACTIVITY_RETENTION_DAYS`), or should activity records remain strictly permanent and immutable? | `backend/config.py:L59`, `backend/app/services/activity_service.py:L11-L26`, `backend/app/routes/activity_routes.py:L51-L55`, `src/hooks/useActivity.tsx:L103-L111` | Architectural contradiction between unused 90-day cleanup code and immutable HTTP 403 API policy, plus dead frontend `clearActivities` code. | Compliance / Backend Lead | Agent 4 / Agent 1 |
-| **OQ-19:** Can board ownership transfers cause the new owner to silently exceed their 500 MB owner storage quota? | `backend/app/services/file_service.py:L177-L207`, `backend/app/services/board_service.py:L1056-L1101` | `transfer_ownership` does not calculate whether transferring all existing board attachments will push the new owner over `MAX_OWNER_STORAGE_BYTES` (500 MB). | Backend Security Lead | Agent 4 / Agent 5 |
+| **OQ-19 [RESOLVED]:** Can board ownership transfers cause the new owner to silently exceed their 500 MB owner storage quota? | `backend/app/services/file_service.py:L177-L207`, `backend/app/services/board_service.py:L1056-L1101` | **RESOLVED:** Enforced 500 MB owner storage quota check in `BoardService.transfer_ownership` (rejects with HTTP 400 if exceeded). | Backend Security Lead | Agent 4 / Agent 5 |
 | **OQ-20 [RESOLVED]:** Should comment and note deletion handlers verify active board membership before permitting author deletions? | `backend/app/services/comment_service.py:L152-L158`, `backend/app/services/note_service.py:L109-L116` | **RESOLVED:** Verified active board membership in `delete_comment` and `delete_note`; former members receive HTTP 403. | Backend Security Lead | Agent 4 / Agent 3 |
 | **OQ-21:** Are critical database behaviors (cascades, JSON fields, transactions) adequately tested given the SQLite test vs MySQL production engine disparity? | `docs/13-testing.md:L58`, `backend/tests/conftest.py:L25-L32`, `backend/config.py:L18` | Pytest runs on in-memory SQLite which does not enforce strict MySQL foreign key locks or JSON indexing, risking undetected production MySQL failures. | QA / Testing Lead | Agent 4 |
 | **OQ-22:** How should the absence of outbound SMTP email delivery, HTTP rate limiting, and background cron workers be addressed for production deployments? | `backend/requirements.txt:L1-L15`, `backend/app/__init__.py:L16-L99`, `backend/app/services/board_service.py:L388-L556` | Verified as "Not found in code"; board invitations rely solely on in-app alerts, APIs lack brute-force/DDoS rate limiting, and retention purges run lazily on user requests. | DevOps / Infrastructure Lead | Agent 5 |
@@ -210,12 +210,10 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ---
 
-### OQ-19: Storage Quota Attribution on Board Ownership Transfer
-- **Where in Code:**
-  - `backend/app/services/file_service.py:L177-L207` & `backend/app/services/board_service.py:L1056-L1101`: Board owners have a 500 MB quota across owned boards.
-  - `transfer_ownership` does not check if the new owner has sufficient available storage quota to accept the board's existing files.
-- **Recommendation:**
-  - Enforce quota verification in `BoardService.transfer_ownership` before executing ownership reassignment.
+### OQ-19 [RESOLVED]: Storage Quota Attribution on Board Ownership Transfer
+- **Resolution Status:** RESOLVED.
+- **Fix Implemented:** Updated `BoardService.transfer_ownership` (`backend/app/services/board_service.py`) to verify that the new owner's existing cross-board storage usage plus the transferred board's attachment total does not exceed `MAX_OWNER_STORAGE_BYTES` (500 MB), rejecting with HTTP 400 if exceeded.
+- **Regression Test:** `backend/tests/test_oq_resolutions.py:test_oq_19_transfer_ownership_checks_new_owner_storage_quota`.
 
 ---
 

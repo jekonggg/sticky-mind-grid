@@ -1075,6 +1075,16 @@ class BoardService:
         if not new_owner:
             return False, "Target user not found"
 
+        # Check new owner storage quota against the board's attachment total
+        if str(board.owner_id) != str(new_owner_id):
+            from app.services.file_service import FileService, format_size
+            from flask import current_app
+            max_owner_bytes = current_app.config.get('MAX_OWNER_STORAGE_BYTES', 500 * 1024 * 1024)
+            current_target_bytes = FileService.get_owner_storage_usage(new_owner_id)
+            board_bytes = FileService.get_board_storage_usage(board_id)
+            if current_target_bytes + board_bytes > max_owner_bytes:
+                return False, f"Transfer would exceed new owner storage quota (limit: {format_size(max_owner_bytes)})"
+
         target_membership = BoardMember.query.filter_by(board_id=board_id, user_id=new_owner_id).first()
         if not target_membership:
             target_membership = BoardMember(

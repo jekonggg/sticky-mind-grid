@@ -122,6 +122,8 @@ class FileService:
         if not isinstance(att, dict):
             return 0
         size_bytes = att.get('sizeBytes')
+        if not isinstance(size_bytes, int) and isinstance(att.get('size'), int):
+            size_bytes = att.get('size')
         if isinstance(size_bytes, int) and size_bytes >= 0:
             return size_bytes
         stored_name = att.get('storedName')
