@@ -106,10 +106,17 @@ class NoteService:
             return False, "Note not found"
 
         board_id = note.board_id
-        is_author = note.user_id == user_id
-        is_admin_or_owner = get_effective_role(board_id, user_id) >= ROLE_HIERARCHY['admin']
+        if not board_id:
+            return False, "Board not found"
+
+        effective_role = get_effective_role(board_id, user_id)
+        if effective_role < ROLE_HIERARCHY['viewer']:
+            return False, "Active board membership is required to delete this note"
+
+        is_author = str(note.user_id) == str(user_id)
+        is_admin_or_owner = effective_role >= ROLE_HIERARCHY['admin']
         board = db.session.get(Board, board_id)
-        if board and board.owner_id == user_id:
+        if board and str(board.owner_id) == str(user_id):
             is_admin_or_owner = True
 
         if not is_author and not is_admin_or_owner:

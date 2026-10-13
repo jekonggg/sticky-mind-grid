@@ -148,11 +148,16 @@ class CommentService:
         task = comment.task
         board_id = task.board_id if task else None
 
-        # Check permissions: author, or board admin/owner
+        # Check permissions: active board membership AND (author, or board admin/owner)
+        if not board_id:
+            return False, "Board not found"
+
+        effective_role = get_effective_role(board_id, user_id)
+        if effective_role < ROLE_HIERARCHY['commenter']:
+            return False, "Active board membership is required to delete this comment"
+
         is_author = str(comment.user_id) == str(user_id)
-        is_admin_or_owner = False
-        if board_id:
-            is_admin_or_owner = get_effective_role(board_id, user_id) >= ROLE_HIERARCHY['admin']
+        is_admin_or_owner = effective_role >= ROLE_HIERARCHY['admin']
 
         if not is_author and not is_admin_or_owner:
             return False, "You do not have permission to delete this comment"
