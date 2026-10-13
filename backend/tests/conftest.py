@@ -14,22 +14,56 @@ from app.models.task import Task
 from flask_jwt_extended import create_access_token
 from config import Config
 
+test_db_url = os.environ.get('TEST_DATABASE_URL') or os.environ.get('TEST_DATABASE_URI')
+
 class TestConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    SQLALCHEMY_ENGINE_OPTIONS = {}
+    SQLALCHEMY_DATABASE_URI = test_db_url or 'sqlite:///:memory:'
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,
+        "pool_recycle": 280,
+    } if test_db_url and 'sqlite' not in test_db_url else {}
     JWT_SECRET_KEY = 'test-jwt-secret-key-1234567890'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     SECRET_KEY = 'test-secret-key'
 
 @pytest.fixture
 def app():
+    current_test_db = os.environ.get('TEST_DATABASE_URL') or os.environ.get('TEST_DATABASE_URI')
+    if current_test_db:
+        # Guard: Never run tests against primary development database
+        if 'mysql' in current_test_db and 'sticky_mind_grid' in current_test_db and not current_test_db.endswith('_test') and '_test?' not in current_test_db and os.environ.get('ALLOW_TESTS_ON_DEV_DB') != '1':
+            raise RuntimeError(
+                f"Refusing to run tests against database URI '{current_test_db}'. "
+                "Target database must be a test database (e.g. 'sticky_mind_grid_test') to prevent data loss."
+            )
+        TestConfig.SQLALCHEMY_DATABASE_URI = current_test_db
+        if 'sqlite' not in current_test_db:
+            TestConfig.SQLALCHEMY_ENGINE_OPTIONS = {
+                "pool_pre_ping": True,
+                "pool_recycle": 280,
+            }
+        else:
+            TestConfig.SQLALCHEMY_ENGINE_OPTIONS = {}
+    else:
+        TestConfig.SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+        TestConfig.SQLALCHEMY_ENGINE_OPTIONS = {}
+
     app = create_app(TestConfig)
     with app.app_context():
         db.create_all()
         yield app
         db.session.remove()
-        db.drop_all()
+        if db.engine.dialect.name == 'mysql':
+            with db.engine.connect() as conn:
+                conn.execute(db.text("SET FOREIGN_KEY_CHECKS = 0;"))
+                conn.commit()
+            db.drop_all()
+            with db.engine.connect() as conn:
+                conn.execute(db.text("SET FOREIGN_KEY_CHECKS = 1;"))
+                conn.commit()
+        else:
+            db.drop_all()
 
 @pytest.fixture
 def client(app):

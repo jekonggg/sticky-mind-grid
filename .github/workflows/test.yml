@@ -11,6 +11,21 @@ jobs:
   backend-tests:
     name: Backend API, RBAC & Coverage Suite
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: sticky_mind_grid_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 --silent || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: mysql+pymysql://root:root@127.0.0.1:3306/sticky_mind_grid_test?charset=utf8mb4
     defaults:
       run:
         working-directory: backend

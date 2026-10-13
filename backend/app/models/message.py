@@ -97,6 +97,8 @@ class Conversation(db.Model):
         }
 
 
+from sqlalchemy.dialects.mysql import DATETIME as MYSQL_DATETIME
+
 class ConversationParticipant(db.Model):
     __tablename__ = 'conversation_participants'
     __table_args__ = (
@@ -107,19 +109,19 @@ class ConversationParticipant(db.Model):
     conversation_id = db.Column(db.String(36), db.ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     user_id = db.Column(db.String(36), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     role = db.Column(db.String(32), default='member', nullable=False) # 'admin', 'member'
-    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
-    last_read_at = db.Column(db.DateTime, default=datetime.utcnow)
+    joined_at = db.Column(db.DateTime().with_variant(MYSQL_DATETIME(fsp=6), "mysql"), default=datetime.utcnow)
+    last_read_at = db.Column(db.DateTime().with_variant(MYSQL_DATETIME(fsp=6), "mysql"), nullable=True)
 
     # Relationships
     conversation = db.relationship('Conversation', back_populates='participants')
     user = db.relationship('User', back_populates='conversation_participations')
 
-    def __init__(self, conversation_id: str, user_id: str, role: str = 'member', **kwargs):
+    def __init__(self, conversation_id: str, user_id: str, role: str = 'member', last_read_at: datetime = None, **kwargs):
         super().__init__(**kwargs)
         self.conversation_id = conversation_id
         self.user_id = user_id
         self.role = role
-        self.last_read_at = datetime.utcnow()
+        self.last_read_at = last_read_at
 
     def to_dict(self):
         user_data = self.user.to_dict() if self.user else None
@@ -147,8 +149,8 @@ class Message(db.Model):
     is_forwarded = db.Column(db.Boolean, default=False, nullable=False)
     is_pinned = db.Column(db.Boolean, default=False, nullable=False)
     is_deleted = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime().with_variant(MYSQL_DATETIME(fsp=6), "mysql"), default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime().with_variant(MYSQL_DATETIME(fsp=6), "mysql"), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     conversation = db.relationship('Conversation', back_populates='messages')

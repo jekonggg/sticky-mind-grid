@@ -87,7 +87,31 @@ npm run test:e2e:report       # View last HTML report
 ### Database Isolation Policy
 - **Development (`sticky_mind_grid`):** Reserved for manual development.
 - **E2E Tests (`sticky_mind_grid_test`):** Automated test database seeded fresh before runs.
-- **Pytest (`sqlite:///:memory:`):** Ephemeral in-memory database per test.
+- **Pytest (`sqlite:///:memory:` or MySQL):** By default, runs against ephemeral in-memory SQLite for fast local feedback. Set `TEST_DATABASE_URL` to run against MySQL (`sticky_mind_grid_test`) matching production.
+
+### Running Backend Tests Against MySQL
+
+To run `pytest` against MySQL to verify dialect-specific behavior (strict foreign key cascades, collation, microsecond datetime precision):
+
+1. Ensure the test database exists:
+   ```sql
+   CREATE DATABASE IF NOT EXISTS sticky_mind_grid_test;
+   ```
+
+2. Set `TEST_DATABASE_URL` and run pytest:
+   - **Bash / macOS / Linux:**
+     ```bash
+     export TEST_DATABASE_URL="mysql+pymysql://root:root@127.0.0.1:3306/sticky_mind_grid_test?charset=utf8mb4"
+     cd backend && pytest -v
+     ```
+   - **PowerShell (Windows):**
+     ```powershell
+     $env:TEST_DATABASE_URL = "mysql+pymysql://root@localhost/sticky_mind_grid_test?charset=utf8mb4"
+     cd backend; pytest -v
+     ```
+
+> [!NOTE]
+> `backend/tests/conftest.py` guards against executing tests against the primary development database (`sticky_mind_grid`). `TEST_DATABASE_URL` must point to a database with `_test` in its name.
 
 ---
 

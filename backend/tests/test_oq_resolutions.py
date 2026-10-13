@@ -26,9 +26,10 @@ def test_oq_01_board_delete_and_lazy_purge_cascades_tasks(client, create_test_us
     owner = create_test_user(email="oq01_owner@example.com")
     headers = auth_headers(owner.id)
 
-    # 2. Test 30-day lazy purge with SQLite foreign keys enabled
-    with db.engine.connect() as conn:
-        conn.execute(text("PRAGMA foreign_keys = ON"))
+    # 2. Test 30-day lazy purge with foreign keys enabled (PRAGMA for SQLite; default in MySQL InnoDB)
+    if db.engine.dialect.name == 'sqlite':
+        with db.engine.connect() as conn:
+            conn.execute(text("PRAGMA foreign_keys = ON"))
 
     # Create board and task
     board1 = Board(name="Expired Board", owner_id=owner.id, columns=[{"id": "c1", "title": "C1"}])
@@ -779,6 +780,10 @@ def test_oq_09_migration_aborts_on_case_duplicate_users(app, monkeypatch):
 
     # Insert two users with same lowercase email directly
     with app.app_context():
+        if db.engine.dialect.name == 'mysql':
+            db.session.execute(sa.text("ALTER TABLE users DROP INDEX email"))
+            db.session.commit()
+
         u1 = User(id="dup-user-1", email="Conflict.User@example.com", full_name="User 1")
         u1.set_password("pass1")
         u2 = User(id="dup-user-2", email="conflict.user@EXAMPLE.COM", full_name="User 2")
@@ -794,6 +799,32 @@ def test_oq_09_migration_aborts_on_case_duplicate_users(app, monkeypatch):
 
         assert "conflict.user@example.com" in str(exc_info.value).lower()
         assert "duplicate" in str(exc_info.value).lower()
+
+
+def test_oq_21_mysql_service_configuration_and_engine_parity(app, monkeypatch):
+    """
+    OQ-21: Pytest against MySQL matches production dialect semantics.
+    Verifies that TestConfig respects TEST_DATABASE_URL and that microsecond
+    message timestamp migration upgrades and downgrades cleanly.
+    """
+    from tests.conftest import TestConfig
+    from migrations.versions import a1b2c3d4e5f6_microsecond_message_timestamps as mig
+
+    # 1. Verify TestConfig engine options for MySQL vs SQLite
+    if db.engine.dialect.name == 'mysql':
+        assert 'mysql' in TestConfig.SQLALCHEMY_DATABASE_URI
+        assert TestConfig.SQLALCHEMY_ENGINE_OPTIONS.get("pool_pre_ping") is True
+    else:
+        assert 'sqlite' in TestConfig.SQLALCHEMY_DATABASE_URI
+
+    # 2. Verify migration upgrade and downgrade executes without syntax error
+    with app.app_context():
+        monkeypatch.setattr(mig.op, "get_bind", lambda: db.session.connection())
+        mig.upgrade()
+        mig.downgrade()
+        # Restore upgrade state
+        mig.upgrade()
+
 
 
 

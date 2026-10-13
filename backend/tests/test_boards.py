@@ -106,7 +106,7 @@ def test_delete_board_cascades_tasks_and_members(client, create_test_user, auth_
     db.session.commit()
 
     # Delete board
-    del_resp = client.delete(f"/api/boards/{board_id}", headers=auth_headers(owner.id))
+    del_resp = client.delete(f"/api/boards/{board_id}?confirm_name=Board To Delete", headers=auth_headers(owner.id))
     assert del_resp.status_code == 200
 
     # Verify board, task, and memberships are gone
@@ -438,6 +438,8 @@ def test_auto_sync_schema_adds_missing_columns(app):
 
     with app.app_context():
         # Simulate a legacy boards table without workspace_id, is_deleted, deleted_at
+        if db.engine.dialect.name == 'mysql':
+            db.session.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
         db.session.execute(text("DROP TABLE IF EXISTS boards"))
         db.session.execute(
             text(
@@ -453,6 +455,8 @@ def test_auto_sync_schema_adds_missing_columns(app):
                 "updated_at DATETIME)"
             )
         )
+        if db.engine.dialect.name == 'mysql':
+            db.session.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
         db.session.commit()
 
         _auto_sync_schema(app)

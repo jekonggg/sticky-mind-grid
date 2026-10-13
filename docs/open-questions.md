@@ -30,7 +30,7 @@ This document consolidates every unresolved question, UI-only business rule lack
 | **OQ-18:** Should activity logs enforce the 90-day retention cleanup (`ACTIVITY_RETENTION_DAYS`), or should activity records remain strictly permanent and immutable? | `backend/config.py:L59`, `backend/app/services/activity_service.py:L11-L26`, `backend/app/routes/activity_routes.py:L51-L55`, `src/hooks/useActivity.tsx:L103-L111` | Architectural contradiction between unused 90-day cleanup code and immutable HTTP 403 API policy, plus dead frontend `clearActivities` code. | Compliance / Backend Lead | Agent 4 / Agent 1 |
 | **OQ-19 [RESOLVED]:** Can board ownership transfers cause the new owner to silently exceed their 500 MB owner storage quota? | `backend/app/services/file_service.py:L177-L207`, `backend/app/services/board_service.py:L1056-L1101` | **RESOLVED:** Enforced 500 MB owner storage quota check in `BoardService.transfer_ownership` (rejects with HTTP 400 if exceeded). | Backend Security Lead | Agent 4 / Agent 5 |
 | **OQ-20 [RESOLVED]:** Should comment and note deletion handlers verify active board membership before permitting author deletions? | `backend/app/services/comment_service.py:L152-L158`, `backend/app/services/note_service.py:L109-L116` | **RESOLVED:** Verified active board membership in `delete_comment` and `delete_note`; former members receive HTTP 403. | Backend Security Lead | Agent 4 / Agent 3 |
-| **OQ-21:** Are critical database behaviors (cascades, JSON fields, transactions) adequately tested given the SQLite test vs MySQL production engine disparity? | `docs/13-testing.md:L58`, `backend/tests/conftest.py:L25-L32`, `backend/config.py:L18` | Pytest runs on in-memory SQLite which does not enforce strict MySQL foreign key locks or JSON indexing, risking undetected production MySQL failures. | QA / Testing Lead | Agent 4 |
+| **OQ-21 [RESOLVED]:** Are critical database behaviors (cascades, JSON fields, transactions) adequately tested given the SQLite test vs MySQL production engine disparity? | `docs/13-testing.md:L58`, `backend/tests/conftest.py:L25-L32`, `backend/config.py:L18`, `.github/workflows/test.yml:L11-L26` | **RESOLVED:** Configured MySQL service container in CI, supported `TEST_DATABASE_URL` in `conftest.py` with SQLite fallback, fixed MySQL dialect timestamp/foreign-key disparities, and verified all 117 tests on MySQL. | QA / Testing Lead | Agent 4 |
 | **OQ-22:** How should the absence of outbound SMTP email delivery, HTTP rate limiting, and background cron workers be addressed for production deployments? | `backend/requirements.txt:L1-L15`, `backend/app/__init__.py:L16-L99`, `backend/app/services/board_service.py:L388-L556` | Verified as "Not found in code"; board invitations rely solely on in-app alerts, APIs lack brute-force/DDoS rate limiting, and retention purges run lazily on user requests. | DevOps / Infrastructure Lead | Agent 5 |
 
 ---
@@ -254,12 +254,20 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ---
 
-### OQ-21: Test Isolation and Database Engine Disparity (SQLite vs MySQL)
+### OQ-21 [RESOLVED]: Test Isolation and Database Engine Disparity (SQLite vs MySQL)
+- **Resolution Status:** RESOLVED.
 - **Where in Code:**
-  - `backend/tests/conftest.py:L25-L32`: Pytest runs against in-memory SQLite (`sqlite:///:memory:`).
-  - SQLite does not enforce certain MySQL foreign key constraints or transaction isolation semantics.
-- **Recommendation:**
-  - Maintain MySQL-backed integration test suites in CI to prevent database dialect-specific regressions.
+  - `backend/tests/conftest.py:L17-L50`: Supports `TEST_DATABASE_URL` targeting MySQL (`sticky_mind_grid_test`), with safe fallback to in-memory SQLite (`sqlite:///:memory:`) for fast local feedback.
+  - `.github/workflows/test.yml:L11-L26`: Added `mysql:8.0` service container with health checks and `TEST_DATABASE_URL` environment variable for the `backend-tests` job.
+  - `backend/app/models/message.py:L106-L153`: Configured microsecond datetime precision via `with_variant(MYSQL_DATETIME(fsp=6), "mysql")` on message timestamps and made `ConversationParticipant.last_read_at` nullable with a `None` default on creation.
+  - `backend/migrations/versions/a1b2c3d4e5f6_microsecond_message_timestamps.py`: Added migration to upgrade message and participant timestamp columns to `DATETIME(6)` in MySQL.
+  - `backend/tests/test_boards.py:L441-L455`: Handled MySQL foreign key checks (`SET FOREIGN_KEY_CHECKS = 0/1`) when simulating legacy schema tables.
+  - `backend/tests/test_oq_resolutions.py:L783-L786`: Handled MySQL case-insensitive collation on unique email indexes during migration abort tests.
+  - `README.md:L92-L115`: Documented how to run tests locally against MySQL.
+- **Verification:**
+  - Full backend test suite executed against MySQL: 117 passed.
+  - Full backend test suite executed against SQLite: 117 passed.
+  - OQ-01 cascade test confirmed to fail on MySQL without `ondelete='CASCADE'` (`IntegrityError 1451`) and pass with it.
 
 ---
 

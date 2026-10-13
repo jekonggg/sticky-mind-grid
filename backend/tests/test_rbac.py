@@ -28,7 +28,7 @@ def test_rbac_owner_can_delete_board(client, create_test_user, create_test_board
     board, owner, admin, member, viewer, outsider = setup_rbac_board(create_test_user, create_test_board)
     headers = auth_headers(owner.id)
 
-    response = client.delete(f"/api/boards/{board.id}", headers=headers)
+    response = client.delete(f"/api/boards/{board.id}?confirm_name={board.name}", headers=headers)
     assert response.status_code == 200
 
 def test_rbac_admin_cannot_delete_board(client, create_test_user, create_test_board, auth_headers):
