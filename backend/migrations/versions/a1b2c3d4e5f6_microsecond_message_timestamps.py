@@ -1,7 +1,7 @@
 """microsecond_message_timestamps
 
 Revision ID: a1b2c3d4e5f6
-Revises: f2b3c4d5e6a7
+Revises: a3b4c5d6e7f8
 Create Date: 2026-10-13 22:15:00.000000
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'a1b2c3d4e5f6'
-down_revision = 'f2b3c4d5e6a7'
+down_revision = 'a3b4c5d6e7f8'
 branch_labels = None
 depends_on = None
 

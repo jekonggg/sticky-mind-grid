@@ -150,6 +150,14 @@ def _auto_sync_schema(app):
             _add_col_if_missing('users', 'avatar_url', "VARCHAR(500) NULL")
             _add_col_if_missing('users', 'auth_provider', "VARCHAR(50) DEFAULT 'local'")
             _add_col_if_missing('users', 'auth_provider_id', "VARCHAR(255) NULL")
+            _add_col_if_missing(
+                'users',
+                'email_verified',
+                "BOOLEAN DEFAULT TRUE NOT NULL",
+                "UPDATE users SET email_verified = TRUE WHERE email_verified IS NULL"
+            )
+            _add_col_if_missing('users', 'verification_token', "VARCHAR(100) NULL")
+            _add_col_if_missing('users', 'verification_token_expires_at', "DATETIME NULL")
 
             # Ensure missing columns in board_members table
             _add_col_if_missing(
