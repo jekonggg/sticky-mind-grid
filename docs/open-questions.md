@@ -220,11 +220,19 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ---
 
-### OQ-17: Absence of Email Verification Token Flow on Local Registration
+### OQ-17 [RESOLVED]: Absence of Email Verification Token Flow on Local Registration
+- **Status:** RESOLVED.
+- **Resolution:**
+  1. Added `email_verified` (Boolean), `verification_token` (indexed String), and `verification_token_expires_at` (DateTime) columns to `User` model (`backend/app/models/user.py`).
+  2. Created safe Alembic migration `backend/migrations/versions/a3b4c5d6e7f8_add_email_verification_fields_to_users.py` with `server_default='1'` for existing accounts and full upgrade/downgrade scripts.
+  3. Modified `POST /api/auth/register` (`backend/app/routes/auth_routes.py`) to create local accounts with `email_verified=False`, generate 24h verification tokens, and dispatch verification emails via `EmailService`. Deliberately stopped auto-attaching pending invitations on local registration until verified.
+  4. Added `POST /api/auth/verify-email` endpoint that validates tokens, marks `email_verified=True`, and attaches pending board invitations and notifications.
+  5. Added `POST /api/auth/resend-verification` endpoint with rate limiting (`5 per minute`).
+  6. Verified via comprehensive API test suite in `backend/tests/test_email_verification.py`.
 - **Where in Code:**
-  - `backend/app/models/user.py:L11-L18` & `backend/app/routes/auth_routes.py:L137-L162`: Local signup issues immediate JWT tokens and calls `attach_pending_invitations(user)` without sending a verification link.
-- **Recommendation:**
-  - Add email verification token flow to ensure users prove mailbox ownership before accessing boards they were invited to.
+  - `backend/app/models/user.py`: Columns and `to_dict()` field `emailVerified`.
+  - `backend/migrations/versions/a3b4c5d6e7f8_add_email_verification_fields_to_users.py`: Schema migration.
+  - `backend/app/routes/auth_routes.py:L170-L300`: Verification lifecycle endpoints and token generation.
 
 ---
 

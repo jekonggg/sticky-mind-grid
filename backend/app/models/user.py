@@ -15,6 +15,9 @@ class User(db.Model):
     avatar_url = db.Column(db.String(500), nullable=True)
     auth_provider = db.Column(db.String(50), default='local', nullable=True)
     auth_provider_id = db.Column(db.String(255), nullable=True)
+    email_verified = db.Column(db.Boolean, default=False, nullable=False)
+    verification_token = db.Column(db.String(100), nullable=True, index=True)
+    verification_token_expires_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -29,13 +32,17 @@ class User(db.Model):
     conversation_participations = db.relationship('ConversationParticipant', back_populates='user', lazy=True, cascade="all, delete-orphan")
     sent_messages = db.relationship('Message', foreign_keys='Message.sender_id', back_populates='sender', lazy=True, cascade="all, delete-orphan")
 
-    def __init__(self, email: str, full_name: str = "", avatar_url: str = None, auth_provider: str = 'local', auth_provider_id: str = None, **kwargs):
+    def __init__(self, email: str, full_name: str = "", avatar_url: str = None, auth_provider: str = 'local', auth_provider_id: str = None, email_verified: bool = None, **kwargs):
         super().__init__(**kwargs)
         self.email = email
         self.full_name = full_name
         self.avatar_url = avatar_url
         self.auth_provider = auth_provider
         self.auth_provider_id = auth_provider_id
+        if email_verified is not None:
+            self.email_verified = email_verified
+        else:
+            self.email_verified = True if (auth_provider and auth_provider != 'local') else False
 
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
@@ -50,5 +57,6 @@ class User(db.Model):
             'fullName': self.full_name,
             'avatarUrl': self.avatar_url,
             'authProvider': getattr(self, 'auth_provider', None) or 'local',
+            'emailVerified': bool(getattr(self, 'email_verified', False)),
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None
         }
