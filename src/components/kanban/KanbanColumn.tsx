@@ -118,8 +118,8 @@ export function KanbanColumn({
       style={geom.isCustom ? { borderRadius: `${geom.outerRadius}px` } : undefined}
       className={`flex flex-col group/column density-kanban-column ${
         isCompact
-          ? "rounded-[18px] w-[260px] min-w-[260px] max-w-[260px]"
-          : "rounded-[24px] w-[315px] min-w-[315px] max-w-[315px]"
+          ? "rounded-[12px] w-[260px] min-w-[260px] max-w-[260px]"
+          : "rounded-[12px] w-[315px] min-w-[315px] max-w-[315px]"
       } shrink-0 border transition-all duration-200 overflow-hidden h-full max-h-full ${
         isOver
           ? "bg-primary/5 border-primary/40 ring-2 ring-primary/20 shadow-md"
@@ -227,17 +227,13 @@ export function KanbanColumn({
               }
             : undefined
         }
-        className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col ${
-          isCompact ? "p-2 gap-2" : "p-3 gap-3"
-        }`}
+        className="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col p-3 gap-3"
       >
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.length === 0 ? (
             <div
               style={geom.isCustom ? { borderRadius: `${geom.innerRadius}px` } : undefined}
-              className={`flex-1 flex flex-col items-center justify-center min-h-[140px] text-xs font-medium text-muted-foreground/60 ${
-                isCompact ? "rounded-[10px]" : "rounded-xl"
-              } border border-dashed border-border/50 bg-dot-pattern`}
+              className="flex-1 flex flex-col items-center justify-center min-h-[140px] text-xs font-medium text-muted-foreground/60 rounded-[8px] border border-dashed border-border/50 bg-dot-pattern"
             >
               <span>No tasks in this stage</span>
             </div>

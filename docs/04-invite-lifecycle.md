@@ -140,7 +140,7 @@ Not all non-active states delete database rows; several states are retained in `
 - **UI Revoke via `DELETE /api/boards/<board_id>/members/<user_id>` (`BoardMembers.tsx:L365-L385` → `BoardService.remove_member`, `board_service.py:L812-L852`):**
   - When an Admin or Owner clicks the revoke (`<UserMinus />`) button in `BoardMembers.tsx` (`L378`), the frontend calls `boardApi.removeMember(boardId, member.userId || member.id)` (`DELETE /api/boards/${boardId}/members/${userId}`).
   - **Unregistered invitee:** `member.userId` is `inv.id` (`board_service.py:L1125`). `BoardService.remove_member` finds no `BoardMember`, detects `BoardInvitation` (`L816-L818`), and delegates to `BoardService.revoke_invitation`.
-  - **Registered pending invitee:** `member.userId` is `user.id`. `BoardService.remove_member` sets the matching `BoardInvitation.status = 'revoked'` (`L845-L851`) and deletes the `BoardMember` row (`L922`), but also executes the standard `remove_member` notification/activity block (`L880-L897`), sending a `member_removed` notification to the pending user.
+  - **Registered pending invitee:** `member.userId` is `user.id`. `BoardService.remove_member` sets the matching `BoardInvitation.status = 'revoked'` and deletes the `BoardMember` row (`board_service.py:L890-L899`). It purges the pending `board_invite` notification (`L898`), logs an activity entry (`L928-L935`), and explicitly suppresses sending a `member_removed` notification to pending invitees (`L936`).
 
 ### 5.4 Decline & Spam Reporting
 - **Standard Decline (`POST|PATCH|DELETE /api/boards/<board_id>/invitations/decline` → `BoardService.decline_invitation`, `board_service.py:L575-L623`):**
@@ -158,17 +158,17 @@ Not all non-active states delete database rows; several states are retained in `
 |---|---|---|
 | **Email belongs to an unregistered user** | `BoardService.add_member` creates a `BoardInvitation(status='pending')` row with no `BoardMember` row and returns HTTP `201`. In `get_board_members`, it appears with `isInvitation: True`. When the user later registers or logs in via OAuth with that email, `attach_pending_invitations(user)` creates the `BoardMember(status='pending')` row and `board_invite` notification. | `backend/app/services/board_service.py:L400-L445, L1116-L1137`; `backend/app/routes/auth_routes.py:L12-L53` |
 | **Missing or blank email** | `POST /api/boards/<board_id>/members` returns HTTP `400`: `{"error": "Email is required"}`. | `backend/app/routes/board_routes.py:L215-L216` |
-| **Malformed / non-email string** | **No regex validation in code:** `InviteMemberDialog.tsx` uses `<Input type="text" required />` (`L171-L183`) to allow name/email search autocomplete, and `BoardService.add_member` does not validate `@` syntax. Any non-empty string not matching an existing user is stored as an unregistered `BoardInvitation` and can be revoked by an Admin/Owner. | `src/components/board/InviteMemberDialog.tsx:L171-L183`; `backend/app/services/board_service.py:L388-L428` |
+| **Malformed / non-email string** | Enforced via `email-validator`: `BoardService.add_member` validates syntax and normalizes emails via `email_validator.validate_email(clean_email, check_deliverability=False)` (falling back to strict regex `^[^@\s]+@[^@\s]+\.[^@\s]+$`). Invalid formats return HTTP `400`: `{"error": "Invalid email format"}`. | `backend/app/services/board_service.py:L395-L406` |
 | **Inviting self or an already-active member** | Rejected with HTTP `400`: `{"error": "User is already an active member of this board"}`. | `backend/app/services/board_service.py:L403-L406` |
 | **Invited to wrong email address by mistake** | Admin or Owner clicks the Revoke (`<UserMinus />`) button in `BoardMembers.tsx`, which transitions `BoardInvitation.status` to `'revoked'` and deletes any `pending` `BoardMember` row. | `src/components/board/BoardMembers.tsx:L365-L385`; `backend/app/services/board_service.py:L752-L809` |
 | **User B attempts to accept User A's invitation** | `BoardService.accept_invitation` checks whether a `pending` `BoardInvitation` exists on `board_id` for another email (`L501-L505`) or if `clean_user_email != invitation.email.strip().lower()` (`L510-L511`). Returns `"Email mismatch: This invitation was sent to another email address"`, which `board_routes.py:L38` maps to **HTTP `403 Forbidden`**. The invitation remains `'pending'`. | `backend/app/routes/board_routes.py:L36-L39`; `backend/app/services/board_service.py:L490-L512`; `backend/tests/test_invitations.py:L254-L278` |
 | **User B attempts to decline User A's invitation** | `BoardService.decline_invitation` queries `BoardInvitation` by `(board_id, clean_user_email)` and `BoardMember` by `(board_id, user_id)`. Neither matches User B, returning HTTP `400`: `{"error": "Invitation not found"}`. | `backend/app/services/board_service.py:L580-L588` |
 | **Pre-acceptance board data exposure** | Before acceptance, `GET /api/boards/invitations` returns only `board.id`, `board.name`, `board.emoji`, `board.color`, and `ownerName` (`board_service.py:L73-L79`). Direct calls to `GET /api/boards/<board_id>`, `/tasks`, `/members`, or `/events` return **HTTP `403`** because `get_effective_role` requires `status == 'accepted'` (`decorators.py:L34-L38`). | `backend/app/services/board_service.py:L73-L79`; `backend/app/utils/decorators.py:L34-L38` |
-| **Email case sensitivity & whitespace** | All invitation queries normalize emails with `.strip().lower()` (`board_invitation.py:L28`, `board_service.py:L40, L388, L487, L580, L631`, `auth_routes.py:L20, L66`). *(Note: local `POST /api/auth/register` at `auth_routes.py:L148` stores `data['email']` without `.strip().lower()`; see `docs/open-questions.md`).* | `backend/app/models/board_invitation.py:L28`; `backend/app/routes/auth_routes.py:L20, L66, L148` |
+| **Email case sensitivity & whitespace** | All invitation queries and user registrations normalize emails with `.strip().lower()`. Both OAuth logins and local `POST /api/auth/register` pass user emails through `normalize_and_validate_email()` before persisting or checking duplicates. | `backend/app/models/board_invitation.py:L28`; `backend/app/services/board_service.py:L394-L400`; `backend/app/routes/auth_routes.py:L176-L187` |
 
 ### 5.6 Rate Limits
 - **Outgoing Invitation Rate Limit (Enforced in Application Logic):**
-  - `BoardService.add_member` (`backend/app/services/board_service.py:L390-L398`) enforces a rolling 24-hour cap of **20 invitations per inviter (`actor_id`)**:
+  - `BoardService.add_member` (`backend/app/services/board_service.py:L407-L416`) enforces a rolling 24-hour cap of **20 invitations per inviter (`actor_id`)**:
     ```python
     one_day_ago = datetime.utcnow() - timedelta(days=1)
     recent_invites_count = BoardInvitation.query.filter(
@@ -179,5 +179,8 @@ Not all non-active states delete database rows; several states are retained in `
         return None, "Daily invitation limit reached (maximum 20 invites per day). Please try again tomorrow."
     ```
   - When `recent_invites_count >= 20`, `POST /api/boards/<board_id>/members` returns HTTP `400` (`backend/app/routes/board_routes.py:L218-L220`, verified in `backend/tests/test_invitations.py:L338-L363`).
-- **HTTP / IP Rate Limiting:**
-  - **Not found in code:** No HTTP-level rate limiter (such as `Flask-Limiter`) is installed in `backend/requirements.txt:L1-L13` or registered in `backend/app/__init__.py:L14-L91`. Resend, accept, and decline endpoints do not have rate limits.
+- **HTTP / IP Rate Limiting (Flask-Limiter):**
+  - **Enforced via `Flask-Limiter`:** Configured with in-memory / Redis backend in `backend/app/__init__.py`. Rate limits are applied to sensitive endpoints:
+    - Auth endpoints (`/api/auth/login`, `/api/auth/register`): `10 per minute` (`backend/app/routes/auth_routes.py:L169, L214`).
+    - OAuth endpoints (`/api/auth/oauth*`): `20 per minute` (`backend/app/routes/auth_routes.py:L154, L163`).
+    - Invitation dispatch (`POST /api/boards/<id>/members`): `20 per minute` at the route layer, plus the 20-invite rolling 24-hour business cap in `BoardService.add_member`.

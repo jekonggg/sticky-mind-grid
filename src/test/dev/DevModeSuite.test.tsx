@@ -2,7 +2,7 @@ import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { screen, fireEvent, renderHook, act } from "@testing-library/react";
 import { renderWithProviders, mockUser } from "@/test/test-utils";
-import { useDevMode, DEV_SETTINGS_STORAGE_KEY } from "@/contexts/DevModeContext";
+import { useDevMode, DEV_SETTINGS_STORAGE_KEY, prodSettings, getDevSettings } from "@/contexts/DevModeContext";
 import { DevSkeletonToolbar } from "@/components/common/DevSkeletonToolbar";
 import { authenticatedFetch } from "@/services/apiUtils";
 import { useBoardPermissions } from "@/hooks/useBoardPermissions";
@@ -314,6 +314,34 @@ describe("Developer Mode Suite", () => {
       );
 
       expect(result.current.isConnected).toBe(false);
+    });
+  });
+
+  describe("Production Defaults & Configuration", () => {
+    it("configures the production specification: sora font, disabled emojis, 12 outer radius, 8 inner radius, 12 padding", () => {
+      expect(prodSettings.fontFamily).toBe("sora");
+      expect(prodSettings.disableEmojiCustomization).toBe(true);
+      expect(prodSettings.customOuterRadius).toBe(12);
+      expect(prodSettings.customInnerRadius).toBe(8);
+      expect(prodSettings.customPadding).toBe(12);
+    });
+
+    it("allows applying the production preset via dev settings", () => {
+      const { result } = renderHook(() => useDevMode(), { wrapper: DevWrapper });
+
+      act(() => {
+        result.current.updateDevSetting("fontFamily", "sora");
+        result.current.updateDevSetting("disableEmojiCustomization", true);
+        result.current.updateDevSetting("customOuterRadius", 12);
+        result.current.updateDevSetting("customInnerRadius", 8);
+        result.current.updateDevSetting("customPadding", 12);
+      });
+
+      expect(result.current.devSettings.fontFamily).toBe("sora");
+      expect(result.current.devSettings.disableEmojiCustomization).toBe(true);
+      expect(result.current.devSettings.customOuterRadius).toBe(12);
+      expect(result.current.devSettings.customInnerRadius).toBe(8);
+      expect(result.current.devSettings.customPadding).toBe(12);
     });
   });
 });

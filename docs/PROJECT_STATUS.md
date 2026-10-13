@@ -150,20 +150,15 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## Partially Implemented Features
 
-### Task Assignee Display
-- **Backend:** `assigned_to` FK exists, `assignee` relationship loads user data, `to_dict()` includes `assignee` object
-- **Frontend:** Task type includes `assignee?` field, TaskModal has assignee selector, TaskCard shows assignee avatar
-- **Gap:** Assignment only works if the assigned user is a board member. No validation prevents assigning non-members.
-
 ### Task Tags
 - **Backend:** `tags` JSON column exists on Task model, stored/persisted correctly
 - **Frontend:** Tag type defined (`{id, name, color}`), TaskCard renders tags, TaskModal has tag input area
 - **Gap:** Tag creation UI exists but the tag management is basic — no tag palette, no global tag list, tags are per-task with no deduplication
 
 ### Task Checklist
-- **Backend:** `checklist` JSON column exists, persisted correctly
-- **Frontend:** ChecklistItem type defined (`{id, title, completed}`), TaskModal renders checklist with add/toggle/delete
-- **Gap:** Functional but no persistence of partial completion state during drag operations
+- **Backend:** `checklist` JSON column exists, persisted correctly. Server auto-derives `task.progress` when checklist items are present (`round((completed/total)*100)`).
+- **Frontend:** ChecklistItem type defined (`{id, title, completed}`), TaskModal renders checklist with add/toggle/delete, disables manual progress slider when checklist exists.
+- **Gap:** Checklist items are per-task; no templates or sub-item nesting.
 
 ### Board Hero Images
 - **Frontend:** Upload (canvas resize to 1400x800), URL paste, Unsplash presets all work
@@ -171,22 +166,13 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 - **Gap:** Large base64 images stored in MySQL — performance concern at scale
 
 ### SSE Real-Time
-- **Backend:** EventBroadcaster with in-memory pub/sub, broadcasts all event types
-- **Frontend:** useBoardRealtime hook handles all event types, reconnects on error
-- **Gap:** In-memory broadcaster loses events on server restart; no message queue; single-server only
+- **Backend:** EventBroadcaster with in-memory pub/sub, broadcasts 22 event types; pinned to single Gunicorn process with threads (`workers = 1`).
+- **Frontend:** useBoardRealtime hook handles all 22 event types, reconnects on error with 4-second debounced lock.
+- **Gap:** Single-process deployment constraint. Horizontal multi-worker scaling requires transitioning to Redis Pub/Sub.
 
 ---
 
 ## Not Implemented Features
-
-### Search/Filter on Tasks
-- No global task search across boards
-- No advanced filtering (by assignee, priority, date range) on the kanban board
-- TaskListView has no search input
-
-### Due Date Notifications
-- Tasks have `due_date` field but no automated reminders or overdue indicators
-- No background job to check approaching deadlines
 
 ### Recurring Tasks
 - No mechanism for creating recurring/scheduled tasks
@@ -197,49 +183,27 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 ### Time Tracking
 - No time logging or estimation features
 
-### Dark Mode
-- TailwindCSS dark mode class strategy is configured but no theme toggle exists in the UI
-- `next-themes` is installed but not wired into the app
-
-### Export/Import
-- No board export (JSON, CSV, etc.)
-- No board import functionality
-
-### Email Notifications
-- All notifications are in-app only
-- No email sending for assignments, mentions, or invitations
-
-### User Avatar Upload
-- Users have no profile picture
-- Initials are used everywhere (avatar fallback)
-
 ### Multi-Language (i18n)
 - No internationalization
 - UI is English-only
 
+### Board Import
+- Data export (JSON) is implemented for boards and users; board import from JSON/CSV remains unimplemented.
+
 ---
 
 ## Technical Debt
-
-### CORS Initialization Duplication
-**File:** `backend/app/__init__.py`
-CORS is initialized twice (lines 22-35 and 40-53) with identical configuration. Harmless but redundant.
 
 ### Hardcoded Development Secrets
 **File:** `backend/config.py`
 `SECRET_KEY` and `JWT_SECRET_KEY` have hardcoded fallback values (`'dev-secret-key'`, `'super-secret-jwt-key-for-development-32-chars-long'`). These are fine for development but dangerous if env vars are not set in production.
 
 ### Dead Code
-- `src/pages/Index.tsx` — wraps `<KanbanBoard />` but is not referenced in any route. Dead file.
 - `src/services/api.ts` — contains `USE_MOCK = false` with mock code branches in every function. The mock code is unreachable.
 
 ### TypeScript Strict Mode Off
 **File:** `tsconfig.app.json`
 `"strict": false` and `"noImplicitAny": false` reduce type safety. Many implicit `any` types throughout the codebase.
-
-### No ESLint Unused Variable Detection
-**File:** `eslint.config.js`
-`no-unused-vars` is turned off. Dead imports and variables go undetected.
 
 ### ActivityContext Mock in Tests
 **File:** `src/test/setup.ts`
@@ -249,14 +213,26 @@ The ActivityContext is globally mocked in test setup. This could mask issues in 
 **File:** `backend/seed.py`
 `seed.py` drops and recreates all tables. There is no safe migration-based seeding for development data.
 
-### File Uploads Not Scanned
-Uploaded files are stored without virus scanning or content validation beyond extension checking.
+### Global Page Task Editing RBAC Discrepancy (CD-07)
+**Files:** `src/pages/DashboardPage.tsx`, `src/pages/TasksPage.tsx`, `src/pages/CalendarPage.tsx`
+Global views instantiate `<TaskDetailWorkspace>` with hardcoded `readOnly={false}` without evaluating the user's role on the selected task's board, while the backend strictly returns HTTP 403 on mutation for Viewers/Commenters.
 
-### No Rate Limiting
-No rate limiting on any API endpoints (login, registration, file upload, etc.).
+---
 
-### No Input Validation Library
-Backend routes do manual validation. No use of marshmallow, pydantic, or similar validation libraries.
+## Security Posture & Safeguards
+
+### File Security & Storage Quotas (Implemented)
+- Uploaded files are scanned for malware signatures (EICAR, Windows PE `MZ`, Linux `ELF`, macOS `Mach-O`, shell scripts `#!`, `<script>`).
+- Image magic bytes validated for `.png`, `.jpg`/`.jpeg`, `.gif`, `.webp`.
+- Quotas enforced: 25 MB per file, 100 MB per board, 500 MB per board owner.
+- File serving requires JWT authentication and active board membership / conversation participation; user avatars are public.
+
+### Rate Limiting (Implemented)
+- `Flask-Limiter` integrated in `backend/app/__init__.py`.
+- Strict limits enforced on auth (`10 per minute`), invitations (`20 per minute`), and verification resends.
+
+### Email Normalization & Validation (Implemented)
+- Emails are normalized with `.strip().lower()` and validated with `email-validator` across registration, login, and board invitations.
 
 ---
 

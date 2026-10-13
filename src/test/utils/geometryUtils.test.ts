@@ -13,18 +13,18 @@ describe("geometryUtils - Container Geometry & Radii", () => {
   it("computes default comfortable geometry correctly", () => {
     const geom = getContainerGeometry(false);
     expect(geom.padding).toBe(DEFAULT_COMFORTABLE_PADDING); // 12px
-    expect(geom.innerRadius).toBe(DEFAULT_COMFORTABLE_INNER_RADIUS); // 12px
-    expect(geom.outerRadius).toBe(DEFAULT_COMFORTABLE_OUTER_RADIUS); // 24px
-    expect(geom.imageRadius).toBe(6); // 12 - 6 = 6px
+    expect(geom.innerRadius).toBe(DEFAULT_COMFORTABLE_INNER_RADIUS); // 8px
+    expect(geom.outerRadius).toBe(DEFAULT_COMFORTABLE_OUTER_RADIUS); // 12px
+    expect(geom.imageRadius).toBe(2); // 8 - 6 = 2px
     expect(geom.isCustom).toBe(false);
   });
 
   it("computes default compact geometry correctly", () => {
     const geom = getContainerGeometry(true);
     expect(geom.padding).toBe(DEFAULT_COMPACT_PADDING); // 8px
-    expect(geom.innerRadius).toBe(DEFAULT_COMPACT_INNER_RADIUS); // 10px
-    expect(geom.outerRadius).toBe(DEFAULT_COMPACT_OUTER_RADIUS); // 18px
-    expect(geom.imageRadius).toBe(6); // 10 - 4 = 6px
+    expect(geom.innerRadius).toBe(DEFAULT_COMPACT_INNER_RADIUS); // 8px
+    expect(geom.outerRadius).toBe(DEFAULT_COMPACT_OUTER_RADIUS); // 12px
+    expect(geom.imageRadius).toBe(4); // 8 - 4 = 4px
     expect(geom.isCustom).toBe(false);
   });
 
@@ -49,7 +49,7 @@ describe("geometryUtils - Container Geometry & Radii", () => {
   it("allows setting only custom outer radius while retaining default inner radius and padding", () => {
     const geom = getContainerGeometry(false, null, null, 32);
     expect(geom.padding).toBe(DEFAULT_COMFORTABLE_PADDING); // 12px
-    expect(geom.innerRadius).toBe(DEFAULT_COMFORTABLE_INNER_RADIUS); // 12px
+    expect(geom.innerRadius).toBe(DEFAULT_COMFORTABLE_INNER_RADIUS); // 8px
     expect(geom.outerRadius).toBe(32); // 32px
     expect(geom.isCustom).toBe(true);
   });

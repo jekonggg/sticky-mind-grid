@@ -34,9 +34,10 @@ All colors MUST be HSL.
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 226 70% 55%;
-
-    --radius: 0.75rem;
+    --app-font: 'Sora', system-ui, -apple-system, sans-serif;
+    --radius: 12px;
+    --radius-outer: 12px;
+    --radius-inner: 8px;
 
     --column-todo: 210 20% 95%;
     --column-progress: 210 20% 95%;
@@ -157,7 +158,7 @@ All colors MUST be HSL.
 
   html, body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: var(--app-font, 'Helvetica Neue', Helvetica, Arial, system-ui, -apple-system, sans-serif);
+    font-family: var(--app-font, 'Sora', system-ui, -apple-system, sans-serif);
     overflow-x: hidden;
   }
 }

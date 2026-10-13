@@ -24,10 +24,26 @@ export const defaultDevSettings: DevSettings = {
   customOuterRadius: null,
 };
 
+export const prodSettings: DevSettings = {
+  simulateSkeletonLoading: false,
+  networkLatencyMs: 0,
+  chaosErrorMode: "none",
+  simulateEmptyState: false,
+  seedTakeoverPreset: "none",
+  simulatedRole: "none",
+  simulateSseDisconnect: false,
+  forceReducedMotion: false,
+  fontFamily: "sora",
+  disableEmojiCustomization: true,
+  customPadding: 12,
+  customInnerRadius: 8,
+  customOuterRadius: 12,
+};
+
 // Global synchronous getter for API services & non-React files
 export function getDevSettings(): DevSettings {
   if (typeof window === "undefined" || !import.meta.env.DEV) {
-    return defaultDevSettings;
+    return prodSettings;
   }
   try {
     const raw = localStorage.getItem(DEV_SETTINGS_STORAGE_KEY);
@@ -122,8 +138,8 @@ export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Handle dynamic font family application to root & body
   useEffect(() => {
     if (typeof document !== "undefined") {
-      const activeFont = devSettings.fontFamily || "helvetica";
-      const fontStack = FONT_STACK_MAP[activeFont] || FONT_STACK_MAP.helvetica;
+      const activeFont = devSettings.fontFamily || (!import.meta.env.DEV ? "sora" : "helvetica");
+      const fontStack = FONT_STACK_MAP[activeFont] || FONT_STACK_MAP.sora;
       document.documentElement.style.setProperty("--app-font", fontStack);
       document.body.style.fontFamily = fontStack;
     }

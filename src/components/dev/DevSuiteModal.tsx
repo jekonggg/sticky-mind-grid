@@ -418,9 +418,26 @@ export function DevSuiteModal() {
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-[10px] font-bold text-muted-foreground border-border/80">
-                          Default ({isCompact ? "Compact: 18px outer / 10px inner / 8px pad" : "Comfortable: 24px outer / 12px inner / 12px pad"})
+                          Default ({isCompact ? "Compact: 12px outer / 8px inner / 8px pad" : "Comfortable: 12px outer / 8px inner / 12px pad"})
                         </Badge>
                       )}
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          updateDevSetting("fontFamily", "sora");
+                          updateDevSetting("disableEmojiCustomization", true);
+                          updateDevSetting("customOuterRadius", 12);
+                          updateDevSetting("customInnerRadius", 8);
+                          updateDevSetting("customPadding", 12);
+                          toast.success("Applied Production Standard (Sora, Clean UI, 12o / 8i / 12p)");
+                        }}
+                        className="h-6 px-2 text-[11px] font-bold text-primary hover:text-primary gap-1 border-primary/30"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        <span>Production Standard</span>
+                      </Button>
 
                       {geom.isCustom && (
                         <Button
@@ -453,7 +470,7 @@ export function DevSuiteModal() {
                         </p>
                       </div>
                       <Badge variant="outline" className="font-mono text-xs font-bold bg-background">
-                        {geom.outerRadius}px {geom.outerRadius === (isCompact ? 18 : 24) && !devSettings.customOuterRadius ? "(Default)" : ""}
+                        {geom.outerRadius}px {geom.outerRadius === 12 && !devSettings.customOuterRadius ? "(Default)" : ""}
                       </Badge>
                     </div>
 
@@ -501,7 +518,7 @@ export function DevSuiteModal() {
                         </p>
                       </div>
                       <Badge variant="outline" className="font-mono text-xs font-bold bg-background">
-                        {geom.innerRadius}px {geom.innerRadius === (isCompact ? 10 : 12) && !devSettings.customInnerRadius ? "(Default)" : ""}
+                        {geom.innerRadius}px {geom.innerRadius === 8 && !devSettings.customInnerRadius ? "(Default)" : ""}
                       </Badge>
                     </div>
 

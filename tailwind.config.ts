@@ -16,9 +16,7 @@ export default {
       fontFamily: {
         sans: [
           'var(--app-font)',
-          '"Helvetica Neue"',
-          'Helvetica',
-          'Arial',
+          "'Sora'",
           'system-ui',
           '-apple-system',
           'sans-serif',
@@ -71,8 +69,8 @@ export default {
       },
       borderRadius: {
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 6px)",
       },
       keyframes: {
         "accordion-down": {

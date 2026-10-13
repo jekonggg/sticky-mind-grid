@@ -241,8 +241,8 @@ export function TaskCard({
         <div
           className={`relative inline-flex items-center gap-1.5 ${
             isCompact
-              ? "h-[18px] pl-2 pr-1.5 pt-1 rounded-tl-[9px]"
-              : "h-[22px] pl-2.5 pr-2 pt-1.5 rounded-tl-[11px]"
+              ? "h-[18px] pl-2 pr-1.5 pt-1 rounded-tl-[8px]"
+              : "h-[22px] pl-2.5 pr-2 pt-1.5 rounded-tl-[8px]"
           } bg-card border-t border-l ${borderClass} shrink-0 transition-colors overflow-hidden`}
         >
           <div className={`absolute inset-0 ${priority.tabBg} pointer-events-none`} />
@@ -328,11 +328,7 @@ export function TaskCard({
 
       {/* 2. Main Card Body (Seamlessly connects to the folder tab above with rounded top-right corner) */}
       <div
-        className={`bg-card border ${borderClass} ${
-          isCompact
-            ? "rounded-b-[10px] rounded-tr-[10px] rounded-tl-none p-2.5 -mt-[1px]"
-            : "rounded-b-xl rounded-tr-xl rounded-tl-none p-3.5 -mt-[1px]"
-        } transition-colors shadow-xs`}
+        className={`bg-card border ${borderClass} rounded-b-[8px] rounded-tr-[8px] rounded-tl-none p-3 -mt-[1px] transition-colors shadow-xs`}
       >
         {/* Cover Image Attachment (Option A: Beneath folder tab header across full width) */}
         {firstAttachment && isFirstImage && (

@@ -223,7 +223,7 @@ GLOBAL / USER ROOT
     │             │                              UNIQUE(board_id, user_id))
     │             ├── 1:N ──> board_invitations (board_id FK -> boards.id ON DELETE CASCADE,
     │             │                              inviter_id FK -> users.id ON DELETE CASCADE)
-    │             ├── 1:N ──> tasks             (board_id FK -> boards.id [ORM delete-orphan],
+    │             ├── 1:N ──> tasks             (board_id FK -> boards.id ON DELETE CASCADE,
     │             │             │                assigned_to FK -> users.id,
     │             │             │                created_by FK -> users.id)
     │             │             └── 1:N ──> comments (task_id FK -> tasks.id ON DELETE CASCADE,
@@ -353,7 +353,7 @@ GLOBAL / USER ROOT
 | Column | Type | Nullable | Default | Constraints / FKs | Line |
 |---|---|---|---|---|---|
 | `id` | `String(36)` | `False` | `generate_uuid` | `PRIMARY KEY` | `L13` |
-| `board_id` | `String(36)` | `False` | — | `FK -> boards.id` (ORM `delete-orphan` on `Board.tasks`) | `L14` |
+| `board_id` | `String(36)` | `False` | — | `FK -> boards.id ON DELETE CASCADE` (ORM `delete-orphan` on `Board.tasks`) | `L14` |
 | `title` | `String(255)` | `False` | — | — | `L15` |
 | `emoji` | `String(50)` | `True` | `None` | — | `L16` |
 | `description` | `Text` / `LONGTEXT` (MySQL) | `True` | `None` | Supports optimistic concurrency check via `baseDescription` | `L17` |

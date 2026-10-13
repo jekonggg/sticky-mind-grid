@@ -33,7 +33,7 @@ flowchart TD
 
     subgraph Suite1["Product & Specifications"]
         D01["01-product-overview.md\n(Purpose, Users, Scope & Glossary)"]
-        D02["02-business-rules.md\n(42 Verified Rules BR-01 to BR-42)"]
+        D02["02-business-rules.md\n(44 Verified Rules BR-01 to BR-44)"]
         D03["03-roles-and-permissions.md\n(5-Tier RBAC & Action Matrix)"]
         D04["04-invite-lifecycle.md\n(Invite State Machine & Transitions)"]
         D05["05-user-guide.md\n(End-User Workflows & Guide)"]
@@ -73,7 +73,7 @@ flowchart TD
 - **`docs/00-index.md` (Documentation Hub)** anchors the complete documentation suite:
   1. **Product & Specifications**:
      - `docs/01-product-overview.md`: Product purpose, target personas, scope, and canonical glossary.
-     - `docs/02-business-rules.md`: Complete register of 42 verified business rules (`BR-01` to `BR-42`).
+     - `docs/02-business-rules.md`: Complete register of 44 verified business rules (`BR-01` to `BR-44`).
      - `docs/03-roles-and-permissions.md`: 5-tier RBAC hierarchy (`Owner`, `Admin`, `Editor`, `Commenter`, `Viewer`) and complete permission matrices.
      - `docs/04-invite-lifecycle.md`: Invite and membership state machine, transitions, triggers, and expiry rules.
      - `docs/05-user-guide.md`: Step-by-step end-user guide covering boards, cards, collaboration, and exports.
@@ -106,7 +106,7 @@ flowchart TD
 | Document | Status | One-Line Description |
 |---|---|---|
 | [`docs/01-product-overview.md`](file:///c:/Users/ramos/sticky-mind-grid/docs/01-product-overview.md) | Verified | High-level system purpose, target personas, scope boundaries, system architecture flow, non-goals, and canonical glossary. |
-| [`docs/02-business-rules.md`](file:///c:/Users/ramos/sticky-mind-grid/docs/02-business-rules.md) | Verified | Comprehensive register of 42 numbered business rules (`BR-01`–`BR-42`) with server/SSE/UI enforcement locations and test coverage. |
+| [`docs/02-business-rules.md`](file:///c:/Users/ramos/sticky-mind-grid/docs/02-business-rules.md) | Verified | Comprehensive register of 44 numbered business rules (`BR-01`–`BR-44`) with server/SSE/UI enforcement locations and test coverage. |
 | [`docs/03-roles-and-permissions.md`](file:///c:/Users/ramos/sticky-mind-grid/docs/03-roles-and-permissions.md) | Verified | 5-role RBAC hierarchy definition, full role-by-action permission matrix, and documented UI vs. Server enforcement gaps. |
 | [`docs/04-invite-lifecycle.md`](file:///c:/Users/ramos/sticky-mind-grid/docs/04-invite-lifecycle.md) | Verified | Lifecycle state machine, transitions, 7-day expiration, resend/revoke flows, signup auto-linking, and spam protection limits. |
 | [`docs/05-user-guide.md`](file:///c:/Users/ramos/sticky-mind-grid/docs/05-user-guide.md) | Verified | End-user instructions for boards, multi-view workspaces, task collaboration, cross-board moves, trash recovery, and data export. |

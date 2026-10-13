@@ -70,6 +70,7 @@ const mockMembers: BoardMember[] = [
 
 describe("BoardMembers Component", () => {
   beforeEach(() => {
+    localStorage.removeItem(DEV_SETTINGS_STORAGE_KEY);
     vi.clearAllMocks();
   });
 
@@ -129,7 +130,7 @@ describe("BoardMembers Component", () => {
     expect(triggers.length).toBeGreaterThan(0);
   });
 
-  it("requires typing the board name to confirm when clicking Make Owner button", async () => {
+  it("requires typing the board name to confirm when clicking Transfer Ownership button", async () => {
     const ownerUser = {
       id: "owner-user-id",
       email: "owner@example.com",
@@ -142,11 +143,11 @@ describe("BoardMembers Component", () => {
 
     renderWithProviders(<BoardMembers boardId="board-1" />, { user: ownerUser });
 
-    const makeOwnerBtn = await screen.findByRole("button", { name: /make owner/i });
+    const makeOwnerBtn = await screen.findByRole("button", { name: /transfer ownership/i });
     fireEvent.click(makeOwnerBtn);
 
     expect(
-      await screen.findByText(/Promote Test User to Owner\?/i)
+      await screen.findByText(/Transfer Ownership to Test User\?/i)
     ).toBeInTheDocument();
 
     const input = screen.getByTestId("confirm-promote-owner-input");
@@ -180,11 +181,11 @@ describe("BoardMembers Component", () => {
 
     renderWithProviders(<BoardMembers boardId="board-1" />, { user: ownerUser });
 
-    const makeOwnerBtn = await screen.findByRole("button", { name: /make owner/i });
+    const makeOwnerBtn = await screen.findByRole("button", { name: /transfer ownership/i });
     fireEvent.click(makeOwnerBtn);
 
     expect(
-      await screen.findByText(/Promote Test User to Owner\?/i)
+      await screen.findByText(/Transfer Ownership to Test User\?/i)
     ).toBeInTheDocument();
 
     const cancelBtn = screen.getByRole("button", { name: /cancel/i });
@@ -192,7 +193,7 @@ describe("BoardMembers Component", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByText(/Promote Test User to Owner\?/i)
+        screen.queryByText(/Transfer Ownership to Test User\?/i)
       ).not.toBeInTheDocument();
     });
     expect(boardApi.transferOwnership).not.toHaveBeenCalled();
@@ -230,7 +231,7 @@ describe("BoardMembers Component", () => {
 
     // Confirmation dialog opens
     expect(
-      await screen.findByText(/Promote Test User to Owner\?/i)
+      await screen.findByText(/Transfer Ownership to Test User\?/i)
     ).toBeInTheDocument();
 
     const input = screen.getByTestId("confirm-promote-owner-input");

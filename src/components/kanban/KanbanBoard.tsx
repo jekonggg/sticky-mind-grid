@@ -815,9 +815,7 @@ export function KanbanBoard() {
                     <button
                       onClick={handleAddNewState}
                       style={geom.isCustom ? { borderRadius: `${geom.outerRadius}px` } : undefined}
-                      className={`w-full h-full min-h-[140px] flex flex-col items-center justify-center gap-2 p-4 text-muted-foreground/70 hover:text-primary hover:bg-background/80 ${
-                        isCompact ? "rounded-[18px]" : "rounded-[24px]"
-                      } border border-dashed border-border/70 hover:border-primary/40 transition-all group bg-slate-100/40 dark:bg-slate-900/30 cursor-pointer shadow-xs`}
+                      className="w-full h-full min-h-[140px] flex flex-col items-center justify-center gap-2 p-4 text-muted-foreground/70 hover:text-primary hover:bg-background/80 rounded-[12px] border border-dashed border-border/70 hover:border-primary/40 transition-all group bg-slate-100/40 dark:bg-slate-900/30 cursor-pointer shadow-xs"
                       title="Add new column stage"
                     >
                       <Plus className="h-5 w-5 transition-transform group-hover:rotate-90 text-primary" />

@@ -7,12 +7,12 @@ export interface ContainerGeometry {
 }
 
 export const DEFAULT_COMFORTABLE_PADDING = 12;
-export const DEFAULT_COMFORTABLE_INNER_RADIUS = 12;
-export const DEFAULT_COMFORTABLE_OUTER_RADIUS = 24;
+export const DEFAULT_COMFORTABLE_INNER_RADIUS = 8;
+export const DEFAULT_COMFORTABLE_OUTER_RADIUS = 12;
 
 export const DEFAULT_COMPACT_PADDING = 8;
-export const DEFAULT_COMPACT_INNER_RADIUS = 10;
-export const DEFAULT_COMPACT_OUTER_RADIUS = 18;
+export const DEFAULT_COMPACT_INNER_RADIUS = 8;
+export const DEFAULT_COMPACT_OUTER_RADIUS = 12;
 
 /**
  * Calculates border-radius and padding for nested containers.

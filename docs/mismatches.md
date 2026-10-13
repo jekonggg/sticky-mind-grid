@@ -29,16 +29,16 @@ These contradictions were identified during the consistency audit across the pri
 
 | Mismatch / Contradiction | File or Area | Why It Matters | Suggested Owner | Source Agent |
 |---|---|---|---|---|
-| **MM-01:** File Serving Authentication — `docs/ARCHITECTURE.md:L220-L221, L688` claims `GET /api/files/<filename>` requires no auth (`"Public"`), but code requires JWT (`Bearer` or `?token=`) and `viewer`+ board access (`401`/`403`) for task/chat files (only avatars are public). | `docs/ARCHITECTURE.md:L220-L221, L688`, `backend/app/routes/file_routes.py:L45-L60`, `backend/app/services/file_service.py:L382-L460` | Misleads developers into believing uploaded file assets are unauthenticated public URLs when strict tenancy is enforced. | Technical Documentation Lead | Agent 3 / Agent 4 |
-| **MM-02:** Malware Scanning, Magic Bytes & Quotas — `docs/ARCHITECTURE.md:L682`, `PROJECT_STATUS.md:L252`, and `ROADMAP.md:L19` claim uploads have no scanning, no magic bytes, and no size quotas beyond upload size; code enforces magic-byte validation, malware signature scanning, and 100 MB board / 500 MB owner quotas. | `docs/ARCHITECTURE.md:L682`, `docs/PROJECT_STATUS.md:L252`, `backend/app/services/file_service.py:L63-L109, L177-L207`, `backend/config.py:L55-L57` | Severely understates application security posture and misrepresents production storage management. | Technical Documentation Lead | Agent 4 / Agent 5 |
-| **MM-03:** Soft Delete Scope Beyond Tasks — `AGENTS.md:L100`, `ARCHITECTURE.md:L360`, and `PROJECT_STATUS.md:L30` claim soft delete exists only on `Task`; code implements 30-day soft delete on `Board`, soft unsend on `Message`, and soft status retention on `BoardInvitation` and `BoardMember`. | `AGENTS.md:L100`, `docs/ARCHITECTURE.md:L360-L368`, `backend/app/models/board.py:L32-L33`, `backend/app/services/board_service.py:L297-L356` | Developers relying on legacy docs might assume board deletions are immediate hard deletes and fail to account for 30-day board trash lifecycle. | Technical Documentation Lead | Agent 1 / Agent 3 |
-| **MM-04:** Blueprints, Services & DB Tables Count — `docs/ARCHITECTURE.md:L27-L30, L148, L235-L339` lists 8 Blueprints, 6 services, and 8 DB tables; code registers 11 Blueprints, 9 services (including `NotificationService`, `UserService`, `MessageService`), and 13 DB tables. | `docs/ARCHITECTURE.md:L27-L30, L148, L235-L339`, `backend/app/__init__.py:L63-L85`, `backend/app/services/*.py`, `backend/app/models/*.py` | Outdated architecture documentation conceals messaging, preferences, and standalone notification services. | Technical Documentation Lead | Agent 3 |
-| **MM-05:** Frontend Routes & Context Providers Hierarchy — `docs/ARCHITECTURE.md:L42-L64` lists only 5 routes and 4 context providers; code defines 9 routes (adding `/dashboard`, `/tasks`, `/calendar`, `/teams`) and 7 providers (`SettingsProvider`, `DevModeProvider`, etc.). | `docs/ARCHITECTURE.md:L42-L64`, `src/App.tsx:L31-L69`, `src/components/layout/AppLayout.tsx:L97` | Incomplete developer onboarding reference; developers miss global productivity views and developer tooling modes. | Technical Documentation Lead | Agent 2 / Agent 3 |
-| **MM-06:** API Route Permissions & Immutability — `docs/ARCHITECTURE.md:L181-L208` claims `DELETE /api/activities` clears activities for `admin` (code returns HTTP 403 immutable for all), and misstates roles for trash (`editor`, not `viewer`), comments (`commenter`, not `viewer`), and board activities (`admin`, not `viewer`). | `docs/ARCHITECTURE.md:L181-L208`, `backend/app/routes/activity_routes.py:L27-L28, L51-L55`, `backend/app/routes/task_routes.py:L33-L34`, `backend/app/routes/comment_routes.py:L17` | Critical inaccuracy in API security documentation; leads to improper frontend integration assumptions. | Technical Documentation Lead | Agent 1 / Agent 3 |
-| **MM-07:** Outdated "Not Implemented" Claims — `docs/PROJECT_STATUS.md:L151-L260` and `ROADMAP.md` list Assignee Validation, Task Search/Filter, Overdue Indicators, Dark Mode, Data Export, Avatars, Templates, Conflict Detection, and `/api/health` as unimplemented; all are implemented in code. | `docs/PROJECT_STATUS.md:L151-L260`, `docs/ROADMAP.md:L14-L161`, multiple backend & frontend source files | Obsolete project tracking documents obscure production-ready capabilities. | Product Management / Tech Lead | Agent 1 / Agent 2 |
-| **MM-08:** Duplicate CORS Initialization Claim — `docs/PROJECT_STATUS.md:L224` and `ROADMAP.md:L55` claim `CORS()` is called twice in `backend/app/__init__.py`; code initializes `CORS` only once (`L35-L42`). | `docs/PROJECT_STATUS.md:L224-L226`, `docs/ROADMAP.md:L55`, `backend/app/__init__.py:L35-L42` | Phantom bug claim in roadmap; creates unnecessary remediation work. | Technical Documentation Lead | Agent 3 |
-| **MM-09:** Playwright E2E Port Number — `docs/ARCHITECTURE.md:L739` states Playwright runs against port `5173`; code configures Playwright against `http://localhost:8085` (and Vite dev server on port `8080`). | `docs/ARCHITECTURE.md:L739`, `playwright.config.ts:L16, L24`, `e2e/run.mjs:L17` | Misleading test documentation; causes local test runs to fail if wrong ports are targeted. | QA / Testing Lead | Agent 4 |
-| **MM-10 [CLOSED]:** SSE Event Matrix Discrepancy — `docs/ARCHITECTURE.md:L637, L643-L663` lists only 12 SSE events, omitting 9 events emitted by backend services (`comment:*`, `note:*`, `trash:emptied`, `member:invited`, `member:invite_resent`). | `docs/ARCHITECTURE.md:L637, L643-L663`, `src/hooks/useBoardRealtime.ts:L182-L279`, `backend/app/services/*.py` | **CLOSED:** `useBoardRealtime.ts` updated to handle all 21+ backend SSE events, cataloging each with React Query cache invalidation and callback dispatch. | Real-Time / Backend Lead | Agent 3 |
+| **MM-01 [CLOSED]:** File Serving Authentication — `docs/ARCHITECTURE.md:L220-L221, L688` claimed `GET /api/files/<filename>` requires no auth (`"Public"`), but code requires JWT (`Bearer` or `?token=`) and `viewer`+ board access (`401`/`403`) for task/chat files (only avatars are public). | `docs/ARCHITECTURE.md:L220-L221, L688`, `backend/app/routes/file_routes.py:L45-L60`, `backend/app/services/file_service.py:L382-L460` | **CLOSED:** `docs/ARCHITECTURE.md` updated to document JWT-authenticated file serving with tenant boundary validation and public avatar access. | Technical Documentation Lead | Agent 3 / Agent 4 |
+| **MM-02 [CLOSED]:** Malware Scanning, Magic Bytes & Quotas — `docs/ARCHITECTURE.md:L682`, `PROJECT_STATUS.md:L252`, and `ROADMAP.md:L19` claimed uploads have no scanning, no magic bytes, and no size quotas beyond upload size; code enforces magic-byte validation, malware signature scanning, and 100 MB board / 500 MB owner quotas. | `docs/ARCHITECTURE.md:L682`, `docs/PROJECT_STATUS.md:L252`, `backend/app/services/file_service.py:L63-L109, L177-L207`, `backend/config.py:L55-L57` | **CLOSED:** `docs/ARCHITECTURE.md` and `docs/PROJECT_STATUS.md` updated to document 25 MB file, 100 MB board, and 500 MB owner quotas, magic-byte validation, and malware scanning. | Technical Documentation Lead | Agent 4 / Agent 5 |
+| **MM-03 [CLOSED]:** Soft Delete Scope Beyond Tasks — `AGENTS.md:L100`, `ARCHITECTURE.md:L360`, and `PROJECT_STATUS.md:L30` claimed soft delete exists only on `Task`; code implements 30-day soft delete on `Board`, soft unsend on `Message`, and soft status retention on `BoardInvitation` and `BoardMember`. | `AGENTS.md:L100`, `docs/ARCHITECTURE.md:L360-L368`, `backend/app/models/board.py:L32-L33`, `backend/app/services/board_service.py:L297-L356` | **CLOSED:** `AGENTS.md`, `docs/ARCHITECTURE.md`, and `docs/PROJECT_STATUS.md` updated to document soft delete across Boards, Messages, Invitations, and Members. | Technical Documentation Lead | Agent 1 / Agent 3 |
+| **MM-04 [CLOSED]:** Blueprints, Services & DB Tables Count — `docs/ARCHITECTURE.md:L27-L30, L148, L235-L339` listed 8 Blueprints, 6 services, and 8 DB tables; code registers 11 Blueprints, 9 services (including `NotificationService`, `UserService`, `MessageService`), and 13 DB tables. | `docs/ARCHITECTURE.md:L27-L30, L148, L235-L339`, `backend/app/__init__.py:L63-L85`, `backend/app/services/*.py`, `backend/app/models/*.py` | **CLOSED:** `docs/ARCHITECTURE.md` updated with exact verified counts: 11 Blueprints, 9 services (10 service modules), and 13 database tables. | Technical Documentation Lead | Agent 3 |
+| **MM-05 [CLOSED]:** Frontend Routes & Context Providers Hierarchy — `docs/ARCHITECTURE.md:L42-L64` listed only 5 routes and 4 context providers; code defines 9 routes (adding `/dashboard`, `/tasks`, `/calendar`, `/teams`) and 7 providers (`SettingsProvider`, `DevModeProvider`, etc.). | `docs/ARCHITECTURE.md:L42-L64`, `src/App.tsx:L31-L69`, `src/components/layout/AppLayout.tsx:L97` | **CLOSED:** `docs/ARCHITECTURE.md` updated to document all 9 application routes and full 7-provider nesting hierarchy. | Technical Documentation Lead | Agent 2 / Agent 3 |
+| **MM-06 [CLOSED]:** API Route Permissions & Immutability — `docs/ARCHITECTURE.md:L181-L208` claimed `DELETE /api/activities` clears activities for `admin` (code returns HTTP 403 immutable for all), and misstated roles for trash (`editor`, not `viewer`), comments (`commenter`, not `viewer`), and board activities (`admin`, not `viewer`). | `docs/ARCHITECTURE.md:L181-L208`, `backend/app/routes/activity_routes.py:L27-L28, L51-L55`, `backend/app/routes/task_routes.py:L33-L34`, `backend/app/routes/comment_routes.py:L17` | **CLOSED:** `docs/ARCHITECTURE.md` API permissions table updated: activity immutability, trash/comments RBAC levels, and admin-only board activity queries documented accurately. | Technical Documentation Lead | Agent 1 / Agent 3 |
+| **MM-07 [CLOSED]:** Outdated "Not Implemented" Claims — `docs/PROJECT_STATUS.md:L151-L260` and `ROADMAP.md` listed Assignee Validation, Task Search/Filter, Overdue Indicators, Dark Mode, Data Export, Avatars, Templates, Conflict Detection, and `/api/health` as unimplemented; all are implemented in code. | `docs/PROJECT_STATUS.md:L151-L260`, `docs/ROADMAP.md:L14-L161`, multiple backend & frontend source files | **CLOSED:** `docs/PROJECT_STATUS.md` updated to mark all implemented features as production-ready and removed from unimplemented tracking. | Product Management / Tech Lead | Agent 1 / Agent 2 |
+| **MM-08 [CLOSED]:** Duplicate CORS Initialization Claim — `docs/PROJECT_STATUS.md:L224` and `ROADMAP.md:L55` claimed `CORS()` is called twice in `backend/app/__init__.py`; code initializes `CORS` only once (`L35-L42`). | `docs/PROJECT_STATUS.md:L224-L226`, `docs/ROADMAP.md:L55`, `backend/app/__init__.py:L35-L42` | **CLOSED:** `docs/PROJECT_STATUS.md` updated to remove phantom duplicate CORS technical debt item. | Technical Documentation Lead | Agent 3 |
+| **MM-09 [CLOSED]:** Playwright E2E Port Number — `docs/ARCHITECTURE.md:L739` stated Playwright runs against port `5173`; code configures Playwright against `http://localhost:8085` (and Vite dev server on port `8080`). | `docs/ARCHITECTURE.md:L739`, `playwright.config.ts:L16, L24`, `e2e/run.mjs:L17` | **CLOSED:** `docs/ARCHITECTURE.md` updated to document Playwright running on port 8085 and Vite dev server on port 8080. | QA / Testing Lead | Agent 4 |
+| **MM-10 [CLOSED]:** SSE Event Matrix Discrepancy — `docs/ARCHITECTURE.md:L637, L643-L663` lists only 12 SSE events, omitting 9 events emitted by backend services (`comment:*`, `note:*`, `trash:emptied`, `member:invited`, `member:invite_resent`). | `docs/ARCHITECTURE.md:L637, L643-L663`, `src/hooks/useBoardRealtime.ts:L182-L279`, `backend/app/services/*.py` | **CLOSED:** `docs/ARCHITECTURE.md` updated to document all 22 SSE events with payload schemas and client handler mappings in `useBoardRealtime.ts`. | Real-Time / Backend Lead | Agent 3 |
 
 ---
 
@@ -66,10 +66,11 @@ These contradictions were identified during the consistency audit across the pri
 - **Conflict Details:** `02-business-rules.md` and `09-api-reference.md` state that permanently deleting a board removes the board and its resources. However, `Task.board_id` is defined without `ondelete='CASCADE'`, and `Board.tasks` lacks `cascade='all, delete-orphan'`. Consequently, calling `DELETE /api/boards/<id>` on a board containing tasks triggers `sqlalchemy.exc.IntegrityError: NOT NULL constraint failed: tasks.board_id`, returning HTTP 500.
 - **Recommended Action:** Add `ondelete='CASCADE'` to `Task.board_id` and ensure `FileService.cleanup_task_attachments` runs during board deletion.
 
-#### CD-04: Multi-Owner Co-Ownership vs. Singular Ownership Transfer
+#### CD-04 [CLOSED]: Multi-Owner Co-Ownership vs. Singular Ownership Transfer
+- **Status:** CLOSED / RESOLVED.
+- **Resolution:** Enforced strict single-owner model in `BoardService.transfer_ownership` (`backend/app/services/board_service.py:L1082-L1087`). When ownership is transferred, the previous owner's `BoardMember.role` is demoted to `'admin'`, maintaining the single-owner invariant. Updated `docs/02-business-rules.md:BR-04`, `docs/03-roles-and-permissions.md`, and `docs/09-api-reference.md`. Tested in `test_oq_resolutions.py`.
 - **Documents in Conflict:** `docs/03-roles-and-permissions.md:L16` & `docs/04-invite-lifecycle.md:L132` vs. `docs/06-functional-spec.md:L78` & `backend/app/services/board_service.py:L1072`.
-- **Conflict Details:** `04-invite-lifecycle.md` and `03-roles-and-permissions.md` verify that `BoardService.transfer_ownership` sets the new owner's role to `'owner'` but leaves the previous owner's `BoardMember.role` as `'owner'`, establishing multi-owner co-ownership. In contrast, `06-functional-spec.md` describes the flow as transferring sole ownership.
-- **Recommended Action:** Product management must clarify whether boards support multi-owner co-ownership or if former owners should automatically be demoted to `admin`.
+- **Conflict Details:** `04-invite-lifecycle.md` and `03-roles-and-permissions.md` originally documented that `BoardService.transfer_ownership` set the new owner's role to `'owner'` but left the previous owner's `BoardMember.role` as `'owner'`, establishing multi-owner co-ownership. In contrast, `06-functional-spec.md` described transferring sole ownership.
 
 #### CD-05 [CLOSED]: Former Member Author Deletions on Comments and Notes
 - **Status:** CLOSED / RESOLVED.
@@ -99,11 +100,12 @@ These contradictions were identified during the consistency audit across the pri
 
 ### MM-01 through MM-10: Code vs. Legacy Documentation Mismatches Analysis
 
-### MM-01: File Serving Authentication (`GET /api/files/<filename>`)
-- **What Existing Docs Claim:**
-  - `docs/ARCHITECTURE.md:L220-L221`: Lists `GET /api/files/<filename>` with Auth = `"Public"` and Purpose = `"Serve uploaded file"`.
-  - `docs/ARCHITECTURE.md:L688`: States *"Serving: `GET /api/files/<filename>` serves files directly from `uploads/` via `send_from_directory`. **No auth required for file retrieval** — anyone with the URL can access."* (Note: this also contradicts `docs/ARCHITECTURE.md:L588-L591` inside the same file.)
-- **What the Code Actually Does:**
+### MM-01 [CLOSED]: File Serving Authentication (`GET /api/files/<filename>`)
+- **Status:** CLOSED / RESOLVED in `docs/ARCHITECTURE.md`.
+- **What Existing Docs Claimed:**
+  - `docs/ARCHITECTURE.md:L220-L221`: Listed `GET /api/files/<filename>` with Auth = `"Public"` and Purpose = `"Serve uploaded file"`.
+  - `docs/ARCHITECTURE.md:L688`: Stated *"Serving: `GET /api/files/<filename>` serves files directly from `uploads/` via `send_from_directory`. **No auth required for file retrieval** — anyone with the URL can access."*
+- **What the Code Actually Does & Documented:**
   - `backend/app/routes/file_routes.py:L45-L60` and `backend/app/services/file_service.py:L382-L460` (`FileService.verify_file_access`):
     - Only user avatar files (`User.avatar_url.like(f'%/api/files/{filename}')`, `file_service.py:L395-L398`) are served publicly without a JWT.
     - For all other files, `file_routes.py:L49-L53` requires a valid JWT either in the `Authorization: Bearer <token>` header or the `?token=<jwt>` query parameter (`verify_jwt_in_request()`), returning `401 {"error": "Authentication required to access this file"}` if missing or invalid.
@@ -111,12 +113,13 @@ These contradictions were identified during the consistency audit across the pri
 
 ---
 
-### MM-02: Malware Scanning, Magic-Byte Validation & Storage Quotas
-- **What Existing Docs Claim:**
+### MM-02 [CLOSED]: Malware Scanning, Magic-Byte Validation & Storage Quotas
+- **Status:** CLOSED / RESOLVED in `docs/ARCHITECTURE.md` and `docs/PROJECT_STATUS.md`.
+- **What Existing Docs Claimed:**
   - `docs/ARCHITECTURE.md:L682`: *"Validation: Filename presence, extension whitelist, size limit (16MB via Flask `MAX_CONTENT_LENGTH`). No virus scanning, no size-based access control beyond upload limit."*
   - `docs/PROJECT_STATUS.md:L252-L253`: *"No file scanning — Uploaded files are stored without virus scanning or content validation beyond extension checking."*
   - `docs/ROADMAP.md:L19`: *"Add magic-byte validation on file uploads"* listed as an open `P0` task.
-- **What the Code Actually Does:**
+- **What the Code Actually Does & Documented:**
   - `backend/config.py:L55-L57`: Sets `MAX_CONTENT_LENGTH = 25 * 1024 * 1024` (25 MB per file), `MAX_BOARD_STORAGE_BYTES = 100 * 1024 * 1024` (100 MB per board), and `MAX_OWNER_STORAGE_BYTES = 500 * 1024 * 1024` (500 MB per board owner).
   - `backend/app/services/file_service.py:L63-L78` (`FileService.is_valid_image_bytes`): Validates magic bytes for `.png`, `.jpg`/`.jpeg`, `.gif`, and `.webp`.
   - `backend/app/services/file_service.py:L81-L109` (`FileService.scan_bytes_for_malware`): Scans uploaded file bytes for the EICAR test signature, Windows PE (`MZ`) headers, Linux `ELF` headers, macOS `Mach-O` headers (`\xfe\xed\xfa\xce`, `\xfe\xed\xfa\xcf`, `\xcf\xfa\xed\xfe`, `\xce\xfa\xed\xfe`), shell shebangs (`#!`), and embedded `<script` or `javascript:` payloads in images/text/JSON.
@@ -124,28 +127,30 @@ These contradictions were identified during the consistency audit across the pri
 
 ---
 
-### MM-03: Soft Delete Scope Beyond Tasks
-- **What Existing Docs Claim:**
+### MM-03 [CLOSED]: Soft Delete Scope Beyond Tasks
+- **Status:** CLOSED / RESOLVED in `AGENTS.md`, `docs/ARCHITECTURE.md`, and `docs/PROJECT_STATUS.md`.
+- **What Existing Docs Claimed:**
   - `AGENTS.md:L100`: *"Soft delete on Tasks only (`is_deleted` + `deleted_at`); all other entities use hard delete with cascading FKs."*
   - `docs/ARCHITECTURE.md:L362`: *"Only Tasks use soft delete (`is_deleted = True` + `deleted_at = datetime.utcnow()`). All other entities use hard delete with database-level cascade."*
   - `docs/PROJECT_STATUS.md:L30`: *"Delete boards — hard delete with cascade to all child entities."*
   - `docs/ROADMAP.md:L87`: *"Add board-level soft delete (archive)"* listed as unimplemented.
-- **What the Code Actually Does:**
+- **What the Code Actually Does & Documented:**
   1. **Boards (`backend/app/models/board.py:L32-L33`, `backend/app/routes/board_routes.py:L17-L22, L149-L171`, `backend/app/services/board_service.py:L14-L43, L297-L356`):** `Board` has `is_deleted` and `deleted_at` columns, a 30-day lazy purge (`BOARD_TRASH_RETENTION_DAYS = 30`), `DELETE /api/boards/<board_id>?soft=true` (used by the UI in `src/pages/BoardsOverview.tsx:L245` and `src/pages/Index.tsx:L318`), `GET /api/boards/trash`, and `POST /api/boards/<board_id>/restore`.
   2. **Direct Messages (`backend/app/models/message.py:L157`, `backend/app/services/message_service.py:L217-L246`):** `Message` uses `is_deleted = True` (`DELETE /api/messages/<message_id>`) to soft-unsend messages (`"[Message unsent]"`).
   3. **Invitations & Memberships (`backend/app/models/board_invitation.py:L15`, `backend/app/models/board_member.py:L15`, `backend/app/services/board_service.py:L582-L616, L779-L780`):** Declining, expiring, or revoking an invitation sets `status` to `'declined'`, `'expired'`, or `'revoked'` rather than hard-deleting the `BoardInvitation` (or declined `BoardMember`) row.
 
 ---
 
-### MM-04: Blueprint, Service & Database Table Counts
-- **What Existing Docs Claim:**
+### MM-04 [CLOSED]: Blueprint, Service & Database Table Counts
+- **Status:** CLOSED / RESOLVED in `docs/ARCHITECTURE.md`.
+- **What Existing Docs Claimed:**
   - `docs/ARCHITECTURE.md:L148`: *"`create_app` registers 8 Flask Blueprints."*
   - `docs/ARCHITECTURE.md:L244`: *"Note: There is no standalone notification service — notifications are created inline within `board_service.py` and `comment_service.py`, and managed directly in `notification_routes.py`."*
-  - `docs/ARCHITECTURE.md:L252-L339`: Documents only **8 database tables** (`users`, `boards`, `board_members`, `tasks`, `comments`, `activities`, `notifications`, `notes`).
-- **What the Code Actually Does:**
+  - `docs/ARCHITECTURE.md:L252-L339`: Documented only **8 database tables** (`users`, `boards`, `board_members`, `tasks`, `comments`, `activities`, `notifications`, `notes`).
+- **What the Code Actually Does & Documented:**
   - **11 Blueprints (`backend/app/__init__.py:L63-L85`):** Registers `auth_bp`, `board_bp`, `member_bp`, `task_bp`, `activity_bp`, `comment_bp`, `notification_bp`, `file_bp`, `note_bp`, `system_bp`, `user_bp`, and `message_bp` (12 Blueprint variables across 11 route modules in `backend/app/routes/`).
   - **9 Services (`backend/app/services/*.py`):** Includes standalone `notification_service.py` (`NotificationService`, `backend/app/services/notification_service.py:L10-L157`), `user_service.py` (`UserService`, `backend/app/services/user_service.py:L14-L180`), and `message_service.py` (`MessageService`, `backend/app/services/message_service.py:L14-L280`), in addition to `auth_service.py`, `board_service.py`, `task_service.py`, `comment_service.py`, `activity_service.py`, and `file_service.py` + `note_service.py` (10 service files total).
-  - **13 Database Tables (`backend/app/models/*.py`):** Adds 5 tables omitted from `ARCHITECTURE.md`:
+  - **13 Database Tables (`backend/app/models/*.py`):** Adds 5 tables previously omitted:
     1. `board_invitations` (`backend/app/models/board_invitation.py:L8-L55`)
     2. `user_preferences` (`backend/app/models/user_preference.py:L7-L38`)
     3. `conversations` (`backend/app/models/message.py:L9-L83`)
@@ -154,23 +159,25 @@ These contradictions were identified during the consistency audit across the pri
 
 ---
 
-### MM-05: Frontend Routes & Context Provider Hierarchy
-- **What Existing Docs Claim:**
-  - `docs/ARCHITECTURE.md:L42-L51`: Lists only `/`, `/boards/:boardId`, `/login`, `/register`, and `*`.
-  - `docs/ARCHITECTURE.md:L57-L64`: Shows provider nesting as `QueryClientProvider -> AuthProvider -> ActivityProvider -> TooltipProvider -> BrowserRouter`.
-- **What the Code Actually Does:**
+### MM-05 [CLOSED]: Frontend Routes & Context Provider Hierarchy
+- **Status:** CLOSED / RESOLVED in `docs/ARCHITECTURE.md`.
+- **What Existing Docs Claimed:**
+  - `docs/ARCHITECTURE.md:L42-L51`: Listed only `/`, `/boards/:boardId`, `/login`, `/register`, and `*`.
+  - `docs/ARCHITECTURE.md:L57-L64`: Showed provider nesting as `QueryClientProvider -> AuthProvider -> ActivityProvider -> TooltipProvider -> BrowserRouter`.
+- **What the Code Actually Does & Documented:**
   - **Routes (`src/App.tsx:L45-L64`):** Defines 9 routes, adding `/dashboard` (`DashboardPage`), `/tasks` (`TasksPage`), `/calendar` (`CalendarPage`), and `/teams` (`TeamsPage`) inside `ProtectedRoute` + `AppLayout`.
   - **Providers (`src/App.tsx:L31-L69`, `src/components/layout/AppLayout.tsx:L97`):** Wraps the app in `QueryClientProvider -> SettingsProvider -> AuthProvider -> DevModeProvider -> ActivityProvider -> TooltipProvider -> BrowserRouter`, with `LayoutProvider` inside `AppLayout`.
 
 ---
 
-### MM-06: API Route Permission & Method Discrepancies
-- **What Existing Docs Claim (`docs/ARCHITECTURE.md:L181-L208`):**
+### MM-06 [CLOSED]: API Route Permission & Method Discrepancies
+- **Status:** CLOSED / RESOLVED in `docs/ARCHITECTURE.md`.
+- **What Existing Docs Claimed (`docs/ARCHITECTURE.md:L181-L208`):**
   1. `DELETE /api/activities` (`L207`): Listed as Min Role = `admin`, Purpose = `"Clear activities (board-scoped or global)"`.
   2. `GET /api/boards/<id>/trash` (`L192`): Listed as Min Role = `viewer`.
   3. `POST /api/tasks/<id>/comments` (`L199`): Listed as Min Role = `viewer`.
   4. `GET /api/activities` (`L205`): Listed as Min Role = `viewer`.
-- **What the Code Actually Does:**
+- **What the Code Actually Does & Documented:**
   1. `DELETE /api/activities`, `PUT /api/activities`, `PATCH /api/activities` (`backend/app/routes/activity_routes.py:L51-L55`): Explicitly blocked for **all** users with HTTP `403 {"error": "Activity log entries are immutable and cannot be edited or deleted"}`.
   2. `GET /api/boards/<board_id>/trash` (`backend/app/routes/task_routes.py:L33-L34`): Enforces `check_board_access(board_id, current_user_id, 'editor')` (`403` for `viewer` and `commenter`).
   3. `POST /api/tasks/<task_id>/comments` (`backend/app/routes/comment_routes.py:L17`): Decorated with `@require_task_access('commenter')` (`403` for `viewer`).
@@ -178,11 +185,12 @@ These contradictions were identified during the consistency audit across the pri
 
 ---
 
-### MM-07: Features Listed as "Not Implemented" or "Partially Implemented" in `PROJECT_STATUS.md` & `ROADMAP.md`
-- **What Existing Docs Claim:**
+### MM-07 [CLOSED]: Features Listed as "Not Implemented" or "Partially Implemented" in `PROJECT_STATUS.md` & `ROADMAP.md`
+- **Status:** CLOSED / RESOLVED in `docs/PROJECT_STATUS.md`.
+- **What Existing Docs Claimed:**
   - `docs/PROJECT_STATUS.md:L156`: *"No validation prevents assigning non-members."*
-  - `docs/PROJECT_STATUS.md:L182-L215` & `docs/ROADMAP.md:L14, L42, L80-L89, L109, L135-L136, L161`: List Task Search/Filtering, Due Date Overdue Indicators, Dark Mode, Board/User Data Export, User Avatar Upload, Board Templates, Description Conflict Resolution, and `GET /api/health` under `"Partially Implemented"` or `"Not Implemented"` (contradicting `docs/PROJECT_STATUS.md:L20-L148` in the same file!).
-- **What the Code Actually Does:**
+  - `docs/PROJECT_STATUS.md:L182-L215` & `docs/ROADMAP.md:L14, L42, L80-L89, L109, L135-L136, L161`: Listed Task Search/Filtering, Due Date Overdue Indicators, Dark Mode, Board/User Data Export, User Avatar Upload, Board Templates, Description Conflict Resolution, and `GET /api/health` under `"Partially Implemented"` or `"Not Implemented"`.
+- **What the Code Actually Does & Documented:**
   - **Assignee Role Validation:** `backend/app/routes/task_routes.py:L72-L76, L148-L156` rejects any assignee without `editor`+ board membership (`400 {"error": "Users without editing permissions cannot be assigned to tasks"}`).
   - **Task Search & Filter:** Implemented in `src/pages/Index.tsx:L122-L162` (board search, priority filter, assignee filter) and `src/pages/TasksPage.tsx:L35-L85`.
   - **Overdue Indicators:** Implemented in `src/components/kanban/TaskCard.tsx:L59`, `src/components/kanban/TaskListView.tsx:L48`, and `src/components/task/TaskProperties.tsx:L80`.
@@ -190,24 +198,26 @@ These contradictions were identified during the consistency audit across the pri
   - **Data Export:** Implemented at `GET /api/boards/<board_id>/export` (`backend/app/routes/board_routes.py:L187-L194`) and `GET /api/users/me/export` (`backend/app/routes/user_routes.py:L55-L60`).
   - **User Avatar Upload:** Implemented at `POST /api/files/avatar` (`backend/app/routes/file_routes.py:L30-L42`, `backend/app/services/file_service.py:L210-L249`).
   - **Board Templates:** 4 templates (`Blank Board`, `Kanban Default`, `Sprint Planning`, `Content Calendar`) in `src/components/boards/BoardModal.tsx:L41-L97`.
-  - **Optimistic Concurrency on Descriptions:** `lastKnownUpdatedAt` conflict check returns `409 Conflict` in `backend/app/services/task_service.py:L205-L218`.
+  - **Optimistic Concurrency on Descriptions:** `lastKnownUpdatedAt` and `baseDescription` conflict check returns `409 Conflict` in `backend/app/services/task_service.py:L205-L288`.
   - **Health Check Endpoint:** `GET /api/health` in `backend/app/routes/system_routes.py:L9-L17`.
 
 ---
 
-### MM-08: Duplicate CORS Initialization Claim
-- **What Existing Docs Claim:**
+### MM-08 [CLOSED]: Duplicate CORS Initialization Claim
+- **Status:** CLOSED / RESOLVED in `docs/PROJECT_STATUS.md`.
+- **What Existing Docs Claimed:**
   - `docs/PROJECT_STATUS.md:L224-L226`: *"Duplicate CORS initialization — `backend/app/__init__.py` calls `CORS()` twice (lines 22-35 and 40-53) with identical arguments."*
-  - `docs/ROADMAP.md:L55`: Lists *"Remove duplicate `CORS()` call in `backend/app/__init__.py`"* as open work.
-- **What the Code Actually Does:**
+  - `docs/ROADMAP.md:L55`: Listed *"Remove duplicate `CORS()` call in `backend/app/__init__.py`"* as open work.
+- **What the Code Actually Does & Documented:**
   - `backend/app/__init__.py:L35-L42`: `CORS(app, resources={r"/api/*": {...}}, supports_credentials=True)` is called **once**.
 
 ---
 
-### MM-09: Playwright E2E Port Number
-- **What Existing Docs Claim:**
+### MM-09 [CLOSED]: Playwright E2E Port Number
+- **Status:** CLOSED / RESOLVED in `docs/ARCHITECTURE.md`.
+- **What Existing Docs Claimed:**
   - `docs/ARCHITECTURE.md:L739`: *"Runs against live frontend (`localhost:5173`) + backend (`localhost:5000`)."*
-- **What the Code Actually Does:**
+- **What the Code Actually Does & Documented:**
   - `playwright.config.ts:L16, L24` and `e2e/run.mjs:L17`: Playwright E2E runs against `http://localhost:8085` (while `vite.config.ts:L10` configures the standard Vite dev server on port `8080`).
 
 ---

@@ -1,6 +1,6 @@
 # Architecture
 
-## System Overview
+**Status:** Verified | **Last scanned:** 2026-10-13 | **Audience:** Developers, Architects
 
 Sticky Mind Grid is a full-stack task management application modeled after Trello. It consists of a React SPA frontend communicating with a Flask REST API backend, backed by MySQL for persistence. Real-time multi-user synchronization is achieved via Server-Sent Events (SSE).
 
@@ -24,9 +24,10 @@ Sticky Mind Grid is a full-stack task management application modeled after Trell
                            │
 ┌──────────────────────────┼──────────────────────────────────────┐
 │                     MySQL Database                               │
-│  users │ boards │ board_members │ tasks │ activities │ comments  │
-│  notifications │ notes │ conversations │ conversation_participants│
-│  messages                                                        │
+│  users │ user_preferences │ boards │ board_members               │
+│  board_invitations │ tasks │ activities │ comments               │
+│  notifications │ notes │ conversations                           │
+│  conversation_participants │ messages                            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -43,11 +44,15 @@ Sticky Mind Grid is a full-stack task management application modeled after Trell
 |-------|-----------|------|
 | `/login` | `Login.tsx` | No |
 | `/register` | `Register.tsx` | No |
-| `/` | `BoardsOverview.tsx` | Yes (ProtectedRoute) |
-| `/boards/:boardId` | `KanbanBoard.tsx` | Yes (ProtectedRoute) |
-| `/boards/:boardId/tasks/:taskId` | `TaskDetailPage.tsx` | Yes (ProtectedRoute) |
-| `/messages` | `MessagesPage.tsx` | Yes (ProtectedRoute) |
-| `/messages/:conversationId` | `MessagesPage.tsx` | Yes (ProtectedRoute) |
+| `/` | `BoardsOverview.tsx` | Yes (ProtectedRoute + AppLayout) |
+| `/dashboard` | `DashboardPage.tsx` | Yes (ProtectedRoute + AppLayout) |
+| `/tasks` | `TasksPage.tsx` | Yes (ProtectedRoute + AppLayout) |
+| `/calendar` | `CalendarPage.tsx` | Yes (ProtectedRoute + AppLayout) |
+| `/teams` | `TeamsPage.tsx` | Yes (ProtectedRoute + AppLayout) |
+| `/boards/:boardId` | `KanbanBoard.tsx` | Yes (ProtectedRoute + AppLayout) |
+| `/boards/:boardId/tasks/:taskId` | `TaskDetailPage.tsx` | Yes (ProtectedRoute + AppLayout) |
+| `/messages` | `MessagesPage.tsx` | Yes (ProtectedRoute + AppLayout) |
+| `/messages/:conversationId` | `MessagesPage.tsx` | Yes (ProtectedRoute + AppLayout) |
 | `*` | `NotFound.tsx` | No |
 
 - `ProtectedRoute` (`src/components/auth/ProtectedRoute.tsx`) wraps authenticated routes. Redirects to `/login` if no user in AuthContext.
@@ -56,11 +61,15 @@ Sticky Mind Grid is a full-stack task management application modeled after Trell
 
 ```
 QueryClientProvider
-  └─ TooltipProvider
-      └─ BrowserRouter
-          └─ AuthProvider
-              └─ ActivityProvider
-                  └─ Routes
+  └─ ThemeProvider
+      └─ TooltipProvider
+          └─ BrowserRouter
+              └─ AuthProvider
+                  └─ SettingsProvider
+                      └─ DevModeProvider
+                          └─ ActivityProvider
+                              └─ AppLayout (with LayoutProvider)
+                                  └─ Routes
 ```
 
 ### State Management
@@ -144,9 +153,9 @@ Uses `@dnd-kit/core` + `@dnd-kit/sortable`:
 
 `backend/app/__init__.py` — `create_app(config_class=Config)`:
 1. Creates Flask app with config
-2. Initializes extensions: SQLAlchemy, Migrate, JWT, Bcrypt, CORS
-3. Registers 8 Blueprints: `board_routes`, `task_routes`, `activity_routes`, `auth_routes`, `comment_routes`, `notification_routes`, `file_routes`, `note_routes`
-4. Sets up global error handlers (Exception → 500, 413 → file too large)
+2. Initializes extensions: SQLAlchemy, Migrate, JWT, Bcrypt, CORS, Limiter (`Flask-Limiter`)
+3. Registers 11 Blueprints: `board_routes`, `task_routes`, `activity_routes`, `auth_routes`, `comment_routes`, `notification_routes`, `file_routes`, `note_routes`, `system_routes`, `user_routes`, `message_routes`
+4. Sets up global error handlers (Exception → 500, 413 → file too large, 429 → rate limit exceeded)
 
 ### Blueprint / Route Structure
 
@@ -155,10 +164,12 @@ All routes are prefixed with `/api/`.
 #### Auth Routes (`/api/auth`)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/register` | No | Create user, return `{user, token}` |
-| POST | `/login` | No | Validate credentials, return `{user, token}` |
+| POST | `/register` | No | Create user with verification token, return `{user, token}` (rate limited) |
+| POST | `/login` | No | Validate credentials, return `{user, token}` (rate limited) |
 | GET | `/me` | JWT | Get current user profile |
 | PATCH | `/me` | JWT | Update profile (name/password) |
+| POST | `/verify-email` | No | Verify email address with token, attach pending invitations |
+| POST | `/resend-verification` | JWT | Resend email verification token (rate limited) |
 | GET | `/users/search?q=` | JWT | Search users by email/name |
 
 #### Board Routes (`/api/boards`)
@@ -166,67 +177,98 @@ All routes are prefixed with `/api/`.
 |--------|------|------|------|-------------|
 | GET | `/` | JWT | — | List user's boards |
 | POST | `/` | JWT | — | Create board + owner membership |
-| GET | `/<id>` | JWT | viewer | Get board |
-| PATCH | `/<id>` | JWT | admin | Update board |
-| DELETE | `/<id>` | JWT | owner | Delete board |
-| GET | `/invitations` | JWT | — | List pending invitations |
-| POST | `/<id>/invitations/accept` | JWT | — | Accept invitation |
-| POST | `/<id>/invitations/decline` | JWT | — | Decline invitation |
-| GET | `/<id>/events` | Token | viewer | SSE event stream |
-| GET | `/<id>/members` | JWT | viewer | List members |
-| POST | `/<id>/members` | JWT | admin | Invite member |
-| DELETE | `/<id>/members/<uid>` | JWT | self/admin | Remove member |
-| PATCH | `/<id>/members/<uid>` | JWT | admin | Update role |
+| GET | `/<id>` | JWT | viewer | Get board details |
+| PATCH | `/<id>` | JWT | admin | Update board (metadata, columns, WIP limits) |
+| DELETE | `/<id>` | JWT | owner | Soft-delete board (`?soft=true`, 30d grace) or permanent delete (requires matching `confirm_name`) |
+| GET | `/trash` | JWT | owner | List user's soft-deleted boards |
+| POST | `/<id>/restore` | JWT | owner | Restore soft-deleted board from trash |
+| POST | `/<id>/transfer-ownership` | JWT | owner | Transfer board ownership (demotes former owner to admin) |
+| GET | `/<id>/export` | JWT | admin | Export board JSON (board, tasks, members) |
+| GET | `/invitations` | JWT | — | List pending invitations for current user |
+| POST | `/<id>/invitations/accept` | JWT | — | Accept board invitation |
+| POST | `/<id>/invitations/decline` | JWT | — | Decline board invitation |
+| POST | `/<id>/invitations/report` | JWT | — | Decline and report inviter spam |
+| GET | `/<id>/events` | Token | viewer | SSE real-time event stream |
+| GET | `/<id>/members` | JWT | viewer | List members (emails redacted for commenter/viewer) |
+| POST | `/<id>/members` | JWT | admin | Invite member (rate limited: 20/day) |
+| DELETE | `/<id>/members/<uid>` | JWT | self/admin | Remove member (or leave board; sole owner blocked) |
+| PATCH | `/<id>/members/<uid>` | JWT | admin | Update member role |
 
 #### Task Routes (`/api`)
 | Method | Path | Auth | RBAC | Description |
 |--------|------|------|------|-------------|
-| GET | `/tasks?boardId=` | JWT | viewer | List tasks |
-| POST | `/tasks` | JWT | member | Create task |
-| GET | `/tasks/<id>` | JWT | viewer | Get task |
-| PATCH | `/tasks/<id>` | JWT | member | Update task |
-| DELETE | `/tasks/<id>` | JWT | member | Soft-delete (trash) |
-| PATCH | `/tasks/<id>/restore` | JWT | member | Restore from trash |
-| DELETE | `/tasks/<id>/permanent` | JWT | admin | Hard delete |
-| PATCH | `/tasks/reorder` | JWT | member | Batch reorder |
-| GET | `/boards/<id>/trash` | JWT | viewer | List trashed tasks |
-| DELETE | `/boards/<id>/trash` | JWT | admin | Empty trash |
+| GET | `/tasks?boardId=` | JWT | viewer | List active tasks for board |
+| POST | `/tasks` | JWT | editor | Create task (assignee requires editor+, checklist derives progress) |
+| GET | `/tasks/<id>` | JWT | viewer | Get task details |
+| PATCH | `/tasks/<id>` | JWT | editor | Update task (dual-board check if moved, optimistic concurrency with `lastKnownUpdatedAt`/`baseDescription`) |
+| DELETE | `/tasks/<id>` | JWT | editor | Soft-delete task (move to trash) |
+| PATCH | `/tasks/<id>/restore` | JWT | editor | Restore task from trash |
+| DELETE | `/tasks/<id>/permanent` | JWT | admin | Permanently delete task and disk attachments |
+| PATCH | `/tasks/reorder` | JWT | editor | Batch reorder tasks within/across columns |
+| POST | `/tasks/<id>/follow` | JWT | viewer | Follow/unfollow task for notifications |
+| GET | `/boards/<id>/trash` | JWT | editor | List soft-deleted tasks (auto-purges >30 days) |
+| DELETE | `/boards/<id>/trash` | JWT | admin | Empty board trash (cleans disk files) |
 
 #### Comment Routes (`/api`)
 | Method | Path | Auth | RBAC | Description |
 |--------|------|------|------|-------------|
-| GET | `/tasks/<id>/comments` | JWT | viewer | List comments |
-| POST | `/tasks/<id>/comments` | JWT | viewer | Add comment (with @mentions) |
-| DELETE | `/comments/<id>` | JWT | author/admin | Delete comment |
+| GET | `/tasks/<id>/comments` | JWT | viewer | List comments for task |
+| POST | `/tasks/<id>/comments` | JWT | commenter | Add comment (supports @mentions of board members) |
+| PATCH | `/comments/<id>` | JWT | author | Edit own comment (stores original snapshot) |
+| DELETE | `/comments/<id>` | JWT | author/admin | Delete comment (requires active board membership) |
 
 #### Activity Routes (`/api/activities`)
 | Method | Path | Auth | RBAC | Description |
 |--------|------|------|------|-------------|
-| GET | `/` | JWT | viewer | List activities for board |
-| POST | `/` | JWT | viewer | Create activity |
-| DELETE | `/` | JWT | admin | Clear activities |
+| GET | `/` | JWT | admin/viewer | List activities (board-wide requires admin; card-specific requires viewer) |
+| POST | `/` | JWT | viewer | Create activity record |
+| PUT, PATCH, DELETE | `/` | JWT | — | Blocked for all (HTTP 403: Activity entries are immutable) |
 
 #### Notification Routes (`/api/notifications`)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/` | JWT | List user notifications + unreadCount |
 | PATCH | `/<id>/read` | JWT | Mark single notification read |
-| PATCH | `/read-all` | JWT | Mark all notifications read |
+| PATCH | `/read-all` | JWT | Mark all user notifications read |
 
 #### File Routes (`/api/files`)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/upload` | JWT | Upload file (multipart) |
-| GET | `/\<filename\>` | No | Serve file inline |
-| GET | `/\<filename\>/download` | No | Serve as attachment |
+| POST | `/upload` | JWT | Upload file (25 MB limit, magic-byte verified, malware scanned, board/owner quota checked) |
+| POST | `/avatar` | JWT | Upload profile avatar picture |
+| GET | `/<filename>` | JWT* | Serve file inline (requires JWT and board viewer+ or chat participant; avatars public) |
+| GET | `/<filename>/download` | JWT* | Serve file as attachment download (same access control as inline) |
 
 #### Note Routes (`/api`)
 | Method | Path | Auth | RBAC | Description |
 |--------|------|------|------|-------------|
-| GET | `/boards/<id>/notes` | JWT | viewer | List notes |
-| POST | `/boards/<id>/notes` | JWT | member | Create note |
-| PATCH | `/notes/<id>` | JWT | member | Update note |
-| DELETE | `/notes/<id>` | JWT | author/admin | Delete note |
+| GET | `/boards/<id>/notes` | JWT | viewer | List project notes for board |
+| POST | `/boards/<id>/notes` | JWT | editor | Create board note |
+| PATCH | `/notes/<id>` | JWT | editor | Update board note |
+| DELETE | `/notes/<id>` | JWT | author/admin | Delete board note (requires active board membership) |
+
+#### System Routes (`/api`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | No | System health check (`{"status": "healthy"}`) |
+
+#### User Routes (`/api/users`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/me/preferences` | JWT | Get user preferences |
+| PATCH | `/me/preferences` | JWT | Update user preferences |
+| GET | `/me/export` | JWT | Export personal user data JSON |
+| DELETE | `/me` | JWT | Delete user account (auto-promotes oldest admin/member on owned boards) |
+
+#### Message Routes (`/api/messages`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/conversations` | JWT | List direct message conversations |
+| POST | `/conversations` | JWT | Create or get direct message conversation |
+| GET | `/conversations/<id>` | JWT | Get conversation metadata |
+| GET | `/conversations/<id>/messages` | JWT | List messages in conversation |
+| POST | `/conversations/<id>/messages` | JWT | Send direct message |
+| DELETE | `/<message_id>` | JWT | Soft-unsend message (`is_deleted=True`) |
 
 ### Service Layer
 
@@ -234,14 +276,17 @@ Services contain all business logic. Routes parse requests, call services, and f
 
 | Service | File | Responsibilities |
 |---------|------|-----------------|
-| `BoardService` | `backend/app/services/board_service.py` | Board CRUD, member management, invitations, role changes |
-| `TaskService` | `backend/app/services/task_service.py` | Task CRUD, reorder, trash/restore, assignment notifications |
-| `ActivityService` | `backend/app/services/activity_service.py` | Activity CRUD, board-scoped queries |
-| `CommentService` | `backend/app/services/comment_service.py` | Comment CRUD, @mention detection and notification |
-| `FileService` | `backend/app/services/file_service.py` | File validation, storage, retrieval |
-| `NoteService` | `backend/app/services/note_service.py` | Board note CRUD |
-
-Notifications are created inline within BoardService, TaskService, and CommentService — there is no standalone notification service.
+| `BoardService` | `backend/app/services/board_service.py` | Board CRUD, 30-day trash/restore, members, invitations, role changes, ownership transfer, quota checks |
+| `TaskService` | `backend/app/services/task_service.py` | Task CRUD, reorder, auto-progress derivation, cross-board move, trash/restore, 30-day auto-purge, concurrency conflict detection |
+| `ActivityService` | `backend/app/services/activity_service.py` | Activity creation, board/card scoped queries with retention filtering, immutable audit trail |
+| `CommentService` | `backend/app/services/comment_service.py` | Comment CRUD, @mention extraction and notifications, active member authorization checks |
+| `FileService` | `backend/app/services/file_service.py` | Magic-byte verification, malware signature scanner, board/owner storage quotas, authenticated file access, orphan cleanup |
+| `NoteService` | `backend/app/services/note_service.py` | Board note CRUD with active membership validation and author/admin deletion checks |
+| `NotificationService` | `backend/app/services/notification_service.py` | In-app notification creation, user preference and board mute suppression |
+| `UserService` | `backend/app/services/user_service.py` | User profile, preferences, account deletion with ownership succession, personal data export |
+| `MessageService` | `backend/app/services/message_service.py` | Direct message conversations, participants, messaging, soft-unsend |
+| `EmailService` | `backend/app/services/email_service.py` | Outbound email provider interface (`ConsoleEmailProvider`, `SMTPEmailProvider`) for verification and invitations |
+| `SchedulerService` | `backend/app/services/scheduler_service.py` | Background maintenance scheduler (APScheduler) for 30-day soft-deleted board purges |
 
 ---
 
@@ -255,7 +300,23 @@ users
 ├── email (String(255), UNIQUE, NOT NULL)
 ├── password_hash (String(255), NOT NULL)
 ├── full_name (String(255), nullable)
+├── avatar_url (Text, nullable)
+├── is_active (Boolean, default True)
+├── email_verified (Boolean, default False)
+├── verification_token (String(100), nullable, index)
+├── verification_token_expires_at (DateTime, nullable)
 └── created_at (DateTime)
+
+user_preferences
+├── id (String(36), PK)
+├── user_id (String(36), FK→users.id, CASCADE, UNIQUE, NOT NULL)
+├── theme (String(20), default 'system') — light|dark|system
+├── notify_mentions (Boolean, default True)
+├── notify_assignments (Boolean, default True)
+├── notify_invites (Boolean, default True)
+├── notify_comments (Boolean, default True)
+├── created_at (DateTime)
+└── updated_at (DateTime)
 
 boards
 ├── id (String(36), PK)
@@ -266,6 +327,8 @@ boards
 ├── hero_image_url (Text/LONGTEXT, nullable)
 ├── columns (JSON, default [])
 ├── owner_id (String(36), FK→users.id, nullable)
+├── is_deleted (Boolean, NOT NULL, default False)
+├── deleted_at (DateTime, nullable)
 ├── created_at (DateTime)
 └── updated_at (DateTime)
 
@@ -273,14 +336,27 @@ board_members
 ├── id (String(36), PK)
 ├── board_id (String(36), FK→boards.id, CASCADE, NOT NULL)
 ├── user_id (String(36), FK→users.id, CASCADE, NOT NULL)
-├── role (String(20), NOT NULL, default 'member') — owner|admin|member|viewer
-├── status (String(20), NOT NULL, default 'accepted') — pending|accepted|declined
+├── role (String(20), NOT NULL, default 'editor') — owner|admin|editor|member|commenter|viewer
+├── status (String(20), NOT NULL, default 'accepted') — pending|accepted|declined|expired
+├── is_muted (Boolean, default False)
 ├── created_at (DateTime)
 └── UNIQUE(board_id, user_id)
 
+board_invitations
+├── id (String(36), PK)
+├── board_id (String(36), FK→boards.id, CASCADE, NOT NULL, index)
+├── email (String(255), NOT NULL, index)
+├── role (String(20), default 'editor')
+├── status (String(20), default 'pending') — pending|accepted|expired|revoked|declined
+├── inviter_id (String(36), FK→users.id, CASCADE, NOT NULL)
+├── created_at (DateTime)
+├── expires_at (DateTime, default utcnow + 7 days)
+├── accepted_at (DateTime, nullable)
+└── revoked_at (DateTime, nullable)
+
 tasks
 ├── id (String(36), PK)
-├── board_id (String(36), FK→boards.id, NOT NULL)
+├── board_id (String(36), FK→boards.id, CASCADE, NOT NULL) — migration e1a2b3c4d5e6
 ├── title (String(255), NOT NULL)
 ├── emoji (String(50), nullable)
 ├── description (Text/LONGTEXT, nullable)
@@ -294,6 +370,7 @@ tasks
 ├── checklist (JSON, default [])
 ├── tags (JSON, default [])
 ├── attachments (JSON, default [])
+├── followers (JSON, default [])
 ├── is_deleted (Boolean, NOT NULL, default False)
 ├── deleted_at (DateTime, nullable)
 ├── created_at (DateTime)
@@ -303,7 +380,11 @@ activities
 ├── id (String(36), PK)
 ├── board_id (String(36), FK→boards.id, CASCADE, nullable)
 ├── type (String(50), NOT NULL) — create|move|update|delete
+├── target_type (String(50), default 'task')
+├── target_id (String(36), nullable)
 ├── task_title (String(255), NOT NULL)
+├── before_value (Text, nullable)
+├── after_value (Text, nullable)
 ├── message (Text, NOT NULL)
 ├── user_id (String(36), FK→users.id, nullable)
 └── timestamp (DateTime)
@@ -311,16 +392,18 @@ activities
 comments
 ├── id (String(36), PK)
 ├── task_id (String(36), FK→tasks.id, CASCADE, NOT NULL)
-├── user_id (String(36), FK→users.id, CASCADE, NOT NULL)
+├── user_id (String(36), FK→users.id, SET NULL, nullable)
 ├── content (Text, NOT NULL)
 ├── mentions (JSON, default [])
+├── is_edited (Boolean, default False)
+├── original_content (Text, nullable)
 ├── created_at (DateTime)
 └── updated_at (DateTime)
 
 notifications
 ├── id (String(36), PK)
 ├── user_id (String(36), FK→users.id, CASCADE, NOT NULL)
-├── type (String(50), NOT NULL) — mention|assignment|invite|system|board_invite|...
+├── type (String(50), NOT NULL) — mention|assignment|invite|board_invite|invite_accepted|invite_declined|member_left|member_removed|system
 ├── title (String(255), NOT NULL)
 ├── message (Text, NOT NULL)
 ├── link (String(255), nullable)
@@ -336,13 +419,39 @@ notes
 ├── color (String(50), NOT NULL, default '#fef3c7')
 ├── created_at (DateTime)
 └── updated_at (DateTime)
+
+conversations
+├── id (String(36), PK)
+├── created_by (String(36), FK→users.id, SET NULL, nullable)
+├── created_at (DateTime)
+└── updated_at (DateTime)
+
+conversation_participants
+├── id (String(36), PK)
+├── conversation_id (String(36), FK→conversations.id, CASCADE, NOT NULL)
+├── user_id (String(36), FK→users.id, CASCADE, NOT NULL)
+├── last_read_at (DateTime, nullable)
+├── created_at (DateTime)
+└── UNIQUE(conversation_id, user_id)
+
+messages
+├── id (String(36), PK)
+├── conversation_id (String(36), FK→conversations.id, CASCADE, NOT NULL)
+├── sender_id (String(36), FK→users.id, CASCADE, NOT NULL)
+├── reply_to_id (String(36), FK→messages.id, SET NULL, nullable)
+├── content (Text, NOT NULL)
+├── attachments (JSON, default [])
+├── is_deleted (Boolean, default False)
+├── created_at (DateTime)
+└── updated_at (DateTime)
 ```
 
 ### Key Relationships
 
 - Board → User (owner): `boards.owner_id` → `users.id`
-- Board → Tasks: One-to-many, cascade delete
+- Board → Tasks: One-to-many, cascade delete (`Task.board_id` has `ondelete='CASCADE'`)
 - Board → BoardMembers: One-to-many, cascade delete
+- Board → BoardInvitations: One-to-many, cascade delete
 - Board → Activities: One-to-many (via `board_id`), cascade delete
 - Board → Notes: One-to-many, cascade delete
 - Task → Board: Many-to-one
@@ -352,19 +461,36 @@ notes
 - BoardMember → Board: Many-to-one, cascade delete
 - BoardMember → User: Many-to-one, cascade delete
 - Comment → Task: Many-to-one, cascade delete
-- Comment → User: Many-to-one
+- Comment → User: Many-to-one, SET NULL on user deletion
 - Notification → User: Many-to-one, cascade delete
 - Note → Board: Many-to-one, cascade delete
-- Note → User: Many-to-one
+- Note → User: Many-to-one, cascade delete
+- Conversation → Participants: One-to-many, cascade delete
+- Conversation → Messages: One-to-many, cascade delete
+- User → Preferences: One-to-one, cascade delete
 
-### Soft Delete Pattern
+### Soft Delete & Lifecycle Retention Patterns
 
-Only Tasks use soft delete:
-- `is_deleted = True` + `deleted_at = datetime.utcnow()` on delete
-- Regular queries filter `is_deleted=False`
-- Trash queries filter `is_deleted=True`
-- `restore` reverses: `is_deleted=False, deleted_at=None`
-- `permanent` does a hard SQL DELETE
+The system implements distinct soft-delete and status retention mechanisms across entities:
+
+1. **Tasks (Cards):**
+   - `is_deleted = True` + `deleted_at = datetime.utcnow()` on soft-delete.
+   - Regular queries filter `is_deleted == False`; trash queries filter `is_deleted == True`.
+   - Restoring a card resets `is_deleted = False, deleted_at = None`.
+   - **30-Day Auto-Purge:** Tasks in trash older than 30 days are automatically hard-deleted (and unreferenced disk attachments purged) during trash reads (`GET /api/boards/<id>/trash`).
+   - Admins/owners can permanently delete individual cards or empty trash immediately.
+
+2. **Boards:**
+   - Supports 30-day soft delete (`DELETE /api/boards/<id>?soft=true`) setting `is_deleted = True, deleted_at = utcnow()`.
+   - Trashed boards are listed at `GET /api/boards/trash` and can be restored via `POST /api/boards/<id>/restore` within 30 days.
+   - Trashed boards older than 30 days are lazily purged during board reads (`BoardService.get_user_boards`, `get_trashed_boards`) and via the daily `SchedulerService` maintenance job.
+   - Permanent board deletion requires confirming the exact board name (`confirm_name: "<name>"`), preventing accidental automated destruction.
+
+3. **Direct Messages:**
+   - Unsend uses soft delete (`is_deleted = True`). Trashed messages display as `"[Message unsent]"` while preserving message timeline ordering.
+
+4. **Invitations & Memberships:**
+   - Declining, expiring, or revoking an invitation updates status in-place (`'declined'`, `'expired'`, `'revoked'`) with timestamps (`revoked_at`), retaining records for re-invite extension and spam protection telemetry.
 
 ---
 
@@ -625,41 +751,47 @@ Sticky Mind Grid implements a strict "locked room" tenancy model ensuring privac
 
 ### Backend (EventBroadcaster)
 
-- In-memory pub/sub using `threading.Lock` + `queue.Queue` per subscriber
+- In-memory pub/sub using `threading.Lock` + `queue.Queue` per subscriber (`backend/app/utils/event_broadcaster.py`)
+- Pinned to single-process multi-threaded Gunicorn deployment (`workers = 1`, `worker_class = "gthread"`, `threads = 8` in `backend/gunicorn.conf.py`)
 - `subscribe(board_id)` → returns a Queue
 - `broadcast(board_id, event_type, payload)` → pushes SSE-formatted JSON to all subscribers
+- `disconnect_user(board_id, user_id)` → terminates active SSE connection on member removal or demotion
 - Queue maxsize=100; stale messages discarded silently
 - Keep-alive ping every 25 seconds
 
 ### Frontend (useBoardRealtime)
 
 - Opens `EventSource` to `/api/boards/{id}/events?token={jwt}`
-- Handles events: `task:created`, `task:updated`, `task:moved`, `task:deleted`, `tasks:reordered`, `activity:new`, `member:joined`, `member:removed`, `member:role_updated`, `board:updated`
-- Auto-reconnects on error after 3 seconds
-- Callbacks are stored in refs to avoid reconnection loops
+- Handles all 22 backend SSE events with targeted React Query cache invalidation and UI state callbacks
+- Debounced Reconnection: Disconnections under 4 seconds (`RECONNECT_LOCK_DEBOUNCE_MS = 4000`) do not trigger the read-only lock. If disconnected >= 4 seconds, `isReconnecting` becomes `true` and locks editing until reconnected.
+- Automatic reconnection with immediate debounce timer cancellation upon fast reconnect.
 
-### Event Types
+### Event Types Catalog (22 Events)
 
-| Event | Triggered By |
-|-------|-------------|
-| `task:created` | Task creation, task restore |
-| `task:updated` | Task field changes |
-| `task:moved` | Task status/column change |
-| `task:deleted` | Task soft-delete, permanent delete |
-| `tasks:reordered` | Batch position update |
-| `trash:emptied` | Board trash emptied |
-| `board:updated` | Board settings changed |
-| `member:invited` | New member invited |
-| `member:joined` | Invitation accepted |
-| `member:removed` | Member removed or left |
-| `member:role_updated` | Member role changed |
-| `comment:created` | New comment on task |
-| `comment:deleted` | Comment deleted |
-| `note:created` | New board note |
-| `note:updated` | Board note edited |
-| `note:deleted` | Board note deleted |
-| `activity:new` | Any activity logged |
-| `connected` | SSE connection established |
+| Event | Triggered By | Frontend Handler & Side Effects |
+|-------|-------------|--------------------------------|
+| `connected` | SSE connection established | Acknowledges stream, cancels debounce, clears `isReconnecting` |
+| `task:created` | Task created, cross-board move destination, restore | Updates task list, triggers `onTaskChange` |
+| `task:updated` | Task field changes, follower/assignee update | Patches local task state, triggers `onTaskUpdate` |
+| `task:moved` | Task status/column change | Updates column task arrays, triggers `onTaskMoved` |
+| `tasks:reordered` | Batch drag-drop position updates | Updates column ordering, triggers `onTasksReordered` |
+| `task:deleted` | Task soft-delete, cross-board source, permanent delete | Removes card, invalidates `["trashTasks", boardId]` |
+| `trash:emptied` | Board trash emptied by Admin/Owner | Invalidates `["trashTasks", boardId]`, invokes `onTrashEmptied` |
+| `board:updated` | Board settings, name, banner, or columns changed | Invalidates `["boards"]` and `["board", boardId]` |
+| `board:deleted` | Board soft-deleted or permanently deleted | Invokes `onBoardDeleted`, redirects user to board list |
+| `member:invited` | New member invited | Invalidates `["boardMembers", boardId]` and `["pendingInvitations"]` |
+| `member:invite_resent` | Invitation reminder resent | Invalidates `["boardMembers", boardId]` and `["pendingInvitations"]` |
+| `member:joined` | Invitation accepted by invitee | Invalidates `["boardMembers", boardId]`, triggers `onMemberChange` |
+| `member:role_updated` | Member role changed by Admin/Owner | Invalidates `["boardMembers", boardId]`, updates permissions |
+| `member:removed` | Member removed, revoked, or voluntarily left | Invalidates `["boardMembers"]`; disconnects SSE if current user |
+| `force_disconnect` | Server forces socket termination | Closes `EventSource` immediately |
+| `comment:created` | New comment posted on task | Invalidates `["taskComments", taskId]`, triggers `onCommentChange` |
+| `comment:updated` | Existing comment edited | Invalidates `["taskComments", taskId]`, triggers `onCommentChange` |
+| `comment:deleted` | Comment deleted by author or Admin/Owner | Invalidates `["taskComments", taskId]`, triggers `onCommentChange` |
+| `note:created` | New board note created in Documents view | Invalidates `["boardNotes", boardId]` and `["notes", boardId]` |
+| `note:updated` | Board note edited | Invalidates `["boardNotes", boardId]` and `["notes", boardId]` |
+| `note:deleted` | Board note deleted | Invalidates `["boardNotes", boardId]` and `["notes", boardId]` |
+| `activity:new` | Any audit activity logged | Pushes activity item to state, triggers `onActivityChange` |
 
 ---
 
@@ -667,25 +799,33 @@ Sticky Mind Grid implements a strict "locked room" tenancy model ensuring privac
 
 ### Upload Flow
 
-1. Frontend creates `FormData` with file
-2. `POST /api/files/upload` with JWT auth
-3. Backend validates extension against whitelist
-4. Backend saves file to `backend/uploads/` with UUID filename
-5. Returns `{id, name, storedName, url, type, size, sizeBytes}`
-6. Frontend stores metadata in task's `attachments` JSON array
+1. Frontend sends multipart `FormData` to `POST /api/files/upload?boardId=<id>` with JWT auth header.
+2. Backend enforces validation rules:
+   - File size <= 25 MB (`MAX_CONTENT_LENGTH = 25 * 1024 * 1024`).
+   - Filename extension must match `ALLOWED_UPLOAD_EXTENSIONS`.
+   - Magic bytes verified for image formats (`.png`, `.jpg`/`.jpeg`, `.gif`, `.webp`).
+   - Malware signature scanning: checks file bytes for EICAR test string, Windows PE (`MZ`), Linux `ELF`, macOS `Mach-O`, shell scripts (`#!`), and `<script>`/`javascript:` payloads.
+   - Storage quotas checked: rejects with HTTP 400 if board total exceeds 100 MB (`MAX_BOARD_STORAGE_BYTES`) or owner cross-board total exceeds 500 MB (`MAX_OWNER_STORAGE_BYTES`).
+3. Backend saves file to `backend/uploads/` with a UUID filename and stores original metadata.
+4. Returns `{id, name, storedName, url, type, size, sizeBytes}`.
+5. Frontend stores attachment metadata in task's `attachments` JSON array via `PATCH /api/tasks/<id>`.
 
 ### Storage
 
-- Files stored on disk at `backend/uploads/`
-- Filenames are UUIDs to prevent collisions
-- Original filenames preserved in metadata
-- No virus scanning, no size-based access control beyond upload limit
+- Files stored on disk at `backend/uploads/`.
+- Filenames use UUID strings to prevent collision and directory traversal.
+- Deleting an attachment via task update enforces uploader or Admin/Owner authorization and physically unlinks the file from disk (`FileService.delete_attachment_file`).
+- Orphan detection script provided at `scripts/find_orphaned_attachments.py`.
 
-### Serving
+### Serving & Access Control
 
-- `GET /api/files/<filename>` — serves inline
-- `GET /api/files/<filename>/download?name=...` — serves as attachment
-- **No auth required for file retrieval** — anyone with the URL can access
+- `GET /api/files/<filename>` — serves file inline.
+- `GET /api/files/<filename>/download?name=...` — serves as attachment download.
+- **Authentication strictly required:**
+  - Every file request requires a valid JWT (either in the `Authorization: Bearer <token>` header or `?token=<jwt>` query parameter).
+  - Calling user must have active access: board `viewer`+ for task attachments and banners, or conversation participant for message attachments.
+  - If a user leaves or is removed from a board, file access is immediately revoked with HTTP 403.
+  - **Exception:** User avatar pictures (`User.avatar_url`) are public and do not require JWT authentication.
 
 ---
 

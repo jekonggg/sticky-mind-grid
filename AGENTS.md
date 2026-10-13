@@ -93,7 +93,7 @@ backend/
 - **Services** contain all business logic; routes are thin wrappers that parse requests and call services.
 - **RBAC** is enforced via decorators: `@require_board_access('member')` or `@require_task_access('viewer')`.
 - **Activity logging** is recorded inside the same transaction as the mutation, then broadcast via SSE after commit.
-- **Soft delete** on Tasks only (`is_deleted` + `deleted_at`); all other entities use hard delete with cascading FKs.
+- **Soft delete** on Tasks and Boards (`is_deleted` + `deleted_at`, with a 30-day retention grace period), Messages (`is_deleted` for unsend), and soft status retention on BoardMember and BoardInvitation (`'pending'`, `'accepted'`, `'declined'`, `'expired'`, `'revoked'`).
 - **Board columns** are stored as a JSON array on the Board model — not a separate table.
 - **Task attachments** are stored as a JSON array on the Task model; uploaded files are stored in `backend/uploads/`.
 
@@ -102,7 +102,7 @@ backend/
 - All primary keys are UUID strings (`String(36)`).
 - Timestamps use `datetime.utcnow` (UTC without timezone).
 - Relationships use SQLAlchemy `db.relationship` with `back_populates` or `backref`.
-- Cascade deletes are configured at the FK level for BoardMember, Activity, Comment, Notification, Note.
+- Cascade deletes are configured at the FK level for BoardMember, BoardInvitation, Activity, Comment, Notification, Note, and Task (via `ondelete='CASCADE'`).
 - BoardMember enforces a `UniqueConstraint('board_id', 'user_id')`.
 
 ---

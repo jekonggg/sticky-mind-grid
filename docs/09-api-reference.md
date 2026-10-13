@@ -329,22 +329,22 @@ flowchart LR
   - `401`, `403`, `404`.
 
 #### `DELETE /api/boards/<board_id>`, `GET /api/boards/trash`, & `POST /api/boards/<board_id>/restore`
-- **Source:** `backend/app/routes/board_routes.py:L17-L22,L149-L171`, `backend/app/services/board_service.py:L297-L366`
+- **Source:** `backend/app/routes/board_routes.py:L17-L22,L150-L180`, `backend/app/services/board_service.py:L297-L366`
 - **Auth:** `@jwt_required()` | **Role:** `owner`
-- **Query Params (`DELETE`):** `soft=true` moves the board to 30-day trash; omitting `soft=true` permanently deletes the board.
+- **Query / Body Params (`DELETE`):** `soft=true` moves the board to 30-day trash; omitting `soft=true` permanently deletes the board and requires `confirm_name` (via JSON body or query param) matching `board.name` (`400` if missing or mismatched, `board_routes.py:L164-L170`).
 - **Responses (`200 OK`):**
   - `DELETE ?soft=true`: `{"message": "Board moved to trash (30-day grace period)", "isDeleted": true}`
   - `DELETE`: `{"message": "Board deleted successfully"}`
   - `GET /api/boards/trash`: `Board[]`
   - `POST /api/boards/<board_id>/restore`: Restored `Board` object.
-- **Error Codes:** `401`, `403`, `404` `{"error": "Board not found"}` / `{"error": "Board not found in trash"}`.
+- **Error Codes:** `400` (`confirm_name is required for permanent deletion` or name mismatch), `401`, `403`, `404` `{"error": "Board not found"}` / `{"error": "Board not found in trash"}`.
 
 #### `GET /api/boards/<board_id>/export`, `POST /api/boards/<board_id>/transfer-ownership`, & `PATCH, PUT, POST /api/boards/<board_id>/mute`
 - **Source:** `backend/app/routes/board_routes.py:L174-L196,L289-L299`, `backend/app/services/board_service.py:L932-L956,L1056-L1101,L1147-L1165`
 - **Roles:** `export` requires `admin`; `transfer-ownership` requires `owner` (`{"userId": "<TARGET_USER_UUID>"}`); `mute` requires `viewer` (`{"isMuted": boolean}`).
 - **Responses (`200 OK`):**
   - `export`: `{"board": Board, "tasks": Task[], "members": BoardMember[], "exportedAt": "...Z"}`
-  - `transfer-ownership`: `{"message": "Ownership transferred successfully"}`
+  - `transfer-ownership`: `{"message": "Ownership transferred successfully"}` (the former owner is demoted to `'admin'`, preserving single-owner invariant, `board_service.py:L1082-L1087`).
   - `mute`: `{"boardId": "<BOARD_UUID>", "isMuted": true}`
 - **Error Codes:** `400`, `401`, `403`, `404`.
 
@@ -396,15 +396,19 @@ flowchart LR
 #### `POST /api/tasks` & `PATCH, PUT /api/tasks/<task_id>`
 - **Source:** `backend/app/routes/task_routes.py:L58-L86,L120-L171`, `backend/app/services/task_service.py:L101-L207,L227-L439`
 - **Role:** `editor` on target board (and on both source and destination boards when `boardId` changes on `PATCH`/`PUT`, `task_routes.py:L131-L134`). Any `assignedTo` user must hold at least `editor` role (`task_routes.py:L73-L76,L150-L155`).
-- **Request Body:** `{ "boardId": string, "title": string, "emoji"?: string, "description"?: string, "baseDescription"?: string, "forceOverwrite"?: boolean, "status"?: string, "priority"?: string, "progress"?: number, "position"?: number, "checklist"?: ChecklistItem[], "tags"?: Tag[], "attachments"?: Attachment[], "followers"?: string[], "assignedTo"?: string | null, "dueDate"?: string | null }`
-- **Conflict Response (`409 Conflict` on `PATCH`/`PUT` when `baseDescription` differs from DB `description` and `forceOverwrite` is falsy, `task_routes.py:L162-L167`):**
+- **Request Body:** `{ "boardId": string, "title": string, "emoji"?: string, "description"?: string, "baseDescription"?: string, "lastKnownUpdatedAt"?: string, "forceOverwrite"?: boolean, "status"?: string, "priority"?: string, "progress"?: number, "position"?: number, "checklist"?: ChecklistItem[], "tags"?: Tag[], "attachments"?: Attachment[], "followers"?: string[], "assignedTo"?: string | null, "dueDate"?: string | null }`
+- **Conflict Response (`409 Conflict` on `PATCH`/`PUT` when `baseDescription` differs from DB `description` or remote `updated_at` differs from `lastKnownUpdatedAt` by >0.5s without `forceOverwrite`, `task_routes.py:L162-L167`, `task_service.py:L268-L288`):**
   ```json
   {
-    "error": "Conflict: Description was modified by another user",
+    "error": "Conflict: Task was modified by another user",
     "conflict": true,
     "currentTask": { ... }
   }
   ```
+- **Business Rules & Side Effects:**
+  - If `checklist` is present, `task_service.py:L172-L175` auto-derives progress from checklist item completion; client `progress` overrides are ignored.
+  - Attachment removal requires the caller to be the attachment's uploader or a board `admin`/`owner` (`task_service.py:L313-L320`), returning `403` otherwise.
+  - Cross-board move (`boardId` change) strips tags and comments for strict board tenant isolation (`task_service.py:L185-L215`).
 - **Other Error Codes:** `400` (`boardId and title are required`, `Cards can only be assigned to members with Editor role or above`, or storage quota exceeded), `401`, `403`, `404`, `500`.
 
 #### `POST, PATCH, PUT /api/tasks/<task_id>/follow` & `PATCH /api/tasks/reorder`
@@ -429,7 +433,7 @@ flowchart LR
 | `GET` | `/api/tasks/<task_id>/comments` | JWT | `viewer` | — | `200 OK` `Comment[]` | `401`, `403`, `404` | `comment_routes.py:L8-L13` |
 | `POST` | `/api/tasks/<task_id>/comments` | JWT | `commenter` | `{"content": string}` | `201 Created` `Comment` | `400`, `401`, `403`, `404` | `comment_routes.py:L15-L30`, `comment_service.py:L52-L140` |
 | `PATCH`, `PUT` | `/api/comments/<comment_id>` | JWT | Comment author + `commenter` on board | `{"content": string}` | `200 OK` `Comment` (`isEdited: true`, `originalContent` preserved) | `400` (empty), `401`, `403` (not author/not found) | `comment_routes.py:L32-L46`, `comment_service.py:L195-L271` |
-| `DELETE` | `/api/comments/<comment_id>` | JWT | Comment author OR board `admin`/`owner` | — | `200 OK` `{"message": "Comment deleted successfully"}` | `401`, `403` | `comment_routes.py:L48-L56`, `comment_service.py:L143-L192` |
+| `DELETE` | `/api/comments/<comment_id>` | JWT | (Comment author OR board `admin`/`owner`) + active `commenter` on board | — | `200 OK` `{"message": "Comment deleted successfully"}` | `401`, `403` (requires active membership) | `comment_routes.py:L48-L56`, `comment_service.py:L143-L192` |
 
 ---
 
@@ -470,7 +474,7 @@ flowchart LR
 | `GET` | `/api/boards/<board_id>/notes` | JWT | `viewer` | — | `200 OK` `Note[]` | `401`, `403`, `404` | `note_routes.py:L8-L13` |
 | `POST` | `/api/boards/<board_id>/notes` | JWT | `editor` (`member`) | `{"title": string, "content"?: string, "color"?: string}` | `201 Created` `Note` | `400`, `401`, `403`, `404` | `note_routes.py:L15-L28`, `note_service.py:L15-L54` |
 | `PATCH`, `PUT` | `/api/notes/<note_id>` | JWT | `editor` (`member`) | `{"title"?: string, "content"?: string, "color"?: string}` | `200 OK` `Note` | `400` (includes not-found & permission errors in `note_routes.py:L40`), `401` | `note_routes.py:L30-L42`, `note_service.py:L57-L100` |
-| `DELETE` | `/api/notes/<note_id>` | JWT | Note author OR board `admin`/`owner` | — | `200 OK` `{"message": "Note deleted successfully"}` | `401`, `403` (includes not-found in `note_routes.py:L50`) | `note_routes.py:L44-L52`, `note_service.py:L103-L137` |
+| `DELETE` | `/api/notes/<note_id>` | JWT | (Note author OR board `admin`/`owner`) + active `viewer` on board | — | `200 OK` `{"message": "Note deleted successfully"}` | `401`, `403` (includes not-found and non-member) | `note_routes.py:L44-L52`, `note_service.py:L103-L137` |
 
 ---
 
