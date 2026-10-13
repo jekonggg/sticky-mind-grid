@@ -8,7 +8,7 @@ except ImportError:
     validate_email = None
     EmailNotValidError = Exception
 from app.models.user import User
-from app import db
+from app import db, limiter
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -145,6 +145,7 @@ def get_oauth_providers():
     }), 200
 
 @bp.route('/oauth', methods=['POST'])
+@limiter.limit("20 per minute")
 def oauth_generic():
     data = request.get_json() or {}
     provider = data.get('provider', '').lower()
@@ -153,11 +154,13 @@ def oauth_generic():
     return handle_oauth_flow(provider, data)
 
 @bp.route('/oauth/<provider>', methods=['POST'])
+@limiter.limit("20 per minute")
 def oauth_provider(provider):
     data = request.get_json() or {}
     return handle_oauth_flow(provider, data)
 
 @bp.route('/register', methods=['POST'])
+@limiter.limit("10 per minute")
 def register():
     data = request.get_json()
     
@@ -189,6 +192,7 @@ def register():
     }), 201
 
 @bp.route('/login', methods=['POST'])
+@limiter.limit("10 per minute")
 def login():
     try:
         data = request.get_json()

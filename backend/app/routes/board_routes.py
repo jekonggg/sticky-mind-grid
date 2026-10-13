@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, Response, stream_with_context
 from flask_jwt_extended import jwt_required, get_jwt_identity, decode_token
-from app import db
+from app import db, limiter
 from app.models.board import Board
 from app.services.board_service import BoardService
 from app.utils.decorators import require_board_access, get_effective_role, ROLE_HIERARCHY
@@ -217,6 +217,7 @@ def get_members(board_id):
     return jsonify(members), 200
 
 @bp.route('/<board_id>/members', methods=['POST'])
+@limiter.limit("20 per minute")
 @jwt_required()
 @require_board_access('admin')
 def add_member(board_id):
@@ -254,6 +255,7 @@ def remove_member(board_id, user_id):
     return jsonify({'message': 'Left board successfully' if is_self else 'Member removed'}), 200
 
 @bp.route('/<board_id>/members/<user_id>/resend', methods=['POST'])
+@limiter.limit("20 per minute")
 @jwt_required()
 @require_board_access('admin')
 def resend_invite(board_id, user_id):
@@ -290,6 +292,7 @@ def revoke_invitation(board_id, invitation_id):
     return jsonify({'message': 'Invitation revoked successfully'}), 200
 
 @bp.route('/<board_id>/invitations/<invitation_id>/resend', methods=['POST'])
+@limiter.limit("20 per minute")
 @jwt_required()
 @require_board_access('admin')
 def resend_board_invitation(board_id, invitation_id):

@@ -4,12 +4,19 @@ from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_bcrypt import Bcrypt
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from config import Config
 
 db = SQLAlchemy()
 migrate = Migrate()
 jwt = JWTManager()
 bcrypt = Bcrypt()
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per minute"],
+    storage_uri="memory://"
+)
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -43,6 +50,14 @@ def create_app(config_class=Config):
 
     jwt.init_app(app)
     bcrypt.init_app(app)
+    limiter.init_app(app)
+
+    @app.errorhandler(429)
+    def handle_rate_limit_exceeded(e):
+        return jsonify({
+            'error': 'Too many requests. Please try again later.',
+            'message': str(getattr(e, 'description', e))
+        }), 429
 
     @app.errorhandler(Exception)
     def handle_global_exception(e):

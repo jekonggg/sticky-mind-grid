@@ -26,6 +26,7 @@ class TestConfig(Config):
     JWT_SECRET_KEY = 'test-jwt-secret-key-1234567890'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     SECRET_KEY = 'test-secret-key'
+    RATELIMIT_ENABLED = False
 
 @pytest.fixture
 def app():

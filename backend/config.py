@@ -81,3 +81,8 @@ class Config:
     SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
     SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
     EMAIL_FROM = os.environ.get('EMAIL_FROM', 'noreply@stickymindgrid.com')
+
+    # HTTP Rate Limiting
+    RATELIMIT_ENABLED = os.environ.get('RATELIMIT_ENABLED', 'true').lower() in ('true', '1')
+    RATELIMIT_STORAGE_URI = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')
+    RATELIMIT_DEFAULT = os.environ.get('RATELIMIT_DEFAULT', '200 per minute')
