@@ -153,12 +153,30 @@ export default function TeamsPage() {
       t.email.toLowerCase().includes(search.toLowerCase())
   );
 
+  const canInviteToBoard = (b: Board) => {
+    if (devSettings.simulatedRole && devSettings.simulatedRole !== "none") {
+      return devSettings.simulatedRole === "admin" || devSettings.simulatedRole === "owner";
+    }
+    const role = b.role?.toLowerCase();
+    const isOwner = Boolean(role === "owner" || (user?.id && b.ownerId === user.id));
+    const isAdmin = role === "admin" || isOwner;
+    return isAdmin;
+  };
+
+  const invitableBoards = boards.filter(canInviteToBoard);
+  const canInviteAnywhere = invitableBoards.length > 0;
+
   const handleOpenInvite = (boardId?: string) => {
     if (boards.length === 0) {
       toast.error("Please create a board first.");
       return;
     }
-    setSelectedBoardForInvite(boardId || boards[0].id);
+    const targetBoardId = boardId || invitableBoards[0]?.id;
+    if (!targetBoardId) {
+      toast.error("You do not have permission to invite members to any boards.");
+      return;
+    }
+    setSelectedBoardForInvite(targetBoardId);
     setIsInviteDialogOpen(true);
   };
 
@@ -192,10 +210,12 @@ export default function TeamsPage() {
             </p>
           </div>
 
-          <Button onClick={() => handleOpenInvite()} className="gap-1.5 font-semibold text-xs h-9 shadow-xs">
-            <Plus className="h-4 w-4" />
-            Invite Teammate
-          </Button>
+          {canInviteAnywhere && (
+            <Button onClick={() => handleOpenInvite()} className="gap-1.5 font-semibold text-xs h-9 shadow-xs">
+              <Plus className="h-4 w-4" />
+              Invite Teammate
+            </Button>
+          )}
         </div>
 
         {/* 1. Pending Invitations Section */}
@@ -307,17 +327,19 @@ export default function TeamsPage() {
                   </div>
                 </div>
 
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenInvite(b.id);
-                  }}
-                  className="h-7 px-2 text-xs font-semibold text-primary hover:bg-primary/10"
-                >
-                  <Plus className="h-3 w-3 mr-1" /> Invite
-                </Button>
+                {canInviteToBoard(b) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenInvite(b.id);
+                    }}
+                    className="h-7 px-2 text-xs font-semibold text-primary hover:bg-primary/10"
+                  >
+                    <Plus className="h-3 w-3 mr-1" /> Invite
+                  </Button>
+                )}
               </div>
             ))}
           </div>
@@ -366,14 +388,16 @@ export default function TeamsPage() {
                     Invite colleagues and collaborators to your workspace boards to start working together.
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => handleOpenInvite()}
-                  className="h-8 gap-1.5 text-xs font-semibold cursor-pointer shadow-xs"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Invite Teammate
-                </Button>
+                {canInviteAnywhere && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleOpenInvite()}
+                    className="h-8 gap-1.5 text-xs font-semibold cursor-pointer shadow-xs"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Invite Teammate
+                  </Button>
+                )}
               </div>
             )
           ) : (

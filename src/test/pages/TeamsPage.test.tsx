@@ -81,4 +81,30 @@ describe("TeamsPage", () => {
       expect(screen.getAllByRole("button", { name: /invite teammate/i }).length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  it("hides invite buttons for roles that cannot invite members (editor, commenter, viewer)", async () => {
+    (boardApi.getBoards as any).mockResolvedValue([
+      {
+        id: "board-editor",
+        name: "Editor Board",
+        emoji: "📝",
+        color: "#10b981",
+        ownerId: "someone-else",
+        role: "editor",
+        columns: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+
+    renderWithProviders(<TeamsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Teams & Collaborators")).toBeInTheDocument();
+    });
+
+    // Both top header and board card invite buttons must be hidden
+    expect(screen.queryByRole("button", { name: /invite teammate/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /invite/i })).not.toBeInTheDocument();
+  });
 });

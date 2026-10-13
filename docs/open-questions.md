@@ -158,12 +158,16 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ---
 
-### OQ-12: Teams Page Member Invitation Buttons for Non-Admins
+### OQ-12 [RESOLVED]: Teams Page Member Invitation Buttons for Non-Admins
+- **Status:** RESOLVED.
+- **Resolution:**
+  1. Updated `TeamsPage.tsx` (`src/pages/TeamsPage.tsx`) to gate invite buttons by `canInviteToBoard` and `canInviteAnywhere` (`b.role === 'admin' || b.role === 'owner' || b.ownerId === user.id`).
+  2. Gated the top header "Invite Teammate" button, individual board card "+ Invite" buttons, and collaborator directory empty state invite button.
+  3. Added component test in `src/test/pages/TeamsPage.test.tsx` verifying invite buttons are hidden when the user only holds non-admin roles (`editor`, `commenter`, `viewer`).
+  4. Preserved strict backend HTTP 403 authorization check in `POST /api/boards/<id>/members`.
 - **Where in Code:**
-  - `src/pages/TeamsPage.tsx:L195, L402`: Renders "Invite Teammate" and "+ Invite" buttons across team boards without checking `permissions.canInviteMembers`.
-  - `backend/app/routes/board_routes.py:L206-L208`: Rejects non-admin invitation requests with `HTTP 403`.
-- **Recommendation:**
-  - Wrap invite buttons on `TeamsPage.tsx` with `canInviteMembers` checks to prevent 403 error toasts for non-admin users.
+  - `src/pages/TeamsPage.tsx:L156-L177, L203-L208, L330-L342, L388-L397`: Permission-gated buttons.
+
 
 ---
 
