@@ -311,6 +311,37 @@ def test_oq_03_checklist_derives_progress_ignoring_manual_override(client, creat
     data = resp.get_json()
     assert data["progress"] == 25, "Progress should be 25% (1/4), ignoring manual 99%"
 
+    # Updating other fields or attempting manual progress override when checklist exists
+    resp_override = client.patch(
+        f"/api/tasks/{task.id}",
+        headers=auth_headers(user.id),
+        data=json.dumps({
+            "title": "Renamed Checklist Task",
+            "progress": 88
+        }),
+        content_type="application/json"
+    )
+    assert resp_override.status_code == 200
+    assert resp_override.get_json()["progress"] == 25, "Manual progress override must be ignored when checklist exists"
+
+    # Creation with checklist items also derives progress server-side
+    resp_create = client.post(
+        "/api/tasks",
+        headers=auth_headers(user.id),
+        data=json.dumps({
+            "boardId": board.id,
+            "title": "Created with Checklist",
+            "checklist": [
+                {"id": "c1", "title": "C1", "completed": True},
+                {"id": "c2", "title": "C2", "completed": True},
+            ],
+            "progress": 10
+        }),
+        content_type="application/json"
+    )
+    assert resp_create.status_code == 201
+    assert resp_create.get_json()["progress"] == 100, "Progress should be derived as 100% (2/2), ignoring 10"
+
     # If checklist is empty, manual progress is respected
     resp_empty = client.patch(
         f"/api/tasks/{task.id}",

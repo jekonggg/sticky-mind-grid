@@ -135,6 +135,13 @@ class TaskService:
             if assigned_to and str(assigned_to) not in initial_followers:
                 initial_followers.append(str(assigned_to))
 
+        initial_checklist = data.get('checklist', [])
+        initial_progress = data.get('progress', 0)
+        if isinstance(initial_checklist, list) and len(initial_checklist) > 0:
+            total_items = len(initial_checklist)
+            completed_items = sum(1 for item in initial_checklist if isinstance(item, dict) and item.get('completed'))
+            initial_progress = int(round((completed_items / total_items) * 100))
+
         new_task = Task(
             board_id=board_id,
             title=data.get('title'),
@@ -142,9 +149,9 @@ class TaskService:
             description=data.get('description'),
             status=status,
             priority=data.get('priority', 'medium'),
-            progress=data.get('progress', 0),
+            progress=initial_progress,
             position=position,
-            checklist=data.get('checklist', []),
+            checklist=initial_checklist,
             tags=data.get('tags', []),
             attachments=attachments,
             followers=initial_followers,
@@ -291,9 +298,15 @@ class TaskService:
         status_val = data.get('status') if 'status' in data else data.get('columnId')
         if status_val is not None: task.status = status_val
         if 'priority' in data: task.priority = data['priority']
-        if 'progress' in data: task.progress = data['progress']
-        if 'position' in data and data['position'] is not None: task.position = float(data['position'])
         if 'checklist' in data: task.checklist = data['checklist']
+        active_checklist = task.checklist if isinstance(task.checklist, list) else []
+        if len(active_checklist) > 0:
+            total_items = len(active_checklist)
+            completed_items = sum(1 for item in active_checklist if isinstance(item, dict) and item.get('completed'))
+            task.progress = int(round((completed_items / total_items) * 100))
+        elif 'progress' in data:
+            task.progress = data['progress']
+        if 'position' in data and data['position'] is not None: task.position = float(data['position'])
         if 'tags' in data: task.tags = data['tags']
         if 'attachments' in data: task.attachments = data['attachments']
         if 'assignedTo' in data: task.assigned_to = data['assignedTo'] if data['assignedTo'] != "unassigned" else None
