@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { Task, Attachment } from "@/types/task";
 import { Note, CreateNoteData, UpdateNoteData } from "@/types/note";
+import { BoardMember } from "@/types/board";
 import { noteApi } from "@/services/noteApi";
 import { fileApi } from "@/services/fileApi";
+import { boardApi } from "@/services/boardApi";
+import { useAuth } from "@/contexts/AuthContext";
 import { NoteModal } from "../documents/NoteModal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -42,6 +45,22 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  // Fetch Board Members for Role Validation
+  const { data: members = [] } = useQuery<BoardMember[]>({
+    queryKey: ["boardMembers", boardId],
+    queryFn: () => (boardId ? boardApi.getMembers(boardId) : Promise.resolve([])),
+    enabled: !!boardId,
+  });
+
+  const currentMember = members.find((m) => String(m.userId) === String(user?.id));
+  const isAdminOrOwner = currentMember?.role === "owner" || currentMember?.role === "admin";
+  const canDeleteNote = (note: Note) => {
+    if (readOnly) return false;
+    if (isAdminOrOwner) return true;
+    return String(note.userId) === String(user?.id);
+  };
 
   // Fetch Board Project Notes
   const { data: notes = [], isLoading: isNotesLoading } = useQuery<Note[]>({
@@ -258,17 +277,19 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
                           >
                             <Pencil className="h-3 w-3" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm("Delete this note?")) handleNoteDelete(note.id);
-                            }}
-                            className="p-1 rounded-full bg-black/10 hover:bg-destructive hover:text-white text-neutral-800"
-                            title="Delete Note"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                          {canDeleteNote(note) && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm("Delete this note?")) handleNoteDelete(note.id);
+                              }}
+                              className="p-1 rounded-full bg-black/10 hover:bg-destructive hover:text-white text-neutral-800"
+                              title="Delete Note"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -420,7 +441,7 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
         onClose={() => setIsNoteModalOpen(false)}
         note={editingNote}
         onSubmit={handleNoteSubmit}
-        onDelete={handleNoteDelete}
+        onDelete={editingNote && canDeleteNote(editingNote) ? handleNoteDelete : undefined}
         readOnly={readOnly}
       />
     </div>
