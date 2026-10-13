@@ -54,8 +54,17 @@ export function useBoardRealtime({
   const [isReconnecting, setIsReconnecting] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasConnectedOnceRef = useRef(false);
   const needsReconnectSyncRef = useRef(false);
+  const RECONNECT_LOCK_DEBOUNCE_MS = 4000;
+
+  const clearReconnectDebounce = () => {
+    if (reconnectDebounceTimeoutRef.current) {
+      clearTimeout(reconnectDebounceTimeoutRef.current);
+      reconnectDebounceTimeoutRef.current = null;
+    }
+  };
 
   // Keep latest callbacks in ref without triggering reconnection loops
   const callbacksRef = useRef({
@@ -104,6 +113,7 @@ export function useBoardRealtime({
   useEffect(() => {
     // Check if SSE disconnect is simulated via Developer Mode
     if (devSettings.simulateSseDisconnect) {
+      clearReconnectDebounce();
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
@@ -121,6 +131,7 @@ export function useBoardRealtime({
     // In Seed Sandbox Mode (e.g. Full System Showcase), mock boards do not exist on the backend SSE server.
     // Simulate active connection without triggering reconnect loops or read-only locks.
     if (devSettings.seedTakeoverPreset && devSettings.seedTakeoverPreset !== "none") {
+      clearReconnectDebounce();
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
@@ -135,6 +146,7 @@ export function useBoardRealtime({
     }
 
     if (!boardId || !userId) {
+      clearReconnectDebounce();
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
@@ -170,6 +182,7 @@ export function useBoardRealtime({
 
       es.onopen = () => {
         if (!isMounted) return;
+        clearReconnectDebounce();
         setIsConnected(true);
         setIsReconnecting(false);
         if (needsReconnectSyncRef.current || (hasConnectedOnceRef.current && openedOnceOnThisInstance)) {
@@ -221,6 +234,7 @@ export function useBoardRealtime({
           switch (payload.type) {
             case "connected":
               if (isMounted) {
+                clearReconnectDebounce();
                 setIsConnected(true);
                 setIsReconnecting(false);
                 if (needsReconnectSyncRef.current || (hasConnectedOnceRef.current && connectedMsgOnceOnThisInstance)) {
@@ -283,6 +297,7 @@ export function useBoardRealtime({
             case "member:removed":
               queryClient?.invalidateQueries({ queryKey: ["boardMembers", boardId] });
               if (payload.data?.userId && String(payload.data.userId) === String(userId)) {
+                clearReconnectDebounce();
                 if (reconnectTimeoutRef.current) {
                   clearTimeout(reconnectTimeoutRef.current);
                   reconnectTimeoutRef.current = null;
@@ -303,6 +318,7 @@ export function useBoardRealtime({
               break;
 
             case "force_disconnect":
+              clearReconnectDebounce();
               if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current);
                 reconnectTimeoutRef.current = null;
@@ -364,7 +380,15 @@ export function useBoardRealtime({
       es.onerror = () => {
         if (isMounted) {
           setIsConnected(false);
-          setIsReconnecting(true);
+          // Debounce the read-only reconnect lock (OQ-10) to prevent jarring UI locks during brief disconnects
+          if (!reconnectDebounceTimeoutRef.current) {
+            reconnectDebounceTimeoutRef.current = setTimeout(() => {
+              if (isMounted) {
+                setIsReconnecting(true);
+              }
+              reconnectDebounceTimeoutRef.current = null;
+            }, RECONNECT_LOCK_DEBOUNCE_MS);
+          }
         }
         needsReconnectSyncRef.current = true;
         es.close();
@@ -380,12 +404,20 @@ export function useBoardRealtime({
     const handleOffline = () => {
       if (!isMounted) return;
       setIsConnected(false);
-      setIsReconnecting(true);
+      if (!reconnectDebounceTimeoutRef.current) {
+        reconnectDebounceTimeoutRef.current = setTimeout(() => {
+          if (isMounted) {
+            setIsReconnecting(true);
+          }
+          reconnectDebounceTimeoutRef.current = null;
+        }, RECONNECT_LOCK_DEBOUNCE_MS);
+      }
       needsReconnectSyncRef.current = true;
     };
 
     const handleOnline = () => {
       if (!isMounted) return;
+      clearReconnectDebounce();
       if (boardId && userId && !devSettings.simulateSseDisconnect) {
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
@@ -406,12 +438,14 @@ export function useBoardRealtime({
       isMounted = false;
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
+      clearReconnectDebounce();
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
       setIsConnected(false);
+      setIsReconnecting(false);
     };
   }, [boardId, userId, authToken, devSettings.simulateSseDisconnect, devSettings.seedTakeoverPreset, queryClient]);
 

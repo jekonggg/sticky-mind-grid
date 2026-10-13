@@ -141,12 +141,17 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ---
 
-### OQ-10: Client Read-Only State During SSE Reconnection
+### OQ-10 [RESOLVED]: Client Read-Only State During SSE Reconnection
+- **Status:** RESOLVED.
+- **Resolution:**
+  1. Updated `src/hooks/useBoardRealtime.ts` with a 4-second debounce timer (`RECONNECT_LOCK_DEBOUNCE_MS = 4000`) on setting `isReconnecting = true`.
+  2. Transient network blips and socket re-negotiations lasting under 4 seconds no longer trigger the read-only lock or interrupt user interactions (drag-and-drop, editing, commenting).
+  3. Disconnections lasting 4 seconds or longer transition `isReconnecting` to `true`, engaging `effectiveReadOnly` in `KanbanBoard.tsx` to safeguard against concurrent editing conflicts during prolonged offline periods.
+  4. Successful reconnection (`es.onopen` or `type: "connected"`) immediately cancels pending debounce timers and clears `isReconnecting = false`.
+  5. Added unit tests in `src/test/hooks/useBoardRealtime.test.tsx` validating the 4-second threshold and debounce cancellation upon fast reconnection.
 - **Where in Code:**
-  - `src/hooks/useBoardRealtime.ts:L285-L298`: Sets `isReconnecting = true` whenever `EventSource` encounters an error.
-  - `src/components/kanban/KanbanBoard.tsx:L128`: Calculates `effectiveReadOnly = isReadOnly || isReconnecting`, locking drag-drop, editing, and commenting until reconnecting resolves.
-- **Recommendation:**
-  - Document that the read-only lock during SSE reconnection is an intentional UI-only safeguard designed to prevent concurrent edit conflicts during network drops.
+  - `src/hooks/useBoardRealtime.ts:L58, L380-L430`: Debounced `isReconnecting` timer implementation.
+  - `src/test/hooks/useBoardRealtime.test.tsx`: Unit tests for debounce activation and cancellation.
 
 ---
 

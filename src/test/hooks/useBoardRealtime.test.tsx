@@ -180,4 +180,94 @@ describe("useBoardRealtime SSE Event Handling", () => {
       queryKey: ["pendingInvitations"],
     });
   });
+
+  it("debounces isReconnecting read-only lock so it only activates after 4 seconds of disconnect", () => {
+    vi.useFakeTimers();
+    try {
+      const { result } = renderHook(
+        () =>
+          useBoardRealtime({
+            boardId: "board-1",
+          }),
+        { wrapper }
+      );
+
+      const es = MockEventSource.instances[0];
+      act(() => {
+        es.emitOpen();
+      });
+      expect(result.current.isConnected).toBe(true);
+      expect(result.current.isReconnecting).toBe(false);
+
+      // Trigger error (disconnect)
+      act(() => {
+        if (es.onerror) es.onerror();
+      });
+
+      // Disconnected immediately, but isReconnecting should NOT be true yet!
+      expect(result.current.isConnected).toBe(false);
+      expect(result.current.isReconnecting).toBe(false);
+
+      // Advance by 2 seconds (less than 4s debounce threshold)
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(result.current.isReconnecting).toBe(false);
+
+      // Advance past 4 seconds total
+      act(() => {
+        vi.advanceTimersByTime(2100);
+      });
+      expect(result.current.isReconnecting).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("cancels isReconnecting lock debounce if reconnect occurs before 4 seconds", () => {
+    vi.useFakeTimers();
+    try {
+      const { result } = renderHook(
+        () =>
+          useBoardRealtime({
+            boardId: "board-1",
+          }),
+        { wrapper }
+      );
+
+      const es1 = MockEventSource.instances[0];
+      act(() => {
+        es1.emitOpen();
+      });
+
+      // Disconnect
+      act(() => {
+        if (es1.onerror) es1.onerror();
+      });
+      expect(result.current.isConnected).toBe(false);
+      expect(result.current.isReconnecting).toBe(false);
+
+      // Advance 2s (transient blip)
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(result.current.isReconnecting).toBe(false);
+
+      // Second EventSource instance opens
+      const es2 = MockEventSource.instances[1] || es1;
+      act(() => {
+        es2.emitOpen();
+      });
+      expect(result.current.isConnected).toBe(true);
+      expect(result.current.isReconnecting).toBe(false);
+
+      // Advance past 4s total from original disconnect
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      expect(result.current.isReconnecting).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
