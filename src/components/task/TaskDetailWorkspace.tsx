@@ -198,6 +198,7 @@ export function TaskDetailWorkspace({
     await performUpdate({
       description: newDesc,
       baseDescription: baseDescriptionRef.current,
+      lastKnownUpdatedAt: task.updatedAt,
       forceOverwrite: options?.forceOverwrite,
     });
     baseDescriptionRef.current = newDesc;

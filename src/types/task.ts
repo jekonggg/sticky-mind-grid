@@ -84,6 +84,7 @@ export interface UpdateTaskData {
   emoji?: string;
   description?: string;
   baseDescription?: string;
+  lastKnownUpdatedAt?: string | Date;
   forceOverwrite?: boolean;
   status?: TaskStatus;
   fromStatus?: TaskStatus;

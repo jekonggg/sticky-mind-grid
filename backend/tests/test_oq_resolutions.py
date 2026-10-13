@@ -623,3 +623,77 @@ def test_oq_08_revoking_pending_invite_suppresses_removed_notification_and_clean
     assert Notification.query.filter_by(user_id=invitee2.id, type="board_invite").first() is None
     assert BoardMember.query.filter_by(board_id=board.id, user_id=invitee2.id).first() is None
 
+def test_oq_14_concurrency_conflict_detection_with_last_known_updated_at(client, create_test_user, auth_headers):
+    """
+    OQ-14: Dual Concurrency Conflict Detection.
+    - If lastKnownUpdatedAt is stale, return HTTP 409 Conflict.
+    - If description is updated without baseDescription and without lastKnownUpdatedAt on a modified task,
+      return HTTP 409 Conflict unless forceOverwrite: True is provided.
+    """
+    user = create_test_user(email="oq14_user@example.com")
+    board = BoardService.create_board({"name": "OQ14 Board"}, user.id)
+
+    # Create task with initial description
+    task = TaskService.create_task({
+        "boardId": board.id,
+        "title": "Concurrent Task",
+        "description": "Initial server description"
+    }, user_id=user.id)
+
+    # 1. Stale lastKnownUpdatedAt returns HTTP 409
+    stale_timestamp = (datetime.utcnow() - timedelta(minutes=10)).isoformat() + "Z"
+    resp_stale = client.patch(
+        f"/api/tasks/{task.id}",
+        headers=auth_headers(user.id),
+        data=json.dumps({
+            "description": "User A new description",
+            "lastKnownUpdatedAt": stale_timestamp
+        }),
+        content_type="application/json"
+    )
+    assert resp_stale.status_code == 409
+    assert resp_stale.get_json()["conflict"] is True
+
+    # 2. Missing both baseDescription and lastKnownUpdatedAt on existing modified task returns HTTP 409
+    resp_blind = client.patch(
+        f"/api/tasks/{task.id}",
+        headers=auth_headers(user.id),
+        data=json.dumps({
+            "description": "Blind overwrite attempt"
+        }),
+        content_type="application/json"
+    )
+    assert resp_blind.status_code == 409
+    assert resp_blind.get_json()["conflict"] is True
+
+    # 3. Supplying forceOverwrite: True bypasses conflict
+    resp_forced = client.patch(
+        f"/api/tasks/{task.id}",
+        headers=auth_headers(user.id),
+        data=json.dumps({
+            "description": "Forced description overwrite",
+            "forceOverwrite": True
+        }),
+        content_type="application/json"
+    )
+    assert resp_forced.status_code == 200
+    assert resp_forced.get_json()["description"] == "Forced description overwrite"
+
+    # 4. Supplying matching lastKnownUpdatedAt succeeds
+    db.session.expire_all()
+    reloaded_task = db.session.get(Task, task.id)
+    current_timestamp = reloaded_task.updated_at.isoformat() + "Z"
+
+    resp_valid = client.patch(
+        f"/api/tasks/{task.id}",
+        headers=auth_headers(user.id),
+        data=json.dumps({
+            "description": "Updated with valid timestamp",
+            "lastKnownUpdatedAt": current_timestamp
+        }),
+        content_type="application/json"
+    )
+    assert resp_valid.status_code == 200
+    assert resp_valid.get_json()["description"] == "Updated with valid timestamp"
+
+

@@ -243,10 +243,48 @@ class TaskService:
         old_title = task.title
         old_description = task.description
 
-        # Check for concurrent description conflict
-        if 'description' in data and 'baseDescription' in data and not data.get('forceOverwrite'):
-            if (old_description or "") != (data.get('baseDescription') or "") and (data.get('description') or "") != (old_description or ""):
-                raise TaskConflictError(task)
+        # Check for concurrent description conflict (OQ-14)
+        if 'description' in data and not data.get('forceOverwrite'):
+            incoming_desc = data.get('description') or ""
+            curr_desc = old_description or ""
+            # Only evaluate concurrency conflicts if description is actually changing
+            if incoming_desc != curr_desc:
+                # 1. Content-based check (baseDescription)
+                if 'baseDescription' in data:
+                    base_desc = data.get('baseDescription') or ""
+                    if curr_desc != base_desc:
+                        raise TaskConflictError(task, "Conflict: Description was modified by another user")
+
+                # 2. Timestamp-based check (lastKnownUpdatedAt)
+                if 'lastKnownUpdatedAt' in data:
+                    last_known = data.get('lastKnownUpdatedAt')
+                    parsed_dt = None
+                    if isinstance(last_known, str) and last_known:
+                        clean_str = last_known.rstrip('Z')
+                        if '+' in clean_str:
+                            clean_str = clean_str.split('+')[0]
+                        try:
+                            parsed_dt = datetime.fromisoformat(clean_str)
+                            if parsed_dt.tzinfo is not None:
+                                parsed_dt = parsed_dt.replace(tzinfo=None)
+                        except (ValueError, TypeError):
+                            pass
+                    elif isinstance(last_known, datetime):
+                        parsed_dt = last_known
+                        if parsed_dt.tzinfo is not None:
+                            parsed_dt = parsed_dt.replace(tzinfo=None)
+
+                    if parsed_dt and task.updated_at:
+                        if (task.updated_at - parsed_dt).total_seconds() > 0.5:
+                            raise TaskConflictError(task, "Conflict: Task was modified by another user")
+
+                # 3. Neither token provided on already modified / populated task
+                if 'baseDescription' not in data and 'lastKnownUpdatedAt' not in data:
+                    is_modified_remotely = bool(curr_desc) or (
+                        task.updated_at and task.created_at and (task.updated_at - task.created_at).total_seconds() > 0.5
+                    )
+                    if is_modified_remotely:
+                        raise TaskConflictError(task, "Conflict: Task was modified remotely. Concurrency token or forceOverwrite required")
 
         if 'attachments' in data:
             from app.services.file_service import FileService

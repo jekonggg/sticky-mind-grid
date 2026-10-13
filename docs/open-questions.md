@@ -169,12 +169,18 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ---
 
-### OQ-14: Blind Overwrite Risk on Task Description Updates
+### OQ-14 [RESOLVED]: Blind Overwrite Risk on Task Description Updates
+- **Status:** RESOLVED.
+- **Resolution:**
+  1. Updated `TaskService.update_task` (`backend/app/services/task_service.py`) to support dual concurrency conflict detection: content-based (`baseDescription`) and timestamp-based (`lastKnownUpdatedAt`).
+  2. If `lastKnownUpdatedAt` is stale compared to `task.updated_at`, the server raises `TaskConflictError` (mapped to HTTP 409 Conflict in `task_routes.py`).
+  3. If a description update is submitted without both `baseDescription` and `lastKnownUpdatedAt` on an existing modified task, the server raises HTTP 409 Conflict unless `forceOverwrite: true` is passed.
+  4. Updated `TaskDetailWorkspace.tsx` (`src/components/task/TaskDetailWorkspace.tsx`) to supply both `baseDescription` and `lastKnownUpdatedAt` on description edits.
+  5. Added regression test `backend/tests/test_oq_resolutions.py:test_oq_14_concurrency_conflict_detection_with_last_known_updated_at`.
 - **Where in Code:**
-  - `backend/app/services/task_service.py:L205-L242`: Concurrency conflict checks (`HTTP 409`) only trigger if `baseDescription` or `lastKnownUpdatedAt` is sent in payload.
-  - If a client sends `{"description": "new"}` without concurrency tokens, the server blindly overwrites the field.
-- **Recommendation:**
-  - Enforce `lastKnownUpdatedAt` validation on all description updates or document optimistic overwrite semantics.
+  - `backend/app/services/task_service.py:L246-L288`: Dual concurrency conflict checks.
+  - `src/components/task/TaskDetailWorkspace.tsx:L194-L206`: Supplies both tokens on description change.
+
 
 ---
 
