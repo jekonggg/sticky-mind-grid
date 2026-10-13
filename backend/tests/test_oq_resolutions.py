@@ -354,3 +354,46 @@ def test_oq_03_checklist_derives_progress_ignoring_manual_override(client, creat
     )
     assert resp_empty.status_code == 200
     assert resp_empty.get_json()["progress"] == 42
+
+def test_oq_04_transfer_ownership_demotes_former_owner_to_admin(client, create_test_user, auth_headers):
+    """
+    OQ-04 / CD-04: Strict Single-Owner Model.
+    When transferring ownership, the target member becomes 'owner' and the former owner's BoardMember.role
+    must be demoted to 'admin'.
+    """
+    owner = create_test_user(email="oq04_owner@example.com")
+    member = create_test_user(email="oq04_member@example.com")
+    board = BoardService.create_board({"name": "OQ04 Board"}, owner.id)
+
+    # Add member as editor
+    BoardService.add_member(board.id, member.email, role="editor", actor_id=owner.id)
+    # Accept invite so member is accepted
+    bm_member = BoardMember.query.filter_by(board_id=board.id, user_id=member.id).first()
+    bm_member.status = 'accepted'
+    db.session.commit()
+
+    # Pre-condition: owner has role 'owner', member has role 'editor'
+    bm_owner = BoardMember.query.filter_by(board_id=board.id, user_id=owner.id).first()
+    assert bm_owner.role == 'owner'
+    assert BoardService.count_owners(board.id) == 1
+
+    # Transfer ownership to member
+    resp = client.post(
+        f"/api/boards/{board.id}/transfer-ownership",
+        headers=auth_headers(owner.id),
+        data=json.dumps({"newOwnerId": member.id}),
+        content_type="application/json"
+    )
+    assert resp.status_code == 200
+
+    db.session.expire_all()
+    updated_board = db.session.get(Board, board.id)
+    assert updated_board.owner_id == member.id
+
+    bm_member_after = BoardMember.query.filter_by(board_id=board.id, user_id=member.id).first()
+    assert bm_member_after.role == 'owner'
+
+    bm_owner_after = BoardMember.query.filter_by(board_id=board.id, user_id=owner.id).first()
+    assert bm_owner_after.role == 'admin', "Former owner must be demoted to admin"
+    assert BoardService.count_owners(board.id) == 1, "Only 1 owner should exist"
+

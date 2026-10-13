@@ -1098,6 +1098,21 @@ class BoardService:
             target_membership.role = 'owner'
             target_membership.status = 'accepted'
 
+        old_owner_id = board.owner_id
+        former_owner_membership = None
+        if old_owner_id and str(old_owner_id) != str(new_owner_id):
+            former_owner_membership = BoardMember.query.filter_by(board_id=board_id, user_id=old_owner_id).first()
+            if former_owner_membership:
+                former_owner_membership.role = 'admin'
+            else:
+                former_owner_membership = BoardMember(
+                    board_id=board_id,
+                    user_id=old_owner_id,
+                    role='admin',
+                    status='accepted'
+                )
+                db.session.add(former_owner_membership)
+
         board.owner_id = new_owner_id
 
         new_owner_name = new_owner.full_name or new_owner.email
@@ -1116,6 +1131,8 @@ class BoardService:
 
         broadcaster.broadcast(board_id, "board:updated", board.to_dict())
         broadcaster.broadcast(board_id, "member:role_updated", target_membership.to_dict())
+        if former_owner_membership:
+            broadcaster.broadcast(board_id, "member:role_updated", former_owner_membership.to_dict())
         broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
         return True, None
 

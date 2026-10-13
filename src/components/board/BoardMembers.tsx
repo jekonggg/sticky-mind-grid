@@ -358,7 +358,7 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                     disabled={transferOwnershipMutation.isPending}
                   >
                     <Crown className="h-3 w-3 text-amber-500" />
-                    <span>Make Owner</span>
+                    <span>Transfer Ownership</span>
                   </Button>
                 )}
 
@@ -420,7 +420,7 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
         })}
       </div>
 
-      {/* Promote to Owner Confirmation with Type-to-Confirm */}
+      {/* Transfer Ownership Confirmation with Type-to-Confirm */}
       <AlertDialog
         open={!!pendingOwnerPromotion}
         onOpenChange={(open) => {
@@ -433,21 +433,21 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Promote{" "}
+              Transfer Ownership to{" "}
               {pendingOwnerPromotion?.member.user?.fullName ||
                 pendingOwnerPromotion?.member.user?.email ||
-                "this member"}{" "}
-              to Owner?
+                "this member"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Granting <span className="font-semibold text-foreground">Owner</span> permissions gives{" "}
+              Transferring <span className="font-semibold text-foreground">Ownership</span> gives{" "}
               <span className="font-semibold text-foreground">
                 {pendingOwnerPromotion?.member.user?.fullName ||
                   pendingOwnerPromotion?.member.user?.email ||
                   "this member"}
               </span>{" "}
               full control over this board, including managing owners and admins, modifying workflow
-              states, and deleting the board. Please type{" "}
+              states, and deleting the board. You will be stepped down to{" "}
+              <span className="font-semibold text-foreground">Admin</span>. Please type{" "}
               <span className="font-semibold text-foreground">"{boardNameToConfirm}"</span> below to
               confirm.
             </AlertDialogDescription>
