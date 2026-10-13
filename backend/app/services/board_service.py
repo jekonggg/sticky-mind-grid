@@ -19,7 +19,10 @@ class BoardService:
             Board.deleted_at < cutoff
         ).all()
         if expired_boards:
+            from app.services.file_service import FileService
             for b in expired_boards:
+                for task in (b.tasks or []):
+                    FileService.cleanup_task_attachments(task)
                 db.session.delete(b)
             db.session.commit()
 
@@ -321,7 +324,10 @@ class BoardService:
             Board.deleted_at < cutoff
         ).all()
         if expired_boards:
+            from app.services.file_service import FileService
             for b in expired_boards:
+                for task in (b.tasks or []):
+                    FileService.cleanup_task_attachments(task)
                 db.session.delete(b)
             db.session.commit()
 
@@ -360,6 +366,9 @@ class BoardService:
         board = db.session.get(Board, board_id)
         if not board:
             return False
+        from app.services.file_service import FileService
+        for task in (board.tasks or []):
+            FileService.cleanup_task_attachments(task)
         db.session.delete(board)
         db.session.commit()
         broadcaster.broadcast(board_id, "board:deleted", {"boardId": board_id})

@@ -10,7 +10,7 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 | Question | File or Area | Why It Matters | Suggested Owner | Source Agent |
 |---|---|---|---|---|
-| **OQ-01:** Should `Task.board_id` include `ondelete='CASCADE'` and board deletion clean up attachments before deleting tasks? | `backend/app/models/task.py:L14`, `backend/app/services/board_service.py:L16-L25, L318-L326, L359-L366` | Permanent deletion or 30-day lazy purge of boards with existing tasks crashes with `sqlalchemy.exc.IntegrityError` (HTTP 500 error). | Database / Backend Lead | Agent 1 / Agent 3 |
+| **OQ-01 [RESOLVED]:** Should `Task.board_id` include `ondelete='CASCADE'` and board deletion clean up attachments before deleting tasks? | `backend/app/models/task.py:L14`, `backend/app/services/board_service.py:L16-L25, L318-L326, L359-L366` | **RESOLVED:** Added `ondelete='CASCADE'` on `Task.board_id`, created migration `e1a2b3c4d5e6`, and clean up task attachments before board deletion and lazy purge. | Database / Backend Lead | Agent 1 / Agent 3 |
 | **OQ-02:** Should `TaskService.update_task` prevent non-admin editors from deleting other users' attachments and clean up orphaned files from disk? | `src/components/task/TaskAttachments.tsx:L72-L79`, `backend/app/services/task_service.py:L266`, `backend/app/services/file_service.py:L330-L343` | Non-admin editors can bypass UI to delete others' attachments via API, and deleted files remain on disk in `backend/uploads/` counting against storage quotas. | Backend Security Lead | Agent 1 / Agent 4 |
 | **OQ-03:** Should `TaskService.update_task` automatically compute task progress from checklists and reject manual progress overrides when checklist items exist? | `src/components/task/TaskProperties.tsx:L83, L361`, `backend/app/services/task_service.py:L262-L264` | API callers can desynchronize `progress` from `checklist` completion, causing inconsistent task progress states between UI and API. | Backend Engineering | Agent 1 / Agent 2 |
 | **OQ-04:** Does board ownership transfer support multi-owner co-ownership, or should `BoardService.transfer_ownership` demote the former owner's `BoardMember.role` to `'admin'`? | `backend/app/services/board_service.py:L1056-L1101`, `src/components/board/BoardMembers.tsx:L429` | Ambiguity in ownership model: former owner remains an `owner` indefinitely in `board_members`, creating multiple simultaneous owners without explicit UI representation. | Product / RBAC Lead | Agent 1 / Agent 2 |
@@ -37,7 +37,13 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ## 2. Detailed Findings & Analysis
 
-### OQ-01: Hard-Deleting or Auto-Purging a Board With Tasks Raises `IntegrityError`
+### OQ-01 [RESOLVED]: Hard-Deleting or Auto-Purging a Board With Tasks Raises `IntegrityError`
+- **Resolution Status:** RESOLVED.
+- **Fix Implemented:**
+  1. Added `ondelete='CASCADE'` to `Task.board_id` in `backend/app/models/task.py:L14`.
+  2. Created Alembic migration `backend/migrations/versions/e1a2b3c4d5e6_add_cascade_to_task_board_id.py` to upgrade constraint in MySQL.
+  3. Updated `BoardService.delete_board`, `BoardService.get_user_boards`, and `BoardService.get_trashed_boards` in `backend/app/services/board_service.py` to clean up physical task attachments via `FileService.cleanup_task_attachments` before deleting boards.
+  4. Added regression test in `backend/tests/test_oq_resolutions.py:test_oq_01_board_delete_and_lazy_purge_cascades_tasks`.
 - **Where in Code:**
   - `backend/app/models/task.py:L14`: `board_id = db.Column(db.String(36), db.ForeignKey('boards.id'), nullable=False, index=True)` — Unlike `BoardMember`, `BoardInvitation`, `Activity`, `Comment`, `Notification`, and `Note`, `Task.board_id` does **not** specify `ondelete='CASCADE'`.
   - `backend/app/models/board.py:L39`: `tasks = db.relationship('Task', backref='board', lazy='dynamic')` — Does **not** specify `cascade='all, delete-orphan'`.

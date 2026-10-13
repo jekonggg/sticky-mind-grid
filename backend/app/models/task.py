@@ -11,7 +11,7 @@ class Task(db.Model):
     __tablename__ = 'tasks'
 
     id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
-    board_id = db.Column(db.String(36), db.ForeignKey('boards.id'), nullable=False)
+    board_id = db.Column(db.String(36), db.ForeignKey('boards.id', ondelete='CASCADE'), nullable=False)
     title = db.Column(db.String(255), nullable=False)
     emoji = db.Column(db.String(50), nullable=True)
     description = db.Column(db.Text().with_variant(LONGTEXT, "mysql"), nullable=True)
