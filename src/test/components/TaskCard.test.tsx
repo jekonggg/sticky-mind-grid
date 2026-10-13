@@ -253,4 +253,17 @@ describe("TaskCard Component", () => {
     fireEvent.click(archiveItem);
     expect(onArchive).toHaveBeenCalledWith(mockTask);
   });
+
+  it("hides progress bar when hideProgressBar is true (first or last column)", () => {
+    const taskWithProgress: Task = {
+      ...mockTask,
+      progress: 50,
+    };
+
+    const { rerender } = render(<TaskCard task={taskWithProgress} onClick={vi.fn()} hideProgressBar={false} />);
+    expect(screen.getByText("50%")).toBeInTheDocument();
+
+    rerender(<TaskCard task={taskWithProgress} onClick={vi.fn()} hideProgressBar={true} />);
+    expect(screen.queryByText("50%")).not.toBeInTheDocument();
+  });
 });

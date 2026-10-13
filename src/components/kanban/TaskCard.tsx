@@ -35,6 +35,7 @@ interface TaskCardProps {
   onArchive?: (task: Task) => void;
   onDelete?: (task: Task) => void;
   isDragDisabled?: boolean;
+  hideProgressBar?: boolean;
 }
 
 const PRIORITY_CONFIG: Record<
@@ -95,6 +96,7 @@ export function TaskCard({
   onArchive,
   onDelete,
   isDragDisabled = false,
+  hideProgressBar = false,
 }: TaskCardProps) {
   const { devSettings } = useDevMode();
   const { settings } = useSettings();
@@ -192,7 +194,7 @@ export function TaskCard({
     ? task.progress
     : 0;
 
-  const showProgressBar = hasChecklist || progressPct > 0;
+  const showProgressBar = !hideProgressBar && (hasChecklist || progressPct > 0);
   const totalTicks = isCompact ? 18 : 24;
   const activeTicks = Math.round((progressPct / 100) * totalTicks);
 

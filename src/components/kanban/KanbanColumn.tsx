@@ -25,6 +25,8 @@ interface KanbanColumnProps {
   onRename?: (id: string, newTitle: string, emoji?: string) => void;
   onArchiveTask?: (task: Task) => void;
   onDeleteTask?: (task: Task) => void;
+  isFirstColumn?: boolean;
+  isLastColumn?: boolean;
 }
 
 // Map column status to indicator color
@@ -61,6 +63,8 @@ export function KanbanColumn({
   onRename,
   onArchiveTask,
   onDeleteTask,
+  isFirstColumn = false,
+  isLastColumn = false,
 }: KanbanColumnProps) {
   const { devSettings } = useDevMode();
   const { settings } = useSettings();
@@ -253,6 +257,7 @@ export function KanbanColumn({
                   onArchive={onArchiveTask}
                   onDelete={onDeleteTask}
                   isDragDisabled={isDragDisabled}
+                  hideProgressBar={isFirstColumn || isLastColumn || id === "done"}
                 />
               ))}
               {/* Subtle ambient bottom dot pattern extending to the bottom of the pod */}

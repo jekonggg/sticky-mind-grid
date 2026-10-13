@@ -448,4 +448,65 @@ def test_oq_05_wip_limits_are_non_blocking_visual_telemetry(client, create_test_
     assert resp_move.status_code == 200
     assert resp_move.get_json()["status"] == "wip_col", "Server must allow moving task into column exceeding WIP limit"
 
+def test_oq_06_reorder_tasks_supports_progress_snapping_while_preserving_checklist(client, create_test_user, auth_headers):
+    """
+    OQ-06: Adaptive progress snapping during task reordering/movement.
+    Server allows updating progress during reorder unless checklist items exist.
+    """
+    owner = create_test_user(email="oq06_owner@example.com")
+    board = BoardService.create_board({"name": "OQ06 Progress Board"}, owner.id)
+
+    # Create task without checklist
+    resp = client.post(
+        "/api/tasks",
+        headers=auth_headers(owner.id),
+        data=json.dumps({"boardId": board.id, "title": "Snapping Task", "status": "in_progress", "progress": 50}),
+        content_type="application/json"
+    )
+    assert resp.status_code == 201
+    task_id = resp.get_json()["id"]
+
+    # Reorder task to done column with progress 100
+    resp_snap_100 = client.patch(
+        "/api/tasks/reorder",
+        headers=auth_headers(owner.id),
+        data=json.dumps({"boardId": board.id, "items": [{"id": task_id, "status": "done", "progress": 100, "position": 1000}]}),
+        content_type="application/json"
+    )
+    assert resp_snap_100.status_code == 200
+    db.session.expire_all()
+    t = db.session.get(Task, task_id)
+    assert t.status == "done"
+    assert t.progress == 100
+
+    # Reorder task to todo column with progress 0
+    resp_snap_0 = client.patch(
+        "/api/tasks/reorder",
+        headers=auth_headers(owner.id),
+        data=json.dumps({"boardId": board.id, "items": [{"id": task_id, "status": "todo", "progress": 0, "position": 1000}]}),
+        content_type="application/json"
+    )
+    assert resp_snap_0.status_code == 200
+    db.session.expire_all()
+    t = db.session.get(Task, task_id)
+    assert t.status == "todo"
+    assert t.progress == 0
+
+    # If checklist items exist, checklist derives progress and manual progress is ignored
+    t.checklist = [{"id": "chk1", "title": "Check 1", "completed": True}]
+    t.progress = 100
+    db.session.commit()
+
+    resp_snap_chk = client.patch(
+        "/api/tasks/reorder",
+        headers=auth_headers(owner.id),
+        data=json.dumps({"boardId": board.id, "items": [{"id": task_id, "status": "todo", "progress": 0, "position": 1000}]}),
+        content_type="application/json"
+    )
+    assert resp_snap_chk.status_code == 200
+    db.session.expire_all()
+    t = db.session.get(Task, task_id)
+    assert t.progress == 100, "Checklist-locked progress priority must be preserved"
+
+
 

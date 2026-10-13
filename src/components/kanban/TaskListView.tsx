@@ -185,24 +185,38 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                       )}
                     </TableCell>
                     <TableCell className={`${isCompact ? "py-2 px-3" : "py-4 px-4"}`}>
-                      <div className={`flex flex-col gap-1 ${isCompact ? "w-20" : "w-24"}`}>
-                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full transition-all duration-500 ${getProgressColor(
-                              task.progress
-                            )}`}
-                            style={{ width: `${task.progress}%` }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between text-[9px] text-muted-foreground/80 font-bold">
-                          <span>{task.progress}%</span>
-                          {task.checklist && task.checklist.length > 0 && (
-                            <span>
-                              {task.checklist.filter((i) => i.completed).length}/{task.checklist.length}
+                      {(() => {
+                        const workflowCols = columns.filter((c) => c.id !== "archive");
+                        const isFirstCol = task.status === workflowCols[0]?.id;
+                        const isLastCol = task.status === workflowCols[workflowCols.length - 1]?.id || task.status === "done";
+                        if (isFirstCol || isLastCol) {
+                          return (
+                            <span className="text-[11px] text-muted-foreground/60 italic font-medium">
+                              {task.progress === 100 ? "Complete" : "Not started"}
                             </span>
-                          )}
-                        </div>
-                      </div>
+                          );
+                        }
+                        return (
+                          <div className={`flex flex-col gap-1 ${isCompact ? "w-20" : "w-24"}`}>
+                            <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className={`h-full transition-all duration-500 ${getProgressColor(
+                                  task.progress
+                                )}`}
+                                style={{ width: `${task.progress}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-[9px] text-muted-foreground/80 font-bold">
+                              <span>{task.progress}%</span>
+                              {task.checklist && task.checklist.length > 0 && (
+                                <span>
+                                  {task.checklist.filter((i) => i.completed).length}/{task.checklist.length}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className={`${isCompact ? "py-2 px-3" : "py-4 px-4"}`}>
                       <Badge

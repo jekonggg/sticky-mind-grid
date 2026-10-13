@@ -513,7 +513,26 @@ export function KanbanBoard() {
         newTasksInTarget = arrayMove(targetColumnTasks, activeIndexInTarget, overIndexInTarget);
       } else {
         // Inter-column movement with exact drop index insertion
-        const updatedActiveTask = { ...activeTaskItem, status: targetStatus };
+        const visibleCols = columns.filter((c) => c.id !== "archive");
+        const firstColId = visibleCols[0]?.id;
+        const lastColId = visibleCols[visibleCols.length - 1]?.id;
+
+        const hasChecklist = (activeTaskItem.checklist || []).length > 0;
+        let nextProgress = activeTaskItem.progress;
+
+        if (!hasChecklist) {
+          if (targetStatus === firstColId) {
+            nextProgress = 0;
+            if (activeTaskItem.progress && activeTaskItem.progress > 0) {
+              const targetColTitle = columns.find((c) => c.id === targetStatus)?.title || "first column";
+              toast.info(`Task progress reset to 0% in ${targetColTitle}`);
+            }
+          } else if (targetStatus === lastColId || targetStatus === "done") {
+            nextProgress = 100;
+          }
+        }
+
+        const updatedActiveTask = { ...activeTaskItem, status: targetStatus, progress: nextProgress };
         const filtered = targetColumnTasks.filter((t) => t.id !== activeId);
         const insertIdx = overIndexInTarget >= 0 ? overIndexInTarget : filtered.length;
         newTasksInTarget = [
@@ -522,8 +541,7 @@ export function KanbanBoard() {
           ...filtered.slice(insertIdx),
         ];
 
-        const visibleCols = columns.filter((c) => c.id !== "archive");
-        const isDoneCol = targetStatus === 'done' || targetStatus === visibleCols[visibleCols.length - 1]?.id;
+        const isDoneCol = targetStatus === "done" || targetStatus === lastColId;
 
         if (isDoneCol) {
           playSound("complete");
@@ -532,13 +550,27 @@ export function KanbanBoard() {
         }
       }
 
+      const visibleCols = columns.filter((c) => c.id !== "archive");
+      const firstColId = visibleCols[0]?.id;
+      const lastColId = visibleCols[visibleCols.length - 1]?.id;
+
       // Continuous 1000-based position indices for MySQL persistence
-      const reorderItems = newTasksInTarget.map((t, idx) => ({
-        id: t.id,
-        status: targetStatus,
-        fromStatus: t.id === activeId ? activeTaskItem.status : t.status,
-        position: (idx + 1) * 1000.0,
-      }));
+      const reorderItems = newTasksInTarget.map((t, idx) => {
+        const item: { id: string; status?: string; fromStatus?: string; position: number; progress?: number } = {
+          id: t.id,
+          status: targetStatus,
+          fromStatus: t.id === activeId ? activeTaskItem.status : t.status,
+          position: (idx + 1) * 1000.0,
+        };
+        if (t.id === activeId && !((t.checklist || []).length > 0)) {
+          if (targetStatus === firstColId) {
+            item.progress = 0;
+          } else if (targetStatus === lastColId || targetStatus === "done") {
+            item.progress = 100;
+          }
+        }
+        return item;
+      });
 
       reorderTasks(reorderItems);
     },
@@ -740,9 +772,9 @@ export function KanbanBoard() {
                 style={geom.isCustom ? { gap: `${geom.padding}px` } : undefined}
                 className={`flex ${isCompact ? "gap-2" : "gap-3"} h-full min-w-max pb-20 md:pb-24 items-stretch`}
               >
-                {columns
-                  .filter((col) => col.id !== "archive")
-                  .map((col) => (
+                {(() => {
+                  const workflowCols = columns.filter((col) => col.id !== "archive");
+                  return workflowCols.map((col, idx) => (
                     <KanbanColumn
                       key={col.id}
                       id={col.id}
@@ -758,6 +790,8 @@ export function KanbanBoard() {
                       onTaskClick={handleTaskClick}
                       onAddTask={openNewModal}
                       onRename={handleRenameColumn}
+                      isFirstColumn={idx === 0}
+                      isLastColumn={idx === workflowCols.length - 1}
                       onArchiveTask={
                         permissions.canEditTask && !effectiveReadOnly ? handleArchiveTask : undefined
                       }
@@ -767,7 +801,8 @@ export function KanbanBoard() {
                           : undefined
                       }
                     />
-                  ))}
+                  ));
+                })()}
 
                 {permissions.canEditBoard && !effectiveReadOnly && (
                   <div

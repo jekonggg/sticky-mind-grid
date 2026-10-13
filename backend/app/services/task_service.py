@@ -532,6 +532,13 @@ class TaskService:
                         task.position = float(item['position'])
                     except (ValueError, TypeError):
                         pass
+                if 'progress' in item and item['progress'] is not None:
+                    # Checklist-locked progress priority: only update if no checklist items exist
+                    if not (task.checklist and len(task.checklist) > 0):
+                        try:
+                            task.progress = max(0, min(100, int(item['progress'])))
+                        except (ValueError, TypeError):
+                            pass
                 updated_tasks.append(task)
 
         if updated_tasks:
