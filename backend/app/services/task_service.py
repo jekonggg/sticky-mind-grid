@@ -243,6 +243,38 @@ class TaskService:
 
         if 'attachments' in data:
             from app.services.file_service import FileService
+            from app.utils.decorators import get_effective_role, ROLE_HIERARCHY
+
+            new_attachments = data.get('attachments') or []
+            if not isinstance(new_attachments, list):
+                new_attachments = []
+
+            old_attachments = task.attachments or []
+            if isinstance(old_attachments, list) and old_attachments:
+                new_ids = {a.get('id') for a in new_attachments if isinstance(a, dict) and a.get('id')}
+                new_urls = {a.get('url') for a in new_attachments if isinstance(a, dict) and a.get('url')}
+
+                removed_atts = []
+                for old_att in old_attachments:
+                    if not isinstance(old_att, dict):
+                        continue
+                    att_id = old_att.get('id')
+                    att_url = old_att.get('url')
+                    if att_id and att_id not in new_ids:
+                        removed_atts.append(old_att)
+                    elif not att_id and att_url and att_url not in new_urls:
+                        removed_atts.append(old_att)
+
+                if removed_atts:
+                    effective_role = get_effective_role(task.board_id, user_id) if user_id else 0
+                    is_admin_or_owner = effective_role >= ROLE_HIERARCHY['admin']
+                    for r_att in removed_atts:
+                        uploader_id = r_att.get('uploaderId')
+                        is_author = str(uploader_id) == str(user_id) if (uploader_id and user_id) else False
+                        if not is_author and not is_admin_or_owner:
+                            raise PermissionError("Only the attachment author or a board admin/owner may delete an attachment")
+                        FileService.delete_attachment_file(r_att, exclude_task_id=task.id)
+
             target_board = data.get('boardId') or task.board_id
             quota_ok, quota_err = FileService.check_board_and_owner_quota(
                 target_board,

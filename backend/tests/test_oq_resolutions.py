@@ -88,7 +88,8 @@ def test_oq_02_attachment_deletion_authorization_and_disk_cleanup(app, client, c
     db.session.commit()
 
     # Create dummy upload file on disk
-    upload_folder = app.config['UPLOAD_FOLDER']
+    from app.services.file_service import UPLOAD_FOLDER
+    upload_folder = app.config.get('UPLOAD_FOLDER', UPLOAD_FOLDER)
     os.makedirs(upload_folder, exist_ok=True)
     filename = "oq02_test_attachment.pdf"
     file_path = os.path.join(upload_folder, filename)

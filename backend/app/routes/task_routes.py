@@ -156,6 +156,9 @@ def update_task(task_id):
 
     try:
         task = TaskService.update_task(task_id, data, user_id=user_id)
+    except PermissionError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 403
     except ValueError as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400

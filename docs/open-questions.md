@@ -11,7 +11,7 @@ This document consolidates every unresolved question, UI-only business rule lack
 | Question | File or Area | Why It Matters | Suggested Owner | Source Agent |
 |---|---|---|---|---|
 | **OQ-01 [RESOLVED]:** Should `Task.board_id` include `ondelete='CASCADE'` and board deletion clean up attachments before deleting tasks? | `backend/app/models/task.py:L14`, `backend/app/services/board_service.py:L16-L25, L318-L326, L359-L366` | **RESOLVED:** Added `ondelete='CASCADE'` on `Task.board_id`, created migration `e1a2b3c4d5e6`, and clean up task attachments before board deletion and lazy purge. | Database / Backend Lead | Agent 1 / Agent 3 |
-| **OQ-02:** Should `TaskService.update_task` prevent non-admin editors from deleting other users' attachments and clean up orphaned files from disk? | `src/components/task/TaskAttachments.tsx:L72-L79`, `backend/app/services/task_service.py:L266`, `backend/app/services/file_service.py:L330-L343` | Non-admin editors can bypass UI to delete others' attachments via API, and deleted files remain on disk in `backend/uploads/` counting against storage quotas. | Backend Security Lead | Agent 1 / Agent 4 |
+| **OQ-02 [RESOLVED]:** Should `TaskService.update_task` prevent non-admin editors from deleting other users' attachments and clean up orphaned files from disk? | `src/components/task/TaskAttachments.tsx:L72-L79`, `backend/app/services/task_service.py:L266`, `backend/app/services/file_service.py:L330-L343` | **RESOLVED:** Enforced uploader or admin/owner delete check on server (HTTP 403 on violation), deletes file from disk on removal, and provided `scripts/find_orphaned_attachments.py`. | Backend Security Lead | Agent 1 / Agent 4 |
 | **OQ-03:** Should `TaskService.update_task` automatically compute task progress from checklists and reject manual progress overrides when checklist items exist? | `src/components/task/TaskProperties.tsx:L83, L361`, `backend/app/services/task_service.py:L262-L264` | API callers can desynchronize `progress` from `checklist` completion, causing inconsistent task progress states between UI and API. | Backend Engineering | Agent 1 / Agent 2 |
 | **OQ-04:** Does board ownership transfer support multi-owner co-ownership, or should `BoardService.transfer_ownership` demote the former owner's `BoardMember.role` to `'admin'`? | `backend/app/services/board_service.py:L1056-L1101`, `src/components/board/BoardMembers.tsx:L429` | Ambiguity in ownership model: former owner remains an `owner` indefinitely in `board_members`, creating multiple simultaneous owners without explicit UI representation. | Product / RBAC Lead | Agent 1 / Agent 2 |
 | **OQ-05:** Should column WIP limits ever hard-block card additions/moves, or remain purely informational visual telemetry? | `docs/02-business-rules.md:BR-20`, `src/components/kanban/KanbanColumn.tsx:L53-L56`, `backend/app/services/board_service.py:L166-L177` | Columns allow unlimited tasks beyond their configured `wipLimit`; WIP limits only display amber/rose warning rings without operational constraints. | Product Management | Agent 1 / Agent 2 |
@@ -55,15 +55,13 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ---
 
-### OQ-02: Server-Side Enforcement Gap for Deleting Another User's Task Attachment & Orphaned Disk Files
-- **Where in Code:**
-  - **Frontend (`src/components/task/TaskAttachments.tsx:L72-L79`):** The trash button next to an attachment is rendered only if `canDeleteBoard` (`admin` or `owner`) **or** `(canEdit && att.uploaderId === currentUser.id)`.
-  - **Backend (`backend/app/routes/task_routes.py:L120-L171`, `backend/app/services/task_service.py:L266`):** Removing an attachment sends `PATCH /api/tasks/<task_id>` with the updated `attachments` JSON array. `TaskService.update_task` (`task_service.py:L266`) executes `task.attachments = data['attachments']` for any user with `@require_task_access('editor')`.
-- **What Is Unclear / Missing:**
-  1. The server does **not** verify that an `editor` (who is not `admin`/`owner`) is only removing attachments where `uploaderId == current_user_id`.
-  2. Removing an attachment from `task.attachments` via `PATCH /api/tasks/<task_id>` does **not** call `FileService.cleanup_task_attachments` (`backend/app/services/file_service.py:L330-L343`), leaving the removed file on disk in `backend/uploads/` until the entire task is permanently deleted (and continuing to count toward the 100 MB board / 500 MB owner quota if still matched or orphaned on disk).
-- **Recommendation:**
-  - Update `TaskService.update_task` to diff old and new attachments, enforce that non-admins can only remove items where `uploaderId == current_user_id`, and immediately invoke `FileService.cleanup_task_attachments` on removed files.
+### OQ-02 [RESOLVED]: Server-Side Enforcement Gap for Deleting Another User's Task Attachment & Orphaned Disk Files
+- **Resolution Status:** RESOLVED.
+- **Fix Implemented:**
+  1. Updated `TaskService.update_task` (`backend/app/services/task_service.py`) to diff attachments and require that non-admin editors may only delete attachments where `uploaderId == current_user_id`, raising `PermissionError` (mapped to HTTP 403 in `backend/app/routes/task_routes.py`) on violation.
+  2. Implemented `FileService.delete_attachment_file` (`backend/app/services/file_service.py`) to delete removed attachments from disk when not referenced elsewhere.
+  3. Created `scripts/find_orphaned_attachments.py` (dry-run by default, `--delete` to remove) to detect and purge orphaned files from disk.
+  4. Added regression test `backend/tests/test_oq_resolutions.py:test_oq_02_attachment_deletion_authorization_and_disk_cleanup`.
 
 ---
 

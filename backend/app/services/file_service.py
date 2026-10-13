@@ -251,6 +251,55 @@ class FileService:
                         pass
 
     @staticmethod
+    def delete_attachment_file(att, exclude_task_id=None):
+        """
+        Delete a physical attachment file from disk when removed from a task,
+        provided no other task references the same file.
+        """
+        if not isinstance(att, dict):
+            return
+        stored_name = att.get('storedName')
+        if not stored_name and att.get('url') and '/api/files/' in str(att.get('url')):
+            stored_name = str(att.get('url')).split('/api/files/', 1)[1].split('?', 1)[0]
+        if not stored_name:
+            return
+        safe_name = secure_filename(str(stored_name))
+        if not safe_name:
+            return
+
+        from app.models.task import Task
+        query = Task.query.filter(Task.attachments.isnot(None))
+        if exclude_task_id:
+            query = query.filter(Task.id != exclude_task_id)
+        other_tasks = query.all()
+        for ot in other_tasks:
+            if isinstance(ot.attachments, list):
+                for a in ot.attachments:
+                    if isinstance(a, dict):
+                        o_name = a.get('storedName')
+                        if not o_name and a.get('url') and '/api/files/' in str(a.get('url')):
+                            o_name = str(a.get('url')).split('/api/files/', 1)[1].split('?', 1)[0]
+                        if o_name and secure_filename(str(o_name)) == safe_name:
+                            return
+
+        try:
+            upload_dir = current_app.config.get('UPLOAD_FOLDER', UPLOAD_FOLDER)
+        except Exception:
+            upload_dir = UPLOAD_FOLDER
+
+        fpath = os.path.join(upload_dir, safe_name)
+        if os.path.exists(fpath):
+            try:
+                os.remove(fpath)
+            except OSError:
+                import gc
+                gc.collect()
+                try:
+                    os.remove(fpath)
+                except OSError:
+                    pass
+
+    @staticmethod
     def save_base64_image(data_url: str):
         """Validate and persist a data:image/*;base64 string to UPLOAD_FOLDER so it is permission-checked like attachments."""
         if not data_url or not data_url.startswith('data:image/'):
