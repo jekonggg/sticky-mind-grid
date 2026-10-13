@@ -2,7 +2,11 @@ import uuid
 import logging
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from email_validator import validate_email, EmailNotValidError
+try:
+    from email_validator import validate_email, EmailNotValidError
+except ImportError:
+    validate_email = None
+    EmailNotValidError = Exception
 from app.models.user import User
 from app import db
 
@@ -16,11 +20,17 @@ def normalize_and_validate_email(email_str):
     clean_email = email_str.strip().lower()
     if not clean_email:
         return None, "Email is required"
-    try:
-        valid = validate_email(clean_email, check_deliverability=False)
-        return valid.normalized, None
-    except EmailNotValidError as e:
-        return None, f"Invalid email format: {str(e)}"
+    if validate_email:
+        try:
+            valid = validate_email(clean_email, check_deliverability=False)
+            return valid.normalized, None
+        except EmailNotValidError as e:
+            return None, f"Invalid email format: {str(e)}"
+    else:
+        import re
+        if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', clean_email):
+            return None, "Invalid email format"
+        return clean_email, None
 
 def attach_pending_invitations(user):
     try:
