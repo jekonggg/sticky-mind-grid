@@ -268,8 +268,9 @@ export function useBoards() {
   );
 
   const permanentlyDeleteBoard = useCallback(
-    async (id: string) => {
+    async (id: string, confirmName?: string) => {
       const target = trashedBoards.find((b) => b.id === id) || boards.find((b) => b.id === id);
+      const nameToConfirm = confirmName || target?.name;
       setTrashedBoards((prev) => prev.filter((b) => b.id !== id));
       setBoards((prev) => prev.filter((b) => b.id !== id));
       if (target) {
@@ -278,9 +279,9 @@ export function useBoards() {
       }
 
       try {
-        await boardApi.deleteBoard(id);
-      } catch {
-        toast.error("Failed to permanently delete board");
+        await boardApi.deleteBoard(id, { confirmName: nameToConfirm });
+      } catch (err: any) {
+        toast.error(err.message || "Failed to permanently delete board");
         fetchBoards({ silent: true });
       }
     },

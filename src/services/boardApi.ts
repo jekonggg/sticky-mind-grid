@@ -45,10 +45,20 @@ export const boardApi = {
     return mapBoard(board);
   },
 
-  async deleteBoard(id: string, options?: { soft?: boolean }): Promise<void> {
-    const url = options?.soft ? `/boards/${id}?soft=true` : `/boards/${id}`;
+  async deleteBoard(id: string, options?: { soft?: boolean; confirmName?: string } | string): Promise<void> {
+    let url = `/boards/${id}`;
+    if (typeof options === "string") {
+      url = `/boards/${id}?confirm_name=${encodeURIComponent(options)}`;
+    } else if (options?.soft) {
+      url = `/boards/${id}?soft=true`;
+    } else if (options?.confirmName) {
+      url = `/boards/${id}?confirm_name=${encodeURIComponent(options.confirmName)}`;
+    }
     const res = await authenticatedFetch(url, { method: "DELETE" });
-    if (!res.ok) throw new Error("Failed to delete board");
+    if (!res.ok) {
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.error || "Failed to delete board");
+    }
   },
 
   async getTrashedBoards(): Promise<Board[]> {

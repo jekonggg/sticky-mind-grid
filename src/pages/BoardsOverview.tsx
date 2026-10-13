@@ -721,7 +721,7 @@ export default function BoardsOverview() {
                         size="sm"
                         variant="ghost"
                         data-testid={`delete-forever-board-${trashed.id}`}
-                        onClick={() => permanentlyDeleteBoard(trashed.id)}
+                        onClick={() => permanentlyDeleteBoard(trashed.id, trashed.name)}
                         className="h-8 min-h-[44px] sm:min-h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         Delete Forever

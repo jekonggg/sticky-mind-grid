@@ -60,7 +60,7 @@ def test_oq_01_board_delete_and_lazy_purge_cascades_tasks(client, create_test_us
     db.session.add_all([bm2, task2])
     db.session.commit()
 
-    del_resp = client.delete(f"/api/boards/{board2.id}", headers=headers)
+    del_resp = client.delete(f"/api/boards/{board2.id}?confirm_name={board2.name}", headers=headers)
     assert del_resp.status_code == 200
     assert db.session.get(Board, board2.id) is None
     assert db.session.get(Task, "task-oq01-active") is None
@@ -507,6 +507,49 @@ def test_oq_06_reorder_tasks_supports_progress_snapping_while_preserving_checkli
     db.session.expire_all()
     t = db.session.get(Task, task_id)
     assert t.progress == 100, "Checklist-locked progress priority must be preserved"
+
+def test_oq_07_permanent_board_delete_requires_matching_confirm_name(client, create_test_user, auth_headers):
+    """
+    OQ-07: Server Name Confirmation for Permanent Delete.
+    Permanent deletion (soft=false) requires confirm_name matching the board's name.
+    Soft deletion (soft=true) remains standard and does not require confirm_name.
+    """
+    owner = create_test_user(email="oq07_owner@example.com")
+    board = BoardService.create_board({"name": "OQ07 Dangerous Board"}, owner.id)
+
+    # 1. Attempt permanent delete without confirm_name -> HTTP 400
+    resp_missing = client.delete(
+        f"/api/boards/{board.id}",
+        headers=auth_headers(owner.id)
+    )
+    assert resp_missing.status_code == 400
+    assert "confirm_name" in resp_missing.get_json()["error"]
+
+    # 2. Attempt permanent delete with mismatched confirm_name -> HTTP 400
+    resp_mismatch = client.delete(
+        f"/api/boards/{board.id}?confirm_name=Wrong%20Name",
+        headers=auth_headers(owner.id)
+    )
+    assert resp_mismatch.status_code == 400
+    assert "does not match" in resp_mismatch.get_json()["error"]
+
+    # 3. Soft deletion with soft=true does not require confirm_name -> HTTP 200
+    board_soft = BoardService.create_board({"name": "OQ07 Soft Board"}, owner.id)
+    resp_soft = client.delete(
+        f"/api/boards/{board_soft.id}?soft=true",
+        headers=auth_headers(owner.id)
+    )
+    assert resp_soft.status_code == 200
+    assert resp_soft.get_json()["isDeleted"] is True
+
+    # 4. Permanent delete with correct confirm_name -> HTTP 200
+    resp_success = client.delete(
+        f"/api/boards/{board.id}?confirm_name=OQ07%20Dangerous%20Board",
+        headers=auth_headers(owner.id)
+    )
+    assert resp_success.status_code == 200
+    assert db.session.get(Board, board.id) is None
+
 
 
 

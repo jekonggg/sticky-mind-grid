@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, Response, stream_with_context
 from flask_jwt_extended import jwt_required, get_jwt_identity, decode_token
 from app import db
+from app.models.board import Board
 from app.services.board_service import BoardService
 from app.utils.decorators import require_board_access, get_effective_role, ROLE_HIERARCHY
 from app.utils.event_broadcaster import broadcaster
@@ -155,6 +156,18 @@ def delete_board(board_id):
         if not success:
             return jsonify({'error': 'Board not found'}), 404
         return jsonify({'message': 'Board moved to trash (30-day grace period)', 'isDeleted': True}), 200
+
+    board = db.session.get(Board, board_id)
+    if not board:
+        return jsonify({'error': 'Board not found'}), 404
+
+    data = request.get_json(silent=True) or {}
+    confirm_name = data.get('confirm_name') or request.args.get('confirm_name')
+    if not confirm_name:
+        return jsonify({'error': 'confirm_name is required for permanent deletion'}), 400
+    if confirm_name.strip() != board.name.strip():
+        return jsonify({'error': 'Board name confirmation does not match'}), 400
+
     success = BoardService.delete_board(board_id)
     if not success:
         return jsonify({'error': 'Board not found'}), 404
