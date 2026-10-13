@@ -1,6 +1,9 @@
 import os
 import logging
-from apscheduler.schedulers.background import BackgroundScheduler
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+except ImportError:
+    BackgroundScheduler = None
 
 logger = logging.getLogger(__name__)
 
@@ -9,6 +12,8 @@ class SchedulerService:
 
     @classmethod
     def get_scheduler(cls):
+        if BackgroundScheduler is None:
+            return None
         if cls._scheduler is None:
             cls._scheduler = BackgroundScheduler(daemon=True)
         return cls._scheduler
@@ -24,6 +29,9 @@ class SchedulerService:
     @classmethod
     def start_scheduler(cls, app):
         scheduler = cls.get_scheduler()
+        if scheduler is None:
+            logger.warning("[SchedulerService] apscheduler not installed; background jobs disabled")
+            return
         if not scheduler.running:
             interval_hours = int(os.environ.get("PURGE_SCHEDULE_HOURS", "24"))
             scheduler.add_job(

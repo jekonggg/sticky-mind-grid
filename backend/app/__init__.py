@@ -4,19 +4,29 @@ from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_bcrypt import Bcrypt
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    limiter = Limiter(
+        key_func=get_remote_address,
+        default_limits=["200 per minute"],
+        storage_uri="memory://"
+    )
+except ImportError:
+    class DummyLimiter:
+        def init_app(self, app):
+            pass
+        def limit(self, *args, **kwargs):
+            def decorator(f):
+                return f
+            return decorator
+    limiter = DummyLimiter()
 from config import Config
 
 db = SQLAlchemy()
 migrate = Migrate()
 jwt = JWTManager()
 bcrypt = Bcrypt()
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["200 per minute"],
-    storage_uri="memory://"
-)
 
 def create_app(config_class=Config):
     app = Flask(__name__)
