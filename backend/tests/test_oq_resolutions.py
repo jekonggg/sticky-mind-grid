@@ -696,4 +696,105 @@ def test_oq_14_concurrency_conflict_detection_with_last_known_updated_at(client,
     assert resp_valid.status_code == 200
     assert resp_valid.get_json()["description"] == "Updated with valid timestamp"
 
+def test_oq_09_email_normalization_and_validation(client, create_test_user, auth_headers):
+    """
+    OQ-09: Email Case Normalization & Syntax Validation.
+    - Invalid email on registration or invite returns HTTP 400.
+    - Emails on registration, login, and invite are stripped and lowercased.
+    - Case-insensitive duplicates on registration are rejected (HTTP 400).
+    """
+    # 1. Registration with invalid email returns HTTP 400
+    resp_invalid_reg = client.post(
+        "/api/auth/register",
+        data=json.dumps({"email": "not-an-email", "password": "Password123!"}),
+        content_type="application/json"
+    )
+    assert resp_invalid_reg.status_code == 400
+    assert "email" in resp_invalid_reg.get_json()["message"].lower()
+
+    # 2. Registration with mixed-case and whitespace normalizes to lowercase stripped
+    resp_reg = client.post(
+        "/api/auth/register",
+        data=json.dumps({"email": "  Alice.OQ09@Example.COM  ", "password": "Password123!"}),
+        content_type="application/json"
+    )
+    assert resp_reg.status_code == 201
+    created_user = resp_reg.get_json()["user"]
+    assert created_user["email"] == "alice.oq09@example.com"
+
+    user_in_db = User.query.filter_by(email="alice.oq09@example.com").first()
+    assert user_in_db is not None
+    assert user_in_db.email == "alice.oq09@example.com"
+
+    # 3. Login with different casing and whitespace succeeds
+    resp_login = client.post(
+        "/api/auth/login",
+        data=json.dumps({"email": "  ALICE.oq09@EXAMPLE.com ", "password": "Password123!"}),
+        content_type="application/json"
+    )
+    assert resp_login.status_code == 200
+    assert resp_login.get_json()["user"]["email"] == "alice.oq09@example.com"
+
+    # 4. Duplicate registration with different casing returns HTTP 400
+    resp_dup = client.post(
+        "/api/auth/register",
+        data=json.dumps({"email": "alice.oq09@EXAMPLE.COM", "password": "OtherPassword123!"}),
+        content_type="application/json"
+    )
+    assert resp_dup.status_code == 400
+    assert "already exists" in resp_dup.get_json()["message"].lower()
+
+    # 5. Board invite with invalid email returns HTTP 400
+    board = BoardService.create_board({"name": "OQ09 Board"}, user_in_db.id)
+    resp_invalid_invite = client.post(
+        f"/api/boards/{board.id}/members",
+        headers=auth_headers(user_in_db.id),
+        data=json.dumps({"email": "invalid-invite-address", "role": "editor"}),
+        content_type="application/json"
+    )
+    assert resp_invalid_invite.status_code == 400
+    assert "email" in resp_invalid_invite.get_json()["error"].lower()
+
+    # 6. Board invite with mixed-case email normalizes
+    resp_valid_invite = client.post(
+        f"/api/boards/{board.id}/members",
+        headers=auth_headers(user_in_db.id),
+        data=json.dumps({"email": "  Bob.OQ09@Example.COM ", "role": "editor"}),
+        content_type="application/json"
+    )
+    assert resp_valid_invite.status_code == 201
+    from app.models.board_invitation import BoardInvitation
+    inv = BoardInvitation.query.filter_by(board_id=board.id, email="bob.oq09@example.com").first()
+    assert inv is not None
+    assert inv.email == "bob.oq09@example.com"
+
+def test_oq_09_migration_aborts_on_case_duplicate_users(app, monkeypatch):
+    """
+    OQ-09: Alembic migration must inspect existing users for case-insensitive duplicates
+    and abort with RuntimeError if conflicts are found.
+    """
+    import sqlalchemy as sa
+    from unittest.mock import MagicMock
+    from migrations.versions import f2b3c4d5e6a7_normalize_emails_and_check_duplicates as mig
+
+    # Insert two users with same lowercase email directly
+    with app.app_context():
+        u1 = User(id="dup-user-1", email="Conflict.User@example.com", full_name="User 1")
+        u1.set_password("pass1")
+        u2 = User(id="dup-user-2", email="conflict.user@EXAMPLE.COM", full_name="User 2")
+        u2.set_password("pass2")
+        db.session.add_all([u1, u2])
+        db.session.commit()
+
+        # Mock op.get_bind() to return connection
+        monkeypatch.setattr(mig.op, "get_bind", lambda: db.session.connection())
+
+        with pytest.raises(RuntimeError) as exc_info:
+            mig.upgrade()
+
+        assert "conflict.user@example.com" in str(exc_info.value).lower()
+        assert "duplicate" in str(exc_info.value).lower()
+
+
+
 

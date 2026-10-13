@@ -125,12 +125,19 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ---
 
-### OQ-09: Email Case Normalization & Syntax Validation on Local Registration and Invitations
+### OQ-09 [RESOLVED]: Email Case Normalization & Syntax Validation on Local Registration and Invitations
+- **Status:** RESOLVED.
+- **Resolution:**
+  1. Added `email-validator>=2.0.0` to `backend/requirements.txt`.
+  2. Implemented `normalize_and_validate_email` in `backend/app/routes/auth_routes.py` and integrated email syntax validation and `.strip().lower()` normalization into `/api/auth/register` and `/api/auth/login`.
+  3. Integrated `validate_email` syntax validation into `BoardService.add_member` (`backend/app/services/board_service.py`).
+  4. Added Alembic migration `backend/migrations/versions/f2b3c4d5e6a7_normalize_emails_and_check_duplicates.py` which inspects `users` for case-insensitive duplicates and aborts with an informative `RuntimeError` if conflicts exist, or normalizes emails across `users` and `board_invitations`.
+  5. Added regression tests `test_oq_09_email_normalization_and_validation` and `test_oq_09_migration_aborts_on_case_duplicate_users` in `backend/tests/test_oq_resolutions.py`.
 - **Where in Code:**
-  - `backend/app/routes/auth_routes.py:L144-L150`: Local registration stores `email=data['email']` without `.strip().lower()`.
-  - `backend/app/services/board_service.py:L388-L428`: Board invitations strip and lowercase emails, but do not validate email format against standard regex.
-- **Recommendation:**
-  - Normalize emails to `.strip().lower()` across all authentication and user creation paths, and add regex validation to `BoardService.add_member`.
+  - `backend/app/routes/auth_routes.py:L11-L22, L150-L195`: Syntax validation and case normalization.
+  - `backend/app/services/board_service.py:L397-L407`: Email validation in `add_member`.
+  - `backend/migrations/versions/f2b3c4d5e6a7_normalize_emails_and_check_duplicates.py`: Pre-check and normalization migration.
+
 
 ---
 

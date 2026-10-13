@@ -394,7 +394,16 @@ class BoardService:
         if not board:
             return None, "Board not found"
 
+        if not email or not isinstance(email, str):
+            return None, "Email is required"
+
+        from email_validator import validate_email, EmailNotValidError
         clean_email = email.strip().lower()
+        try:
+            valid = validate_email(clean_email, check_deliverability=False)
+            clean_email = valid.normalized
+        except EmailNotValidError as e:
+            return None, f"Invalid email format: {str(e)}"
 
         # Spam protection: Rate-limit invites per user per day (max 20 per 24 hours)
         if actor_id:
