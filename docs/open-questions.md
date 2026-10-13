@@ -291,9 +291,15 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ---
 
-### OQ-22: Capabilities Confirmed as "Not Found in Code"
-Per Ground Rule 3, the following capabilities are confirmed as **not implemented in the codebase**:
-1. **Outbound SMTP / Email Provider:** Invitations and mentions rely solely on in-app notifications.
-2. **Global HTTP API Rate Limiter:** No rate-limiting middleware (e.g., Flask-Limiter) is installed.
-3. **Background Job Queue / Cron Worker Daemon:** Retention purges execute lazily on user read calls.
-4. **Automated Database & File Disk Backup Routines:** No backup scripts or cloud storage snapshot syncs exist.
+### OQ-22 [RESOLVED]: Production Readiness Infrastructure Implementations
+- **Status:** RESOLVED.
+- **Resolution:**
+  1. **Outbound Email Provider:** Implemented `EmailProvider` interface (`backend/app/services/email_service.py`) with `ConsoleEmailProvider` (in-memory outbox for testing/dev) and `SMTPEmailProvider` (MIME multipart dispatch via `smtplib` with TLS/auth). Wired into member invitations (`BoardService.add_member`, `resend_invitation`) and user verification (`POST /api/auth/register`, `/api/auth/resend-verification`). Tested in `backend/tests/test_email_service.py`.
+  2. **HTTP API Rate Limiting:** Integrated `Flask-Limiter` (`backend/app/__init__.py`) with JSON 429 error handler. Applied strict limits (`10 per minute` on `/api/auth/login`, `/register`; `20 per minute` on `/oauth`, `/boards/<id>/members`, `/invitations/<id>/resend`). Tested in `backend/tests/test_rate_limiter.py`.
+  3. **Background Maintenance Scheduler:** Implemented `backend/app/services/scheduler_service.py` using `APScheduler` background runner to execute daily 30-day soft-deleted board purges (`BoardService.purge_expired_boards(retention_days=30)`). Provided standalone CLI runner `scripts/purge_expired_boards.py` supporting `--days` and `--dry-run`. Tested in `backend/tests/test_purge_scheduler.py`.
+  4. **Automated Database & Attachment Backups:** Created `scripts/backup_database.py` and `scripts/restore_database.py` generating gzip-compressed tar archives (`.tar.gz`) containing table JSON dumps, metadata manifests, and attachment files from disk. Supports `--output`, `--backup`, `--db-url`, and `--upload-dir`. Verified end-to-end backup, disaster wipe, and full restore in `backend/tests/test_backup_restore.py`.
+- **Where in Code:**
+  - `backend/app/services/email_service.py`: Email provider interface and implementations.
+  - `backend/app/__init__.py`: Flask-Limiter setup and rate limit error handling.
+  - `backend/app/services/scheduler_service.py` & `scripts/purge_expired_boards.py`: Purge scheduler and CLI.
+  - `scripts/backup_database.py` & `scripts/restore_database.py`: Backup/restore utilities.
