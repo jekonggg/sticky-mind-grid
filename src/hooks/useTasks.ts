@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useContext } from "react";
 import { Task, CreateTaskData, UpdateTaskData, TaskStatus, Column } from "@/types/task";
 import { taskApi } from "@/services/api";
 import { useActivity } from "./useActivity";
+import { AuthContext } from "@/contexts/AuthContext";
 
 const DEFAULT_COLUMNS: Column[] = [
   { id: "todo", title: "To Do" },
@@ -10,12 +11,53 @@ const DEFAULT_COLUMNS: Column[] = [
   { id: "archive", title: "Archive" },
 ];
 
+export interface TasksCacheEntry {
+  tasks: Task[];
+  timestamp: number;
+  userId?: string;
+}
+
+export const tasksCache = new Map<string, TasksCacheEntry>();
+export const TASKS_CACHE_TTL_MS = 60_000;
+
+export function clearTasksCache(boardId?: string) {
+  if (boardId) {
+    tasksCache.delete(boardId);
+  } else {
+    tasksCache.clear();
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("auth:session-expired", () => clearTasksCache());
+  window.addEventListener("smg-dev-data-mode-changed", () => clearTasksCache());
+}
+
 export function useTasks(boardId: string, initialColumns: Column[] = []) {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const authContext = useContext(AuthContext);
+  const user = authContext?.user;
+  const cachedEntry = boardId ? tasksCache.get(boardId) : undefined;
+  const isCacheValidForUser = cachedEntry && (!cachedEntry.userId || cachedEntry.userId === user?.id);
+  const hasCachedData = Boolean(isCacheValidForUser && cachedEntry?.tasks);
+
+  const [tasks, setTasksState] = useState<Task[]>(() => (hasCachedData ? cachedEntry!.tasks : []));
   const [columns, setColumns] = useState<Column[]>(initialColumns);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!hasCachedData);
   const { addActivity } = useActivity();
-  const hasLoadedRef = useRef(false);
+  const hasLoadedRef = useRef(hasCachedData);
+
+  const setTasks = useCallback(
+    (action: React.SetStateAction<Task[]>) => {
+      setTasksState((prev) => {
+        const next = typeof action === "function" ? action(prev) : action;
+        if (boardId) {
+          tasksCache.set(boardId, { tasks: next, timestamp: Date.now(), userId: user?.id });
+        }
+        return next;
+      });
+    },
+    [boardId, user?.id]
+  );
 
   // Sync columns when board updates
   useEffect(() => {
@@ -26,8 +68,9 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
 
   const fetchTasks = useCallback(async (forceLoading = false) => {
     if (!boardId) return;
+    const hasCache = tasksCache.has(boardId);
     try {
-      if (forceLoading || !hasLoadedRef.current) {
+      if (forceLoading || (!hasLoadedRef.current && !hasCache)) {
         setLoading(true);
       }
       const data = await taskApi.getTasks(boardId);
@@ -38,34 +81,54 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     } finally {
       setLoading(false);
     }
-  }, [boardId]);
+  }, [boardId, setTasks]);
 
   useEffect(() => {
-    hasLoadedRef.current = false;
-    fetchTasks();
+    const cached = boardId ? tasksCache.get(boardId) : undefined;
+    const isFresh =
+      cached &&
+      (!cached.userId || cached.userId === user?.id) &&
+      Date.now() - cached.timestamp < TASKS_CACHE_TTL_MS;
+
+    if (!isFresh) {
+      fetchTasks(false);
+    } else {
+      hasLoadedRef.current = true;
+    }
+
     const handleRefresh = () => {
-      fetchTasks();
+      fetchTasks(false);
     };
-    window.addEventListener("smg-dev-data-mode-changed", handleRefresh);
+    const handleDataModeChange = () => {
+      clearTasksCache();
+      fetchTasks(true);
+    };
+
+    window.addEventListener("smg-dev-data-mode-changed", handleDataModeChange);
     window.addEventListener("task-updated", handleRefresh);
     const interval = setInterval(() => {
       if (document.visibilityState === "visible" && boardId) {
-        taskApi.getTasks(boardId).then((data) => setTasks(data)).catch(() => {});
+        taskApi
+          .getTasks(boardId)
+          .then((data) => {
+            setTasks(data);
+          })
+          .catch(() => {});
       }
     }, 4000);
     return () => {
       clearInterval(interval);
-      window.removeEventListener("smg-dev-data-mode-changed", handleRefresh);
+      window.removeEventListener("smg-dev-data-mode-changed", handleDataModeChange);
       window.removeEventListener("task-updated", handleRefresh);
     };
-  }, [fetchTasks, boardId]);
+  }, [boardId, fetchTasks, setTasks, user?.id]);
 
   const addTask = useCallback(async (data: CreateTaskData) => {
     const task = await taskApi.createTask({ ...data, boardId });
     setTasks((prev) => [...prev, task]);
     addActivity("create", task.title, `Created task "${task.title}"`, boardId);
     return task;
-  }, [addActivity, boardId]);
+  }, [addActivity, boardId, setTasks]);
 
   const updateTask = useCallback(async (id: string, data: UpdateTaskData) => {
     const task = tasks.find((t) => t.id === id);
@@ -91,7 +154,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
       }
       fetchTasks();
     }
-  }, [fetchTasks, tasks]);
+  }, [fetchTasks, setTasks, tasks]);
 
   const reorderTasks = useCallback(async (items: Array<{ id: string; status?: string; fromStatus?: string; position: number }>) => {
     if (!boardId || items.length === 0) return;
@@ -124,7 +187,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     } catch {
       fetchTasks();
     }
-  }, [boardId, fetchTasks]);
+  }, [boardId, fetchTasks, setTasks]);
 
   const moveTask = useCallback(async (id: string, status: TaskStatus) => {
     const task = tasks.find((t) => t.id === id);
@@ -140,7 +203,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     } catch {
       fetchTasks();
     }
-  }, [fetchTasks, tasks]);
+  }, [fetchTasks, setTasks, tasks]);
 
   const deleteTask = useCallback(async (id: string) => {
     const task = tasks.find((t) => t.id === id);
@@ -153,7 +216,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     } catch {
       fetchTasks();
     }
-  }, [fetchTasks, tasks]);
+  }, [fetchTasks, setTasks, tasks]);
 
   const addColumn = useCallback((title: string) => {
     const newColumn: Column = {

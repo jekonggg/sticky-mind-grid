@@ -16,6 +16,9 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { TaskDetailSkeleton } from "@/components/skeletons";
 
+import { boardMetadataCache } from "@/components/kanban/KanbanBoard";
+import { tasksCache } from "@/hooks/useTasks";
+
 export default function TaskDetailPage() {
   const { boardId, taskId } = useParams<{ boardId: string; taskId: string }>();
   const navigate = useNavigate();
@@ -24,9 +27,14 @@ export default function TaskDetailPage() {
   const { settings, playSound } = useSettings();
   const { addActivity, setBoardId } = useActivity();
 
-  const [task, setTask] = useState<Task | null>(null);
-  const [board, setBoard] = useState<Board | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const cachedBoard = boardId ? boardMetadataCache.get(boardId)?.board : null;
+  const cachedTask =
+    boardId && taskId ? tasksCache.get(boardId)?.tasks.find((t) => t.id === taskId) : null;
+  const hasCachedDetails = Boolean(cachedBoard && cachedTask);
+
+  const [task, setTask] = useState<Task | null>(() => cachedTask || null);
+  const [board, setBoard] = useState<Board | null>(() => cachedBoard || null);
+  const [isLoading, setIsLoading] = useState(!hasCachedDetails);
   const [error, setError] = useState<string | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -55,7 +63,9 @@ export default function TaskDetailPage() {
     }
 
     let isMounted = true;
-    setIsLoading(true);
+    if (!hasCachedDetails) {
+      setIsLoading(true);
+    }
     setError(null);
 
     Promise.all([
@@ -75,6 +85,7 @@ export default function TaskDetailPage() {
           return;
         }
         setBoard(boardData);
+        boardMetadataCache.set(boardId, { board: boardData, timestamp: Date.now() });
         setTask(taskData);
         setIsLoading(false);
       })
@@ -88,7 +99,7 @@ export default function TaskDetailPage() {
     return () => {
       isMounted = false;
     };
-  }, [boardId, taskId, navigate]);
+  }, [boardId, taskId, navigate, hasCachedDetails]);
 
   // Real-time SSE updates for task & board
   const { isConnected, isReconnecting } = useBoardRealtime({

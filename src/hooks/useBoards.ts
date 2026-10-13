@@ -63,17 +63,45 @@ export function isBoardOwnedByUser(board: Board, userId?: string): boolean {
   return Boolean(userId && board.ownerId && String(board.ownerId) === String(userId));
 }
 
+// Module-level in-memory cache for boards (persists across route navigations)
+let cachedBoards: Board[] | null = null;
+let cachedTrashedBoards: Board[] = [];
+let cachedUserId: string | undefined = undefined;
+let lastBoardsFetchTime = 0;
+export const BOARDS_CACHE_TTL_MS = 60_000;
+
+export function clearBoardsCache() {
+  cachedBoards = null;
+  cachedTrashedBoards = [];
+  cachedUserId = undefined;
+  lastBoardsFetchTime = 0;
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("auth:session-expired", clearBoardsCache);
+}
+
 export function useBoards() {
   const { user } = useAuth();
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [trashedBoards, setTrashedBoards] = useState<Board[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // Invalidate cache if authenticated user changed
+  if (cachedUserId !== user?.id) {
+    cachedBoards = null;
+    cachedTrashedBoards = [];
+    cachedUserId = user?.id;
+    lastBoardsFetchTime = 0;
+  }
+
+  const hasCachedData = cachedBoards !== null;
+  const [boards, setBoards] = useState<Board[]>(() => cachedBoards || []);
+  const [trashedBoards, setTrashedBoards] = useState<Board[]>(() => cachedTrashedBoards || []);
+  const [loading, setLoading] = useState<boolean>(() => !hasCachedData);
   const [search, setSearch] = useState("");
   const [sort, setSortState] = useState<SortOption>(() => loadBoardPrefs(user?.id).sort);
   const [filter, setFilterState] = useState<BoardFilterOption>(() => loadBoardPrefs(user?.id).filter);
   const [view, setViewState] = useState<BoardViewOption>(() => loadBoardPrefs(user?.id).view);
   const { addActivity } = useActivity();
-  const hasLoadedRef = useRef(false);
+  const hasLoadedRef = useRef(hasCachedData);
   const loadedUserIdRef = useRef<string | undefined>(user?.id);
 
   // Sync preferences when user?.id changes or on mount
@@ -114,19 +142,23 @@ export function useBoards() {
   );
 
   const fetchBoards = useCallback(async (options?: { silent?: boolean }) => {
-    const isSilent = options?.silent ?? hasLoadedRef.current;
+    const isSilent = options?.silent ?? (hasLoadedRef.current || cachedBoards !== null);
     try {
       if (!isSilent) {
         setLoading(true);
       }
       const data = await boardApi.getBoards();
       setBoards(data);
+      cachedBoards = data;
+      cachedUserId = user?.id;
+      lastBoardsFetchTime = Date.now();
       if (typeof boardApi.getTrashedBoards === "function") {
         boardApi
           .getTrashedBoards()
           .then((trashed) => {
             if (Array.isArray(trashed)) {
               setTrashedBoards(trashed);
+              cachedTrashedBoards = trashed;
             }
           })
           .catch(() => {
@@ -143,19 +175,32 @@ export function useBoards() {
         setLoading(false);
       }
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
-    fetchBoards({ silent: false });
+    const isFresh =
+      cachedBoards !== null &&
+      cachedUserId === user?.id &&
+      Date.now() - lastBoardsFetchTime < BOARDS_CACHE_TTL_MS;
+
+    if (!isFresh) {
+      fetchBoards({ silent: cachedBoards !== null });
+    }
 
     const handleDataModeChange = () => {
+      clearBoardsCache();
       fetchBoards({ silent: false });
     };
     const handleFocus = () => {
-      fetchBoards({ silent: true });
+      if (Date.now() - lastBoardsFetchTime >= BOARDS_CACHE_TTL_MS) {
+        fetchBoards({ silent: true });
+      }
     };
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
+      if (
+        document.visibilityState === "visible" &&
+        Date.now() - lastBoardsFetchTime >= BOARDS_CACHE_TTL_MS
+      ) {
         fetchBoards({ silent: true });
       }
     };
@@ -176,13 +221,17 @@ export function useBoards() {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [fetchBoards]);
+  }, [fetchBoards, user?.id]);
 
   const createBoard = useCallback(
     async (data: CreateBoardData) => {
       try {
         const board = await boardApi.createBoard(data);
-        setBoards((prev) => [...prev, board]);
+        setBoards((prev) => {
+          const next = [...prev, board];
+          cachedBoards = next;
+          return next;
+        });
         addActivity("create", board.name, `New board "${board.name}" created`);
         toast.success(`Board "${board.name}" created`);
         return board;
@@ -197,7 +246,11 @@ export function useBoards() {
     async (id: string, data: UpdateBoardData) => {
       try {
         const board = await boardApi.updateBoard(id, data);
-        setBoards((prev) => prev.map((b) => (b.id === id ? board : b)));
+        setBoards((prev) => {
+          const next = prev.map((b) => (b.id === id ? board : b));
+          cachedBoards = next;
+          return next;
+        });
         addActivity("update", board.name, `Board settings updated for "${board.name}"`);
         toast.success(`Board "${board.name}" updated`);
         return board;
@@ -214,15 +267,27 @@ export function useBoards() {
       const trashed = trashedBoards.find((b) => b.id === id);
       if (trashed) {
         const restoredLocal: Board = { ...trashed, isDeleted: false, deletedAt: null };
-        setTrashedBoards((prev) => prev.filter((b) => b.id !== id));
-        setBoards((prev) => [restoredLocal, ...prev.filter((b) => b.id !== id)]);
+        setTrashedBoards((prev) => {
+          const next = prev.filter((b) => b.id !== id);
+          cachedTrashedBoards = next;
+          return next;
+        });
+        setBoards((prev) => {
+          const next = [restoredLocal, ...prev.filter((b) => b.id !== id)];
+          cachedBoards = next;
+          return next;
+        });
       }
 
       try {
         if (typeof boardApi.restoreBoard === "function") {
           const restored = await boardApi.restoreBoard(id);
           if (restored) {
-            setBoards((prev) => [restored, ...prev.filter((b) => b.id !== id)]);
+            setBoards((prev) => {
+              const next = [restored, ...prev.filter((b) => b.id !== id)];
+              cachedBoards = next;
+              return next;
+            });
           }
         }
         addActivity("update", trashed?.name || "Board", `Board "${trashed?.name || "Board"}" restored`);
@@ -246,8 +311,16 @@ export function useBoards() {
         deletedAt: new Date().toISOString(),
       };
 
-      setBoards((prev) => prev.filter((b) => b.id !== id));
-      setTrashedBoards((prev) => [trashedEntry, ...prev.filter((b) => b.id !== id)]);
+      setBoards((prev) => {
+        const next = prev.filter((b) => b.id !== id);
+        cachedBoards = next;
+        return next;
+      });
+      setTrashedBoards((prev) => {
+        const next = [trashedEntry, ...prev.filter((b) => b.id !== id)];
+        cachedTrashedBoards = next;
+        return next;
+      });
       addActivity("delete", board.name, `Board "${board.name}" moved to Recently Deleted`);
       toast.success(`Board "${board.name}" moved to Recently Deleted (30-day grace period)`, {
         action: {
@@ -271,8 +344,16 @@ export function useBoards() {
     async (id: string, confirmName?: string) => {
       const target = trashedBoards.find((b) => b.id === id) || boards.find((b) => b.id === id);
       const nameToConfirm = confirmName || target?.name;
-      setTrashedBoards((prev) => prev.filter((b) => b.id !== id));
-      setBoards((prev) => prev.filter((b) => b.id !== id));
+      setTrashedBoards((prev) => {
+        const next = prev.filter((b) => b.id !== id);
+        cachedTrashedBoards = next;
+        return next;
+      });
+      setBoards((prev) => {
+        const next = prev.filter((b) => b.id !== id);
+        cachedBoards = next;
+        return next;
+      });
       if (target) {
         addActivity("delete", target.name, `Board "${target.name}" permanently deleted`);
         toast.success(`Board "${target.name}" permanently deleted`);

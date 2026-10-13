@@ -77,33 +77,75 @@ import { PillNavBar } from "@/components/common/PillNavBar";
 
 import { BoardViewSkeleton } from "@/components/skeletons";
 
+// Module-level in-memory cache for board metadata across route navigations
+export const boardMetadataCache = new Map<string, { board: Board; timestamp: number }>();
+export const BOARD_METADATA_CACHE_TTL_MS = 60_000;
+
+export function clearBoardMetadataCache(boardId?: string) {
+  if (boardId) {
+    boardMetadataCache.delete(boardId);
+  } else {
+    boardMetadataCache.clear();
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("auth:session-expired", () => clearBoardMetadataCache());
+  window.addEventListener("smg-dev-data-mode-changed", () => clearBoardMetadataCache());
+}
+
 export function KanbanBoard() {
   const { boardId } = useParams<{ boardId: string }>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const { devSettings } = useDevMode();
   const { settings, playSound } = useSettings();
-  const [board, setBoard] = useState<Board | null>(null);
+  const cachedBoardEntry = boardId ? boardMetadataCache.get(boardId) : undefined;
+  const [board, setBoardState] = useState<Board | null>(() => cachedBoardEntry?.board || null);
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
+
+  const setBoard = useCallback(
+    (action: Board | null | ((prev: Board | null) => Board | null)) => {
+      setBoardState((prev) => {
+        const next = typeof action === "function" ? action(prev) : action;
+        if (boardId && next) {
+          boardMetadataCache.set(boardId, { board: next, timestamp: Date.now() });
+        }
+        return next;
+      });
+    },
+    [boardId]
+  );
 
   useEffect(() => {
     if (!boardId) {
       navigate("/");
       return;
     }
-    const loadBoard = () => {
-      boardApi.getBoard(boardId).then((b) => {
-        if (!b) {
-          navigate("/");
-          return;
-        }
-        setBoard(b);
-      });
+    const loadBoard = (force = false) => {
+      const cached = boardMetadataCache.get(boardId);
+      const isFresh = cached && Date.now() - cached.timestamp < BOARD_METADATA_CACHE_TTL_MS;
+      if (cached && !force) {
+        setBoardState(cached.board);
+      }
+      if (!isFresh || force || !cached) {
+        boardApi.getBoard(boardId).then((b) => {
+          if (!b) {
+            navigate("/");
+            return;
+          }
+          setBoard(b);
+        });
+      }
     };
-    loadBoard();
-    window.addEventListener("smg-dev-data-mode-changed", loadBoard);
-    return () => window.removeEventListener("smg-dev-data-mode-changed", loadBoard);
-  }, [boardId, navigate]);
+    loadBoard(false);
+    const handleDataModeChange = () => {
+      boardMetadataCache.clear();
+      loadBoard(true);
+    };
+    window.addEventListener("smg-dev-data-mode-changed", handleDataModeChange);
+    return () => window.removeEventListener("smg-dev-data-mode-changed", handleDataModeChange);
+  }, [boardId, navigate, setBoard]);
 
   // Fetch Board Members for Assignee & Filters
   const { data: members = [] } = useQuery<BoardMember[]>({

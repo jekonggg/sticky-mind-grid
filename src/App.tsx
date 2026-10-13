@@ -25,7 +25,16 @@ import { AppLayout } from "./components/layout/AppLayout";
 
 import { DevSkeletonToolbar } from "./components/common/DevSkeletonToolbar";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000, // 1 minute fresh cache window
+      gcTime: 10 * 60 * 1000, // 10 minutes cache retention in memory
+      refetchOnWindowFocus: false, // Avoid network spikes on window focus
+      refetchOnMount: false, // Reuse fresh cached data across component remounts
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
