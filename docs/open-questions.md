@@ -171,12 +171,21 @@ This document consolidates every unresolved question, UI-only business rule lack
 
 ---
 
-### OQ-13: Unhandled SSE Events on the Board Stream
+### OQ-13 [RESOLVED]: Unhandled SSE Events on the Board Stream
+- **Status:** RESOLVED.
+- **Resolution:**
+  1. Updated `useBoardRealtime.ts` (`src/hooks/useBoardRealtime.ts`) with handlers and comprehensive cataloging for all 21+ backend SSE events.
+  2. Implemented query invalidation and callback dispatch for:
+     - `comment:created`, `comment:updated`, `comment:deleted`: invalidates `["taskComments", taskId]` and `["taskComments"]`, invokes `callbacksRef.current.onCommentChange`.
+     - `note:created`, `note:updated`, `note:deleted`: invalidates `["boardNotes", boardId]` and `["notes", boardId]`, invokes `callbacksRef.current.onNoteChange`.
+     - `trash:emptied`: invalidates `["trashTasks", boardId]`, invokes `callbacksRef.current.onTrashEmptied`.
+     - `member:invited`, `member:invite_resent`: invalidates `["boardMembers", boardId]` and `["pendingInvitations"]`, invokes `callbacksRef.current.onMemberChange`.
+     - `task:deleted`: invalidates `["trashTasks", boardId]`.
+     - `board:updated`: invalidates `["boards"]` and `["board", boardId]`.
+  3. Added comprehensive test coverage in `src/test/hooks/useBoardRealtime.test.tsx`.
 - **Where in Code:**
-  - Backend emits 21 distinct event types, but `src/hooks/useBoardRealtime.ts:L182-L279` only handles 12 events.
-  - Missing handlers: `comment:created`, `comment:updated`, `comment:deleted`, `note:created`, `note:updated`, `note:deleted`, `trash:emptied`, `member:invited`, and `member:invite_resent`.
-- **Recommendation:**
-  - Add switch cases in `useBoardRealtime.ts` to invalidate React Query caches for `["taskComments"]`, `["boardNotes"]`, `["boardTrash"]`, and `["boardMembers"]`.
+  - `src/hooks/useBoardRealtime.ts:L200-L320`: Handlers for all 21+ backend SSE events.
+  - `src/test/hooks/useBoardRealtime.test.tsx`: Unit tests verifying event handling and cache invalidation.
 
 ---
 

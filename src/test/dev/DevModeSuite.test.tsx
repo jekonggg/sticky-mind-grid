@@ -11,6 +11,7 @@ import { Board } from "@/types/board";
 import { AuthContext, AuthContextType } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { DevModeProvider } from "@/contexts/DevModeContext";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const mockAuthValue: AuthContextType = {
   user: mockUser,
@@ -21,13 +22,21 @@ const mockAuthValue: AuthContextType = {
   updateUser: vi.fn(),
 };
 
+const devQueryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: false },
+  },
+});
+
 function DevWrapper({ children }: { children: React.ReactNode }) {
   return (
-    <AuthContext.Provider value={mockAuthValue}>
-      <SettingsProvider>
-        <DevModeProvider>{children}</DevModeProvider>
-      </SettingsProvider>
-    </AuthContext.Provider>
+    <QueryClientProvider client={devQueryClient}>
+      <AuthContext.Provider value={mockAuthValue}>
+        <SettingsProvider>
+          <DevModeProvider>{children}</DevModeProvider>
+        </SettingsProvider>
+      </AuthContext.Provider>
+    </QueryClientProvider>
   );
 }
 

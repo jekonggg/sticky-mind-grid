@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { toast } from "sonner";
@@ -24,6 +25,9 @@ interface UseBoardRealtimeOptions {
   onBoardDeleted?: (data?: any) => void;
   onReconnect?: () => void;
   onForceDisconnect?: (data?: any) => void;
+  onCommentChange?: (data?: any) => void;
+  onNoteChange?: (data?: any) => void;
+  onTrashEmptied?: (data?: any) => void;
 }
 
 export function useBoardRealtime({
@@ -39,9 +43,13 @@ export function useBoardRealtime({
   onBoardDeleted,
   onReconnect,
   onForceDisconnect,
+  onCommentChange,
+  onNoteChange,
+  onTrashEmptied,
 }: UseBoardRealtimeOptions) {
   const { user, token: authToken } = useAuth();
   const { devSettings } = useDevMode();
+  const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -62,6 +70,9 @@ export function useBoardRealtime({
     onBoardDeleted,
     onReconnect,
     onForceDisconnect,
+    onCommentChange,
+    onNoteChange,
+    onTrashEmptied,
   });
 
   useEffect(() => {
@@ -77,6 +88,9 @@ export function useBoardRealtime({
       onBoardDeleted,
       onReconnect,
       onForceDisconnect,
+      onCommentChange,
+      onNoteChange,
+      onTrashEmptied,
     };
   });
 
@@ -179,6 +193,31 @@ export function useBoardRealtime({
             );
           }
 
+          /**
+           * Backend SSE Event Catalog (All 21+ Backend Events):
+           * 1.  `connected`: Connection acknowledged by backend stream -> handled (sets isConnected, triggers onReconnect).
+           * 2.  `task:created`: Task created in column -> handled (onTaskChange).
+           * 3.  `task:updated`: Task modified -> handled (onTaskChange, onTaskUpdate).
+           * 4.  `task:moved`: Task moved between columns -> handled (onTaskMoved, onTaskChange).
+           * 5.  `tasks:reordered`: Batch positions updated -> handled (onTasksReordered, onTaskChange).
+           * 6.  `task:deleted`: Task soft- or hard-deleted -> handled (onTaskChange, onTaskDelete, invalidates trashTasks).
+           * 7.  `activity:new`: Activity logged -> handled (onActivityChange).
+           * 8.  `member:invited`: Invitation sent -> handled (invalidates boardMembers & pendingInvitations, onMemberChange).
+           * 9.  `member:invite_resent`: Invite reminder resent -> handled (invalidates boardMembers & pendingInvitations, onMemberChange).
+           * 10. `member:joined`: User joined board -> handled (invalidates boardMembers, onMemberChange).
+           * 11. `member:role_updated`: Member role changed -> handled (invalidates boardMembers, onMemberChange).
+           * 12. `member:removed`: Member revoked/removed -> handled (invalidates boardMembers, disconnects if self, onMemberChange).
+           * 13. `force_disconnect`: Disconnection forced by server -> handled (closes EventSource, onForceDisconnect).
+           * 14. `board:updated`: Board metadata/columns modified -> handled (invalidates boards/board, onBoardChange).
+           * 15. `board:deleted`: Board deleted -> handled (onBoardDeleted).
+           * 16. `comment:created`: Comment created -> handled (invalidates taskComments, onCommentChange).
+           * 17. `comment:updated`: Comment edited -> handled (invalidates taskComments, onCommentChange).
+           * 18. `comment:deleted`: Comment deleted -> handled (invalidates taskComments, onCommentChange).
+           * 19. `note:created`: Board note created -> handled (invalidates boardNotes/notes, onNoteChange).
+           * 20. `note:updated`: Board note edited -> handled (invalidates boardNotes/notes, onNoteChange).
+           * 21. `note:deleted`: Board note deleted -> handled (invalidates boardNotes/notes, onNoteChange).
+           * 22. `trash:emptied`: Trash emptied -> handled (invalidates trashTasks, onTrashEmptied).
+           */
           switch (payload.type) {
             case "connected":
               if (isMounted) {
@@ -213,6 +252,7 @@ export function useBoardRealtime({
               break;
 
             case "task:deleted":
+              queryClient?.invalidateQueries({ queryKey: ["trashTasks", boardId] });
               callbacksRef.current.onTaskChange?.(payload.data);
               callbacksRef.current.onTaskDelete?.(payload.data?.taskId || payload.data?.id || payload.data);
               break;
@@ -221,8 +261,19 @@ export function useBoardRealtime({
               callbacksRef.current.onActivityChange?.(payload.data);
               break;
 
+            case "member:invited":
+            case "member:invite_resent":
+              queryClient?.invalidateQueries({ queryKey: ["boardMembers", boardId] });
+              queryClient?.invalidateQueries({ queryKey: ["pendingInvitations"] });
+              callbacksRef.current.onMemberChange?.({
+                ...(payload.data && typeof payload.data === "object" ? payload.data : {}),
+                eventType: payload.type,
+              });
+              break;
+
             case "member:joined":
             case "member:role_updated":
+              queryClient?.invalidateQueries({ queryKey: ["boardMembers", boardId] });
               callbacksRef.current.onMemberChange?.({
                 ...(payload.data && typeof payload.data === "object" ? payload.data : {}),
                 eventType: payload.type,
@@ -230,6 +281,7 @@ export function useBoardRealtime({
               break;
 
             case "member:removed":
+              queryClient?.invalidateQueries({ queryKey: ["boardMembers", boardId] });
               if (payload.data?.userId && String(payload.data.userId) === String(userId)) {
                 if (reconnectTimeoutRef.current) {
                   clearTimeout(reconnectTimeoutRef.current);
@@ -267,11 +319,38 @@ export function useBoardRealtime({
               break;
 
             case "board:updated":
+              queryClient?.invalidateQueries({ queryKey: ["boards"] });
+              queryClient?.invalidateQueries({ queryKey: ["board", boardId] });
               callbacksRef.current.onBoardChange?.(payload.data);
               break;
 
             case "board:deleted":
               callbacksRef.current.onBoardDeleted?.(payload.data);
+              break;
+
+            case "comment:created":
+            case "comment:updated":
+            case "comment:deleted": {
+              const taskId = payload.data?.taskId || payload.data?.task_id;
+              if (taskId) {
+                queryClient?.invalidateQueries({ queryKey: ["taskComments", taskId] });
+              }
+              queryClient?.invalidateQueries({ queryKey: ["taskComments"] });
+              callbacksRef.current.onCommentChange?.(payload.data);
+              break;
+            }
+
+            case "note:created":
+            case "note:updated":
+            case "note:deleted":
+              queryClient?.invalidateQueries({ queryKey: ["boardNotes", boardId] });
+              queryClient?.invalidateQueries({ queryKey: ["notes", boardId] });
+              callbacksRef.current.onNoteChange?.(payload.data);
+              break;
+
+            case "trash:emptied":
+              queryClient?.invalidateQueries({ queryKey: ["trashTasks", boardId] });
+              callbacksRef.current.onTrashEmptied?.(payload.data);
               break;
 
             default:
@@ -334,7 +413,7 @@ export function useBoardRealtime({
       }
       setIsConnected(false);
     };
-  }, [boardId, userId, authToken, devSettings.simulateSseDisconnect, devSettings.seedTakeoverPreset]);
+  }, [boardId, userId, authToken, devSettings.simulateSseDisconnect, devSettings.seedTakeoverPreset, queryClient]);
 
   return { isConnected, isReconnecting };
 }

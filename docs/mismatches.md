@@ -38,7 +38,7 @@ These contradictions were identified during the consistency audit across the pri
 | **MM-07:** Outdated "Not Implemented" Claims — `docs/PROJECT_STATUS.md:L151-L260` and `ROADMAP.md` list Assignee Validation, Task Search/Filter, Overdue Indicators, Dark Mode, Data Export, Avatars, Templates, Conflict Detection, and `/api/health` as unimplemented; all are implemented in code. | `docs/PROJECT_STATUS.md:L151-L260`, `docs/ROADMAP.md:L14-L161`, multiple backend & frontend source files | Obsolete project tracking documents obscure production-ready capabilities. | Product Management / Tech Lead | Agent 1 / Agent 2 |
 | **MM-08:** Duplicate CORS Initialization Claim — `docs/PROJECT_STATUS.md:L224` and `ROADMAP.md:L55` claim `CORS()` is called twice in `backend/app/__init__.py`; code initializes `CORS` only once (`L35-L42`). | `docs/PROJECT_STATUS.md:L224-L226`, `docs/ROADMAP.md:L55`, `backend/app/__init__.py:L35-L42` | Phantom bug claim in roadmap; creates unnecessary remediation work. | Technical Documentation Lead | Agent 3 |
 | **MM-09:** Playwright E2E Port Number — `docs/ARCHITECTURE.md:L739` states Playwright runs against port `5173`; code configures Playwright against `http://localhost:8085` (and Vite dev server on port `8080`). | `docs/ARCHITECTURE.md:L739`, `playwright.config.ts:L16, L24`, `e2e/run.mjs:L17` | Misleading test documentation; causes local test runs to fail if wrong ports are targeted. | QA / Testing Lead | Agent 4 |
-| **MM-10:** SSE Event Matrix Discrepancy — `docs/ARCHITECTURE.md:L637, L643-L663` lists only 12 SSE events, omitting 9 events emitted by backend services (`comment:*`, `note:*`, `trash:emptied`, `member:invited`, `member:invite_resent`). | `docs/ARCHITECTURE.md:L637, L643-L663`, `src/hooks/useBoardRealtime.ts:L182-L279`, `backend/app/services/*.py` | Architectural documentation fails to specify full real-time event surface and event handling gaps. | Real-Time / Backend Lead | Agent 3 |
+| **MM-10 [CLOSED]:** SSE Event Matrix Discrepancy — `docs/ARCHITECTURE.md:L637, L643-L663` lists only 12 SSE events, omitting 9 events emitted by backend services (`comment:*`, `note:*`, `trash:emptied`, `member:invited`, `member:invite_resent`). | `docs/ARCHITECTURE.md:L637, L643-L663`, `src/hooks/useBoardRealtime.ts:L182-L279`, `backend/app/services/*.py` | **CLOSED:** `useBoardRealtime.ts` updated to handle all 21+ backend SSE events, cataloging each with React Query cache invalidation and callback dispatch. | Real-Time / Backend Lead | Agent 3 |
 
 ---
 
@@ -212,9 +212,11 @@ These contradictions were identified during the consistency audit across the pri
 
 ---
 
-### MM-10: SSE Event Matrix Discrepancies
+### MM-10 [CLOSED]: SSE Event Matrix Discrepancies
+- **Status:** CLOSED / RESOLVED.
+- **Resolution:** Added handlers and comprehensive cataloging in `src/hooks/useBoardRealtime.ts` for all 21+ backend SSE events (including `comment:*`, `note:*`, `trash:emptied`, `member:invited`, and `member:invite_resent`). Each event performs targeted React Query cache invalidation and invokes the corresponding callback. Verified via `src/test/hooks/useBoardRealtime.test.tsx`.
 - **What Existing Docs Claim:**
   - `docs/ARCHITECTURE.md:L637` and `L643-L663`: Lists 12 SSE events in the architecture diagram/table, omitting 9 events emitted by backend services, and implies `member:updated` and `member:removed` are handled solely by `refetchMembers()`.
 - **What the Code Actually Does:**
-  - Backend services emit **21 board SSE event types** (adding `comment:created`, `comment:updated`, `comment:deleted`, `note:created`, `note:updated`, `note:deleted`, `trash:emptied`, `member:invited`, and `member:invite_resent`).
-  - In `src/hooks/useBoardRealtime.ts:L247-L273`, `member:updated` and `member:removed` also inspect whether the affected user is the current user (`data.userId === currentUserId`) to show a role-change toast (`"Your role was updated to <role>"`) or redirect a removed user to `/` (`navigate("/")`). Meanwhile, the 9 newer events (`comment:*`, `note:*`, `trash:emptied`, `member:invited`, `member:invite_resent`) have no `case` handlers in `useBoardRealtime.ts:L182-L279`.
+  - Backend services emit **21+ board SSE event types** (including `comment:created`, `comment:updated`, `comment:deleted`, `note:created`, `note:updated`, `note:deleted`, `trash:emptied`, `member:invited`, and `member:invite_resent`).
+  - In `src/hooks/useBoardRealtime.ts`, all 21+ backend SSE events are explicitly mapped to handlers, cache invalidations, and callbacks.
