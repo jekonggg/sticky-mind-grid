@@ -129,66 +129,59 @@ export function TaskCard({
   const priority = PRIORITY_CONFIG[priorityKey] || PRIORITY_CONFIG.low;
   const tabGradientId = `tab-fade-${task.id}`;
 
-  const assigneeName = task.assignee?.fullName || task.assignee?.email;
-  const assigneeInitial = (task.assignee?.fullName || task.assignee?.email || "U").charAt(0).toUpperCase();
+  // Single card avatar determination: at most 1 avatar on the card (Assignee if assigned, otherwise Creator)
+  const singleAvatar = React.useMemo(() => {
+    // 1. Primary Assignee
+    const primaryAssignee =
+      task.assignee ||
+      (Array.isArray((task as any).assignees) && (task as any).assignees[0] ? (task as any).assignees[0] : null);
 
-  // Creator metadata for top-right indicator
-  const creatorName = task.creator?.fullName || task.creator?.email;
-  const creatorInitial = (creatorName || "U").charAt(0).toUpperCase();
-  const safeCreatedAt = parseSafeDate(task.createdAt);
-  const formattedCreatedDate = safeCreatedAt ? formatSafe(safeCreatedAt, "MMM d, yyyy") : "";
-
-  // Collect assigned users deduplicated (bottom-right is reserved exclusively for assignees per user spec)
-  const assignedUsers = React.useMemo(() => {
-    const list: Array<{
-      id: string;
-      name: string;
-      avatarUrl?: string;
-      initial: string;
-    }> = [];
-    const seen = new Set<string>();
-
-    const addUser = (u?: {
-      id?: string;
-      email?: string;
-      fullName?: string;
-      avatarUrl?: string;
-    } | null) => {
-      if (!u) return;
-      const name = u.fullName || u.email;
-      if (!name || (name === "Former member" && !u.id && !u.avatarUrl)) return;
-      const key = u.id || u.email || name;
-      if (seen.has(key)) return;
-      seen.add(key);
-
+    if (primaryAssignee) {
+      const name = primaryAssignee.fullName || primaryAssignee.email || "Assignee";
       const initial = (name || "U").charAt(0).toUpperCase();
-      list.push({
-        id: key,
+      const isAlsoCreator =
+        task.creator &&
+        (task.creator.id === primaryAssignee.id ||
+          task.creator.email === primaryAssignee.email);
+
+      let tooltip = `Assigned to ${name}`;
+      if (isAlsoCreator) {
+        tooltip = `${name} (Assignee & Creator)`;
+      } else if (task.creator) {
+        const cName = task.creator.fullName || task.creator.email;
+        tooltip = `Assigned to ${name} • Created by ${cName}`;
+      }
+
+      return {
+        id: primaryAssignee.id || primaryAssignee.email || "assignee",
         name,
-        avatarUrl: u.avatarUrl,
         initial,
-      });
-    };
-
-    // Primary assignee(s)
-    if (Array.isArray((task as any).assignees)) {
-      (task as any).assignees.forEach(addUser);
-    }
-    if (task.assignee) {
-      addUser(task.assignee);
-    }
-    // Any extra involved assignees
-    if (Array.isArray((task as any).involved)) {
-      (task as any).involved.forEach(addUser);
+        avatarUrl: primaryAssignee.avatarUrl,
+        tooltip,
+        role: "assignee" as const,
+      };
     }
 
-    return list;
+    // 2. Unassigned task: fall back to Creator
+    if (task.creator) {
+      const name = task.creator.fullName || task.creator.email || "Creator";
+      const initial = (name || "U").charAt(0).toUpperCase();
+      const safeCreatedAt = parseSafeDate(task.createdAt);
+      const createdDateStr = safeCreatedAt ? formatSafe(safeCreatedAt, "MMM d, yyyy") : "";
+      const tooltip = `Created by ${name}${createdDateStr ? ` on ${createdDateStr}` : ""} (Unassigned)`;
+
+      return {
+        id: task.creator.id || task.creator.email || "creator",
+        name,
+        initial,
+        avatarUrl: task.creator.avatarUrl,
+        tooltip,
+        role: "creator" as const,
+      };
+    }
+
+    return null;
   }, [task]);
-
-  const maxVisibleAvatars = isCompact ? 2 : 3;
-  const visibleAssigned = assignedUsers.slice(0, maxVisibleAvatars);
-  const remainingAssignedCount = Math.max(0, assignedUsers.length - maxVisibleAvatars);
-  const remainingAssignedUsers = assignedUsers.slice(maxVisibleAvatars);
 
   // Progress calculations for the 24-tick equalizer visualizer
   const totalChecklist = task.checklist?.length || 0;
@@ -354,40 +347,6 @@ export function TaskCard({
           </div>
 
           <div className="flex items-center gap-1 shrink-0 -mr-1">
-            {task.creator && (
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div
-                      data-testid="task-creator-avatar"
-                      className="cursor-default flex items-center"
-                      onClick={(e) => e.stopPropagation()}
-                      onPointerDown={(e) => e.stopPropagation()}
-                    >
-                      <Avatar
-                        className={`${
-                          isCompact ? "h-3.5 w-3.5 text-[7px]" : "h-4 w-4 text-[8px]"
-                        } border-[1.5px] border-card ring-1.5 ring-primary/40 hover:ring-primary transition-all shadow-xs shrink-0`}
-                        aria-label={`Created by ${creatorName}`}
-                        title={`Created by ${creatorName}${formattedCreatedDate ? ` on ${formattedCreatedDate}` : ""}`}
-                      >
-                        <AvatarImage src={task.creator.avatarUrl} alt={creatorName} />
-                        <AvatarFallback className="font-bold bg-primary/10 text-primary">
-                          {creatorInitial}
-                        </AvatarFallback>
-                      </Avatar>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">
-                    <p className="font-medium">
-                      Created by {creatorName}
-                      {formattedCreatedDate ? ` on ${formattedCreatedDate}` : ""}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -491,56 +450,22 @@ export function TaskCard({
           </div>
         )}
 
-        {/* Inline Metadata Row: Assignee (Left) + Due Date (Right) */}
-        {(task.assignee || task.dueDate) && (
-          <div
-            className={`flex items-center justify-between gap-2 ${
-              isCompact ? "mt-1.5" : "mt-2"
-            }`}
-          >
-            {/* Assignee */}
-            {task.assignee ? (
-              <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                <Avatar className={`${isCompact ? "h-4 w-4" : "h-5 w-5"} border border-border shrink-0`}>
-                  <AvatarImage src={task.assignee.avatarUrl} alt={assigneeName} />
-                  <AvatarFallback
-                    className={`font-bold bg-primary/10 text-primary ${
-                      isCompact ? "text-[7px]" : "text-[8px]"
-                    }`}
-                  >
-                    {assigneeInitial}
-                  </AvatarFallback>
-                </Avatar>
-                <span
-                  className={`font-medium text-muted-foreground truncate ${
-                    isCompact ? "text-[10px]" : "text-xs"
-                  }`}
-                >
-                  {assigneeName}
-                </span>
-              </div>
-            ) : (
-              <div className="flex-1" />
-            )}
-
-            {/* Due Date */}
-            {(() => {
-              const safeDueDate = parseSafeDate(task.dueDate);
-              if (!safeDueDate) return null;
-              return (
-                <div
-                  className={`flex items-center gap-1 font-medium text-muted-foreground shrink-0 ${
-                    isCompact ? "text-[9px]" : "text-xs"
-                  }`}
-                  title={`Due date: ${formatSafe(safeDueDate, "PPP")}`}
-                >
-                  <Calendar className={isCompact ? "h-3 w-3 opacity-70" : "h-3.5 w-3.5 opacity-70"} />
-                  <span>{formatSafe(safeDueDate, "MMM d, yyyy")}</span>
-                </div>
-              );
-            })()}
-          </div>
-        )}
+        {/* Due Date */}
+        {(() => {
+          const safeDueDate = parseSafeDate(task.dueDate);
+          if (!safeDueDate) return null;
+          return (
+            <div
+              className={`flex items-center gap-1 font-medium text-muted-foreground ${
+                isCompact ? "mt-1.5 text-[9px]" : "mt-2 text-xs"
+              }`}
+              title={`Due date: ${formatSafe(safeDueDate, "PPP")}`}
+            >
+              <Calendar className={isCompact ? "h-3 w-3 opacity-70" : "h-3.5 w-3.5 opacity-70"} />
+              <span>{formatSafe(safeDueDate, "MMM d, yyyy")}</span>
+            </div>
+          );
+        })()}
 
         {/* Description Snippet */}
         {task.description && (
@@ -653,7 +578,7 @@ export function TaskCard({
                           {item.completed && item.completedBy && (
                             <div
                               className="flex items-center gap-1 shrink-0 pl-1"
-                              title={`Completed by ${item.completedBy.fullName || item.completedBy.email}`}
+                              aria-label={`Completed by ${item.completedBy.fullName || item.completedBy.email}`}
                             >
                               <Avatar className="h-3.5 w-3.5 text-[7px] border border-card ring-1 ring-border/20">
                                 <AvatarImage
@@ -689,39 +614,37 @@ export function TaskCard({
             )}
           </div>
 
-          {/* Right: Assigned Avatars (Bottom Rightmost) */}
-          {assignedUsers.length > 0 && (
+          {/* Right: Single Card Avatar (Bottom Rightmost: Assignee if assigned, otherwise Creator) */}
+          {singleAvatar && (
             <div
-              className="flex items-center -space-x-1.5 shrink-0 ml-auto"
+              className="flex items-center shrink-0 ml-auto"
               aria-label="Involved members"
             >
-              {visibleAssigned.map((user) => (
-                <Avatar
-                  key={user.id}
-                  title={user.name}
-                  aria-label={user.name}
-                  className={`${
-                    isCompact ? "h-4 w-4 text-[7px]" : "h-5 w-5 text-[8px]"
-                  } border-[1.5px] border-card ring-1 ring-border/20 shrink-0 transition-transform hover:scale-110 hover:z-10`}
-                >
-                  <AvatarImage src={user.avatarUrl} alt={user.name} />
-                  <AvatarFallback className="font-bold bg-primary/10 text-primary">
-                    {user.initial}
-                  </AvatarFallback>
-                </Avatar>
-              ))}
-
-              {remainingAssignedCount > 0 && (
-                <div
-                  title={remainingAssignedUsers.map((u) => u.name).join(", ")}
-                  aria-label={`${remainingAssignedCount} more involved members`}
-                  className={`${
-                    isCompact ? "h-4 w-4 text-[7px]" : "h-5 w-5 text-[8px]"
-                  } rounded-full border-[1.5px] border-card ring-1 ring-border/20 bg-muted text-muted-foreground font-bold flex items-center justify-center shrink-0 transition-transform hover:scale-110 hover:z-10 cursor-default select-none`}
-                >
-                  +{remainingAssignedCount}
-                </div>
-              )}
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Avatar
+                      data-testid="task-single-avatar"
+                      aria-label={singleAvatar.tooltip}
+                      className={`${
+                        isCompact ? "h-4 w-4 text-[7px]" : "h-5 w-5 text-[8px]"
+                      } border-[1.5px] border-card shrink-0 transition-transform hover:scale-110 hover:z-10 ${
+                        singleAvatar.role === "creator"
+                          ? "ring-1.5 ring-dashed ring-muted-foreground/50 opacity-90"
+                          : "ring-1 ring-border/30"
+                      }`}
+                    >
+                      <AvatarImage src={singleAvatar.avatarUrl} alt={singleAvatar.name} />
+                      <AvatarFallback className="font-bold bg-primary/10 text-primary">
+                        {singleAvatar.initial}
+                      </AvatarFallback>
+                    </Avatar>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    <p className="font-medium">{singleAvatar.tooltip}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )}
         </div>

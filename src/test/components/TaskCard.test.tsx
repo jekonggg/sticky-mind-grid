@@ -98,7 +98,7 @@ describe("TaskCard Component", () => {
     expect(priorityBadge?.querySelectorAll("svg").length).toBe(2);
   });
 
-  it("renders inline assignee and formatted due date", () => {
+  it("renders formatted due date and single assignee avatar at bottom right", () => {
     const taskWithMeta: Task = {
       ...mockTask,
       assignee: {
@@ -110,8 +110,9 @@ describe("TaskCard Component", () => {
     };
 
     render(<TaskCard task={taskWithMeta} onClick={vi.fn()} />);
-    expect(screen.getByText("Olive Kenji")).toBeInTheDocument();
     expect(screen.getByText("Sep 25, 2025")).toBeInTheDocument();
+    expect(screen.getByTestId("task-single-avatar")).toBeInTheDocument();
+    expect(screen.getByLabelText("Assigned to Olive Kenji")).toBeInTheDocument();
   });
 
   it("gracefully handles invalid due dates without crashing or throwing RangeError", () => {
@@ -153,7 +154,7 @@ describe("TaskCard Component", () => {
     expect(screen.getByText("Tech")).toBeInTheDocument();
   });
 
-  it("renders creator avatar in top-right with indicator ring and tooltip, and assignees in bottom right", () => {
+  it("renders at most 1 avatar at bottom-right showing assignee with creator attribution in tooltip", () => {
     const taskWithInvolved: Task = {
       ...mockTask,
       createdAt: new Date("2026-03-10T10:00:00Z"),
@@ -171,24 +172,18 @@ describe("TaskCard Component", () => {
 
     const { container } = render(<TaskCard task={taskWithInvolved} onClick={vi.fn()} />);
 
-    // Top-right creator avatar container
-    const creatorAvatar = container.querySelector('[data-testid="task-creator-avatar"]');
-    expect(creatorAvatar).toBeInTheDocument();
-    expect(screen.getByLabelText("Created by Blake Chen")).toBeInTheDocument();
+    // No top-right creator avatar (only dropdown menu remains)
+    expect(container.querySelector('[data-testid="task-creator-avatar"]')).toBeNull();
 
-    // Bottom right assigned avatars container
-    const involvedContainer = container.querySelector('[aria-label="Involved members"]');
-    expect(involvedContainer).toBeInTheDocument();
+    // Exactly 1 single avatar rendered on the card at bottom-right
+    const singleAvatars = screen.getAllByTestId("task-single-avatar");
+    expect(singleAvatars.length).toBe(1);
 
-    // Alex Rivera (assignee) is in the bottom right
-    const alexAvatar = screen.getAllByTitle("Alex Rivera");
-    expect(alexAvatar.length).toBeGreaterThanOrEqual(1);
-
-    // Blake Chen (creator only, not assignee) is NOT in the bottom right container
-    expect(involvedContainer?.textContent).not.toContain("BC");
+    // Shows Assignee avatar with combined tooltip
+    expect(screen.getByLabelText("Assigned to Alex Rivera • Created by Blake Chen")).toBeInTheDocument();
   });
 
-  it("reserves bottom-right exclusively for assignees and displays creator avatar separately", () => {
+  it("renders single avatar with combined tooltip when assignee and creator are the same person", () => {
     const taskSameUser: Task = {
       ...mockTask,
       assignee: {
@@ -203,39 +198,43 @@ describe("TaskCard Component", () => {
       },
     };
 
-    const { container } = render(<TaskCard task={taskSameUser} onClick={vi.fn()} />);
-    const creatorAvatar = container.querySelector('[data-testid="task-creator-avatar"]');
-    expect(creatorAvatar).toBeInTheDocument();
-    expect(screen.getByLabelText("Created by Alex Rivera")).toBeInTheDocument();
-
-    const involvedContainer = container.querySelector('[aria-label="Involved members"]');
-    expect(involvedContainer).toBeInTheDocument();
-
-    // Should only have 1 avatar in the bottom-right assigned members container
-    const avatars = involvedContainer?.querySelectorAll('[role="img"], span');
-    expect(avatars?.length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByText("+1")).not.toBeInTheDocument();
+    render(<TaskCard task={taskSameUser} onClick={vi.fn()} />);
+    const singleAvatars = screen.getAllByTestId("task-single-avatar");
+    expect(singleAvatars.length).toBe(1);
+    expect(screen.getByLabelText("Alex Rivera (Assignee & Creator)")).toBeInTheDocument();
   });
 
-  it("renders +n overflow avatar when involved members exceed max visible", () => {
+  it("renders single avatar showing Creator when task is unassigned", () => {
+    const taskUnassigned: Task = {
+      ...mockTask,
+      createdAt: new Date("2026-03-10T10:00:00Z"),
+      assignee: null,
+      creator: {
+        id: "user-2",
+        email: "blake@example.com",
+        fullName: "Blake Chen",
+      },
+    };
+
+    render(<TaskCard task={taskUnassigned} onClick={vi.fn()} />);
+    const singleAvatars = screen.getAllByTestId("task-single-avatar");
+    expect(singleAvatars.length).toBe(1);
+    expect(screen.getByLabelText("Created by Blake Chen on Mar 10, 2026 (Unassigned)")).toBeInTheDocument();
+  });
+
+  it("renders at most 1 avatar on the card even if multiple assignees exist", () => {
     const taskManyInvolved: any = {
       ...mockTask,
       assignees: [
         { id: "u-1", fullName: "User One", email: "u1@test.com" },
         { id: "u-2", fullName: "User Two", email: "u2@test.com" },
-        { id: "u-3", fullName: "User Three", email: "u3@test.com" },
-        { id: "u-4", fullName: "User Four", email: "u4@test.com" },
-        { id: "u-5", fullName: "User Five", email: "u5@test.com" },
       ],
     };
 
     render(<TaskCard task={taskManyInvolved} onClick={vi.fn()} />);
-
-    // In default comfortable density, max 3 avatars are visible, so 5 - 3 = +2
-    const overflowBadge = screen.getByText("+2");
-    expect(overflowBadge).toBeInTheDocument();
-    // Hovering the +2 badge shows the remaining names
-    expect(overflowBadge.getAttribute("title")).toBe("User Four, User Five");
+    const singleAvatars = screen.getAllByTestId("task-single-avatar");
+    expect(singleAvatars.length).toBe(1);
+    expect(screen.getByLabelText("Assigned to User One")).toBeInTheDocument();
   });
 
   it("treats image attachments as files without printing a cover banner over the task title", () => {
