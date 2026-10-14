@@ -55,10 +55,8 @@ import {
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { BoardModal } from "@/components/boards/BoardModal";
 import { NoteModal } from "@/components/documents/NoteModal";
-import {
-  PersonalScratchpadModal,
-  getPersonalNotesCount,
-} from "@/components/documents/PersonalScratchpadModal";
+import { PersonalScratchpadModal } from "@/components/documents/PersonalScratchpadModal";
+import { getPersonalNotesCount } from "@/utils/scratchpadUtils";
 import { NewChatModal } from "@/components/messages/NewChatModal";
 import { SettingsTab } from "@/types/settings";
 import { useUnreadMessageCount } from "@/hooks/useMessages";
@@ -106,20 +104,21 @@ export function AppSidebar({
 
   // Personal Notes count state & event listener
   const [personalNotesCount, setPersonalNotesCount] = useState<number>(() =>
-    getPersonalNotesCount()
+    getPersonalNotesCount(user?.id)
   );
 
   useEffect(() => {
     const handleUpdate = () => {
-      setPersonalNotesCount(getPersonalNotesCount());
+      setPersonalNotesCount(getPersonalNotesCount(user?.id));
     };
+    handleUpdate();
     window.addEventListener("personal_notes_updated", handleUpdate);
     window.addEventListener("storage", handleUpdate);
     return () => {
       window.removeEventListener("personal_notes_updated", handleUpdate);
       window.removeEventListener("storage", handleUpdate);
     };
-  }, []);
+  }, [user?.id]);
 
   // Sync section expansion with localStorage
   useEffect(() => {
@@ -942,7 +941,7 @@ export function AppSidebar({
         open={isScratchpadOpen}
         onClose={() => {
           setIsScratchpadOpen(false);
-          setPersonalNotesCount(getPersonalNotesCount());
+          setPersonalNotesCount(getPersonalNotesCount(user?.id));
         }}
       />
 

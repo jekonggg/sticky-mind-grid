@@ -24,6 +24,7 @@ import { ScratchpadNote } from "@/types/scratchpad";
 import { DEFAULT_NOTES, getStorageKey } from "@/utils/scratchpadUtils";
 
 export type PersonalNote = ScratchpadNote;
+export { getPersonalNotesCount } from "@/utils/scratchpadUtils";
 
 const COLOR_PRESETS = [
   { name: "Amber", bg: "#fef3c7", border: "#fde68a", text: "#92400e" },
