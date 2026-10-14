@@ -34,6 +34,29 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     migrate.init_app(app, db)
+
+    # Attach engine-level connection listener to enable TCP keepalives on PyMySQL connections
+    if not app.config.get('TESTING', False):
+        try:
+            from sqlalchemy import event
+            with app.app_context():
+                @event.listens_for(db.engine, "connect")
+                def _set_db_connection_options(dbapi_connection, connection_record):
+                    sock = getattr(dbapi_connection, '_sock', None) or getattr(dbapi_connection, 'sock', None)
+                    if sock:
+                        import socket
+                        try:
+                            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+                            if hasattr(socket, 'TCP_KEEPIDLE'):
+                                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 60)
+                            if hasattr(socket, 'TCP_KEEPINTVL'):
+                                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 10)
+                            if hasattr(socket, 'TCP_KEEPCNT'):
+                                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 5)
+                        except Exception:
+                            pass
+        except Exception:
+            pass
     
     # Initialize Flask-CORS with configurable origins and Vercel domains
     configured_origins = app.config.get('CORS_ORIGINS') or []
@@ -76,6 +99,11 @@ def create_app(config_class=Config):
             return jsonify({'error': e.description}), e.code
         import traceback
         traceback.print_exc()
+        try:
+            db.session.rollback()
+            db.session.remove()
+        except Exception:
+            pass
         # Never leak internal error details to clients outside debug mode
         message = str(e) if app.debug else 'Internal server error'
         return jsonify({'error': message}), 500
@@ -96,6 +124,7 @@ def create_app(config_class=Config):
     from app.routes import system_routes
     from app.routes import user_routes
     from app.routes import message_routes
+    from app.routes import scratchpad_routes
 
     app.register_blueprint(board_routes.bp)
     app.register_blueprint(task_routes.bp)
@@ -108,6 +137,7 @@ def create_app(config_class=Config):
     app.register_blueprint(system_routes.bp)
     app.register_blueprint(user_routes.bp)
     app.register_blueprint(message_routes.bp)
+    app.register_blueprint(scratchpad_routes.bp)
 
     # Automatically sync missing tables/columns in non-testing mode
     if not app.config.get('TESTING', False):

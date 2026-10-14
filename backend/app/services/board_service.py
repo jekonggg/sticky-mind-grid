@@ -30,13 +30,31 @@ class BoardService:
 
     @staticmethod
     def get_user_boards(user_id):
-        BoardService.purge_expired_boards(retention_days=30)
+        from sqlalchemy.orm import selectinload
+        from sqlalchemy.exc import OperationalError
 
-        return db.session.query(Board).join(BoardMember).filter(
-            BoardMember.user_id == user_id,
-            BoardMember.status == 'accepted',
-            Board.is_deleted.is_(False)
-        ).all()
+        for attempt in range(2):
+            try:
+                BoardService.purge_expired_boards(retention_days=30)
+
+                return db.session.query(Board).options(
+                    selectinload(Board.memberships).selectinload(BoardMember.user),
+                    selectinload(Board.tasks)
+                ).join(BoardMember).filter(
+                    BoardMember.user_id == user_id,
+                    BoardMember.status == 'accepted',
+                    Board.is_deleted.is_(False)
+                ).all()
+            except (OperationalError, Exception) as e:
+                db.session.rollback()
+                db.session.remove()
+                err_str = str(e).lower()
+                is_conn_error = any(msg in err_str for msg in [
+                    "lost connection", "server has gone away", "2013", "2006", "connection reset"
+                ])
+                if attempt == 0 and is_conn_error:
+                    continue
+                raise
 
 
     @staticmethod
@@ -130,12 +148,30 @@ class BoardService:
 
     @staticmethod
     def get_board_by_id(board_id, include_deleted=False):
-        board = db.session.get(Board, board_id)
-        if not board:
-            return None
-        if board.is_deleted and not include_deleted:
-            return None
-        return board
+        from sqlalchemy.orm import selectinload
+        from sqlalchemy.exc import OperationalError
+
+        for attempt in range(2):
+            try:
+                board = db.session.query(Board).options(
+                    selectinload(Board.memberships).selectinload(BoardMember.user),
+                    selectinload(Board.tasks)
+                ).filter(Board.id == board_id).first()
+                if not board:
+                    return None
+                if board.is_deleted and not include_deleted:
+                    return None
+                return board
+            except (OperationalError, Exception) as e:
+                db.session.rollback()
+                db.session.remove()
+                err_str = str(e).lower()
+                is_conn_error = any(msg in err_str for msg in [
+                    "lost connection", "server has gone away", "2013", "2006", "connection reset"
+                ])
+                if attempt == 0 and is_conn_error:
+                    continue
+                raise
 
 
     ALLOWED_BANNER_HOSTS = {'images.unsplash.com', 'plus.unsplash.com'}
@@ -323,17 +359,35 @@ class BoardService:
 
     @staticmethod
     def get_trashed_boards(user_id):
-        BoardService.purge_expired_boards(retention_days=30)
+        from sqlalchemy.orm import selectinload
+        from sqlalchemy.exc import OperationalError
 
-        trashed = Board.query.filter(Board.is_deleted.is_(True)).all()
-        result = []
-        for b in trashed:
-            if str(b.owner_id) == str(user_id) or any(
-                str(m.user_id) == str(user_id) and m.role == 'owner' and m.status == 'accepted'
-                for m in (b.memberships or [])
-            ):
-                result.append(b)
-        return result
+        for attempt in range(2):
+            try:
+                BoardService.purge_expired_boards(retention_days=30)
+
+                trashed = db.session.query(Board).options(
+                    selectinload(Board.memberships).selectinload(BoardMember.user),
+                    selectinload(Board.tasks)
+                ).filter(Board.is_deleted.is_(True)).all()
+                result = []
+                for b in trashed:
+                    if str(b.owner_id) == str(user_id) or any(
+                        str(m.user_id) == str(user_id) and m.role == 'owner' and m.status == 'accepted'
+                        for m in (b.memberships or [])
+                    ):
+                        result.append(b)
+                return result
+            except (OperationalError, Exception) as e:
+                db.session.rollback()
+                db.session.remove()
+                err_str = str(e).lower()
+                is_conn_error = any(msg in err_str for msg in [
+                    "lost connection", "server has gone away", "2013", "2006", "connection reset"
+                ])
+                if attempt == 0 and is_conn_error:
+                    continue
+                raise
 
     @staticmethod
     def restore_board(board_id, user_id):

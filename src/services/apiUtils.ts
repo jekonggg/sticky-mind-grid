@@ -86,10 +86,41 @@ export async function authenticatedFetch(endpoint: string, options: RequestInit 
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const isGetRequest = !options.method || options.method.toUpperCase() === "GET";
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch (fetchErr) {
+    if (isGetRequest) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      response = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+      });
+    } else {
+      throw fetchErr;
+    }
+  }
+
+  // Transparent single retry on transient server errors (e.g. cold starts / connection blips)
+  if (isGetRequest && [500, 502, 503, 504].includes(response.status)) {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+      const retryResponse = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+      });
+      if (retryResponse.ok || retryResponse.status !== response.status) {
+        response = retryResponse;
+      }
+    } catch {
+      // Keep original response if retry fails
+    }
+  }
 
   if (response.status === 401) {
     // Handle unauthorized - clear token, notify context, and redirect

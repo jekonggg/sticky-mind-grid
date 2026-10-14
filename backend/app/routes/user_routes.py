@@ -112,7 +112,8 @@ def export_user_data():
         'preferences': user.preferences.to_dict() if user.preferences else None,
         'boards': [b.to_dict() for b in all_boards],
         'tasks': [t.to_dict() for t in tasks],
-        'notes': [n.to_dict() for n in notes]
+        'notes': [n.to_dict() for n in notes],
+        'scratchpads': [s.to_dict() for s in user.scratchpads]
     }
 
     response_json = json.dumps(export_data, indent=2)

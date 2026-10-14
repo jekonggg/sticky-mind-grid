@@ -1,35 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   File06 as StickyNote,
   Plus,
   Trash01 as Trash2,
   Copy01 as Copy,
   Check,
-  Stars01 as Sparkles,
   SearchLg as Search,
   FolderLock,
   Pin01 as Pin,
 } from "@untitledui/icons";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { scratchpadApi } from "@/services/scratchpadApi";
+import { ScratchpadNote } from "@/types/scratchpad";
+import { DEFAULT_NOTES, getStorageKey } from "@/utils/scratchpadUtils";
 
-export interface PersonalNote {
-  id: string;
-  title: string;
-  content: string;
-  color: string;
-  pinned?: boolean;
-  updatedAt: string;
-}
+export type PersonalNote = ScratchpadNote;
 
 const COLOR_PRESETS = [
   { name: "Amber", bg: "#fef3c7", border: "#fde68a", text: "#92400e" },
@@ -40,36 +34,6 @@ const COLOR_PRESETS = [
   { name: "Slate", bg: "#f1f5f9", border: "#e2e8f0", text: "#334155" },
 ];
 
-const STORAGE_KEY = "sticky_mind_grid_personal_notes";
-
-const DEFAULT_NOTES: PersonalNote[] = [
-  {
-    id: "note-1",
-    title: "⚡ Quick Ideas & Brainstorm",
-    content: "• Review Q4 sprint goals\n• Schedule team retro for Friday 3 PM\n• Explore new design tokens for dark mode",
-    color: "#fef3c7",
-    pinned: true,
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "note-2",
-    title: "🔒 Private Scratchpad",
-    content: "Key reminders & personal draft notes. These are stored privately in your personal workspace.",
-    color: "#e0f2fe",
-    pinned: false,
-    updatedAt: new Date().toISOString(),
-  },
-];
-
-export function getPersonalNotesCount(): number {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved).length : DEFAULT_NOTES.length;
-  } catch {
-    return DEFAULT_NOTES.length;
-  }
-}
-
 interface PersonalScratchpadModalProps {
   open: boolean;
   onClose: () => void;
@@ -79,9 +43,12 @@ export function PersonalScratchpadModal({
   open,
   onClose,
 }: PersonalScratchpadModalProps) {
+  const { user } = useAuth();
+  const storageKey = getStorageKey(user?.id);
+
   const [notes, setNotes] = useState<PersonalNote[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(storageKey);
       return saved ? JSON.parse(saved) : DEFAULT_NOTES;
     } catch {
       return DEFAULT_NOTES;
@@ -91,48 +58,157 @@ export function PersonalScratchpadModal({
   const [selectedNoteId, setSelectedNoteId] = useState<string>(notes[0]?.id || "");
   const [search, setSearch] = useState("");
   const [copied, setCopied] = useState(false);
+  const saveTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
 
-  // Sync to localStorage
+  // Sync from backend when modal is opened or user changes
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-    window.dispatchEvent(new Event("personal_notes_updated"));
-  }, [notes]);
+    if (!open) return;
+
+    let isMounted = true;
+    scratchpadApi
+      .getScratchpads()
+      .then((serverNotes) => {
+        if (!isMounted) return;
+        if (serverNotes && serverNotes.length > 0) {
+          setNotes(serverNotes);
+          setSelectedNoteId((prevId) =>
+            serverNotes.some((n) => n.id === prevId) ? prevId : serverNotes[0]?.id || ""
+          );
+        }
+      })
+      .catch((err) => {
+        // Fallback to local cache gracefully if offline/unreachable
+        console.warn("Scratchpad cloud sync unavailable, using local cache:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [open, user?.id]);
+
+  // Sync to user-scoped localStorage for instantaneous offline render
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(notes));
+      window.dispatchEvent(new Event("personal_notes_updated"));
+    } catch (e) {
+      console.error("Failed to cache personal notes locally:", e);
+    }
+  }, [notes, storageKey]);
+
+  // Cleanup pending debounce timeouts
+  useEffect(() => {
+    const timeouts = saveTimeoutRef.current;
+    return () => {
+      Object.values(timeouts).forEach(clearTimeout);
+    };
+  }, []);
+
+  const queueServerUpdate = (
+    noteId: string,
+    updates: Partial<PersonalNote>,
+    immediate: boolean = false
+  ) => {
+    if (saveTimeoutRef.current[noteId]) {
+      clearTimeout(saveTimeoutRef.current[noteId]);
+    }
+
+    const runSync = async () => {
+      try {
+        await scratchpadApi.updateScratchpad(noteId, updates);
+      } catch (err) {
+        console.warn("Failed to sync scratchpad note to cloud:", err);
+      }
+    };
+
+    if (immediate) {
+      runSync();
+    } else {
+      saveTimeoutRef.current[noteId] = setTimeout(runSync, 600);
+    }
+  };
 
   const activeNote = notes.find((n) => n.id === selectedNoteId) || notes[0];
 
-  const handleCreateNote = () => {
+  const handleCreateNote = async () => {
+    const randomColor = COLOR_PRESETS[Math.floor(Math.random() * COLOR_PRESETS.length)].bg;
+    const tempId = "note-" + Math.random().toString(36).substring(2, 9);
     const newNote: PersonalNote = {
-      id: "note-" + Math.random().toString(36).substring(2, 9),
+      id: tempId,
       title: "Untitled Scratchpad",
       content: "",
-      color: COLOR_PRESETS[Math.floor(Math.random() * COLOR_PRESETS.length)].bg,
+      color: randomColor,
       pinned: false,
       updatedAt: new Date().toISOString(),
     };
+
+    // Optimistic local add
     setNotes([newNote, ...notes]);
     setSelectedNoteId(newNote.id);
-    toast.success("New personal note created");
+
+    try {
+      const created = await scratchpadApi.createScratchpad({
+        title: newNote.title,
+        content: newNote.content,
+        color: newNote.color,
+        pinned: newNote.pinned,
+      });
+
+      // Replace temporary ID with server ID
+      setNotes((prev) =>
+        prev.map((n) => (n.id === tempId ? { ...created, updatedAt: created.updatedAt || n.updatedAt } : n))
+      );
+      setSelectedNoteId(created.id);
+      toast.success("New personal note created");
+    } catch {
+      toast.success("New personal note created (saved locally)");
+    }
   };
 
-  const handleUpdateActiveNote = (updates: Partial<PersonalNote>) => {
+  const handleUpdateActiveNote = (updates: Partial<PersonalNote>, immediateSync: boolean = false) => {
     if (!activeNote) return;
+    const updatedDate = new Date().toISOString();
+
     setNotes((prev) =>
       prev.map((n) =>
         n.id === activeNote.id
-          ? { ...n, ...updates, updatedAt: new Date().toISOString() }
+          ? { ...n, ...updates, updatedAt: updatedDate }
           : n
       )
     );
+
+    // If updating pinned, re-order so pinned notes stay on top
+    if ("pinned" in updates) {
+      setNotes((prev) => {
+        const updatedList = prev.map((n) =>
+          n.id === activeNote.id ? { ...n, ...updates, updatedAt: updatedDate } : n
+        );
+        return [...updatedList].sort((a, b) => {
+          if (a.pinned === b.pinned) {
+            return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+          }
+          return a.pinned ? -1 : 1;
+        });
+      });
+    }
+
+    queueServerUpdate(activeNote.id, updates, immediateSync);
   };
 
-  const handleDeleteNote = (id: string, e?: React.MouseEvent) => {
+  const handleDeleteNote = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     const filtered = notes.filter((n) => n.id !== id);
     setNotes(filtered);
     if (selectedNoteId === id) {
       setSelectedNoteId(filtered[0]?.id || "");
     }
-    toast.info("Note deleted");
+
+    try {
+      await scratchpadApi.deleteScratchpad(id);
+      toast.info("Note deleted");
+    } catch {
+      toast.info("Note deleted");
+    }
   };
 
   const handleCopy = () => {
@@ -163,7 +239,7 @@ export function PersonalScratchpadModal({
                 Personal Files & Scratchpad
               </DialogTitle>
               <p className="text-xs text-muted-foreground">
-                Private notes and quick thoughts stored locally in your workspace
+                Private notes synced securely to your personal account
               </p>
             </div>
           </div>
@@ -246,7 +322,7 @@ export function PersonalScratchpadModal({
                     {COLOR_PRESETS.map((c) => (
                       <button
                         key={c.name}
-                        onClick={() => handleUpdateActiveNote({ color: c.bg })}
+                        onClick={() => handleUpdateActiveNote({ color: c.bg }, true)}
                         className={`h-5 w-5 rounded-full border transition-transform ${
                           activeNote.color === c.bg
                             ? "scale-110 ring-2 ring-primary ring-offset-1"
@@ -263,7 +339,7 @@ export function PersonalScratchpadModal({
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => handleUpdateActiveNote({ pinned: !activeNote.pinned })}
+                    onClick={() => handleUpdateActiveNote({ pinned: !activeNote.pinned }, true)}
                     className={`h-8 px-2.5 text-xs gap-1 ${
                       activeNote.pinned ? "text-amber-500 bg-amber-500/10" : "text-muted-foreground"
                     }`}

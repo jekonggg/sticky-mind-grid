@@ -74,4 +74,36 @@ describe("authenticatedFetch service helper", () => {
     expect(localStorage.getItem("auth_user")).toBeNull();
     expect(window.location.href).toBe("/login");
   });
+
+  it("retries once and recovers when a GET request receives a 500 server error", async () => {
+    let callCount = 0;
+    global.fetch = vi.fn().mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve(new Response(JSON.stringify({ error: "Internal server error" }), { status: 500 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify([{ id: "board-1", name: "Board 1" }]), { status: 200 }));
+    });
+
+    const response = await authenticatedFetch("/boards");
+    expect(response.status).toBe(200);
+    expect(callCount).toBe(2);
+    const data = await response.json();
+    expect(data[0].id).toBe("board-1");
+  });
+
+  it("retries once and recovers when a GET request encounters a network failure", async () => {
+    let callCount = 0;
+    global.fetch = vi.fn().mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.reject(new TypeError("Failed to fetch"));
+      }
+      return Promise.resolve(new Response(JSON.stringify([{ id: "board-1" }]), { status: 200 }));
+    });
+
+    const response = await authenticatedFetch("/boards");
+    expect(response.status).toBe(200);
+    expect(callCount).toBe(2);
+  });
 });

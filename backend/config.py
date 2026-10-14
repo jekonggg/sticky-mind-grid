@@ -3,10 +3,18 @@ import ssl
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 raw_db_url = os.environ.get('DATABASE_URL')
+connect_args = {
+    "connect_timeout": 30,
+    "read_timeout": 30,
+    "write_timeout": 30,
+}
+
 engine_options = {
     "pool_pre_ping": True,
-    "pool_recycle": 280,
-    "pool_timeout": 20,
+    "pool_recycle": 120,
+    "pool_timeout": 30,
+    "pool_size": 10,
+    "max_overflow": 15,
 }
 
 if raw_db_url:
@@ -22,11 +30,13 @@ if raw_db_url:
         new_query = urlencode(q_params, doseq=True)
         raw_db_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
         
-        engine_options["connect_args"] = {
-            "ssl": {
-                "check_hostname": False
-            }
+        connect_args["ssl"] = {
+            "check_hostname": False
         }
+
+if raw_db_url and 'mysql' in raw_db_url:
+    engine_options["connect_args"] = connect_args
+
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key'

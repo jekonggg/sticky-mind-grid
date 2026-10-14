@@ -9,10 +9,11 @@ from app.models.notification import Notification
 from app.models.note import Note
 from app.models.user_preference import UserPreference
 from app.models.message import Conversation, ConversationParticipant, Message
+from app.models.scratchpad_note import ScratchpadNote
 
 __all__ = [
     'Board', 'Task', 'Activity', 'User', 'BoardMember', 'BoardInvitation',
     'Comment', 'Notification', 'Note', 'UserPreference',
-    'Conversation', 'ConversationParticipant', 'Message'
+    'Conversation', 'ConversationParticipant', 'Message',
+    'ScratchpadNote'
 ]
-
