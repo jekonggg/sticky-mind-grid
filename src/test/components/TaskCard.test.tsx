@@ -114,6 +114,26 @@ describe("TaskCard Component", () => {
     expect(screen.getByText("Sep 25, 2025")).toBeInTheDocument();
   });
 
+  it("gracefully handles invalid due dates without crashing or throwing RangeError", () => {
+    const taskWithInvalidDue: any = {
+      ...mockTask,
+      dueDate: "invalid-date-string",
+    };
+
+    expect(() => {
+      render(<TaskCard task={taskWithInvalidDue} onClick={vi.fn()} />);
+    }).not.toThrow();
+
+    const taskWithNaNObject: any = {
+      ...mockTask,
+      dueDate: new Date(NaN),
+    };
+
+    expect(() => {
+      render(<TaskCard task={taskWithNaNObject} onClick={vi.fn()} />);
+    }).not.toThrow();
+  });
+
   it("renders attachment count and relocated tags correctly", () => {
     const taskWithFiles: Task = {
       ...mockTask,
@@ -133,9 +153,10 @@ describe("TaskCard Component", () => {
     expect(screen.getByText("Tech")).toBeInTheDocument();
   });
 
-  it("renders involved avatar on bottom right with hover title showing name", () => {
+  it("renders creator avatar in top-right with indicator ring and tooltip, and assignees in bottom right", () => {
     const taskWithInvolved: Task = {
       ...mockTask,
+      createdAt: new Date("2026-03-10T10:00:00Z"),
       assignee: {
         id: "user-1",
         email: "alex@example.com",
@@ -150,19 +171,24 @@ describe("TaskCard Component", () => {
 
     const { container } = render(<TaskCard task={taskWithInvolved} onClick={vi.fn()} />);
 
-    // Bottom right involved avatars container
+    // Top-right creator avatar container
+    const creatorAvatar = container.querySelector('[data-testid="task-creator-avatar"]');
+    expect(creatorAvatar).toBeInTheDocument();
+    expect(screen.getByLabelText("Created by Blake Chen")).toBeInTheDocument();
+
+    // Bottom right assigned avatars container
     const involvedContainer = container.querySelector('[aria-label="Involved members"]');
     expect(involvedContainer).toBeInTheDocument();
 
-    // Verify hover titles showing names
+    // Alex Rivera (assignee) is in the bottom right
     const alexAvatar = screen.getAllByTitle("Alex Rivera");
     expect(alexAvatar.length).toBeGreaterThanOrEqual(1);
 
-    const blakeAvatar = screen.getByTitle("Blake Chen");
-    expect(blakeAvatar).toBeInTheDocument();
+    // Blake Chen (creator only, not assignee) is NOT in the bottom right container
+    expect(involvedContainer?.textContent).not.toContain("BC");
   });
 
-  it("deduplicates involved avatar when assignee and creator are the same person", () => {
+  it("reserves bottom-right exclusively for assignees and displays creator avatar separately", () => {
     const taskSameUser: Task = {
       ...mockTask,
       assignee: {
@@ -178,10 +204,14 @@ describe("TaskCard Component", () => {
     };
 
     const { container } = render(<TaskCard task={taskSameUser} onClick={vi.fn()} />);
+    const creatorAvatar = container.querySelector('[data-testid="task-creator-avatar"]');
+    expect(creatorAvatar).toBeInTheDocument();
+    expect(screen.getByLabelText("Created by Alex Rivera")).toBeInTheDocument();
+
     const involvedContainer = container.querySelector('[aria-label="Involved members"]');
     expect(involvedContainer).toBeInTheDocument();
 
-    // Should only have 1 avatar in the involved members container
+    // Should only have 1 avatar in the bottom-right assigned members container
     const avatars = involvedContainer?.querySelectorAll('[role="img"], span');
     expect(avatars?.length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText("+1")).not.toBeInTheDocument();
@@ -208,17 +238,19 @@ describe("TaskCard Component", () => {
     expect(overflowBadge.getAttribute("title")).toBe("User Four, User Five");
   });
 
-  it("renders cover image beneath header when image attachment is present", () => {
-    const taskWithCover: Task = {
+  it("treats image attachments as files without printing a cover banner over the task title", () => {
+    const taskWithImage: Task = {
       ...mockTask,
       attachments: [
-        { name: "cover.png", url: "/uploads/cover.png", type: "image/png" },
+        { name: "diagram.png", url: "/uploads/diagram.png", type: "image/png" },
       ],
     };
 
-    render(<TaskCard task={taskWithCover} onClick={vi.fn()} />);
-    const img = screen.getByRole("img", { name: "cover.png" });
-    expect(img).toBeInTheDocument();
+    render(<TaskCard task={taskWithImage} onClick={vi.fn()} />);
+    // Does not render cover image banner above title
+    expect(screen.queryByRole("img", { name: "diagram.png" })).not.toBeInTheDocument();
+    // Indicates attachment count cleanly in card footer
+    expect(screen.getByText("1 file")).toBeInTheDocument();
   });
 
   it("renders options menu trigger and handles click without triggering card onClick", () => {
@@ -265,5 +297,33 @@ describe("TaskCard Component", () => {
 
     rerender(<TaskCard task={taskWithProgress} onClick={vi.fn()} hideProgressBar={true} />);
     expect(screen.queryByText("50%")).not.toBeInTheDocument();
+  });
+
+  it("renders checklist badge with completed subtasks count", () => {
+    const taskWithChecklist: Task = {
+      ...mockTask,
+      checklist: [
+        {
+          id: "c-1",
+          title: "Setup database",
+          completed: true,
+          completedBy: {
+            id: "u-1",
+            fullName: "Sarah Connor",
+            email: "sarah@example.com",
+          },
+        },
+        {
+          id: "c-2",
+          title: "Run migrations",
+          completed: false,
+        },
+      ],
+    };
+
+    render(<TaskCard task={taskWithChecklist} onClick={vi.fn()} />);
+    const checklistBadge = screen.getByTestId("task-checklist-badge");
+    expect(checklistBadge).toBeInTheDocument();
+    expect(checklistBadge.textContent).toContain("1/2");
   });
 });

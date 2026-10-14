@@ -52,7 +52,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { boardApi } from "@/services/boardApi";
 import { Board, BoardMember } from "@/types/board";
 import { BoardModal } from "../boards/BoardModal";
@@ -63,6 +63,7 @@ import { useDevMode } from "@/contexts/DevModeContext";
 import { useBoardPermissions } from "@/hooks/useBoardPermissions";
 import { useBoardRealtime } from "@/hooks/useBoardRealtime";
 import { getContainerGeometry } from "@/utils/geometryUtils";
+import { computeTaskProgress, isDoneColumn } from "@/utils/taskUtils";
 
 import { BoardOverview } from "./BoardOverview";
 import { TaskListView } from "./TaskListView";
@@ -177,9 +178,40 @@ export function KanbanBoard() {
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all"); // 'all' | 'me' | userId
   const [tagFilter, setTagFilter] = useState<string>("all"); // 'all' | tagName
   const [isTrashOpen, setIsTrashOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewParam = searchParams.get("view");
+  const initialView = useMemo<"overview" | "list" | "board" | "calendar" | "documents" | "members">(() => {
+    if (viewParam && ["overview", "list", "board", "calendar", "documents", "members"].includes(viewParam)) {
+      return viewParam as any;
+    }
+    if (viewParam === "files" || viewParam === "docs") return "documents";
+    return (settings.defaultBoardView as any) || "board";
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [activeView, setActiveView] = useState<"overview" | "list" | "board" | "calendar" | "documents" | "members">(
-    (settings.defaultBoardView as any) || "board"
+    initialView
   );
+
+  useEffect(() => {
+    if (viewParam && ["overview", "list", "board", "calendar", "documents", "members"].includes(viewParam)) {
+      setActiveView(viewParam as any);
+    } else if (viewParam === "files" || viewParam === "docs") {
+      setActiveView("documents");
+    }
+  }, [viewParam]);
+
+  const handleViewChange = useCallback((id: string) => {
+    setActiveView(id as any);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (id === "board") {
+        next.delete("view");
+      } else {
+        next.set("view", id);
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [newTaskStatus, setNewTaskStatus] = useState<string>("todo");
@@ -560,18 +592,11 @@ export function KanbanBoard() {
         const lastColId = visibleCols[visibleCols.length - 1]?.id;
 
         const hasChecklist = (activeTaskItem.checklist || []).length > 0;
-        let nextProgress = activeTaskItem.progress;
+        const nextProgress = computeTaskProgress(activeTaskItem, targetStatus, columns);
 
-        if (!hasChecklist) {
-          if (targetStatus === firstColId) {
-            nextProgress = 0;
-            if (activeTaskItem.progress && activeTaskItem.progress > 0) {
-              const targetColTitle = columns.find((c) => c.id === targetStatus)?.title || "first column";
-              toast.info(`Task progress reset to 0% in ${targetColTitle}`);
-            }
-          } else if (targetStatus === lastColId || targetStatus === "done") {
-            nextProgress = 100;
-          }
+        if (!hasChecklist && nextProgress === 0 && activeTaskItem.progress && activeTaskItem.progress > 0) {
+          const targetColTitle = columns.find((c) => c.id === targetStatus)?.title || "first column";
+          toast.info(`Task progress reset to 0% in ${targetColTitle}`);
         }
 
         const updatedActiveTask = { ...activeTaskItem, status: targetStatus, progress: nextProgress };
@@ -583,7 +608,7 @@ export function KanbanBoard() {
           ...filtered.slice(insertIdx),
         ];
 
-        const isDoneCol = targetStatus === "done" || targetStatus === lastColId;
+        const isDoneCol = isDoneColumn(targetStatus, columns);
 
         if (isDoneCol) {
           playSound("complete");
@@ -593,8 +618,6 @@ export function KanbanBoard() {
       }
 
       const visibleCols = columns.filter((c) => c.id !== "archive");
-      const firstColId = visibleCols[0]?.id;
-      const lastColId = visibleCols[visibleCols.length - 1]?.id;
 
       // Continuous 1000-based position indices for MySQL persistence
       const reorderItems = newTasksInTarget.map((t, idx) => {
@@ -604,12 +627,8 @@ export function KanbanBoard() {
           fromStatus: t.id === activeId ? activeTaskItem.status : t.status,
           position: (idx + 1) * 1000.0,
         };
-        if (t.id === activeId && !((t.checklist || []).length > 0)) {
-          if (targetStatus === firstColId) {
-            item.progress = 0;
-          } else if (targetStatus === lastColId || targetStatus === "done") {
-            item.progress = 100;
-          }
+        if (t.id === activeId) {
+          item.progress = computeTaskProgress(t, targetStatus, columns);
         }
         return item;
       });
@@ -732,7 +751,7 @@ export function KanbanBoard() {
     { id: "board", label: "Board", icon: LayoutGrid },
     { id: "list", label: "List", icon: List },
     { id: "calendar", label: "Calendar", icon: Calendar },
-    { id: "documents", label: "Docs", icon: FileText },
+    { id: "documents", label: "Docs & Files", icon: FileText },
     { id: "overview", label: "Analytics", icon: BarChart3 },
     { id: "members", label: "Team", icon: Users },
   ] as const;
@@ -1169,7 +1188,7 @@ export function KanbanBoard() {
           <PillNavBar
             items={views}
             activeId={activeView}
-            onChange={(id) => setActiveView(id as any)}
+            onChange={handleViewChange}
             accentColor="primary"
             layoutId="metaFloatingBottomDock"
           />
@@ -1245,8 +1264,11 @@ export function KanbanBoard() {
           task={null}
           initialStatus={newTaskStatus}
           boardId={board.id}
+          boardTasks={tasks}
           columns={board.columns}
           members={members}
+          availableBoards={[board]}
+          allowBoardChange={false}
           canComment={permissions.canComment}
           onSave={handleCreateTaskFromModal}
         />

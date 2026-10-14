@@ -13,8 +13,11 @@ def test_backup_and_restore_cycle_recovers_database_and_attachments(tmp_path):
     scripts/backup_database.py followed by scripts/restore_database.py must
     create a valid backup bundle and restore all tables, rows, and attachment files.
     """
-    backup_script = os.path.join(os.getcwd(), "scripts", "backup_database.py")
-    restore_script = os.path.join(os.getcwd(), "scripts", "restore_database.py")
+    scripts_dir = os.path.join(os.getcwd(), "scripts")
+    if not os.path.exists(scripts_dir):
+        scripts_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "scripts"))
+    backup_script = os.path.join(scripts_dir, "backup_database.py")
+    restore_script = os.path.join(scripts_dir, "restore_database.py")
 
     assert os.path.exists(backup_script), f"{backup_script} must exist"
     assert os.path.exists(restore_script), f"{restore_script} must exist"

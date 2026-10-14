@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Task, UpdateTaskData, TaskFormData, Priority, Column, Attachment, ChecklistItem, Tag } from "@/types/task";
 import { BoardMember } from "@/types/board";
 import {
@@ -42,8 +42,11 @@ import {
   LayoutGrid01 as LayoutGrid,
   Archive,
   ArrowRight,
+  Sliders01 as Sliders,
 } from "@untitledui/icons";
+import { FolderKanban, Lock } from "lucide-react";
 import { EmojiSelector } from "../common/EmojiSelector";
+import { DateTimePicker } from "@/components/common/DateTimePicker";
 import { TaskComments } from "./TaskComments";
 import { fileApi } from "@/services/fileApi";
 import { toast } from "sonner";
@@ -51,6 +54,11 @@ import { boardApi } from "@/services/boardApi";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Board } from "@/types/board";
+import { useBoardLabels } from "@/hooks/useBoardLabels";
+import { normalizeTagName, deduplicateTags, saveBoardLabels } from "@/utils/boardLabels";
+import { toSafeIsoDateInputString, parseSafeDate } from "@/utils/dateUtils";
+import { computeTaskProgress, getTaskProgressInfo } from "@/utils/taskUtils";
+import { cn } from "@/lib/utils";
 
 interface TaskModalProps {
   open?: boolean;
@@ -60,8 +68,10 @@ interface TaskModalProps {
   initialStatus?: string;
   columns?: Column[];
   boardId?: string;
+  boardTasks?: Task[];
   members?: BoardMember[];
   availableBoards?: Board[];
+  allowBoardChange?: boolean;
   readOnly?: boolean;
   canComment?: boolean;
   onSubmit?: (data: TaskFormData) => void;
@@ -90,8 +100,10 @@ export function TaskModal({
   initialStatus,
   columns = EMPTY_COLUMNS,
   boardId,
+  boardTasks,
   members = [],
   availableBoards,
+  allowBoardChange = false,
   readOnly = false,
   canComment,
   onSubmit,
@@ -108,7 +120,12 @@ export function TaskModal({
       ["owner", "admin", "editor", "member"].includes(m.role)
   );
   const [userBoards, setUserBoards] = useState<Board[]>(availableBoards || []);
-  const [selectedBoardId, setSelectedBoardId] = useState<string>(task?.boardId || boardId || "");
+  const [selectedBoardId, setSelectedBoardId] = useState<string>(
+    task?.boardId || boardId || (availableBoards && availableBoards.length > 0 ? availableBoards[0].id : "")
+  );
+  const [activeColumns, setActiveColumns] = useState<Column[]>(columns || EMPTY_COLUMNS);
+  const currentBoardId = selectedBoardId || task?.boardId || boardId || "";
+  const { boardLabels, addLabel } = useBoardLabels(currentBoardId, boardTasks);
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState("");
   const [description, setDescription] = useState("");
@@ -133,20 +150,38 @@ export function TaskModal({
   useEffect(() => {
     if (availableBoards && availableBoards.length > 0) {
       setUserBoards(availableBoards);
-    } else if (isEditing && isModalOpen) {
+    } else if (isModalOpen) {
       boardApi.getBoards().then((b) => setUserBoards(b || [])).catch(() => {});
     }
-  }, [availableBoards, isEditing, isModalOpen]);
+  }, [availableBoards, isModalOpen]);
 
   useEffect(() => {
-    setSelectedBoardId(task?.boardId || boardId || "");
-  }, [task?.boardId, boardId, isModalOpen]);
+    const nextBoardId =
+      task?.boardId ||
+      boardId ||
+      (availableBoards && availableBoards.length > 0 ? availableBoards[0].id : "") ||
+      (userBoards.length > 0 ? userBoards[0].id : "");
+    if (nextBoardId) {
+      setSelectedBoardId(nextBoardId);
+    }
+  }, [task?.boardId, boardId, availableBoards, userBoards, isModalOpen]);
+
+  useEffect(() => {
+    if (columns && columns.length > 0) {
+      setActiveColumns(columns);
+    } else if (selectedBoardId && userBoards.length > 0) {
+      const currentBoard = userBoards.find((b) => b.id === selectedBoardId);
+      if (currentBoard?.columns && currentBoard.columns.length > 0) {
+        setActiveColumns(currentBoard.columns);
+      }
+    }
+  }, [columns, selectedBoardId, userBoards]);
 
   useEffect(() => {
     if (members && members.length > 0) {
       setBoardMembers(members);
     } else {
-      const activeBoardId = boardId || task?.boardId;
+      const activeBoardId = selectedBoardId || boardId || task?.boardId;
       if (activeBoardId && isModalOpen) {
         boardApi
           .getMembers(activeBoardId)
@@ -156,7 +191,84 @@ export function TaskModal({
           .catch(() => {});
       }
     }
-  }, [members, boardId, task?.boardId, isModalOpen]);
+  }, [members, selectedBoardId, boardId, task?.boardId, isModalOpen]);
+
+  const handleBoardChange = async (newBoardId: string) => {
+    setSelectedBoardId(newBoardId);
+    let targetBoard = userBoards.find((b) => b.id === newBoardId);
+    if (!targetBoard?.columns || targetBoard.columns.length === 0) {
+      try {
+        const fullBoard = await boardApi.getBoard(newBoardId);
+        if (fullBoard) {
+          targetBoard = fullBoard;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (targetBoard?.columns && targetBoard.columns.length > 0) {
+      setActiveColumns(targetBoard.columns);
+      const hasCurrentStatus = targetBoard.columns.some((c) => c.id === status);
+      if (!hasCurrentStatus) {
+        const nextStatus = targetBoard.columns[0].id;
+        setStatus(nextStatus);
+        setProgress(computeTaskProgress({ checklist, status: nextStatus }, nextStatus, targetBoard.columns));
+      }
+    }
+
+    try {
+      const fetchedMembers = await boardApi.getMembers(newBoardId);
+      setBoardMembers(fetchedMembers || []);
+      const isAssigneeValid = (fetchedMembers || []).some(
+        (m) =>
+          m.userId === assignedTo &&
+          (!m.status || m.status === "accepted") &&
+          ["owner", "admin", "editor", "member"].includes(m.role)
+      );
+      if (!isAssigneeValid) {
+        setAssignedTo("unassigned");
+      }
+    } catch (err) {
+      console.error("Failed to load members for board:", err);
+    }
+  };
+
+  const displayBoards = useMemo(() => {
+    if (userBoards.length === 0) {
+      if (selectedBoardId) {
+        return [
+          {
+            id: selectedBoardId,
+            name: "Current Board",
+            columns: activeColumns,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as Board,
+        ];
+      }
+      return [];
+    }
+    const hasSelected = userBoards.some((b) => b.id === selectedBoardId);
+    if (!hasSelected && selectedBoardId) {
+      return [
+        {
+          id: selectedBoardId,
+          name: "Current Board",
+          columns: activeColumns,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as Board,
+        ...userBoards,
+      ];
+    }
+    return userBoards;
+  }, [userBoards, selectedBoardId, activeColumns]);
+
+  const isBoardSelectionDisabled =
+    readOnly ||
+    allowBoardChange === false ||
+    displayBoards.length <= 1;
 
   useEffect(() => {
     if (task) {
@@ -165,7 +277,7 @@ export function TaskModal({
       setDescription(task.description || "");
       setStatus(task.status || "todo");
       setPriority(task.priority || "medium");
-      setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : "");
+      setDueDate(toSafeIsoDateInputString(task.dueDate));
       setProgress(task.progress || 0);
       setAssignedTo(task.assignedTo || "unassigned");
       setAttachments(task.attachments || []);
@@ -196,12 +308,13 @@ export function TaskModal({
 
     for (const file of files) {
       try {
-        const uploaded = await fileApi.uploadFile(file);
+        const uploaded = await fileApi.uploadFile(file, undefined, currentBoardId);
         setAttachments((prev) => [
           ...prev,
           {
             id: uploaded.id,
             name: uploaded.name,
+            storedName: uploaded.storedName,
             size: uploaded.size,
             type: uploaded.type,
             url: uploaded.url,
@@ -220,6 +333,16 @@ export function TaskModal({
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleStatusChange = (newStatus: string) => {
+    setStatus(newStatus);
+    const nextProgress = computeTaskProgress(
+      { checklist, status: newStatus },
+      newStatus,
+      activeColumns
+    );
+    setProgress(nextProgress);
+  };
+
   // Checklist Actions
   const handleAddChecklistItem = () => {
     if (!newChecklistText.trim() || readOnly) return;
@@ -231,67 +354,130 @@ export function TaskModal({
     const updated = [...checklist, newItem];
     setChecklist(updated);
     setNewChecklistText("");
-    const completedCount = updated.filter((i) => i.completed).length;
-    setProgress(Math.round((completedCount / updated.length) * 100));
+    const nextProgress = computeTaskProgress(
+      { checklist: updated, status },
+      status,
+      activeColumns
+    );
+    setProgress(nextProgress);
   };
 
   const handleToggleChecklistItem = (id: string) => {
     if (readOnly) return;
-    const updated = checklist.map((item) =>
-      item.id === id ? { ...item, completed: !item.completed } : item
-    );
+    const updated = checklist.map((item) => {
+      if (item.id !== id) return item;
+      const isNowCompleted = !item.completed;
+      return {
+        ...item,
+        completed: isNowCompleted,
+        completedBy: isNowCompleted && currentUser
+          ? {
+              id: currentUser.id,
+              fullName: currentUser.fullName || undefined,
+              email: currentUser.email,
+              avatarUrl: currentUser.avatarUrl || undefined,
+            }
+          : null,
+        completedAt: isNowCompleted ? new Date().toISOString() : null,
+      };
+    });
     setChecklist(updated);
-    // Auto calculate progress from checklist if present
-    const completedCount = updated.filter((i) => i.completed).length;
-    if (updated.length > 0) {
-      setProgress(Math.round((completedCount / updated.length) * 100));
-    }
+    const nextProgress = computeTaskProgress(
+      { checklist: updated, status },
+      status,
+      activeColumns
+    );
+    setProgress(nextProgress);
   };
 
   const handleDeleteChecklistItem = (id: string) => {
     if (readOnly) return;
     const updated = checklist.filter((item) => item.id !== id);
     setChecklist(updated);
-    if (updated.length > 0) {
-      const completedCount = updated.filter((i) => i.completed).length;
-      setProgress(Math.round((completedCount / updated.length) * 100));
-    }
+    const nextProgress = computeTaskProgress(
+      { checklist: updated, status },
+      status,
+      activeColumns
+    );
+    setProgress(nextProgress);
   };
 
   // Tag Actions
-  const handleAddTag = () => {
-    if (!newTagName.trim() || readOnly) return;
-    const newTag: Tag = {
-      id: `tag_${Date.now()}`,
-      name: newTagName.trim(),
-      color: selectedTagColor,
-    };
-    setTags((prev) => [...prev, newTag]);
+  const handleAddTag = (tagToAdd?: Tag) => {
+    if (readOnly) return;
+    if (tagToAdd) {
+      const normToAdd = normalizeTagName(tagToAdd.name);
+      if (tags.some((t) => normalizeTagName(t.name) === normToAdd)) {
+        // Toggle off if already on card
+        setTags((prev) => prev.filter((t) => normalizeTagName(t.name) !== normToAdd));
+        return;
+      }
+      setTags((prev) => deduplicateTags([...prev, tagToAdd]));
+      if (currentBoardId) addLabel(tagToAdd);
+      return;
+    }
+
+    const trimmed = newTagName.trim();
+    if (!trimmed) return;
+    const norm = normalizeTagName(trimmed);
+
+    // Prevent duplicate on the same card
+    if (tags.some((t) => normalizeTagName(t.name) === norm)) {
+      toast.info(`"${trimmed}" is already added to this card`);
+      setNewTagName("");
+      setIsAddingTag(false);
+      return;
+    }
+
+    // Reuse existing board label if matching name exists
+    const existingBoardLabel = boardLabels.find((t) => normalizeTagName(t.name) === norm);
+    const newTag: Tag = existingBoardLabel
+      ? existingBoardLabel
+      : {
+          id: `tag_${Date.now()}`,
+          name: trimmed,
+          color: selectedTagColor,
+        };
+
+    setTags((prev) => deduplicateTags([...prev, newTag]));
+    if (currentBoardId) addLabel(newTag);
     setNewTagName("");
     setIsAddingTag(false);
   };
 
-  const handleDeleteTag = (id: string) => {
+  const handleDeleteTag = (idOrName: string) => {
     if (readOnly) return;
-    setTags((prev) => prev.filter((t) => t.id !== id));
+    const norm = normalizeTagName(idOrName);
+    setTags((prev) => prev.filter((t) => t.id !== idOrName && normalizeTagName(t.name) !== norm));
   };
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (readOnly || !title.trim()) return;
 
+    const cleanedTags = deduplicateTags(tags);
+    if (currentBoardId && cleanedTags.length > 0) {
+      saveBoardLabels(currentBoardId, cleanedTags);
+    }
+
+    const finalProgress = computeTaskProgress(
+      { checklist, status, progress },
+      status,
+      activeColumns
+    );
+
     const payload: TaskFormData = {
       title: title.trim(),
       emoji: devSettings.disableEmojiCustomization ? undefined : (emoji || undefined),
       description: description.trim() || undefined,
       priority,
-      status: status || task?.status || (columns && columns.length > 0 ? columns[0].id : "todo"),
+      status: status || task?.status || (activeColumns && activeColumns.length > 0 ? activeColumns[0].id : "todo"),
       assignedTo: assignedTo === "unassigned" ? null : assignedTo,
       boardId: selectedBoardId || undefined,
-      dueDate: dueDate ? new Date(dueDate) : undefined,
-      progress,
+      dueDate: dueDate ? parseSafeDate(dueDate) || null : null,
+      progress: finalProgress,
       checklist,
-      tags,
+      tags: cleanedTags,
       attachments,
     };
 
@@ -395,7 +581,7 @@ export function TaskModal({
           </div>
 
           {/* Labels & Tags Section */}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                 <TagIcon className="h-3.5 w-3.5 text-primary" /> Labels / Tags ({tags.length})
@@ -406,26 +592,26 @@ export function TaskModal({
                   onClick={() => setIsAddingTag(true)}
                   className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
                 >
-                  <Plus className="h-3 w-3" /> Add Tag
+                  <Plus className="h-3 w-3" /> New Label
                 </button>
               )}
             </div>
 
-            <div className="flex flex-wrap gap-1.5 items-center min-h-[34px] p-1.5 rounded-lg bg-muted/30 border border-border/40">
+            <div className="flex flex-wrap gap-1.5 items-center min-h-[34px] p-2 rounded-lg bg-muted/30 border border-border/40">
               {tags.length === 0 && !isAddingTag && (
                 <span className="text-[11px] text-muted-foreground italic px-1">
-                  No tags added
+                  No labels attached yet.
                 </span>
               )}
               {tags.map((tag) => (
                 <span
-                  key={tag.id}
+                  key={tag.id || tag.name}
                   style={{
                     backgroundColor: `${tag.color}20`,
                     borderColor: `${tag.color}60`,
                     color: tag.color,
                   }}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border shadow-xs"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border shadow-xs"
                 >
                   <span
                     className="h-2 w-2 rounded-full"
@@ -437,6 +623,7 @@ export function TaskModal({
                       type="button"
                       onClick={() => handleDeleteTag(tag.id)}
                       className="hover:opacity-70 ml-0.5 cursor-pointer"
+                      title="Remove from card"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -448,13 +635,16 @@ export function TaskModal({
               {isAddingTag && (
                 <div className="flex items-center gap-1.5 w-full pt-1">
                   <Input
-                    placeholder="Tag name..."
+                    placeholder="Label name..."
                     value={newTagName}
                     onChange={(e) => setNewTagName(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
                         handleAddTag();
+                      }
+                      if (e.key === "Escape") {
+                        setIsAddingTag(false);
                       }
                     }}
                     className="h-7 text-xs flex-1"
@@ -476,8 +666,9 @@ export function TaskModal({
                   <Button
                     type="button"
                     size="sm"
-                    onClick={handleAddTag}
+                    onClick={() => handleAddTag()}
                     className="h-7 px-2 text-xs font-bold"
+                    aria-label="Confirm add label"
                   >
                     Add
                   </Button>
@@ -487,12 +678,59 @@ export function TaskModal({
                     size="sm"
                     onClick={() => setIsAddingTag(false)}
                     className="h-7 px-1.5 text-xs text-muted-foreground"
+                    aria-label="Cancel add label"
                   >
                     Cancel
                   </Button>
                 </div>
               )}
             </div>
+
+            {/* Available Board Labels Quick-Pick */}
+            {boardLabels.length > 0 && !readOnly && (
+              <div className="pt-0.5">
+                <span className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                  Available board labels (click to toggle):
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {boardLabels.map((bl) => {
+                    const isSelected = tags.some(
+                      (t) => normalizeTagName(t.name) === normalizeTagName(bl.name)
+                    );
+                    return (
+                      <button
+                        key={bl.id || bl.name}
+                        type="button"
+                        onClick={() => handleAddTag(bl)}
+                        aria-label={isSelected ? `Remove ${bl.name} label` : `Add ${bl.name} label`}
+                        style={{
+                          backgroundColor: isSelected ? `${bl.color}25` : "transparent",
+                          borderColor: isSelected ? bl.color : `${bl.color}45`,
+                          color: isSelected ? bl.color : "inherit",
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs transition-all cursor-pointer hover:scale-105 border ${
+                          isSelected
+                            ? "font-bold ring-1 shadow-xs"
+                            : "opacity-75 hover:opacity-100 bg-background/50"
+                        }`}
+                        title={isSelected ? `Remove "${bl.name}"` : `Add "${bl.name}" to card`}
+                      >
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: bl.color }}
+                        />
+                        <span>{bl.name}</span>
+                        {isSelected ? (
+                          <Check className="h-3 w-3" />
+                        ) : (
+                          <Plus className="h-3 w-3 opacity-60" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -567,7 +805,7 @@ export function TaskModal({
               </div>
             </div>
 
-            {/* Consistent Due Date Field */}
+            {/* Rich Date & Time Picker Field */}
             <div className="space-y-1.5">
               <Label
                 htmlFor="due-date"
@@ -575,42 +813,76 @@ export function TaskModal({
               >
                 <Calendar className="h-3.5 w-3.5 text-primary" /> Due Date & Time
               </Label>
-              <div className="relative flex items-center">
-                <Input
-                  id="due-date"
-                  type="datetime-local"
-                  value={dueDate}
-                  disabled={readOnly}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="h-10 text-xs font-sans font-medium bg-background/50 border-border/60 focus-visible:ring-primary pr-8 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-70 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
-                />
-                {dueDate && !readOnly && (
-                  <button
-                    type="button"
-                    onClick={() => setDueDate("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-destructive p-1 transition-colors cursor-pointer"
-                    title="Clear due date"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
+              <DateTimePicker
+                id="due-date"
+                value={dueDate}
+                disabled={readOnly}
+                readOnly={readOnly}
+                onChange={setDueDate}
+                ariaLabel="Due Date & Time"
+              />
             </div>
           </div>
 
-          {/* Stage / Column & Assignee Row */}
-          <div className={`grid ${columns && columns.length > 0 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"} gap-3`}>
-            {columns && columns.length > 0 && (
+          {/* Target Board & Stage / Column Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Target Board Selector */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <FolderKanban className="h-3.5 w-3.5 text-primary" /> Target Board
+                </Label>
+                {!allowBoardChange ? (
+                  <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1 bg-muted/60 px-1.5 py-0.5 rounded">
+                    <Lock className="h-2.5 w-2.5" /> Current Board
+                  </span>
+                ) : displayBoards.length > 1 ? (
+                  <span className="text-[10px] font-medium text-primary flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded">
+                    Select Board
+                  </span>
+                ) : null}
+              </div>
+              <Select
+                value={selectedBoardId}
+                onValueChange={handleBoardChange}
+                disabled={isBoardSelectionDisabled}
+              >
+                <SelectTrigger
+                  data-testid="task-modal-board-select"
+                  aria-label="Target Board"
+                  className="h-10 bg-background/50 border-border/60 text-xs"
+                >
+                  <SelectValue placeholder="Select board..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {displayBoards.map((b) => (
+                    <SelectItem key={b.id} value={b.id} className="cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <span>{b.emoji || "📋"}</span>
+                        <span className="font-medium truncate">{b.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Stage / Column */}
+            {activeColumns && activeColumns.length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <LayoutGrid className="h-3.5 w-3.5 text-primary" /> Stage / Column
                 </Label>
-                <Select value={status} onValueChange={setStatus} disabled={readOnly}>
-                  <SelectTrigger className="h-10 bg-background/50 border-border/60 text-xs">
+                <Select value={status} onValueChange={handleStatusChange} disabled={readOnly}>
+                  <SelectTrigger
+                    data-testid="task-modal-status-select"
+                    aria-label="Stage / Column"
+                    className="h-10 bg-background/50 border-border/60 text-xs"
+                  >
                     <SelectValue placeholder="Select column..." />
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
-                    {columns.map((c) => (
+                    {activeColumns.map((c) => (
                       <SelectItem key={c.id} value={c.id} className="cursor-pointer">
                         <div className="flex items-center gap-2">
                           {!devSettings.disableEmojiCustomization && c.emoji ? (
@@ -629,72 +901,101 @@ export function TaskModal({
                 </Select>
               </div>
             )}
-
-            {/* Assignee Selection */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5 text-primary" /> Assignee
-              </Label>
-              <Select value={assignedTo} onValueChange={setAssignedTo} disabled={readOnly}>
-                <SelectTrigger className="h-10 bg-background/50 border-border/60 text-xs">
-                  <SelectValue placeholder="Assign to team member..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  <SelectItem value="unassigned" className="cursor-pointer">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs">
-                        <User className="h-3.5 w-3.5" />
-                      </div>
-                      <span className="text-xs font-medium">Unassigned</span>
-                    </div>
-                  </SelectItem>
-                  {assignableMembers.map((m) => {
-                    const name = m.user?.fullName || m.user?.email || "Member";
-                    const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
-                    return (
-                      <SelectItem key={m.userId} value={m.userId} className="cursor-pointer">
-                        <div className="flex items-center gap-2.5">
-                          <Avatar className="h-6 w-6 border border-primary/20">
-                            <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
-                              {initial}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex flex-col text-left">
-                            <span className="text-xs font-bold leading-tight">{name}</span>
-                            <span className="text-[10px] text-muted-foreground">{m.user?.email}</span>
-                          </div>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
-          {/* Move to another Board selector (when editing existing task) */}
-          {isEditing && userBoards.length > 1 && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <ArrowRight className="h-3.5 w-3.5 text-primary" /> Board Location
-              </Label>
-              <Select value={selectedBoardId} onValueChange={setSelectedBoardId} disabled={readOnly}>
-                <SelectTrigger className="h-10 bg-background/50 border-border/60 text-xs">
-                  <SelectValue placeholder="Select board..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {userBoards.map((b) => (
-                    <SelectItem key={b.id} value={b.id} className="cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <span>{b.emoji || "📋"}</span>
-                        <span>{b.name}</span>
+          {/* Assignee Selection */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5 text-primary" /> Assignee
+            </Label>
+            <Select value={assignedTo} onValueChange={setAssignedTo} disabled={readOnly}>
+              <SelectTrigger
+                data-testid="task-modal-assignee-select"
+                aria-label="Assignee"
+                className="h-10 bg-background/50 border-border/60 text-xs"
+              >
+                <SelectValue placeholder="Assign to team member..." />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                <SelectItem value="unassigned" className="cursor-pointer">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs">
+                      <User className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-xs font-medium">Unassigned</span>
+                  </div>
+                </SelectItem>
+                {assignableMembers.map((m) => {
+                  const name = m.user?.fullName || m.user?.email || "Member";
+                  const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
+                  return (
+                    <SelectItem key={m.userId} value={m.userId} className="cursor-pointer">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar className="h-6 w-6 border border-primary/20">
+                          <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
+                            {initial}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col text-left">
+                          <span className="text-xs font-bold leading-tight">{name}</span>
+                          <span className="text-[10px] text-muted-foreground">{m.user?.email}</span>
+                        </div>
                       </div>
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Auto-Computed Progress Display */}
+          {(() => {
+            const progressInfo = getTaskProgressInfo(
+              { checklist, status, progress },
+              status,
+              activeColumns
+            );
+            const displayProgress = progressInfo.progress;
+            return (
+              <div className="space-y-1.5 pt-0.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Sliders className="h-3.5 w-3.5 text-primary" /> Progress
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "text-[10px] px-1.5 py-0.5 rounded font-semibold border shrink-0",
+                        progressInfo.mode === "complete"
+                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                          : progressInfo.mode === "checklist"
+                          ? "bg-primary/10 text-primary border-primary/20"
+                          : "bg-muted text-muted-foreground border-border/50"
+                      )}
+                    >
+                      {progressInfo.label}
+                    </span>
+                    <span className="text-xs font-bold text-foreground">
+                      {displayProgress}%
+                    </span>
+                  </div>
+                </div>
+                <div className="h-2 bg-muted/80 rounded-full overflow-hidden border border-border/40">
+                  <div
+                    className={cn(
+                      "h-full transition-all duration-500 rounded-full",
+                      displayProgress === 100
+                        ? "bg-emerald-500"
+                        : displayProgress > 0
+                        ? "bg-primary"
+                        : "bg-muted"
+                    )}
+                    style={{ width: `${Math.min(100, Math.max(0, displayProgress))}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Subtasks / Checklist Section */}
           <div className="space-y-2 pt-1">
@@ -725,7 +1026,7 @@ export function TaskModal({
                       : "bg-background/80 text-foreground border-border/60 hover:bg-muted/50"
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     {item.completed ? (
                       <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" />
                     ) : (
@@ -733,18 +1034,45 @@ export function TaskModal({
                     )}
                     <span className="truncate">{item.title}</span>
                   </div>
-                  {!readOnly && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteChecklistItem(item.id);
-                      }}
-                      className="text-muted-foreground hover:text-destructive p-0.5 cursor-pointer"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {item.completed && item.completedBy && (
+                      <div
+                        className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-muted-foreground"
+                        title={`Completed by ${item.completedBy.fullName || item.completedBy.email}${
+                          item.completedAt
+                            ? ` on ${new Date(item.completedAt).toLocaleDateString()}`
+                            : ""
+                        }`}
+                      >
+                        <Avatar className="h-3.5 w-3.5 text-[7px] ring-1 ring-emerald-500/30">
+                          <AvatarImage
+                            src={item.completedBy.avatarUrl}
+                            alt={item.completedBy.fullName || item.completedBy.email}
+                          />
+                          <AvatarFallback className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">
+                            {(item.completedBy.fullName || item.completedBy.email || "U")
+                              .charAt(0)
+                              .toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium max-w-[80px] truncate text-foreground/80">
+                          {item.completedBy.fullName || item.completedBy.email}
+                        </span>
+                      </div>
+                    )}
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteChecklistItem(item.id);
+                        }}
+                        className="text-muted-foreground hover:text-destructive p-0.5 cursor-pointer"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -788,14 +1116,17 @@ export function TaskModal({
                   key={file.id || file.url || `attachment-${i}`}
                   className="relative group aspect-square rounded-lg border border-border bg-muted/40 flex flex-col items-center justify-center p-2 text-center overflow-hidden hover:border-primary/50 transition-colors"
                 >
-                  {file.url ? (
+                  {file.url && file.type?.startsWith("image/") ? (
                     <img
                       src={getMediaUrl(file.url)}
                       alt={file.name}
                       className="absolute inset-0 w-full h-full object-cover"
                     />
                   ) : (
-                    <FileText className="h-6 w-6 text-muted-foreground mb-1" />
+                    <div className="flex flex-col items-center justify-center p-2 text-center">
+                      <FileText className="h-6 w-6 text-orange-500 mb-1" />
+                      <span className="text-[9px] font-bold text-foreground line-clamp-1">{file.name}</span>
+                    </div>
                   )}
                   <a
                     href={getMediaUrl(file.url)}
@@ -876,7 +1207,7 @@ export function TaskModal({
                     className="h-9 px-3 text-xs font-medium gap-1.5 text-muted-foreground hover:text-foreground"
                     onClick={() => {
                       if (status === "archive") {
-                        const defaultCol = columns.find((c) => c.id !== "archive")?.id || "todo";
+                        const defaultCol = activeColumns.find((c) => c.id !== "archive")?.id || "todo";
                         setStatus(defaultCol);
                         toast.success("Task unarchived");
                       } else {

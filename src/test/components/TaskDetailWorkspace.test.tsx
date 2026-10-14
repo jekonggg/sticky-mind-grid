@@ -71,10 +71,10 @@ describe("TaskDetailWorkspace Component", () => {
     expect(screen.getByDisplayValue("Create TaskDetailWorkspace")).toBeInTheDocument();
   });
 
-  it("handles progress slider change when no checklist exists", () => {
+  it("renders auto-computed column progress responsive to stage and prevents manual slider tampering", () => {
     renderWithProviders(
       <TaskDetailWorkspace
-        task={{ ...mockTask, checklist: [] }}
+        task={{ ...mockTask, checklist: [], status: "in-progress" }}
         board={mockBoard}
         members={[]}
         onClose={onClose}
@@ -83,10 +83,12 @@ describe("TaskDetailWorkspace Component", () => {
       />
     );
 
-    const progressSlider = screen.getByRole("slider");
-    expect(progressSlider).toBeInTheDocument();
-    fireEvent.change(progressSlider, { target: { value: "75" } });
-    expect(onUpdateTask).toHaveBeenCalledWith({ progress: 75 });
+    // Verify manual slider is not rendered
+    expect(screen.queryByRole("slider")).toBeNull();
+    // Verify auto-computed progress is displayed
+    expect(screen.getByText("Progress")).toBeInTheDocument();
+    expect(screen.getByText("50%")).toBeInTheDocument();
+    expect(screen.getByText(/Stage: In Progress/i)).toBeInTheDocument();
   });
 
   it("calls onClose when clicking the Close/Board button", () => {
@@ -183,12 +185,50 @@ describe("TaskDetailWorkspace Component", () => {
       />
     );
 
-    const progressSlider = screen.getByRole("slider");
-    fireEvent.change(progressSlider, { target: { value: "90" } });
+    const titleInput = screen.getByDisplayValue("Build Right-Side Task Workspace");
+    fireEvent.change(titleInput, { target: { value: "New Title That Triggers Save" } });
+    fireEvent.blur(titleInput);
 
     await waitFor(() => {
       expect(screen.getByText("Saved")).toBeInTheDocument();
     });
+  });
+
+  it("renders auto-computed progress indicator and does not expose an arbitrary manual slider", () => {
+    renderWithProviders(
+      <TaskDetailWorkspace
+        task={{ ...mockTask, checklist: [] }}
+        board={mockBoard}
+        members={[]}
+        onClose={onClose}
+        onUpdateTask={onUpdateTask}
+        onDeleteTask={onDeleteTask}
+      />
+    );
+
+    expect(screen.queryByRole("slider")).toBeNull();
+    expect(screen.getByText("Progress")).toBeInTheDocument();
+  });
+
+  it("renders safely without throwing RangeError when task.dueDate is invalid or malformed", () => {
+    const taskWithBadDate: any = {
+      ...mockTask,
+      dueDate: "not-a-valid-date",
+      updatedAt: "invalid-timestamp",
+    };
+
+    expect(() => {
+      renderWithProviders(
+        <TaskDetailWorkspace
+          task={taskWithBadDate}
+          board={mockBoard}
+          members={[]}
+          onClose={onClose}
+          onUpdateTask={onUpdateTask}
+          onDeleteTask={onDeleteTask}
+        />
+      );
+    }).not.toThrow();
   });
 });
 

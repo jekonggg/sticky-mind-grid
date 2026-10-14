@@ -185,12 +185,16 @@ export default function CalendarPage() {
           onClose={() => setIsNewTaskModalOpen(false)}
           task={null}
           boardId={activeTargetBoard.id}
+          boardTasks={tasks}
           columns={activeTargetBoard.columns || [{ id: "todo", title: "To Do" }]}
+          availableBoards={boards}
+          allowBoardChange={true}
           onSave={async (data) => {
+            const targetBoardId = data.boardId || activeTargetBoard.id;
             await createTaskMutation.mutateAsync({
               ...data,
-              dueDate: modalInitialDate,
-              boardId: activeTargetBoard.id,
+              dueDate: data.dueDate || modalInitialDate,
+              boardId: targetBoardId,
             });
           }}
         />

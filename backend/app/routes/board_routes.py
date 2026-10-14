@@ -30,6 +30,13 @@ def get_invitations():
     invitations = BoardService.get_user_invitations(user_id)
     return jsonify(invitations), 200
 
+@bp.route('/invitations/sent', methods=['GET'])
+@jwt_required()
+def get_sent_invitations():
+    user_id = get_jwt_identity()
+    invitations = BoardService.get_sent_invitations(user_id)
+    return jsonify(invitations), 200
+
 @bp.route('/<board_id>/invitations/accept', methods=['POST', 'PATCH'])
 @jwt_required()
 def accept_invitation(board_id):

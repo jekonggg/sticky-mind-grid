@@ -146,6 +146,33 @@ describe("AppSidebar Component", () => {
     });
   });
 
+  it("renders aggregated task attachments under Board Files", async () => {
+    (taskApi.getTasks as any).mockResolvedValue([
+      {
+        id: "t-1",
+        boardId: "board-1",
+        title: "Task with Attachments",
+        status: "todo",
+        attachments: [
+          { id: "att-1", name: "diagram.png", url: "/api/files/diagram.png", type: "image/png", size: "20 KB" },
+          { id: "att-2", name: "spec.pdf", url: "/api/files/spec.pdf", type: "application/pdf", size: "150 KB" }
+        ]
+      }
+    ]);
+
+    renderWithProviders(
+      <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} boardId="board-1" />
+    );
+
+    // Expand Board Files section
+    const boardFilesHeader = screen.getByText("Board Files");
+    fireEvent.click(boardFilesHeader);
+
+    expect(await screen.findByText("diagram.png")).toBeInTheDocument();
+    expect(screen.getByText("spec.pdf")).toBeInTheDocument();
+    expect(screen.getByText(/Task Files \(2\)/)).toBeInTheDocument();
+  });
+
   it("renders numerical notification badges for Boards, Tasks, Messages, and Personal Files", async () => {
     renderWithProviders(
       <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />

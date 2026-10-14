@@ -133,7 +133,7 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
     (task.attachments || []).map((attachment) => {
       let sizeStr = attachment.size;
       if (!sizeStr) {
-        if (attachment.url.startsWith("data:")) {
+        if (attachment.url && typeof attachment.url === "string" && attachment.url.startsWith("data:")) {
           const approxBytes = Math.round(attachment.url.length * 0.75);
           sizeStr = approxBytes < 1024 * 1024
             ? `${(approxBytes / 1024).toFixed(1)} KB`
@@ -145,6 +145,8 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
 
       return {
         ...attachment,
+        name: attachment.name || "Untitled File",
+        type: attachment.type || "application/octet-stream",
         taskId: task.id,
         taskTitle: task.title,
         updatedAt: task.updatedAt,
@@ -155,20 +157,21 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
 
   const filteredDocs = allDocuments.filter(
     (doc) =>
-      doc.name.toLowerCase().includes(search.toLowerCase()) ||
-      doc.taskTitle.toLowerCase().includes(search.toLowerCase())
+      (doc.name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (doc.taskTitle || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const filteredNotes = notes.filter(
     (note) =>
-      note.title.toLowerCase().includes(search.toLowerCase()) ||
+      (note.title || "").toLowerCase().includes(search.toLowerCase()) ||
       (note.content && note.content.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const getFileIcon = (type: string) => {
-    if (type.startsWith("video/")) return <Film className="h-10 w-10 text-blue-500/40" />;
-    if (type.startsWith("audio/")) return <Music className="h-10 w-10 text-purple-500/40" />;
-    if (type.includes("pdf") || type.includes("word") || type.includes("text"))
+  const getFileIcon = (type: string = "") => {
+    const t = (type || "").toLowerCase();
+    if (t.startsWith("video/")) return <Film className="h-10 w-10 text-blue-500/40" />;
+    if (t.startsWith("audio/")) return <Music className="h-10 w-10 text-purple-500/40" />;
+    if (t.includes("pdf") || t.includes("word") || t.includes("text"))
       return <FileText className="h-10 w-10 text-orange-500/40" />;
     return <File className="h-10 w-10 text-slate-400/40" />;
   };
@@ -343,7 +346,7 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
             </div>
           ) : (
             filteredDocs.map((doc, idx) => {
-              const isImage = doc.type.startsWith("image/");
+              const isImage = Boolean(doc.type?.startsWith("image/"));
               const currentTask = tasks.find((t) => t.id === doc.taskId);
 
               return (

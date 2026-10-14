@@ -130,6 +130,12 @@ export const boardApi = {
     return res.json();
   },
 
+  async getSentInvitations(): Promise<import("@/types/board").BoardInvitation[]> {
+    const res = await authenticatedFetch("/boards/invitations/sent");
+    if (!res.ok) throw new Error("Failed to fetch sent invitations");
+    return res.json();
+  },
+
   async acceptInvitation(boardId: string): Promise<BoardMember> {
     const res = await authenticatedFetch(`/boards/${boardId}/invitations/accept`, {
       method: "POST",

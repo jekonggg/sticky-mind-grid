@@ -836,11 +836,15 @@ export default function TasksPage() {
           onClose={() => setIsNewTaskModalOpen(false)}
           task={null}
           boardId={activeTargetBoard.id}
+          boardTasks={tasks}
           columns={activeTargetBoard.columns || [{ id: "todo", title: "To Do" }]}
+          availableBoards={boards}
+          allowBoardChange={true}
           onSave={async (data) => {
+            const targetBoardId = data.boardId || activeTargetBoard.id;
             await createTaskMutation.mutateAsync({
               ...data,
-              boardId: activeTargetBoard.id,
+              boardId: targetBoardId,
             });
           }}
         />

@@ -25,8 +25,16 @@ import {
   CheckSquare as ListTodo,
 } from "@untitledui/icons";
 import { format, formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
+import { parseSafeDate, formatSafe } from "@/utils/dateUtils";
+import { DateTimePicker } from "@/components/common/DateTimePicker";
+import { toast } from "sonner";
+import { useBoardLabels } from "@/hooks/useBoardLabels";
+import { normalizeTagName, deduplicateTags } from "@/utils/boardLabels";
+import { getTaskProgressInfo } from "@/utils/taskUtils";
+import { cn } from "@/lib/utils";
 
 interface TaskPropertiesProps {
+  boardId?: string;
   status: string;
   columns: Column[];
   priority: Priority;
@@ -60,6 +68,7 @@ const TAG_COLORS = [
 ];
 
 export function TaskProperties({
+  boardId,
   status,
   columns,
   priority,
@@ -84,27 +93,56 @@ export function TaskProperties({
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [selectedTagColor, setSelectedTagColor] = useState(TAG_COLORS[0]);
+  const { boardLabels, addLabel } = useBoardLabels(boardId);
 
-  const handleAddTag = () => {
-    if (!newTagName.trim()) return;
-    const newTag: Tag = {
+  const handleAddTag = (tagToAdd?: Tag) => {
+    if (readOnly) return;
+    if (tagToAdd) {
+      const normToAdd = normalizeTagName(tagToAdd.name);
+      if (tags.some((t) => normalizeTagName(t.name) === normToAdd)) {
+        onTagsChange(tags.filter((t) => normalizeTagName(t.name) !== normToAdd));
+        return;
+      }
+      const updated = deduplicateTags([...tags, tagToAdd]);
+      onTagsChange(updated);
+      if (boardId) addLabel(tagToAdd);
+      return;
+    }
+
+    const trimmed = newTagName.trim();
+    if (!trimmed) return;
+    const norm = normalizeTagName(trimmed);
+
+    if (tags.some((t) => normalizeTagName(t.name) === norm)) {
+      toast.info(`"${trimmed}" is already added to this card`);
+      setNewTagName("");
+      setIsAddingTag(false);
+      return;
+    }
+
+    const existingBoardLabel = boardLabels.find((t) => normalizeTagName(t.name) === norm);
+    const newTag: Tag = existingBoardLabel || {
       id: `tag-${Date.now()}`,
-      name: newTagName.trim(),
+      name: trimmed,
       color: selectedTagColor,
     };
-    onTagsChange([...tags, newTag]);
+
+    const updated = deduplicateTags([...tags, newTag]);
+    onTagsChange(updated);
+    if (boardId) addLabel(newTag);
     setNewTagName("");
     setIsAddingTag(false);
   };
 
-  const handleRemoveTag = (tagId: string) => {
-    onTagsChange(tags.filter((t) => t.id !== tagId));
+  const handleRemoveTag = (tagIdOrName: string) => {
+    if (readOnly) return;
+    const norm = normalizeTagName(tagIdOrName);
+    onTagsChange(tags.filter((t) => t.id !== tagIdOrName && normalizeTagName(t.name) !== norm));
   };
 
   const getDueStatus = (dateStr: string) => {
-    if (!dateStr) return "none";
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return "none";
+    const d = parseSafeDate(dateStr);
+    if (!d) return "none";
     if (isPast(d) && !isToday(d)) return "overdue";
     if (isToday(d)) return "today";
     return "upcoming";
@@ -306,93 +344,67 @@ export function TaskProperties({
                 </span>
               </div>
               <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                {readOnly ? (
-                  <span
-                    className={`text-xs truncate font-medium ${
-                      isOverdue
-                        ? "text-rose-600 dark:text-rose-400 font-bold"
-                        : isTodayDue
-                        ? "text-amber-600 dark:text-amber-400 font-bold"
-                        : "text-foreground"
-                    }`}
-                    title={isOverdue ? "Overdue" : isTodayDue ? "Due Today" : undefined}
-                  >
-                    {dueDate ? format(new Date(dueDate), "MMM d, yyyy h:mm a") : "No due date"}
-                  </span>
-                ) : (
-                  <div className="relative flex items-center w-full min-w-0">
-                    <Input
-                      type="datetime-local"
-                      value={dueDate}
-                      onChange={(e) => onDueDateChange(e.target.value)}
-                      title={isOverdue ? "Overdue" : isTodayDue ? "Due Today" : undefined}
-                      className={`h-8 text-xs w-full min-w-0 shadow-2xs pl-2 pr-7 transition-colors ${
-                        isOverdue
-                          ? "border-rose-500/60 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-semibold focus-visible:ring-rose-500"
-                          : isTodayDue
-                          ? "border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold focus-visible:ring-amber-500"
-                          : "border-border/60 bg-card/60 text-foreground"
-                      }`}
-                    />
-                    {dueDate && (
-                      <button
-                        type="button"
-                        onClick={() => onDueDateChange("")}
-                        className="absolute right-2 text-muted-foreground hover:text-destructive p-0.5 cursor-pointer transition-colors"
-                        title="Clear due date"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                )}
+                <DateTimePicker
+                  id="task-property-due-date"
+                  value={dueDate}
+                  disabled={readOnly}
+                  readOnly={readOnly}
+                  onChange={onDueDateChange}
+                  size="sm"
+                  ariaLabel="Due Date"
+                />
               </div>
             </div>
           );
         })()}
 
-        {/* Progress Property */}
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 select-none">
-            <Sliders className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span>Progress</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            {readOnly || hasChecklist ? (
-              <div className="flex items-center gap-2.5 w-full">
-                <div className="flex-1 h-2 bg-muted/80 rounded-full overflow-hidden border border-border/40">
-                  <div
-                    className="h-full bg-primary transition-all duration-300 rounded-full"
-                    style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-                  />
-                </div>
-                <span className="text-xs font-bold text-muted-foreground min-w-[32px] shrink-0">
-                  {progress}%
-                </span>
-                {hasChecklist && (
-                  <span className="text-[10px] text-muted-foreground/70 italic hidden sm:inline">
-                    (checklist)
+        {/* Progress Property (Auto-Computed from Checklist or Column Stage) */}
+        {(() => {
+          const progressInfo = getTaskProgressInfo({ checklist, status, progress }, status, columns);
+          const displayProgress = progressInfo.progress;
+
+          return (
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 select-none">
+                <Sliders className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span>Progress</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2.5 w-full">
+                  <div className="flex-1 h-2 bg-muted/80 rounded-full overflow-hidden border border-border/40">
+                    <div
+                      className={cn(
+                        "h-full transition-all duration-500 rounded-full",
+                        displayProgress === 100
+                          ? "bg-emerald-500"
+                          : displayProgress > 0
+                          ? "bg-primary"
+                          : "bg-muted"
+                      )}
+                      style={{ width: `${Math.min(100, Math.max(0, displayProgress))}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-foreground min-w-[34px] shrink-0">
+                    {displayProgress}%
                   </span>
-                )}
+                  <span
+                    className={cn(
+                      "text-[10px] px-1.5 py-0.5 rounded font-semibold border shrink-0 hidden sm:inline-block truncate max-w-[140px]",
+                      progressInfo.mode === "complete"
+                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                        : progressInfo.mode === "checklist"
+                        ? "bg-primary/10 text-primary border-primary/20"
+                        : "bg-muted text-muted-foreground border-border/50"
+                    )}
+                    title={progressInfo.label}
+                  >
+                    {progressInfo.label}
+                  </span>
+                </div>
               </div>
-            ) : (
-              <div className="flex items-center gap-2.5 w-full">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={progress}
-                  onChange={(e) => onProgressChange(Number(e.target.value))}
-                  className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary min-w-0"
-                />
-                <span className="text-xs font-black text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md min-w-[38px] text-center shrink-0">
-                  {progress}%
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+            </div>
+          );
+        })()}
 
         {/* Timestamps */}
         <div className="flex items-center gap-2.5 min-w-0">
@@ -401,13 +413,15 @@ export function TaskProperties({
             <span>Updated</span>
           </div>
           <div className="flex-1 min-w-0 text-xs text-muted-foreground font-medium truncate">
-            {updatedAt ? (
-              <span title={format(new Date(updatedAt), "PPpp")}>
-                {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
-              </span>
-            ) : (
-              "—"
-            )}
+            {(() => {
+              const safeUpdated = parseSafeDate(updatedAt);
+              if (!safeUpdated) return "—";
+              return (
+                <span title={formatSafe(safeUpdated, "PPpp")}>
+                  {formatDistanceToNow(safeUpdated, { addSuffix: true })}
+                </span>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -489,6 +503,51 @@ export function TaskProperties({
                 <span>Add Tag</span>
               </Button>
             )
+          )}
+
+          {/* Available Board Labels Quick-Pick */}
+          {boardLabels.length > 0 && !readOnly && (
+            <div className="w-full pt-1.5 mt-1 border-t border-border/20">
+              <span className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                Available board labels (click to toggle):
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {boardLabels.map((bl) => {
+                  const isSelected = tags.some(
+                    (t) => normalizeTagName(t.name) === normalizeTagName(bl.name)
+                  );
+                  return (
+                    <button
+                      key={bl.id || bl.name}
+                      type="button"
+                      onClick={() => handleAddTag(bl)}
+                      style={{
+                        backgroundColor: isSelected ? `${bl.color}25` : "transparent",
+                        borderColor: isSelected ? bl.color : `${bl.color}45`,
+                        color: isSelected ? bl.color : "inherit",
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs transition-all cursor-pointer hover:scale-105 border ${
+                        isSelected
+                          ? "font-bold ring-1 shadow-xs"
+                          : "opacity-75 hover:opacity-100 bg-background/50"
+                      }`}
+                      title={isSelected ? `Remove "${bl.name}"` : `Add "${bl.name}" to task`}
+                    >
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ backgroundColor: bl.color }}
+                      />
+                      <span>{bl.name}</span>
+                      {isSelected ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        <Plus className="h-3 w-3 opacity-60" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
       </div>

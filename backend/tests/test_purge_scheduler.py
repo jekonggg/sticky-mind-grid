@@ -83,7 +83,10 @@ def test_cli_purge_script_runs_successfully():
     """
     Running python scripts/purge_expired_boards.py returns exit code 0.
     """
-    script_path = os.path.join(os.getcwd(), "scripts", "purge_expired_boards.py")
+    scripts_dir = os.path.join(os.getcwd(), "scripts")
+    if not os.path.exists(scripts_dir):
+        scripts_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "scripts"))
+    script_path = os.path.join(scripts_dir, "purge_expired_boards.py")
     assert os.path.exists(script_path), f"Script {script_path} must exist"
 
     result = subprocess.run(

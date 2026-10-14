@@ -9,6 +9,14 @@ import {
 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TaskChecklistProps {
   checklist: ChecklistItem[];
@@ -18,6 +26,7 @@ interface TaskChecklistProps {
 }
 
 export function TaskChecklist({ checklist, readOnly, onChange, onProgressSync }: TaskChecklistProps) {
+  const { user } = useAuth();
   const [newText, setNewText] = useState("");
 
   const completedCount = checklist.filter((item) => item.completed).length;
@@ -26,9 +35,23 @@ export function TaskChecklist({ checklist, readOnly, onChange, onProgressSync }:
 
   const handleToggle = (id: string) => {
     if (readOnly) return;
-    const updated = checklist.map((item) =>
-      item.id === id ? { ...item, completed: !item.completed } : item
-    );
+    const updated = checklist.map((item) => {
+      if (item.id !== id) return item;
+      const isNowCompleted = !item.completed;
+      return {
+        ...item,
+        completed: isNowCompleted,
+        completedBy: isNowCompleted && user
+          ? {
+              id: user.id,
+              fullName: user.fullName || undefined,
+              email: user.email,
+              avatarUrl: user.avatarUrl || undefined,
+            }
+          : null,
+        completedAt: isNowCompleted ? new Date().toISOString() : null,
+      };
+    });
     onChange(updated);
 
     if (onProgressSync && updated.length > 0) {
@@ -142,6 +165,44 @@ export function TaskChecklist({ checklist, readOnly, onChange, onProgressSync }:
                 />
               )}
             </div>
+
+            {item.completed && item.completedBy && (
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      data-testid={`completed-by-${item.id}`}
+                      className="flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs text-muted-foreground select-none cursor-default"
+                    >
+                      <Avatar className="h-4 w-4 text-[8px] ring-1 ring-emerald-500/30">
+                        <AvatarImage
+                          src={item.completedBy.avatarUrl}
+                          alt={item.completedBy.fullName || item.completedBy.email}
+                        />
+                        <AvatarFallback className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">
+                          {(item.completedBy.fullName || item.completedBy.email || "U")
+                            .charAt(0)
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-[11px] font-medium max-w-[120px] truncate text-foreground/80">
+                        {item.completedBy.fullName || item.completedBy.email}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    <p className="font-medium">
+                      Completed by {item.completedBy.fullName || item.completedBy.email}
+                      {item.completedAt
+                        ? ` on ${new Date(item.completedAt).toLocaleDateString()} at ${new Date(
+                            item.completedAt
+                          ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                        : ""}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
 
             {!readOnly && (
               <button

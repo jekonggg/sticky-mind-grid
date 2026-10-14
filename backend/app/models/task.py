@@ -107,7 +107,7 @@ class Task(db.Model):
             'assignee': assignee_data,
             'createdBy': self.created_by,
             'creator': creator_data,
-            'attachments': self.attachments,
+            'attachments': self.attachments or [],
             'followers': self.followers or [],
             'isDeleted': self.is_deleted,
             'deletedAt': self.deleted_at.isoformat() + 'Z' if self.deleted_at else None,

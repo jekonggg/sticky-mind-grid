@@ -456,7 +456,13 @@ export default function DashboardPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setIsTaskModalOpen(true)}
+                  onClick={() => {
+                    if (boards.length > 0) {
+                      setIsTaskModalOpen(true);
+                    } else {
+                      setIsBoardModalOpen(true);
+                    }
+                  }}
                   className="h-7 text-xs font-semibold mt-2"
                 >
                   <Plus className="h-3 w-3 mr-1" /> Create Task
@@ -691,11 +697,15 @@ export default function DashboardPage() {
           onClose={() => setIsTaskModalOpen(false)}
           task={null}
           boardId={boards[0]?.id || ""}
+          boardTasks={tasks}
           columns={boards[0]?.columns || [{ id: "todo", title: "To Do" }]}
+          availableBoards={boards}
+          allowBoardChange={true}
           onSave={async (data) => {
+            const targetBoardId = data.boardId || boards[0]?.id || "";
             await createTaskMutation.mutateAsync({
               ...data,
-              boardId: boards[0]?.id || "",
+              boardId: targetBoardId,
             });
           }}
         />

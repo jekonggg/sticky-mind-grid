@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -18,7 +19,12 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UserPlus01 as UserPlus, Loading01 as Loader2, SearchLg as Search, UserCheck01 as UserCheck } from "@untitledui/icons";
+import { Loader2 } from "lucide-react";
+import {
+  UserPlus01 as UserPlus,
+  SearchLg as Search,
+  UserCheck01 as UserCheck,
+} from "@untitledui/icons";
 import { boardApi } from "@/services/boardApi";
 import { authApi } from "@/services/authApi";
 import { toast } from "sonner";
@@ -51,6 +57,16 @@ export function InviteMemberDialog({
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
 
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("editor");
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isUserSelectedRef = useRef(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
   const handleOpenChange = (newOpen: boolean) => {
     if (!isControlled) {
       setInternalOpen(newOpen);
@@ -58,14 +74,14 @@ export function InviteMemberDialog({
     onOpenChange?.(newOpen);
     if (!newOpen) {
       onClose?.();
+      setEmail("");
+      setSearchResults([]);
+      setIsSearching(false);
+      setShowDropdown(false);
+      isUserSelectedRef.current = false;
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     }
   };
-
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState("editor");
-  const [searchResults, setSearchResults] = useState<User[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
 
   const { addActivity } = useActivity();
   const { boards } = useBoards();
@@ -77,35 +93,62 @@ export function InviteMemberDialog({
   });
   const permissions = useBoardPermissions(currentBoard, members);
   const queryClient = useQueryClient();
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Debounced search for registered users
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Debounced search for registered users with loading animation & race-condition cancellation
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (isUserSelectedRef.current) {
+      isUserSelectedRef.current = false;
+      return;
     }
 
     const trimmed = email.trim();
     if (trimmed.length < 2) {
       setSearchResults([]);
       setIsSearching(false);
+      setShowDropdown(false);
       return;
     }
 
+    let isCurrent = true;
     setIsSearching(true);
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         const results = await authApi.searchUsers(trimmed);
-        setSearchResults(results || []);
-        setShowDropdown(true);
+        if (isCurrent) {
+          setSearchResults(results || []);
+          setShowDropdown(true);
+        }
       } catch {
-        setSearchResults([]);
+        if (isCurrent) {
+          setSearchResults([]);
+          setShowDropdown(true);
+        }
       } finally {
-        setIsSearching(false);
+        if (isCurrent) {
+          setIsSearching(false);
+        }
       }
     }, 250);
 
     return () => {
+      isCurrent = false;
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     };
   }, [email]);
@@ -115,6 +158,9 @@ export function InviteMemberDialog({
       boardApi.inviteMember(boardId, data.email, data.role),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["boardMembers", boardId] });
+      queryClient.invalidateQueries({ queryKey: ["sentInvitations"] });
+      queryClient.invalidateQueries({ queryKey: ["teammates"] });
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
       addActivity(
         "update",
         currentBoard?.name || "Board",
@@ -126,6 +172,8 @@ export function InviteMemberDialog({
       setEmail("");
       setRole("editor");
       setSearchResults([]);
+      setIsSearching(false);
+      setShowDropdown(false);
       onInvited?.();
     },
     onError: (error: Error) => {
@@ -134,8 +182,11 @@ export function InviteMemberDialog({
   });
 
   const handleSelectUser = (user: User) => {
+    isUserSelectedRef.current = true;
     setEmail(user.email);
     setShowDropdown(false);
+    setSearchResults([]);
+    setIsSearching(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -156,13 +207,16 @@ export function InviteMemberDialog({
           </Button>
         </DialogTrigger>
       ) : null}
-      <DialogContent className="w-full max-w-none sm:max-w-md h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[85vh] rounded-none sm:rounded-lg overflow-y-auto">
+      <DialogContent className="w-full max-w-none sm:max-w-lg md:max-w-xl max-h-[90vh] rounded-none sm:rounded-2xl p-6 sm:p-7 overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Invite to Board</DialogTitle>
+          <DialogDescription className="sr-only">
+            Invite collaborators and manage pending board invitations
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           {/* Email / User Search Input */}
-          <div className="space-y-2 relative">
+          <div ref={dropdownRef} className="space-y-2 relative">
             <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               User Search or Email Address
             </Label>
@@ -174,53 +228,67 @@ export function InviteMemberDialog({
                 required
                 placeholder="Search by name or email (e.g. alex@example.com)..."
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onFocus={() => {
-                  if (searchResults.length > 0) setShowDropdown(true);
+                onChange={(e) => {
+                  isUserSelectedRef.current = false;
+                  setEmail(e.target.value);
                 }}
-                className="pl-9 text-xs font-medium"
+                onFocus={() => {
+                  if (email.trim().length >= 2) setShowDropdown(true);
+                }}
+                className="pl-9 pr-9 text-xs font-medium"
                 autoComplete="off"
               />
               {isSearching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" data-testid="search-loader" />
+                </div>
               )}
             </div>
 
             {/* Autocomplete Dropdown */}
-            {showDropdown && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover text-popover-foreground rounded-xl border border-border/80 shadow-xl overflow-hidden max-h-48 overflow-y-auto">
-                <div className="p-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-2 py-1 block">
-                    Matching Users
-                  </span>
-                  {searchResults.map((u) => {
-                    const initial = (u.fullName || u.email || "U").charAt(0).toUpperCase();
-                    return (
-                      <button
-                        key={u.id}
-                        type="button"
-                        onClick={() => handleSelectUser(u)}
-                        className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/80 text-left transition-colors cursor-pointer group"
-                      >
-                        <Avatar className="h-7 w-7 border border-primary/20 shrink-0">
-                          <AvatarImage src={u.avatarUrl} alt={u.fullName || u.email} />
-                          <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
-                            {initial}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <span className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors">
-                            {u.fullName || u.email}
-                          </span>
-                          {u.fullName && (
-                            <span className="text-[10px] text-muted-foreground truncate">{u.email}</span>
-                          )}
-                        </div>
-                        <UserCheck className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                    );
-                  })}
-                </div>
+            {showDropdown && email.trim().length >= 2 && !isSearching && (
+              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover text-popover-foreground rounded-xl border border-border/80 shadow-xl overflow-hidden max-h-48 overflow-y-auto animate-in fade-in-50 zoom-in-95">
+                {searchResults.length > 0 ? (
+                  <div className="p-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-2 py-1 block">
+                      Matching Users
+                    </span>
+                    {searchResults.map((u) => {
+                      const initial = (u.fullName || u.email || "U").charAt(0).toUpperCase();
+                      return (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() => handleSelectUser(u)}
+                          className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/80 text-left transition-colors cursor-pointer group"
+                        >
+                          <Avatar className="h-7 w-7 border border-primary/20 shrink-0">
+                            <AvatarImage src={u.avatarUrl} alt={u.fullName || u.email} />
+                            <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
+                              {initial}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <span className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                              {u.fullName || u.email}
+                            </span>
+                            {u.fullName && (
+                              <span className="text-[10px] text-muted-foreground truncate">{u.email}</span>
+                            )}
+                          </div>
+                          <UserCheck className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-3 text-center text-xs text-muted-foreground">
+                    <p className="font-semibold text-foreground">No registered users found</p>
+                    <p className="text-[11px] mt-0.5">
+                      You can still invite by email: <span className="font-semibold text-foreground">{email.trim()}</span>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             <p className="text-[10px] text-muted-foreground">
@@ -268,13 +336,13 @@ export function InviteMemberDialog({
             </Select>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-border/50">
+          <div className="flex justify-end gap-2.5 pt-4 border-t border-border/50">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => handleOpenChange(false)}
-              className="text-xs font-bold"
+              className="text-xs font-bold px-4 cursor-pointer"
             >
               Cancel
             </Button>
@@ -282,7 +350,7 @@ export function InviteMemberDialog({
               type="submit"
               size="sm"
               disabled={inviteMutation.isPending || !email.trim()}
-              className="text-xs font-bold gap-1.5"
+              className="text-xs font-bold gap-1.5 px-4 min-w-[110px] cursor-pointer"
             >
               {inviteMutation.isPending ? (
                 <>

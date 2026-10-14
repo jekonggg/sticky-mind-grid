@@ -1,10 +1,12 @@
 import { Task, CreateTaskData, UpdateTaskData } from "@/types/task";
 import { authenticatedFetch } from "./apiUtils";
+import { parseSafeDate } from "@/utils/dateUtils";
 
 const mapTask = (task: any): Task => ({
   ...task,
-  createdAt: new Date(task.createdAt),
-  updatedAt: new Date(task.updatedAt),
+  dueDate: task.dueDate ? parseSafeDate(task.dueDate) || undefined : undefined,
+  createdAt: parseSafeDate(task.createdAt) || new Date(),
+  updatedAt: parseSafeDate(task.updatedAt) || new Date(),
 });
 
 const USE_MOCK = false;

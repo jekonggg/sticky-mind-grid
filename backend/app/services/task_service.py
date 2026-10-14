@@ -15,6 +15,86 @@ def _get_column_name(board, column_id):
             return col.get('title', column_id)
     return column_id
 
+def _is_done_column(board, column_id):
+    if not column_id:
+        return False
+    norm = str(column_id).lower().strip()
+    if norm in ("done", "completed", "complete", "finished", "closed", "resolved"):
+        return True
+    if board and board.columns:
+        visible = [c for c in board.columns if isinstance(c, dict) and c.get('id') != 'archive']
+        if visible:
+            last_col = visible[-1]
+            if last_col.get('id') == column_id or str(last_col.get('id', '')).lower() == norm:
+                return True
+            for c in visible:
+                if c.get('id') == column_id or str(c.get('id', '')).lower() == norm:
+                    title_norm = str(c.get('title', '')).lower()
+                    if any(k in title_norm for k in ("done", "complete", "finish", "closed")):
+                        return True
+    return False
+
+def _compute_column_progress(board, column_id):
+    if not column_id:
+        return 0
+    if _is_done_column(board, column_id):
+        return 100
+    norm = str(column_id).lower().strip()
+    if norm in ("todo", "to_do", "to-do", "backlog", "new", "pending", "draft", "icebox"):
+        return 0
+    if board and board.columns:
+        visible = [c for c in board.columns if isinstance(c, dict) and c.get('id') != 'archive']
+        total = len(visible)
+        if total <= 1:
+            return 0
+        idx = -1
+        for i, c in enumerate(visible):
+            if c.get('id') == column_id or str(c.get('id', '')).lower() == norm:
+                idx = i
+                break
+        if idx == -1:
+            return 0
+        if idx == 0:
+            return 0
+        if idx == total - 1:
+            return 100
+        return int(round((idx / (total - 1)) * 100))
+    if "progress" in norm or "doing" in norm:
+        return 50
+    if "review" in norm or "qa" in norm or "test" in norm:
+        return 75
+    return 0
+
+def _normalize_and_deduplicate_tags(raw_tags):
+    if not raw_tags or not isinstance(raw_tags, list):
+        return []
+    seen = set()
+    cleaned = []
+    for t in raw_tags:
+        if isinstance(t, dict):
+            name = str(t.get('name', '')).strip()
+            if not name:
+                continue
+            norm = name.lower()
+            if norm not in seen:
+                seen.add(norm)
+                cleaned.append({
+                    'id': str(t.get('id') or f"tag_{norm}"),
+                    'name': name,
+                    'color': str(t.get('color') or '#3b82f6')
+                })
+        elif isinstance(t, str) and t.strip():
+            name = t.strip()
+            norm = name.lower()
+            if norm not in seen:
+                seen.add(norm)
+                cleaned.append({
+                    'id': f"tag_{norm}",
+                    'name': name,
+                    'color': '#3b82f6'
+                })
+    return cleaned
+
 class TaskConflictError(Exception):
     def __init__(self, task, message="Conflict: Description was modified by another user"):
         super().__init__(message)
@@ -136,11 +216,15 @@ class TaskService:
                 initial_followers.append(str(assigned_to))
 
         initial_checklist = data.get('checklist', [])
-        initial_progress = data.get('progress', 0)
         if isinstance(initial_checklist, list) and len(initial_checklist) > 0:
             total_items = len(initial_checklist)
             completed_items = sum(1 for item in initial_checklist if isinstance(item, dict) and item.get('completed'))
             initial_progress = int(round((completed_items / total_items) * 100))
+        elif 'progress' in data and data['progress'] is not None:
+            initial_progress = max(0, min(100, int(data['progress'])))
+        else:
+            board = db.session.get(Board, board_id) if board_id else None
+            initial_progress = _compute_column_progress(board, status)
 
         new_task = Task(
             board_id=board_id,
@@ -152,7 +236,7 @@ class TaskService:
             progress=initial_progress,
             position=position,
             checklist=initial_checklist,
-            tags=data.get('tags', []),
+            tags=_normalize_and_deduplicate_tags(data.get('tags', [])),
             attachments=attachments,
             followers=initial_followers,
             assigned_to=assigned_to,
@@ -335,6 +419,8 @@ class TaskService:
         if 'description' in data: task.description = data['description']
         status_val = data.get('status') if 'status' in data else data.get('columnId')
         if status_val is not None: task.status = status_val
+        effective_old_status = data.get('fromStatus') or old_status
+        is_status_changed = (old_status != task.status) or bool(data.get('fromStatus') and data['fromStatus'] != task.status)
         if 'priority' in data: task.priority = data['priority']
         if 'checklist' in data: task.checklist = data['checklist']
         active_checklist = task.checklist if isinstance(task.checklist, list) else []
@@ -342,10 +428,12 @@ class TaskService:
             total_items = len(active_checklist)
             completed_items = sum(1 for item in active_checklist if isinstance(item, dict) and item.get('completed'))
             task.progress = int(round((completed_items / total_items) * 100))
-        elif 'progress' in data:
-            task.progress = data['progress']
+        elif 'progress' in data and data['progress'] is not None:
+            task.progress = max(0, min(100, int(data['progress'])))
+        elif is_status_changed and task.board:
+            task.progress = _compute_column_progress(task.board, task.status)
         if 'position' in data and data['position'] is not None: task.position = float(data['position'])
-        if 'tags' in data: task.tags = data['tags']
+        if 'tags' in data: task.tags = _normalize_and_deduplicate_tags(data['tags'])
         if 'attachments' in data: task.attachments = data['attachments']
         if 'assignedTo' in data: task.assigned_to = data['assignedTo'] if data['assignedTo'] != "unassigned" else None
         if 'followers' in data and isinstance(data['followers'], list):
@@ -577,6 +665,8 @@ class TaskService:
                             task.progress = max(0, min(100, int(item['progress'])))
                         except (ValueError, TypeError):
                             pass
+                elif 'status' in item and item['status'] and not (task.checklist and len(task.checklist) > 0):
+                    task.progress = _compute_column_progress(board, task.status)
                 updated_tasks.append(task)
 
         if updated_tasks:

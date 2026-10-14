@@ -1,6 +1,7 @@
 import { Task, Column } from "@/types/task";
 import { Board } from "@/types/board";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, startOfDay, endOfDay, setHours, getHours } from "date-fns";
+import { formatSafe } from "@/utils/dateUtils";
 import {
   ChevronLeft,
   ChevronRight,
@@ -780,7 +781,7 @@ export function CalendarView({
                                 </span>
                               </div>
                               <span className="text-[10px] font-black text-primary/70">
-                                {format(new Date(task.dueDate!), "HH:mm")}
+                                {formatSafe(task.dueDate, "HH:mm")}
                               </span>
                             </div>
                             <h4 className="text-sm font-black leading-tight mb-3 uppercase group-hover:text-primary transition-colors line-clamp-2">
@@ -850,7 +851,7 @@ export function CalendarView({
                     }`} />
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-[10px] opacity-60">
-                        {task.dueDate ? format(new Date(task.dueDate), "h:mm aa") : "All day"}
+                        {formatSafe(task.dueDate, "h:mm aa", "All day")}
                       </span>
                       <Badge variant="outline" className="text-[8px] px-1 py-0 uppercase font-mono">
                         {task.priority}
@@ -898,7 +899,7 @@ export function CalendarView({
                         {task.title}
                       </span>
                       <span className="text-[9px] font-mono text-rose-500 font-bold shrink-0">
-                        {format(new Date(task.dueDate!), "MMM d")}
+                        {formatSafe(task.dueDate, "MMM d")}
                       </span>
                     </div>
                     {task.boardName && (

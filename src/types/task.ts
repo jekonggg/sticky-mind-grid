@@ -16,6 +16,13 @@ export interface ChecklistItem {
   title?: string;
   text?: string;
   completed: boolean;
+  completedBy?: {
+    id: string;
+    fullName?: string;
+    email?: string;
+    avatarUrl?: string;
+  } | null;
+  completedAt?: Date | string | null;
 }
 
 export interface Tag {
@@ -49,7 +56,7 @@ export interface Task {
     fullName?: string;
     avatarUrl?: string;
   } | null;
-  dueDate?: Date;
+  dueDate?: Date | null;
   progress: number;
   position?: number;
   checklist?: ChecklistItem[];
@@ -70,7 +77,7 @@ export interface CreateTaskData {
   priority: Priority;
   assignedTo?: string | null;
   boardId?: string;
-  dueDate?: Date;
+  dueDate?: Date | null;
   progress?: number;
   position?: number;
   checklist?: ChecklistItem[];
@@ -91,7 +98,7 @@ export interface UpdateTaskData {
   priority?: Priority;
   assignedTo?: string | null;
   boardId?: string;
-  dueDate?: Date;
+  dueDate?: Date | null;
   progress?: number;
   position?: number;
   checklist?: ChecklistItem[];

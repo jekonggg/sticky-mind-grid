@@ -32,6 +32,7 @@ import {
   LogOut01 as LogOut,
   MessageChatSquare as MessageSquare,
   Send01 as Send,
+  Mail01 as Mail,
 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -77,9 +78,13 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
 
   const permissions = useBoardPermissions(currentBoard, members || []);
 
-  const acceptedOwners = (members || []).filter(
-    (m) => m.role === "owner" && m.status === "accepted"
+  const acceptedMembers = (members || []).filter(
+    (m) => !m.status || m.status === "accepted"
   );
+  const pendingMembers = (members || []).filter(
+    (m) => m.status === "pending" || m.status === "expired"
+  );
+  const acceptedOwners = acceptedMembers.filter((m) => m.role === "owner");
   const ownerCount = acceptedOwners.length || (currentBoard?.ownerId ? 1 : 0);
 
   const removeMutation = useMutation({
@@ -194,7 +199,7 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
     <div className="flex flex-col gap-4">
       {/* Avatars summary row */}
       <div className="flex -space-x-2 overflow-hidden items-center group">
-        {members.map((member) => (
+        {acceptedMembers.map((member) => (
           <Avatar
             key={member.id}
             className="inline-block h-9 w-9 rounded-full ring-2 ring-background transition-transform hover:scale-110 hover:z-10 cursor-pointer shadow-sm"
@@ -208,13 +213,13 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
         ))}
       </div>
 
-      {/* Members detailed list */}
+      {/* Active Members detailed list */}
       <div className="space-y-2.5">
         <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2 mb-3">
-          <ShieldAlert className="h-3.5 w-3.5 text-primary" /> Active Board Members ({members.length})
+          <ShieldAlert className="h-3.5 w-3.5 text-primary" /> Active Board Members ({acceptedMembers.length})
         </h4>
 
-        {members.map((member) => {
+        {acceptedMembers.map((member) => {
           const isMemberOwner = member.role === "owner";
           const isMemberAdmin = member.role === "admin";
           const isSelf = member.userId === currentUser?.id;
@@ -256,16 +261,6 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                     {isSelf && (
                       <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.2 rounded font-black">
                         You
-                      </span>
-                    )}
-                    {member.status === "pending" && (
-                      <span className="text-[9px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider">
-                        Pending
-                      </span>
-                    )}
-                    {member.status === "expired" && (
-                      <span className="text-[9px] bg-destructive/15 text-destructive border border-destructive/30 px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider">
-                        Expired
                       </span>
                     )}
                   </span>
@@ -339,20 +334,6 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                   </Badge>
                 )}
 
-                {/* Resend invite for pending or expired members */}
-                {(member.status === "pending" || member.status === "expired") && permissions.isAdmin && !isSelf && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-primary rounded-lg"
-                    title="Resend invitation"
-                    onClick={() => resendInviteMutation.mutate(member.userId || member.id)}
-                    disabled={resendInviteMutation.isPending}
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-
                 {/* Transfer Ownership button for Owner */}
                 {canTransferToThisMember && (
                   <Button
@@ -373,27 +354,19 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                   </Button>
                 )}
 
-                {/* Remove member / Revoke invite button */}
+                {/* Remove member button */}
                 {canRemoveThisMember && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-                    title={member.status === "pending" || member.status === "expired" ? "Revoke invitation" : "Remove member from board"}
+                    title="Remove member from board"
                     onClick={() => {
-                      const isPendingOrExpired = member.status === "pending" || member.status === "expired";
-                      const promptMsg = isPendingOrExpired
-                        ? `Revoke invitation for ${member.user?.fullName || member.user?.email || "this invitee"}?`
-                        : `Remove ${member.user?.fullName || member.user?.email || "this member"} from this board?`;
-                      if (confirm(promptMsg)) {
-                        if (isPendingOrExpired) {
-                          revokeInviteMutation.mutate(member.userId || member.id);
-                        } else {
-                          removeMutation.mutate(member.userId || member.id);
-                        }
+                      if (confirm(`Remove ${member.user?.fullName || member.user?.email || "this member"} from this board?`)) {
+                        removeMutation.mutate(member.userId || member.id);
                       }
                     }}
-                    disabled={removeMutation.isPending || revokeInviteMutation.isPending}
+                    disabled={removeMutation.isPending}
                   >
                     <UserMinus className="h-4 w-4" />
                   </Button>
@@ -434,6 +407,100 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
           );
         })}
       </div>
+
+      {/* Dedicated Invited Members / Pending Invitations Container */}
+      {pendingMembers.length > 0 && (
+        <div className="space-y-2.5 pt-4 border-t border-border/60" data-testid="board-invited-members-container">
+          <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2 mb-3">
+            <Mail className="h-3.5 w-3.5 text-amber-500" /> Invited Members ({pendingMembers.length})
+          </h4>
+
+          {pendingMembers.map((member) => {
+            const isSelf = member.userId === currentUser?.id;
+            const canManage = permissions.isAdmin && !isSelf;
+            const displayName = member.user?.fullName || member.user?.email || "Invited User";
+
+            return (
+              <div
+                key={member.id}
+                className="flex items-center justify-between p-3 rounded-xl bg-card/60 border border-border/60 hover:border-border transition-all shadow-sm gap-3"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="h-9 w-9 border border-border/80 shrink-0">
+                    <AvatarImage src={member.user?.avatarUrl} alt={displayName} />
+                    <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
+                      {displayName.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs md:text-sm font-bold text-foreground truncate flex items-center gap-1.5">
+                      {displayName}
+                      {member.status === "pending" && (
+                        <span className="text-[9px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider">
+                          Pending
+                        </span>
+                      )}
+                      {member.status === "expired" && (
+                        <span className="text-[9px] bg-destructive/15 text-destructive border border-destructive/30 px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider">
+                          Expired
+                        </span>
+                      )}
+                    </span>
+                    {permissions.canViewFullMemberList && member.user?.email && displayName !== member.user.email && (
+                      <span className="text-[11px] text-muted-foreground truncate">{member.user.email}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge
+                    variant="outline"
+                    className={`capitalize text-[11px] font-bold py-1 px-2.5 flex items-center ${getRoleColor(
+                      member.role
+                    )}`}
+                  >
+                    {getRoleIcon(member.role)}
+                    {member.role === "member" ? "editor" : member.role}
+                  </Badge>
+
+                  {/* Resend invite for pending or expired members */}
+                  {canManage && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary rounded-lg cursor-pointer"
+                      title="Resend invitation"
+                      onClick={() => resendInviteMutation.mutate(member.userId || member.id)}
+                      disabled={resendInviteMutation.isPending}
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+
+                  {/* Revoke invite for pending or expired members */}
+                  {canManage && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
+                      title="Revoke invitation"
+                      onClick={() => {
+                        const promptMsg = `Revoke invitation for ${displayName}?`;
+                        if (confirm(promptMsg)) {
+                          revokeInviteMutation.mutate(member.userId || member.id);
+                        }
+                      }}
+                      disabled={revokeInviteMutation.isPending}
+                    >
+                      <UserMinus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Transfer Ownership Confirmation with Type-to-Confirm */}
       <AlertDialog

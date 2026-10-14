@@ -1794,6 +1794,35 @@ export function handleSeedTakeoverRequest(
     return jsonResponse(store.invitations);
   }
 
+  // Outgoing / Sent Invitations: /boards/invitations/sent
+  if (rawPath === "/boards/invitations/sent" && method === "GET") {
+    const sent: any[] = [];
+    for (const board of store.boards) {
+      const members = store.membersByBoard[board.id] || [];
+      for (const m of members) {
+        if (m.status === "pending" || m.status === "expired") {
+          sent.push({
+            id: m.id,
+            boardId: board.id,
+            email: m.email || m.user?.email || "colleague@example.com",
+            role: m.role || "editor",
+            status: m.status,
+            board: {
+              id: board.id,
+              name: board.name,
+              emoji: board.emoji,
+              color: board.color,
+            },
+            createdAt: m.createdAt,
+            expiresAt: m.expiresAt,
+            user: m.user,
+          });
+        }
+      }
+    }
+    return jsonResponse(sent);
+  }
+
   // Accept / Decline / Report Invitation: /boards/:boardId/invitations/:action
   const inviteActionMatch = rawPath.match(
     /^\/boards\/([^/]+)\/invitations\/(accept|decline|report)$/

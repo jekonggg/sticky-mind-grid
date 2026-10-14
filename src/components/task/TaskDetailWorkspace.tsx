@@ -12,6 +12,8 @@ import { TaskAttachments } from "./TaskAttachments";
 import { TaskActivityLog } from "./TaskActivityLog";
 import { TaskComments } from "../kanban/TaskComments";
 import { formatDistanceToNow } from "date-fns";
+import { toSafeIsoDateInputString, parseSafeDate } from "@/utils/dateUtils";
+import { computeTaskProgress, isDoneColumn } from "@/utils/taskUtils";
 import { Clock, Loading01 as Loader2, Check, Cloud01 as Cloud } from "@untitledui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { boardApi } from "@/services/boardApi";
@@ -52,8 +54,8 @@ export function TaskDetailWorkspace({
   const [localStatus, setLocalStatus] = useState(task.status);
   const [localPriority, setLocalPriority] = useState<Priority>(task.priority);
   const [localAssignedTo, setLocalAssignedTo] = useState(task.assignedTo || "unassigned");
-  const [localDueDate, setLocalDueDate] = useState(
-    task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : ""
+  const [localDueDate, setLocalDueDate] = useState(() =>
+    toSafeIsoDateInputString(task.dueDate)
   );
   const [localProgress, setLocalProgress] = useState(task.progress || 0);
   const [localTags, setLocalTags] = useState<Tag[]>(task.tags || []);
@@ -106,7 +108,7 @@ export function TaskDetailWorkspace({
     setLocalStatus(task.status);
     setLocalPriority(task.priority);
     setLocalAssignedTo(task.assignedTo || "unassigned");
-    setLocalDueDate(task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : "");
+    setLocalDueDate(toSafeIsoDateInputString(task.dueDate));
     setLocalProgress(task.progress || 0);
     setLocalTags(task.tags || []);
     setLocalChecklist(task.checklist || []);
@@ -213,8 +215,18 @@ export function TaskDetailWorkspace({
   const handleStatusChange = (newStatus: string) => {
     setLocalStatus(newStatus);
     const colName = board.columns?.find((c) => c.id === newStatus)?.title || newStatus;
-    performUpdate({ status: newStatus });
-    playSound("move");
+    const computedProg = computeTaskProgress(
+      { checklist: localChecklist, status: newStatus },
+      newStatus,
+      board.columns
+    );
+    setLocalProgress(computedProg);
+    performUpdate({ status: newStatus, progress: computedProg });
+    if (isDoneColumn(newStatus, board.columns)) {
+      playSound("complete");
+    } else {
+      playSound("move");
+    }
     addActivity("move", localTitle, `Moved task to ${colName}`, board.id);
   };
 
@@ -230,7 +242,8 @@ export function TaskDetailWorkspace({
 
   const handleDueDateChange = (newDueDate: string) => {
     setLocalDueDate(newDueDate);
-    performUpdate({ dueDate: newDueDate ? new Date(newDueDate) : undefined });
+    const parsed = parseSafeDate(newDueDate);
+    performUpdate({ dueDate: parsed || null });
   };
 
   const handleProgressChange = (newProgress: number) => {
@@ -245,15 +258,13 @@ export function TaskDetailWorkspace({
 
   const handleChecklistChange = (newChecklist: ChecklistItem[]) => {
     setLocalChecklist(newChecklist);
-    if (newChecklist.length > 0) {
-      const calcProgress = Math.round(
-        (newChecklist.filter((c) => c.completed).length / newChecklist.length) * 100
-      );
-      setLocalProgress(calcProgress);
-      performUpdate({ checklist: newChecklist, progress: calcProgress });
-    } else {
-      performUpdate({ checklist: newChecklist });
-    }
+    const computedProg = computeTaskProgress(
+      { checklist: newChecklist, status: localStatus },
+      localStatus,
+      board.columns
+    );
+    setLocalProgress(computedProg);
+    performUpdate({ checklist: newChecklist, progress: computedProg });
   };
 
   const handleAttachmentsChange = (newAttachments: Attachment[]) => {
@@ -351,6 +362,7 @@ export function TaskDetailWorkspace({
 
         {/* Notion-Style Properties Grid */}
         <TaskProperties
+          boardId={board.id}
           status={localStatus}
           columns={board.columns || []}
           priority={localPriority}

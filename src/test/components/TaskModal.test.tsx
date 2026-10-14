@@ -241,4 +241,196 @@ describe("TaskModal Component", () => {
     expect(screen.queryByText(/Pending Editor/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Viewer User/i)).not.toBeInTheDocument();
   });
+
+  it("populates existing board labels for easy 1-click selection when creating a new task card", () => {
+    localStorage.setItem(
+      "sticky_mind_grid_board_labels_board-1",
+      JSON.stringify([
+        { id: "tag-bug", name: "Bug", color: "#ef4444" },
+        { id: "tag-frontend", name: "Frontend", color: "#3b82f6" },
+      ])
+    );
+
+    const handleSubmit = vi.fn();
+
+    renderWithProviders(
+      <TaskModal
+        open={true}
+        onClose={vi.fn()}
+        task={null}
+        boardId="board-1"
+        onSubmit={handleSubmit}
+      />
+    );
+
+    // Both available board labels should be populated and displayed
+    expect(screen.getByText(/Available board labels/i)).toBeInTheDocument();
+    const bugBtn = screen.getByRole("button", { name: "Add Bug label" });
+    const frontendBtn = screen.getByRole("button", { name: "Add Frontend label" });
+    expect(bugBtn).toBeInTheDocument();
+    expect(frontendBtn).toBeInTheDocument();
+
+    // Click "Bug" label - should be added immediately with 1 click
+    fireEvent.click(bugBtn);
+
+    // "Bug" should now be in the active labels list
+    expect(screen.getByRole("button", { name: "Remove Bug label" })).toBeInTheDocument();
+
+    // Fill title and submit
+    const titleInput = screen.getByPlaceholderText(/What needs to be done\?/i);
+    fireEvent.change(titleInput, { target: { value: "New Bug Task" } });
+    fireEvent.submit(titleInput.closest("form")!);
+
+    expect(handleSubmit).toHaveBeenCalledTimes(1);
+    const submittedData = handleSubmit.mock.calls[0][0];
+    expect(submittedData.tags).toHaveLength(1);
+    expect(submittedData.tags[0].name).toBe("Bug");
+  });
+
+  it("reuses existing board label and avoids duplication when typing matching label name", () => {
+    localStorage.setItem(
+      "sticky_mind_grid_board_labels_board-1",
+      JSON.stringify([
+        { id: "tag-feature", name: "Feature", color: "#22c55e" },
+      ])
+    );
+
+    const handleSubmit = vi.fn();
+
+    renderWithProviders(
+      <TaskModal
+        open={true}
+        onClose={vi.fn()}
+        task={null}
+        boardId="board-1"
+        onSubmit={handleSubmit}
+      />
+    );
+
+    // Click "New Label" button
+    fireEvent.click(screen.getByRole("button", { name: /New Label/i }));
+
+    const tagInput = screen.getByPlaceholderText(/Label name\.\.\./i);
+    // Type matching name with different case
+    fireEvent.change(tagInput, { target: { value: "feature" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm add label" }));
+
+    // Should reuse the canonical "Feature" label with color #22c55e
+    expect(screen.getByRole("button", { name: "Remove Feature label" })).toBeInTheDocument();
+
+    // If user tries to add "Feature" again
+    fireEvent.click(screen.getByRole("button", { name: /New Label/i }));
+    const tagInput2 = screen.getByPlaceholderText(/Label name\.\.\./i);
+    fireEvent.change(tagInput2, { target: { value: "Feature" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm add label" }));
+
+    // Title and submit
+    const titleInput = screen.getByPlaceholderText(/What needs to be done\?/i);
+    fireEvent.change(titleInput, { target: { value: "Single Feature Task" } });
+    fireEvent.submit(titleInput.closest("form")!);
+
+    expect(handleSubmit).toHaveBeenCalledTimes(1);
+    const submittedData = handleSubmit.mock.calls[0][0];
+    // No duplicates
+    expect(submittedData.tags).toHaveLength(1);
+    expect(submittedData.tags[0].name).toBe("Feature");
+    expect(submittedData.tags[0].color).toBe("#22c55e");
+  });
+
+  it("disables board selection and displays locked Current Board indicator when allowBoardChange is false", () => {
+    const mockBoards = [
+      {
+        id: "board-1",
+        name: "Engineering Sprint",
+        emoji: "🚀",
+        color: "#3b82f6",
+        ownerId: "user-1",
+        columns: [{ id: "col-todo", title: "To Do" }],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "board-2",
+        name: "Marketing Launch",
+        emoji: "📢",
+        color: "#10b981",
+        ownerId: "user-1",
+        columns: [{ id: "col-ideas", title: "Ideas" }],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    renderWithProviders(
+      <TaskModal
+        open={true}
+        onClose={vi.fn()}
+        task={null}
+        boardId="board-1"
+        availableBoards={mockBoards as any}
+        allowBoardChange={false}
+      />
+    );
+
+    const boardSelectTrigger = screen.getByTestId("task-modal-board-select");
+    expect(boardSelectTrigger).toBeDisabled();
+    expect(screen.getByText(/Current Board/i)).toBeInTheDocument();
+  });
+
+  it("enables board selection when allowBoardChange is true (outside board premises) and submits with selected boardId", () => {
+    const mockBoards = [
+      {
+        id: "board-1",
+        name: "Engineering Sprint",
+        emoji: "🚀",
+        color: "#3b82f6",
+        ownerId: "user-1",
+        columns: [{ id: "col-todo", title: "To Do" }],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "board-2",
+        name: "Marketing Launch",
+        emoji: "📢",
+        color: "#10b981",
+        ownerId: "user-1",
+        columns: [{ id: "col-ideas", title: "Ideas" }],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    const onSubmit = vi.fn();
+
+    renderWithProviders(
+      <TaskModal
+        open={true}
+        onClose={vi.fn()}
+        task={null}
+        boardId="board-1"
+        availableBoards={mockBoards as any}
+        allowBoardChange={true}
+        onSubmit={onSubmit}
+      />
+    );
+
+    const boardSelectTrigger = screen.getByTestId("task-modal-board-select");
+    expect(boardSelectTrigger).not.toBeDisabled();
+    expect(screen.queryByText(/Current Board/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Select Board/i)).toBeInTheDocument();
+
+    // Fill title and submit
+    const titleInput = screen.getByPlaceholderText(/What needs to be done\?/i);
+    fireEvent.change(titleInput, { target: { value: "Cross-board task" } });
+    fireEvent.submit(titleInput.closest("form")!);
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Cross-board task",
+        boardId: "board-1",
+      })
+    );
+  });
 });

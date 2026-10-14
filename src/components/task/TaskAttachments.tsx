@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { fileApi } from "@/services/fileApi";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { formatSafe } from "@/utils/dateUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { getMediaUrl } from "@/components/ui/avatar";
 
@@ -157,7 +158,7 @@ export function TaskAttachments({
                   </p>
                   <p className="text-[10px] text-muted-foreground">
                     {formatFileSize(att.size)}
-                    {att.uploadedAt && ` • ${format(new Date(att.uploadedAt), "MMM d")}`}
+                    {att.uploadedAt && formatSafe(att.uploadedAt, " • MMM d")}
                   </p>
                 </div>
 

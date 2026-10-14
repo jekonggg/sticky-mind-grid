@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
+import { parseSafeDate, formatSafe } from "@/utils/dateUtils";
 import { Avatar, AvatarFallback, AvatarImage, getMediaUrl } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -23,6 +24,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { getContainerGeometry } from "@/utils/geometryUtils";
@@ -122,14 +129,17 @@ export function TaskCard({
   const priority = PRIORITY_CONFIG[priorityKey] || PRIORITY_CONFIG.low;
   const tabGradientId = `tab-fade-${task.id}`;
 
-  const firstAttachment = task.attachments?.[0];
-  const isFirstImage = firstAttachment?.type.startsWith("image/");
-
   const assigneeName = task.assignee?.fullName || task.assignee?.email;
   const assigneeInitial = (task.assignee?.fullName || task.assignee?.email || "U").charAt(0).toUpperCase();
 
-  // Collect all involved users (assignee(s), creator, involved) deduplicated
-  const involvedUsers = React.useMemo(() => {
+  // Creator metadata for top-right indicator
+  const creatorName = task.creator?.fullName || task.creator?.email;
+  const creatorInitial = (creatorName || "U").charAt(0).toUpperCase();
+  const safeCreatedAt = parseSafeDate(task.createdAt);
+  const formattedCreatedDate = safeCreatedAt ? formatSafe(safeCreatedAt, "MMM d, yyyy") : "";
+
+  // Collect assigned users deduplicated (bottom-right is reserved exclusively for assignees per user spec)
+  const assignedUsers = React.useMemo(() => {
     const list: Array<{
       id: string;
       name: string;
@@ -167,11 +177,7 @@ export function TaskCard({
     if (task.assignee) {
       addUser(task.assignee);
     }
-    // Creator
-    if (task.creator) {
-      addUser(task.creator);
-    }
-    // Any extra involved
+    // Any extra involved assignees
     if (Array.isArray((task as any).involved)) {
       (task as any).involved.forEach(addUser);
     }
@@ -180,9 +186,9 @@ export function TaskCard({
   }, [task]);
 
   const maxVisibleAvatars = isCompact ? 2 : 3;
-  const visibleInvolved = involvedUsers.slice(0, maxVisibleAvatars);
-  const remainingInvolvedCount = Math.max(0, involvedUsers.length - maxVisibleAvatars);
-  const remainingInvolvedUsers = involvedUsers.slice(maxVisibleAvatars);
+  const visibleAssigned = assignedUsers.slice(0, maxVisibleAvatars);
+  const remainingAssignedCount = Math.max(0, assignedUsers.length - maxVisibleAvatars);
+  const remainingAssignedUsers = assignedUsers.slice(maxVisibleAvatars);
 
   // Progress calculations for the 24-tick equalizer visualizer
   const totalChecklist = task.checklist?.length || 0;
@@ -330,24 +336,6 @@ export function TaskCard({
       <div
         className={`bg-card border ${borderClass} rounded-b-[8px] rounded-tr-[8px] rounded-tl-none p-3 -mt-[1px] transition-colors shadow-xs`}
       >
-        {/* Cover Image Attachment (Option A: Beneath folder tab header across full width) */}
-        {firstAttachment && isFirstImage && (
-          <div
-            style={geom.isCustom ? { borderRadius: `${geom.imageRadius}px` } : undefined}
-            className={`overflow-hidden ${
-              isCompact
-                ? "rounded-md mb-2 max-h-24 aspect-[21/9]"
-                : "rounded-lg mb-2.5 aspect-[16/9] max-h-28"
-            } border border-border/50 bg-muted/40`}
-          >
-            <img
-              src={getMediaUrl(firstAttachment.url)}
-              alt={firstAttachment.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
-
         {/* Task Title & Quick Actions Trigger */}
         <div className="flex items-center justify-between gap-1.5 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -365,19 +353,54 @@ export function TaskCard({
             </h4>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="h-5 w-5 rounded-xs text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors flex items-center justify-center cursor-pointer shrink-0 -mr-1"
-                aria-label="Task options"
-                title="Task options"
-              >
-                <MoreHorizontal className="h-3.5 w-3.5" />
-              </button>
-            </DropdownMenuTrigger>
+          <div className="flex items-center gap-1 shrink-0 -mr-1">
+            {task.creator && (
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      data-testid="task-creator-avatar"
+                      className="cursor-default flex items-center"
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <Avatar
+                        className={`${
+                          isCompact ? "h-3.5 w-3.5 text-[7px]" : "h-4 w-4 text-[8px]"
+                        } border-[1.5px] border-card ring-1.5 ring-primary/40 hover:ring-primary transition-all shadow-xs shrink-0`}
+                        aria-label={`Created by ${creatorName}`}
+                        title={`Created by ${creatorName}${formattedCreatedDate ? ` on ${formattedCreatedDate}` : ""}`}
+                      >
+                        <AvatarImage src={task.creator.avatarUrl} alt={creatorName} />
+                        <AvatarFallback className="font-bold bg-primary/10 text-primary">
+                          {creatorInitial}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    <p className="font-medium">
+                      Created by {creatorName}
+                      {formattedCreatedDate ? ` on ${formattedCreatedDate}` : ""}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="h-5 w-5 rounded-xs text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors flex items-center justify-center cursor-pointer shrink-0"
+                  aria-label="Task options"
+                  title="Task options"
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                </button>
+              </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
               className="w-44"
@@ -439,6 +462,7 @@ export function TaskCard({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+      </div>
 
         {/* Tags */}
         {task.tags && task.tags.length > 0 && (
@@ -500,17 +524,21 @@ export function TaskCard({
             )}
 
             {/* Due Date */}
-            {task.dueDate && (
-              <div
-                className={`flex items-center gap-1 font-medium text-muted-foreground shrink-0 ${
-                  isCompact ? "text-[9px]" : "text-xs"
-                }`}
-                title={`Due date: ${format(new Date(task.dueDate), "PPP")}`}
-              >
-                <Calendar className={isCompact ? "h-3 w-3 opacity-70" : "h-3.5 w-3.5 opacity-70"} />
-                <span>{format(new Date(task.dueDate), "MMM d, yyyy")}</span>
-              </div>
-            )}
+            {(() => {
+              const safeDueDate = parseSafeDate(task.dueDate);
+              if (!safeDueDate) return null;
+              return (
+                <div
+                  className={`flex items-center gap-1 font-medium text-muted-foreground shrink-0 ${
+                    isCompact ? "text-[9px]" : "text-xs"
+                  }`}
+                  title={`Due date: ${formatSafe(safeDueDate, "PPP")}`}
+                >
+                  <Calendar className={isCompact ? "h-3 w-3 opacity-70" : "h-3.5 w-3.5 opacity-70"} />
+                  <span>{formatSafe(safeDueDate, "MMM d, yyyy")}</span>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -574,17 +602,78 @@ export function TaskCard({
             )}
 
             {hasChecklist && (
-              <div
-                className={`flex items-center gap-1 font-medium ${
-                  isCompact ? "text-[9px]" : "text-[11px]"
-                }`}
-                title="Checklist completion"
-              >
-                <Check className={isCompact ? "h-2.5 w-2.5 text-primary" : "h-3 w-3 text-primary"} />
-                <span>
-                  {completedChecklist}/{totalChecklist}
-                </span>
-              </div>
+              <TooltipProvider delayDuration={150}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      data-testid="task-checklist-badge"
+                      className={`flex items-center gap-1 font-medium cursor-default transition-colors hover:text-foreground ${
+                        isCompact ? "text-[9px]" : "text-[11px]"
+                      }`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Check className={isCompact ? "h-2.5 w-2.5 text-primary" : "h-3 w-3 text-primary"} />
+                      <span>
+                        {completedChecklist}/{totalChecklist}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    align="start"
+                    className="p-2.5 max-w-[280px] space-y-1.5 text-xs shadow-md"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="font-semibold text-foreground flex items-center justify-between gap-2 border-b border-border/40 pb-1">
+                      <span>Checklist</span>
+                      <span className="text-[10px] text-muted-foreground font-normal">
+                        {completedChecklist}/{totalChecklist} completed ({progressPct}%)
+                      </span>
+                    </div>
+                    <div className="space-y-1 max-h-36 overflow-y-auto">
+                      {task.checklist?.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between gap-2 text-[11px]"
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {item.completed ? (
+                              <Check className="h-3 w-3 text-emerald-500 shrink-0" />
+                            ) : (
+                              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 shrink-0 ml-0.5 mr-1" />
+                            )}
+                            <span
+                              className={`truncate ${
+                                item.completed ? "line-through text-muted-foreground" : "text-foreground"
+                              }`}
+                            >
+                              {item.title || item.text}
+                            </span>
+                          </div>
+                          {item.completed && item.completedBy && (
+                            <div
+                              className="flex items-center gap-1 shrink-0 pl-1"
+                              title={`Completed by ${item.completedBy.fullName || item.completedBy.email}`}
+                            >
+                              <Avatar className="h-3.5 w-3.5 text-[7px] border border-card ring-1 ring-border/20">
+                                <AvatarImage
+                                  src={item.completedBy.avatarUrl}
+                                  alt={item.completedBy.fullName || item.completedBy.email}
+                                />
+                                <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                                  {(item.completedBy.fullName || item.completedBy.email || "U")
+                                    .charAt(0)
+                                    .toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
 
             {commentCount > 0 && (
@@ -600,13 +689,13 @@ export function TaskCard({
             )}
           </div>
 
-          {/* Right: Involved Avatars (Bottom Rightmost) */}
-          {involvedUsers.length > 0 && (
+          {/* Right: Assigned Avatars (Bottom Rightmost) */}
+          {assignedUsers.length > 0 && (
             <div
               className="flex items-center -space-x-1.5 shrink-0 ml-auto"
               aria-label="Involved members"
             >
-              {visibleInvolved.map((user) => (
+              {visibleAssigned.map((user) => (
                 <Avatar
                   key={user.id}
                   title={user.name}
@@ -622,15 +711,15 @@ export function TaskCard({
                 </Avatar>
               ))}
 
-              {remainingInvolvedCount > 0 && (
+              {remainingAssignedCount > 0 && (
                 <div
-                  title={remainingInvolvedUsers.map((u) => u.name).join(", ")}
-                  aria-label={`${remainingInvolvedCount} more involved members`}
+                  title={remainingAssignedUsers.map((u) => u.name).join(", ")}
+                  aria-label={`${remainingAssignedCount} more involved members`}
                   className={`${
                     isCompact ? "h-4 w-4 text-[7px]" : "h-5 w-5 text-[8px]"
                   } rounded-full border-[1.5px] border-card ring-1 ring-border/20 bg-muted text-muted-foreground font-bold flex items-center justify-center shrink-0 transition-transform hover:scale-110 hover:z-10 cursor-default select-none`}
                 >
-                  +{remainingInvolvedCount}
+                  +{remainingAssignedCount}
                 </div>
               )}
             </div>

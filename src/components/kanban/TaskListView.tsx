@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
+import { formatSafe } from "@/utils/dateUtils";
 import {
   DotsHorizontal as MoreHorizontal,
   AlertCircle,
@@ -229,7 +230,7 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                       </Badge>
                     </TableCell>
                     <TableCell className={`${isCompact ? "py-2 px-3" : "py-4 px-4"} font-medium ${isCompact ? "text-[11px]" : "text-xs"} text-muted-foreground`}>
-                      {task.dueDate ? format(new Date(task.dueDate), "MMM d, yyyy") : "No due date"}
+                      {formatSafe(task.dueDate, "MMM d, yyyy", "No due date")}
                     </TableCell>
                     <TableCell className={`text-right ${isCompact ? "py-2 px-3" : "py-4 px-4"}`}>
                       <Button

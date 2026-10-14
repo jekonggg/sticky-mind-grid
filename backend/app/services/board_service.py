@@ -147,6 +147,51 @@ class BoardService:
         return active_invites
 
     @staticmethod
+    def get_sent_invitations(user_id):
+        user = db.session.get(User, user_id)
+        if not user:
+            return []
+
+        now = datetime.utcnow()
+
+        memberships = BoardMember.query.filter(
+            BoardMember.user_id == user_id,
+            BoardMember.status == 'accepted',
+            BoardMember.role.in_(['owner', 'admin'])
+        ).all()
+        board_ids = {m.board_id for m in memberships}
+
+        owned_boards = Board.query.filter_by(owner_id=user_id, is_deleted=False).all()
+        for b in owned_boards:
+            board_ids.add(b.id)
+
+        if not board_ids:
+            invitations = BoardInvitation.query.filter(
+                BoardInvitation.inviter_id == user_id,
+                BoardInvitation.status == 'pending'
+            ).order_by(BoardInvitation.created_at.desc()).all()
+        else:
+            invitations = BoardInvitation.query.filter(
+                (BoardInvitation.board_id.in_(board_ids)) | (BoardInvitation.inviter_id == user_id),
+                BoardInvitation.status == 'pending'
+            ).order_by(BoardInvitation.created_at.desc()).all()
+
+        res = []
+        seen_keys = set()
+        for inv in invitations:
+            if not inv.board or inv.board.is_deleted:
+                continue
+            if inv.status == 'pending' and inv.expires_at and now > inv.expires_at:
+                inv.status = 'expired'
+                continue
+            key = (inv.board_id, inv.email.strip().lower())
+            if key not in seen_keys:
+                seen_keys.add(key)
+                res.append(inv.to_dict())
+
+        return res
+
+    @staticmethod
     def get_board_by_id(board_id, include_deleted=False):
         from sqlalchemy.orm import selectinload
         from sqlalchemy.exc import OperationalError

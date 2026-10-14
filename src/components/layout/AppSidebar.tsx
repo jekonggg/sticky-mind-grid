@@ -47,11 +47,14 @@ import {
   CheckCircle as CheckCircle2,
   File02 as FileSpreadsheet,
   File06 as StickyNote,
+  Image01 as ImageIcon,
+  LinkExternal01 as ExternalLink,
   MessageChatSquare as MessageSquare,
   User01 as User,
   Palette,
   Sliders01 as Sliders,
 } from "@untitledui/icons";
+import { fileApi } from "@/services/fileApi";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { BoardModal } from "@/components/boards/BoardModal";
 import { NoteModal } from "@/components/documents/NoteModal";
@@ -159,6 +162,26 @@ export function AppSidebar({
     queryKey: ["tasks"],
     queryFn: () => taskApi.getTasks(),
   });
+
+  // Aggregate attachments from tasks belonging to the active board
+  const boardTasks = React.useMemo(() => {
+    if (!activeBoardId) return [];
+    return allTasks.filter((t) => t.boardId === activeBoardId);
+  }, [allTasks, activeBoardId]);
+
+  const boardTaskAttachments = React.useMemo(() => {
+    return boardTasks.flatMap((t) =>
+      (t.attachments || []).map((att) => ({
+        ...att,
+        name: att.name || "Untitled File",
+        type: att.type || "application/octet-stream",
+        taskId: t.id,
+        taskTitle: t.title,
+      }))
+    );
+  }, [boardTasks]);
+
+  const totalBoardFilesCount = notes.length + boardTaskAttachments.length;
 
   // Fetch unread messages count for sidebar badge
   const { data: unreadMessagesCount = 0 } = useUnreadMessageCount();
@@ -757,36 +780,94 @@ export function AppSidebar({
                           variant="secondary"
                           className="text-[10px] px-1.5 py-0 h-4 font-bold select-none shrink-0"
                         >
-                          {notes.length}
+                          {totalBoardFilesCount}
                         </Badge>
                       </div>
                     )}
                   </div>
                 </TooltipTrigger>
-                {isCollapsed && <TooltipContent side="right">Board Files ({notes.length})</TooltipContent>}
+                {isCollapsed && <TooltipContent side="right">Board Files ({totalBoardFilesCount})</TooltipContent>}
               </Tooltip>
 
               {/* Nested Board Files */}
               {!isCollapsed && isBoardFilesExpanded && (
-                <div className="pl-4 pr-1 py-1 space-y-0.5 border-l border-border/40 ml-4 my-1">
-                  {notes.length === 0 ? (
+                <div className="pl-4 pr-1 py-1 space-y-1 border-l border-border/40 ml-4 my-1">
+                  {activeBoardId && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/boards/${activeBoardId}?view=documents`)}
+                      className="w-full flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/10 transition-colors mb-1 text-left cursor-pointer"
+                      title="Open board Docs & Files view"
+                    >
+                      <span>Open Docs & Files</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </button>
+                  )}
+
+                  {totalBoardFilesCount === 0 ? (
                     <p className="text-[11px] text-muted-foreground px-2 py-1 italic">
-                      No documents yet
+                      No files or documents yet
                     </p>
                   ) : (
-                    notes.map((n) => (
-                      <button
-                        key={n.id}
-                        onClick={() => {
-                          setSelectedNote(n);
-                          setIsNoteModalOpen(true);
-                        }}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors group cursor-pointer truncate text-left"
-                      >
-                        <FileText className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-                        <span className="truncate flex-1">{n.title || "Untitled Note"}</span>
-                      </button>
-                    ))
+                    <>
+                      {/* Section: Notes */}
+                      {notes.length > 0 && (
+                        <div className="space-y-0.5">
+                          <div className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/60 px-2 pt-1 pb-0.5">
+                            Notes ({notes.length})
+                          </div>
+                          {notes.map((n) => (
+                            <button
+                              key={n.id}
+                              onClick={() => {
+                                setSelectedNote(n);
+                                setIsNoteModalOpen(true);
+                              }}
+                              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors group cursor-pointer truncate text-left"
+                            >
+                              <FileText className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                              <span className="truncate flex-1">{n.title || "Untitled Note"}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Section: Task Attachments / Files */}
+                      {boardTaskAttachments.length > 0 && (
+                        <div className="space-y-0.5 pt-1">
+                          <div className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/60 px-2 pt-1 pb-0.5">
+                            Task Files ({boardTaskAttachments.length})
+                          </div>
+                          {boardTaskAttachments.map((att, idx) => {
+                            const isImage = att.type?.startsWith("image/");
+                            return (
+                              <button
+                                key={att.id || att.url || `sidebar-att-${idx}`}
+                                onClick={() => {
+                                  if (att.url) {
+                                    fileApi.downloadFile(att.url, att.name);
+                                  }
+                                }}
+                                title={`${att.name} (from task: "${att.taskTitle}") - Click to download`}
+                                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors group cursor-pointer truncate text-left"
+                              >
+                                {isImage ? (
+                                  <ImageIcon className="h-3.5 w-3.5 shrink-0 text-blue-500/80" />
+                                ) : (
+                                  <FileText className="h-3.5 w-3.5 shrink-0 text-orange-500/80" />
+                                )}
+                                <span className="truncate flex-1">{att.name}</span>
+                                {att.size && (
+                                  <span className="text-[9px] text-muted-foreground/60 shrink-0">
+                                    {typeof att.size === "number" ? `${Math.round(att.size / 1024)} KB` : att.size}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
