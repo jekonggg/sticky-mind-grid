@@ -12,7 +12,7 @@ import {
   closestCorners,
 } from "@dnd-kit/core";
 import { Task, TaskStatus, CreateTaskData, TaskFormData } from "@/types/task";
-import { useTasks } from "@/hooks/useTasks";
+import { useTasks, markTasksMutated, tasksMutationState } from "@/hooks/useTasks";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
 import { TrashModal } from "./TrashModal";
@@ -276,53 +276,62 @@ export function KanbanBoard() {
         data?.actorId !== undefined &&
         currentUser?.id !== undefined &&
         String(data.actorId) !== String(currentUser.id);
-      if (!isRemoteActor && Date.now() - lastLocalEditTimeRef.current < 3000) return;
+      if (!isRemoteActor && Date.now() - lastLocalEditTimeRef.current < 6000) return;
       fetchTasks?.();
     },
     onTaskUpdate: (updatedTask) => {
-      if (updatedTask?.id) {
-        setTasks?.((prev) =>
-          prev.map((t) =>
-            t.id === updatedTask.id
-              ? {
-                  ...t,
-                  ...updatedTask,
-                  updatedAt: updatedTask.updatedAt ? new Date(updatedTask.updatedAt) : new Date(),
-                }
-              : t
-          )
-        );
-      }
+      if (!updatedTask?.id) return;
+      const isSelf =
+        updatedTask.actorId !== undefined &&
+        currentUser?.id !== undefined &&
+        String(updatedTask.actorId) === String(currentUser.id);
+      if (isSelf && Date.now() - lastLocalEditTimeRef.current < 6000) return;
+      setTasks?.((prev) =>
+        prev.map((t) =>
+          t.id === updatedTask.id
+            ? {
+                ...t,
+                ...updatedTask,
+                updatedAt: updatedTask.updatedAt ? new Date(updatedTask.updatedAt) : new Date(),
+              }
+            : t
+        )
+      );
     },
     onTaskMoved: (movedTask) => {
-      if (movedTask?.id) {
-        setTasks?.((prev) =>
-          prev.map((t) =>
-            t.id === movedTask.id
-              ? {
-                  ...t,
-                  ...movedTask,
-                  updatedAt: movedTask.updatedAt ? new Date(movedTask.updatedAt) : new Date(),
-                }
-              : t
-          )
-        );
-        if (!movedTask.actorId || String(movedTask.actorId) !== String(currentUser?.id)) {
-          triggerTaskHighlight(movedTask.id);
-        }
+      if (!movedTask?.id) return;
+      const isSelf =
+        movedTask.actorId !== undefined &&
+        currentUser?.id !== undefined &&
+        String(movedTask.actorId) === String(currentUser.id);
+      if (isSelf && Date.now() - lastLocalEditTimeRef.current < 6000) return;
+      setTasks?.((prev) =>
+        prev.map((t) =>
+          t.id === movedTask.id
+            ? {
+                ...t,
+                ...movedTask,
+                updatedAt: movedTask.updatedAt ? new Date(movedTask.updatedAt) : new Date(),
+              }
+            : t
+        )
+      );
+      if (!movedTask.actorId || String(movedTask.actorId) !== String(currentUser?.id)) {
+        triggerTaskHighlight(movedTask.id);
       }
     },
     onTasksReordered: (data) => {
-      if (Array.isArray(data?.tasks)) {
-        const isRemote = !data.actorId || String(data.actorId) !== String(currentUser?.id);
-        if (isRemote) {
-          data.tasks.forEach((rt: any) => {
-            const existing = tasks.find((t) => t.id === rt.id);
-            if (!existing || (rt.status && existing.status !== rt.status)) {
-              triggerTaskHighlight(rt.id);
-            }
-          });
-        }
+      if (!Array.isArray(data?.tasks)) return;
+      const isRemote = !data.actorId || String(data.actorId) !== String(currentUser?.id);
+      if (isRemote) {
+        data.tasks.forEach((rt: any) => {
+          const existing = tasks.find((t) => t.id === rt.id);
+          if (!existing || (rt.status && existing.status !== rt.status)) {
+            triggerTaskHighlight(rt.id);
+          }
+        });
+        fetchTasks?.();
+      } else if (Date.now() - lastLocalEditTimeRef.current >= 6000) {
         fetchTasks?.();
       }
     },
@@ -528,6 +537,8 @@ export function KanbanBoard() {
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     isDraggingTaskRef.current = true;
+    lastLocalEditTimeRef.current = Date.now();
+    markTasksMutated();
     const task = event.active.data.current?.task as Task | undefined;
     if (task) {
       setActiveTask(task);
@@ -544,6 +555,7 @@ export function KanbanBoard() {
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       lastLocalEditTimeRef.current = Date.now();
+      markTasksMutated();
       const { active, over } = event;
       setActiveTask(null);
 
@@ -633,9 +645,17 @@ export function KanbanBoard() {
         return item;
       });
 
-      reorderTasks(reorderItems);
+      const editStartedAt = lastLocalEditTimeRef.current;
+      void reorderTasks(reorderItems).then(() => {
+        window.setTimeout(() => {
+          if (lastLocalEditTimeRef.current !== editStartedAt) return;
+          lastLocalEditTimeRef.current = 0;
+          tasksMutationState.last = 0;
+          fetchTasks?.();
+        }, 4000);
+      });
     },
-    [effectiveReadOnly, tasks, columns, reorderTasks, playSound]
+    [effectiveReadOnly, tasks, columns, reorderTasks, playSound, fetchTasks]
   );
 
   const handleTaskClick = useCallback((task: Task) => {

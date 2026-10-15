@@ -18,6 +18,12 @@ export interface TasksCacheEntry {
 }
 
 export const tasksCache = new Map<string, TasksCacheEntry>();
+
+// Shared mutation guard so polling/real-time handlers don't clobber optimistic local edits.
+export const tasksMutationState = { last: 0 };
+export function markTasksMutated() {
+  tasksMutationState.last = Date.now();
+}
 export const TASKS_CACHE_TTL_MS = 60_000;
 
 export function clearTasksCache(boardId?: string) {
@@ -107,14 +113,15 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     window.addEventListener("smg-dev-data-mode-changed", handleDataModeChange);
     window.addEventListener("task-updated", handleRefresh);
     const interval = setInterval(() => {
-      if (document.visibilityState === "visible" && boardId) {
-        taskApi
-          .getTasks(boardId)
-          .then((data) => {
-            setTasks(data);
-          })
-          .catch(() => {});
-      }
+      if (document.visibilityState !== "visible" || !boardId) return;
+      // Prevent periodic polling from clobbering recently applied local edits.
+      if (Date.now() - tasksMutationState.last < 6000) return;
+      taskApi
+        .getTasks(boardId)
+        .then((data) => {
+          setTasks(data);
+        })
+        .catch(() => {});
     }, 4000);
     return () => {
       clearInterval(interval);
@@ -125,6 +132,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
 
   const addTask = useCallback(async (data: CreateTaskData) => {
     const task = await taskApi.createTask({ ...data, boardId });
+    markTasksMutated();
     setTasks((prev) => [...prev, task]);
     addActivity("create", task.title, `Created task "${task.title}"`, boardId);
     return task;
@@ -133,6 +141,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
   const updateTask = useCallback(async (id: string, data: UpdateTaskData) => {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
+    markTasksMutated();
 
     // Optimistic local update
     setTasks((prev) =>
@@ -158,6 +167,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
 
   const reorderTasks = useCallback(async (items: Array<{ id: string; status?: string; fromStatus?: string; position: number }>) => {
     if (!boardId || items.length === 0) return;
+    markTasksMutated();
 
     // Optimistic local reorder
     setTasks((prev) => {
@@ -193,6 +203,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
     if (task.status === status) return;
+    markTasksMutated();
 
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status, updatedAt: new Date() } : t))
@@ -208,6 +219,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
   const deleteTask = useCallback(async (id: string) => {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
+    markTasksMutated();
 
     setTasks((prev) => prev.filter((t) => t.id !== id));
 
