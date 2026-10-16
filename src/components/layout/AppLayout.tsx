@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
-import { BottomNavBar } from "./BottomNavBar";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { CommandSearchDialog } from "@/components/search/CommandSearchDialog";
 import { LayoutProvider, useLayout } from "@/contexts/LayoutContext";
 
 function AppLayoutInner() {
+  const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem("sidebar_collapsed");
     if (saved !== null) return saved === "true";
@@ -14,6 +14,11 @@ function AppLayoutInner() {
   });
   const { isMobileOpen, setIsMobileOpen } = useLayout();
   const [isCommandSearchOpen, setIsCommandSearchOpen] = useState(false);
+
+  // Close mobile navigation drawer automatically on route change
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [location.pathname, setIsMobileOpen]);
 
   useEffect(() => {
     localStorage.setItem("sidebar_collapsed", String(isCollapsed));
@@ -77,6 +82,8 @@ function AppLayoutInner() {
       {/* Mobile Slide-Over Drawer */}
       <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
         <SheetContent side="left" className="p-0 w-64 border-r border-border/60">
+          <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+          <SheetDescription className="sr-only">Workspace navigation drawer</SheetDescription>
           <AppSidebar
             isCollapsed={false}
             onToggleCollapse={() => setIsMobileOpen(false)}
@@ -92,9 +99,6 @@ function AppLayoutInner() {
       <main className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative">
         <Outlet />
       </main>
-
-      {/* Mobile Bottom 5-Button Navigation Bar */}
-      <BottomNavBar />
 
       {/* Global Command Palette */}
       <CommandSearchDialog

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { Routes, Route } from "react-router-dom";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { AppLayout } from "@/components/layout/AppLayout";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
 import { renderWithProviders, mockUser } from "@/test/test-utils";
 import { boardApi } from "@/services/boardApi";
@@ -279,7 +281,29 @@ describe("AppSidebar Component", () => {
 
     expect(screen.queryByRole("button", { name: /user menu/i })).not.toBeInTheDocument();
   });
+
+  it("does not render BottomNavBar in AppLayout and retains the mobile hamburger button to open the drawer", async () => {
+    renderWithProviders(
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<BoardHeader />} />
+        </Route>
+      </Routes>
+    );
+
+    // Bottom navigation bar should not be rendered in AppLayout
+    expect(
+      screen.queryByRole("navigation", { name: /Mobile Bottom Navigation/i })
+    ).not.toBeInTheDocument();
+
+    // Hamburger button is retained and opens the mobile Sheet drawer
+    const hamburgerBtn = screen.getByRole("button", { name: /open menu/i });
+    expect(hamburgerBtn).toBeInTheDocument();
+
+    fireEvent.click(hamburgerBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+  });
 });
-
-
-

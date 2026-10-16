@@ -98,6 +98,7 @@ export function BoardHeader({
             className="md:hidden h-11 w-11 text-muted-foreground hover:text-foreground shrink-0 rounded-lg"
             onClick={() => setIsMobileOpen(true)}
             title="Open Menu"
+            aria-label="Open Menu"
           >
             <Menu className="h-6 w-6" />
           </Button>

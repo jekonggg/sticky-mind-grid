@@ -71,6 +71,8 @@ export function ConversationList({
               size="icon"
               className="md:hidden h-11 w-11 text-muted-foreground hover:text-foreground shrink-0 rounded-lg -ml-1"
               onClick={() => setIsMobileOpen(true)}
+              title="Open Menu"
+              aria-label="Open Menu"
             >
               <Menu className="h-6 w-6" />
             </Button>
@@ -120,7 +122,7 @@ export function ConversationList({
       </div>
 
       {/* 2. CONVERSATION LIST */}
-      <div className="flex-1 overflow-y-auto p-1.5 pb-20 md:pb-1.5 space-y-1 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-1.5 space-y-1 custom-scrollbar">
         {(isLoading && conversations.length === 0) || settings.simulateSkeletonLoading ? (
           <div className="space-y-2 p-1">
             {Array.from({ length: 6 }).map((_, i) => (

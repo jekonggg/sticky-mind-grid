@@ -35,7 +35,7 @@ export function DevSkeletonToolbar() {
       {hasActiveModes && (
         <aside
           aria-label="Developer Mode Toolbar"
-          className="fixed bottom-24 right-3.5 left-3.5 sm:bottom-24 sm:left-auto sm:right-5 md:bottom-5 md:left-auto z-50 flex items-center gap-3 p-3 px-4 rounded-2xl bg-card/90 dark:bg-card/90 backdrop-blur-xl border border-amber-500/40 text-foreground shadow-2xl shadow-amber-500/10 animate-in fade-in slide-in-from-bottom-4 duration-300 select-none"
+          className="fixed bottom-5 right-3.5 left-3.5 sm:left-auto sm:right-5 z-50 flex items-center gap-3 p-3 px-4 rounded-2xl bg-card/90 dark:bg-card/90 backdrop-blur-xl border border-amber-500/40 text-foreground shadow-2xl shadow-amber-500/10 animate-in fade-in slide-in-from-bottom-4 duration-300 select-none"
         >
           {/* Status Indicator & Badges */}
           <div className="flex items-center gap-2.5">
@@ -169,7 +169,7 @@ export function DevSkeletonToolbar() {
 
       {/* Idle Quick-Access Floating Button */}
       {!hasActiveModes && (
-        <div className="fixed bottom-24 right-3.5 sm:bottom-24 md:bottom-5 md:right-5 z-40 animate-in fade-in duration-300">
+        <div className="fixed bottom-5 right-3.5 md:right-5 z-40 animate-in fade-in duration-300">
           <Button
             size="sm"
             variant="outline"
