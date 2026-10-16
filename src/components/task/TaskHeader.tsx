@@ -19,6 +19,7 @@ import {
 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EmojiSelector } from "../common/EmojiSelector";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { toast } from "sonner";
@@ -123,74 +124,98 @@ export function TaskHeader({
   return (
     <div className="w-full">
       {/* Top Breadcrumb Navigation & Action Bar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-border/40 bg-background/80 backdrop-blur-md sticky top-0 z-30">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground overflow-hidden">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-2.5 border-b border-border/40 bg-background/80 backdrop-blur-md sticky top-0 z-30 gap-3 min-w-0">
+        {/* Left: Streamlined Hierarchical Breadcrumb Directory */}
+        <nav aria-label="Task breadcrumb" className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0 max-w-[55%] sm:max-w-[65%]">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleBack}
-            className="gap-1.5 text-xs font-semibold px-2.5 h-8 hover:text-foreground text-muted-foreground"
+            className="gap-1.5 px-2 h-8 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shrink-0 max-w-[160px] sm:max-w-[220px]"
             title="Back to board"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Board</span>
+            <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{boardName || "Board"}</span>
           </Button>
-          <span className="text-muted-foreground/40 font-light">/</span>
-          <button
-            onClick={handleBack}
-            className="hover:text-foreground transition-colors truncate max-w-[160px] font-medium text-xs text-muted-foreground"
+          <span className="text-muted-foreground/30 font-light select-none shrink-0" aria-hidden="true">/</span>
+          <span
+            className="text-foreground/80 font-medium truncate text-xs min-w-0"
+            title={title || "Untitled Task"}
           >
-            {boardName}
-          </button>
-          <span className="text-muted-foreground/40 font-light">/</span>
-          <span className="text-foreground font-semibold truncate max-w-[200px] text-xs">
-            {!devSettings.disableEmojiCustomization && emoji ? `${emoji} ` : ""}{title || "Untitled Task"}
+            {!devSettings.disableEmojiCustomization && emoji ? `${emoji} ` : ""}
+            {title || "Untitled Task"}
           </span>
-        </div>
+        </nav>
 
-        <div className="flex items-center gap-1.5">
+        {/* Right: Modern Unified Action Strip */}
+        <div className="flex items-center gap-1 shrink-0">
           {onFollowToggle && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onFollowToggle}
-              className={`h-8 gap-1.5 text-xs font-medium ${
-                isFollowing
-                  ? "text-primary border-primary/40 bg-primary/5 hover:bg-primary/10"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              title={isFollowing ? "Unfollow card notifications" : "Follow card notifications"}
-              data-testid="task-follow-button"
-            >
-              {isFollowing ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
-              <span className="hidden sm:inline">{isFollowing ? "Following" : "Follow"}</span>
-            </Button>
-          )}
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCopyLink}
-            className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            title="Copy task URL link"
-          >
-            {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-            <span className="hidden sm:inline">{copied ? "Copied" : "Copy Link"}</span>
-          </Button>
-
-          {!readOnly && (onMoveToColumn || onMoveToBoard) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-                  title="Move task"
+                  onClick={onFollowToggle}
+                  className={`h-8 gap-1.5 text-xs font-medium px-2.5 rounded-lg transition-colors ${
+                    isFollowing
+                      ? "text-primary border-primary/40 bg-primary/10 hover:bg-primary/15"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60 border-border/50"
+                  }`}
+                  title={isFollowing ? "Unfollow card notifications" : "Follow card notifications"}
+                  aria-label={isFollowing ? "Unfollow card notifications" : "Follow card notifications"}
+                  data-testid="task-follow-button"
                 >
-                  <ArrowRight className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Move</span>
+                  {isFollowing ? <Bell className="h-3.5 w-3.5 text-primary" /> : <BellOff className="h-3.5 w-3.5" />}
+                  <span className="hidden sm:inline">{isFollowing ? "Following" : "Follow"}</span>
+                  <span className="sr-only sm:hidden">{isFollowing ? "Following" : "Follow"}</span>
                 </Button>
-              </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {isFollowing ? "Following notifications" : "Follow notifications"}
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCopyLink}
+                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                title="Copy task URL link"
+                aria-label="Copy task URL link"
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                <span className="sr-only">{copied ? "Copied" : "Copy Link"}</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {copied ? "Link Copied!" : "Copy Link"}
+            </TooltipContent>
+          </Tooltip>
+
+          {!readOnly && (onMoveToColumn || onMoveToBoard) && (
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                      title="Move task"
+                      aria-label="Move task"
+                    >
+                      <ArrowRight className="h-3.5 w-3.5" />
+                      <span className="sr-only">Move</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  Move task
+                </TooltipContent>
+              </Tooltip>
               <DropdownMenuContent align="end" className="w-56">
                 {onMoveToColumn && columns && columns.length > 0 && (
                   <>
@@ -242,32 +267,47 @@ export function TaskHeader({
           )}
 
           {!readOnly && onArchiveToggle && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onArchiveToggle}
-              className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-              title={isArchived ? "Unarchive task" : "Archive task"}
-            >
-              <Archive className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{isArchived ? "Unarchive" : "Archive"}</span>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onArchiveToggle}
+                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                  title={isArchived ? "Unarchive task" : "Archive task"}
+                  aria-label={isArchived ? "Unarchive task" : "Archive task"}
+                >
+                  <Archive className="h-3.5 w-3.5" />
+                  <span className="sr-only">{isArchived ? "Unarchive" : "Archive"}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {isArchived ? "Unarchive task" : "Archive task"}
+              </TooltipContent>
+            </Tooltip>
           )}
 
           {!readOnly && onDelete && (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80"
-                  title="More task actions"
-                  aria-label="More task actions"
-                  data-testid="task-header-more-actions"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                      title="More task actions"
+                      aria-label="More task actions"
+                      data-testid="task-header-more-actions"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  More actions
+                </TooltipContent>
+              </Tooltip>
               <DropdownMenuContent align="end" className="w-44">
                 <DropdownMenuItem
                   onClick={onDelete}
@@ -282,16 +322,26 @@ export function TaskHeader({
           )}
 
           {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 ml-0.5"
-              title="Close task (Esc)"
-              aria-label="Close task"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <>
+              <div className="h-4 w-px bg-border/60 mx-1 shrink-0" aria-hidden="true" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onClose}
+                    className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                    title="Close task (Esc)"
+                    aria-label="Close task"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  Close (Esc)
+                </TooltipContent>
+              </Tooltip>
+            </>
           )}
         </div>
       </div>
