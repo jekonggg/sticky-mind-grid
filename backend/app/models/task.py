@@ -70,16 +70,8 @@ class Task(db.Model):
             if not self.board_id:
                 creator_active = True
             else:
-                from app.models.board_member import BoardMember
-                if self.board and str(self.board.owner_id) == str(self.created_by):
-                    creator_active = True
-                else:
-                    bm = BoardMember.query.filter_by(
-                        board_id=self.board_id,
-                        user_id=self.created_by,
-                        status='accepted'
-                    ).first()
-                    creator_active = bm is not None
+                from app.utils.membership_cache import get_active_board_user_ids
+                creator_active = str(self.created_by) in get_active_board_user_ids(self.board_id)
 
         creator_data = self.creator.to_dict() if (self.creator and creator_active) else {
             'id': self.created_by,

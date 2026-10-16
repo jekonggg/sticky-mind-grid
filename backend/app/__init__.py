@@ -164,16 +164,48 @@ def _auto_sync_schema(app):
             inspector = sa_inspect(db.engine)
             tables = inspector.get_table_names()
 
+            cols_cache = {}
+            indexes_cache = {}
+
+            def _get_table_cols(table_name):
+                if table_name not in cols_cache:
+                    if table_name in tables:
+                        cols_cache[table_name] = {c['name'] for c in inspector.get_columns(table_name)}
+                    else:
+                        cols_cache[table_name] = set()
+                return cols_cache[table_name]
+
+            def _get_table_indexes(table_name):
+                if table_name not in indexes_cache:
+                    if table_name in tables:
+                        indexes_cache[table_name] = {idx['name'] for idx in inspector.get_indexes(table_name)}
+                    else:
+                        indexes_cache[table_name] = set()
+                return indexes_cache[table_name]
+
             def _add_col_if_missing(table_name, col_name, col_ddl, post_sql=None):
                 if table_name not in tables:
                     return
-                existing_cols = {c['name'] for c in inspector.get_columns(table_name)}
+                existing_cols = _get_table_cols(table_name)
                 if col_name not in existing_cols:
                     try:
                         db.session.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_ddl}"))
                         if post_sql:
                             db.session.execute(text(post_sql))
                         db.session.commit()
+                        existing_cols.add(col_name)
+                    except Exception:
+                        db.session.rollback()
+
+            def _add_idx_if_missing(table_name, index_name, columns_sql):
+                if table_name not in tables:
+                    return
+                existing_indexes = _get_table_indexes(table_name)
+                if index_name not in existing_indexes:
+                    try:
+                        db.session.execute(text(f"CREATE INDEX {index_name} ON {table_name} ({columns_sql})"))
+                        db.session.commit()
+                        existing_indexes.add(index_name)
                     except Exception:
                         db.session.rollback()
 
@@ -228,8 +260,8 @@ def _auto_sync_schema(app):
             _add_col_if_missing('comments', 'original_content', "TEXT NULL")
             if 'comments' in tables:
                 try:
-                    comment_cols = {c['name']: c for c in inspector.get_columns('comments')}
-                    if 'user_id' in comment_cols and not comment_cols['user_id'].get('nullable', True):
+                    comment_cols = _get_table_cols('comments')
+                    if 'user_id' in comment_cols:
                         db.session.execute(text("ALTER TABLE comments MODIFY COLUMN user_id VARCHAR(36) NULL"))
                         db.session.commit()
                 except Exception:
@@ -239,6 +271,20 @@ def _auto_sync_schema(app):
             _add_col_if_missing('messages', 'is_forwarded', "BOOLEAN DEFAULT FALSE NOT NULL")
             _add_col_if_missing('messages', 'is_pinned', "BOOLEAN DEFAULT FALSE NOT NULL")
             _add_col_if_missing('messages', 'is_deleted', "BOOLEAN DEFAULT FALSE NOT NULL")
+
+            # Ensure performance indexes exist on foreign keys & high-traffic filter columns
+            _add_idx_if_missing('boards', 'ix_boards_owner_deleted', 'owner_id, is_deleted')
+            _add_idx_if_missing('tasks', 'ix_tasks_board_del_pos', 'board_id, is_deleted, position')
+            _add_idx_if_missing('tasks', 'ix_tasks_assigned_del', 'assigned_to, is_deleted')
+            _add_idx_if_missing('board_members', 'ix_board_members_user_status', 'user_id, status')
+            _add_idx_if_missing('board_members', 'ix_board_members_board_user_status', 'board_id, user_id, status')
+            _add_idx_if_missing('activities', 'ix_activities_board_timestamp', 'board_id, timestamp')
+            _add_idx_if_missing('notifications', 'ix_notifications_user_created', 'user_id, created_at')
+            _add_idx_if_missing('comments', 'ix_comments_task_created', 'task_id, created_at')
+            _add_idx_if_missing('notes', 'ix_notes_board_updated', 'board_id, updated_at')
+            _add_idx_if_missing('conversation_participants', 'ix_conv_participants_user', 'user_id')
+            _add_idx_if_missing('messages', 'ix_messages_conv_created', 'conversation_id, created_at')
+            _add_idx_if_missing('board_invitations', 'ix_board_invitations_email_status', 'email, status')
         except Exception:
             # Non-blocking schema check
             pass

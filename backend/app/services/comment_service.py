@@ -12,7 +12,16 @@ from app.utils.decorators import get_effective_role, ROLE_HIERARCHY
 class CommentService:
     @staticmethod
     def get_task_comments(task_id):
-        return Comment.query.filter_by(task_id=task_id).order_by(Comment.created_at.asc()).all()
+        from sqlalchemy.orm import joinedload
+        return (
+            Comment.query.options(
+                joinedload(Comment.user),
+                joinedload(Comment.task)
+            )
+            .filter_by(task_id=task_id)
+            .order_by(Comment.created_at.asc())
+            .all()
+        )
 
     @staticmethod
     def _find_mentioned_board_members(board_id, exclude_user_id, content):

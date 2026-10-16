@@ -37,18 +37,8 @@ class Comment(db.Model):
             if not board_id:
                 is_active_member = True
             else:
-                from app.models.board import Board
-                from app.models.board_member import BoardMember
-                board = db.session.get(Board, board_id)
-                if board and str(board.owner_id) == str(self.user_id):
-                    is_active_member = True
-                else:
-                    bm = BoardMember.query.filter_by(
-                        board_id=board_id,
-                        user_id=self.user_id,
-                        status='accepted'
-                    ).first()
-                    is_active_member = bm is not None
+                from app.utils.membership_cache import get_active_board_user_ids
+                is_active_member = str(self.user_id) in get_active_board_user_ids(board_id)
 
         user_data = self.user.to_dict() if (self.user and is_active_member) else {
             'id': self.user_id,

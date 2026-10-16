@@ -450,10 +450,10 @@ class FileService:
         from app.utils.decorators import get_effective_role
 
         # 1. Check if the file is attached to any task
-        # Search active and deleted tasks for attachment record
-        all_tasks = Task.query.filter(Task.attachments.isnot(None)).all()
+        # Search active and deleted tasks for attachment record using SQL LIKE filter
+        candidate_tasks = Task.query.filter(Task.attachments.like(f"%{safe_name}%")).all()
         matched_tasks = []
-        for t in all_tasks:
+        for t in candidate_tasks:
             if not t.attachments or not isinstance(t.attachments, list):
                 continue
             for att in t.attachments:
@@ -474,9 +474,9 @@ class FileService:
 
         # 2. Check if the file is in a chat message
         from app.models.message import Message, ConversationParticipant
-        all_messages = Message.query.filter(Message.attachments.isnot(None)).all()
+        candidate_messages = Message.query.filter(Message.attachments.like(f"%{safe_name}%")).all()
         matched_conv_ids = set()
-        for m in all_messages:
+        for m in candidate_messages:
             if not m.attachments or not isinstance(m.attachments, list):
                 continue
             for att in m.attachments:
@@ -498,8 +498,7 @@ class FileService:
             return True, None, 200
 
         # 3. Check if file is a board hero image
-        hero_boards = Board.query.filter(Board.hero_image_url.isnot(None)).all()
-        matched_hero_boards = [b for b in hero_boards if b.hero_image_url and safe_name in b.hero_image_url]
+        matched_hero_boards = Board.query.filter(Board.hero_image_url.like(f"%{safe_name}%")).all()
         if matched_hero_boards:
             has_hero_access = any(get_effective_role(b.id, user_id) > 0 for b in matched_hero_boards)
             if not has_hero_access:

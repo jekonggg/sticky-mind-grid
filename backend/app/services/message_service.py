@@ -356,40 +356,19 @@ class MessageService:
 
     @staticmethod
     def get_unread_count(user_id: str):
-        participations = (
-            ConversationParticipant.query
-            .filter_by(user_id=user_id)
-            .all()
+        from sqlalchemy import or_, func
+        count = (
+            db.session.query(func.count(Message.id))
+            .join(ConversationParticipant, ConversationParticipant.conversation_id == Message.conversation_id)
+            .filter(
+                ConversationParticipant.user_id == user_id,
+                Message.sender_id != user_id,
+                Message.is_deleted == False,
+                or_(
+                    ConversationParticipant.last_read_at.is_(None),
+                    Message.created_at > ConversationParticipant.last_read_at
+                )
+            )
+            .scalar()
         )
-        if not participations:
-            return 0
-
-        total_unread = 0
-        for p in participations:
-            conv = p.conversation
-            if not conv:
-                continue
-            if p.last_read_at:
-                unread = (
-                    Message.query
-                    .filter(
-                        Message.conversation_id == p.conversation_id,
-                        Message.sender_id != user_id,
-                        Message.created_at > p.last_read_at,
-                        Message.is_deleted == False
-                    )
-                    .count()
-                )
-            else:
-                unread = (
-                    Message.query
-                    .filter(
-                        Message.conversation_id == p.conversation_id,
-                        Message.sender_id != user_id,
-                        Message.is_deleted == False
-                    )
-                    .count()
-                )
-            total_unread += unread
-
-        return total_unread
+        return count or 0

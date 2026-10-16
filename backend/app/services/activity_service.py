@@ -17,7 +17,8 @@ class ActivityService:
 
     @staticmethod
     def get_activities(board_id=None, limit=50, task_title=None, task_id=None):
-        query = Activity.query
+        from sqlalchemy.orm import joinedload
+        query = Activity.query.options(joinedload(Activity.user))
         if board_id:
             query = query.filter(Activity.board_id == board_id)
 
@@ -53,6 +54,7 @@ class ActivityService:
     def get_user_activities(user_id, limit=50):
         from app.models.board_member import BoardMember
         from app.models.board import Board
+        from sqlalchemy.orm import joinedload
         admin_member_board_ids = db.session.query(BoardMember.board_id).filter(
             BoardMember.user_id == user_id,
             BoardMember.status == 'accepted',
@@ -62,7 +64,7 @@ class ActivityService:
             Board.owner_id == user_id,
             Board.is_deleted.is_(False)
         )
-        query = Activity.query.filter(
+        query = Activity.query.options(joinedload(Activity.user)).filter(
             or_(
                 Activity.board_id.in_(admin_member_board_ids),
                 Activity.board_id.in_(owned_board_ids)

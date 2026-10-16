@@ -30,15 +30,15 @@ class BoardService:
 
     @staticmethod
     def get_user_boards(user_id):
-        from sqlalchemy.orm import selectinload
+        from sqlalchemy.orm import selectinload, joinedload
         from sqlalchemy.exc import OperationalError
 
         for attempt in range(2):
             try:
                 BoardService.purge_expired_boards(retention_days=30)
-
                 return db.session.query(Board).options(
-                    selectinload(Board.memberships).selectinload(BoardMember.user),
+                    joinedload(Board.owner),
+                    selectinload(Board.memberships).joinedload(BoardMember.user),
                     selectinload(Board.tasks)
                 ).join(BoardMember).filter(
                     BoardMember.user_id == user_id,
@@ -69,13 +69,23 @@ class BoardService:
         invitation_board_ids = set()
 
         # 1. Fetch pending invitations matching user email
-        invitations = BoardInvitation.query.filter_by(email=user_email).all()
+        from sqlalchemy.orm import joinedload
+        invitations = (
+            BoardInvitation.query.options(
+                joinedload(BoardInvitation.board).joinedload(Board.owner),
+                joinedload(BoardInvitation.inviter)
+            )
+            .filter_by(email=user_email)
+            .all()
+        )
         all_invitation_board_ids = {inv.board_id for inv in invitations}
+        has_mutations = False
 
         for inv in invitations:
             # Check 7-day expiration
             if inv.status == 'pending' and inv.expires_at and now > inv.expires_at:
                 inv.status = 'expired'
+                has_mutations = True
                 # Also synchronize any matching BoardMember
                 bm = BoardMember.query.filter_by(board_id=inv.board_id, user_id=user_id, status='pending').first()
                 if bm:
@@ -107,13 +117,20 @@ class BoardService:
                 })
 
         # 2. Backward compatibility: check standalone BoardMember rows where no BoardInvitation exists
-        memberships = BoardMember.query.filter_by(user_id=user_id, status='pending').all()
+        memberships = (
+            BoardMember.query.options(
+                joinedload(BoardMember.board).joinedload(Board.owner)
+            )
+            .filter_by(user_id=user_id, status='pending')
+            .all()
+        )
         for m in memberships:
             if m.board_id in all_invitation_board_ids:
                 continue
             # Check 7-day expiration on standalone BoardMember
             if m.created_at and now > (m.created_at + timedelta(days=7)):
                 m.status = 'expired'
+                has_mutations = True
                 continue
 
             board = m.board
@@ -139,10 +156,11 @@ class BoardService:
                 }
             })
 
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
+        if has_mutations:
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
         return active_invites
 
@@ -193,13 +211,14 @@ class BoardService:
 
     @staticmethod
     def get_board_by_id(board_id, include_deleted=False):
-        from sqlalchemy.orm import selectinload
+        from sqlalchemy.orm import selectinload, joinedload
         from sqlalchemy.exc import OperationalError
 
         for attempt in range(2):
             try:
                 board = db.session.query(Board).options(
-                    selectinload(Board.memberships).selectinload(BoardMember.user),
+                    joinedload(Board.owner),
+                    selectinload(Board.memberships).joinedload(BoardMember.user),
                     selectinload(Board.tasks)
                 ).filter(Board.id == board_id).first()
                 if not board:
@@ -404,25 +423,29 @@ class BoardService:
 
     @staticmethod
     def get_trashed_boards(user_id):
-        from sqlalchemy.orm import selectinload
+        from sqlalchemy import or_
+        from sqlalchemy.orm import selectinload, joinedload
         from sqlalchemy.exc import OperationalError
 
         for attempt in range(2):
             try:
                 BoardService.purge_expired_boards(retention_days=30)
-
-                trashed = db.session.query(Board).options(
-                    selectinload(Board.memberships).selectinload(BoardMember.user),
+                owned_via_membership = db.session.query(BoardMember.board_id).filter(
+                    BoardMember.user_id == user_id,
+                    BoardMember.role == 'owner',
+                    BoardMember.status == 'accepted'
+                )
+                return db.session.query(Board).options(
+                    joinedload(Board.owner),
+                    selectinload(Board.memberships).joinedload(BoardMember.user),
                     selectinload(Board.tasks)
-                ).filter(Board.is_deleted.is_(True)).all()
-                result = []
-                for b in trashed:
-                    if str(b.owner_id) == str(user_id) or any(
-                        str(m.user_id) == str(user_id) and m.role == 'owner' and m.status == 'accepted'
-                        for m in (b.memberships or [])
-                    ):
-                        result.append(b)
-                return result
+                ).filter(
+                    Board.is_deleted.is_(True),
+                    or_(
+                        Board.owner_id == user_id,
+                        Board.id.in_(owned_via_membership)
+                    )
+                ).all()
             except (OperationalError, Exception) as e:
                 db.session.rollback()
                 db.session.remove()
@@ -1286,7 +1309,12 @@ class BoardService:
 
     @staticmethod
     def get_board_members(board_id, actor_id=None):
-        members = BoardMember.query.filter(BoardMember.board_id == board_id, BoardMember.status != 'declined').all()
+        from sqlalchemy.orm import joinedload
+        members = (
+            BoardMember.query.options(joinedload(BoardMember.user))
+            .filter(BoardMember.board_id == board_id, BoardMember.status != 'declined')
+            .all()
+        )
         actor_level = get_effective_role(board_id, actor_id) if actor_id else ROLE_HIERARCHY['owner']
         # Commenters and Viewers receive name and avatar only (emails redacted)
         redact = actor_level <= ROLE_HIERARCHY['commenter']
@@ -1297,10 +1325,12 @@ class BoardService:
             for m in member_list if m.get('user') and m.get('user', {}).get('email')
         }
 
+        has_mutations = False
         pending_invitations = BoardInvitation.query.filter_by(board_id=board_id, status='pending').all()
         for inv in pending_invitations:
             if inv.is_expired:
                 inv.status = 'expired'
+                has_mutations = True
                 continue
             if inv.email.strip().lower() not in existing_user_emails:
                 member_list.append({
@@ -1320,10 +1350,11 @@ class BoardService:
                     'isInvitation': True
                 })
 
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
+        if has_mutations:
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
         return member_list
 

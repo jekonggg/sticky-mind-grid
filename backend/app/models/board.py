@@ -105,7 +105,7 @@ class Board(db.Model):
                         'avatarUrl': u.avatar_url,
                         'role': m.role
                     })
-        if self.owner and str(self.owner.id) not in seen_member_ids:
+        if self.owner_id and str(self.owner_id) not in seen_member_ids and self.owner:
             u = self.owner
             uid = str(u.id)
             seen_member_ids.add(uid)

@@ -106,16 +106,31 @@ class TaskService:
     def get_tasks(board_id):
         if not board_id:
             return []
-        return Task.query.filter_by(board_id=board_id, is_deleted=False).order_by(Task.position.asc(), Task.created_at.asc()).all()
+        from sqlalchemy.orm import joinedload
+        return (
+            Task.query.options(
+                joinedload(Task.assignee),
+                joinedload(Task.creator),
+                joinedload(Task.board)
+            )
+            .filter_by(board_id=board_id, is_deleted=False)
+            .order_by(Task.position.asc(), Task.created_at.asc())
+            .all()
+        )
 
     @staticmethod
     def get_user_tasks(user_id, assigned_to_me=False):
         from app.models.board_member import BoardMember
+        from sqlalchemy.orm import joinedload
         board_ids_query = db.session.query(BoardMember.board_id).filter(
             BoardMember.user_id == user_id,
             BoardMember.status == 'accepted'
         )
-        query = Task.query.filter(
+        query = Task.query.options(
+            joinedload(Task.assignee),
+            joinedload(Task.creator),
+            joinedload(Task.board)
+        ).filter(
             Task.board_id.in_(board_ids_query),
             Task.is_deleted == False
         )
@@ -129,6 +144,7 @@ class TaskService:
             return []
         from datetime import timedelta
         from app.services.file_service import FileService
+        from sqlalchemy.orm import joinedload
         # 30-day auto-purge for soft-deleted tasks
         cutoff = datetime.utcnow() - timedelta(days=30)
         expired_tasks = Task.query.filter(
@@ -141,7 +157,16 @@ class TaskService:
                 FileService.cleanup_task_attachments(t)
                 db.session.delete(t)
             db.session.commit()
-        return Task.query.filter_by(board_id=board_id, is_deleted=True).order_by(Task.deleted_at.desc()).all()
+        return (
+            Task.query.options(
+                joinedload(Task.assignee),
+                joinedload(Task.creator),
+                joinedload(Task.board)
+            )
+            .filter_by(board_id=board_id, is_deleted=True)
+            .order_by(Task.deleted_at.desc())
+            .all()
+        )
 
     @staticmethod
     def get_task_by_id(task_id):
