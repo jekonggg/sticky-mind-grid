@@ -109,95 +109,92 @@ export default function CalendarPage() {
     setIsNewTaskModalOpen(true);
   };
 
-  if (isLoading || settings.simulateSkeletonLoading) {
-    return (
-      <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background">
-        <BoardHeader showSearch={false} />
-        <CalendarPageSkeleton />
-      </div>
-    );
-  }
-
   return (
     <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background">
       <BoardHeader showSearch={false} />
 
-      <main className="flex-1 w-full pb-16">
-        <CalendarView
-          tasks={tasks}
-          columns={allColumns}
-          boards={boards}
-          selectedTaskId={selectedTaskId}
-          onTaskClick={(task) => setSelectedTaskId(task.id)}
-          onAddTask={handleAddTask}
-          scope="global"
-          title="Global Calendar"
-          subtitle="Track deadlines and milestone schedules across all active boards"
-        />
-      </main>
+      {isLoading || settings.simulateSkeletonLoading ? (
+        <CalendarPageSkeleton />
+      ) : (
+        <>
+          <main className="flex-1 w-full pb-16">
+            <CalendarView
+              tasks={tasks}
+              columns={allColumns}
+              boards={boards}
+              selectedTaskId={selectedTaskId}
+              onTaskClick={(task) => setSelectedTaskId(task.id)}
+              onAddTask={handleAddTask}
+              scope="global"
+              title="Global Calendar"
+              subtitle="Track deadlines and milestone schedules across all active boards"
+            />
+          </main>
 
-      {/* Screen-Wide Backdrop Dimming Overlay when Task Drawer is Open */}
-      {selectedTask && activeTaskBoard && (
-        <div
-          data-testid="task-drawer-backdrop"
-          aria-label="Close task details"
-          onClick={() => setSelectedTaskId(null)}
-          className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-[1.5px] z-40 transition-opacity animate-in fade-in duration-200 cursor-pointer"
-        />
-      )}
+          {/* Screen-Wide Backdrop Dimming Overlay when Task Drawer is Open */}
+          {selectedTask && activeTaskBoard && (
+            <div
+              data-testid="task-drawer-backdrop"
+              aria-label="Close task details"
+              onClick={() => setSelectedTaskId(null)}
+              className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-[1.5px] z-40 transition-opacity animate-in fade-in duration-200 cursor-pointer"
+            />
+          )}
 
-      {/* Right-Side Task Detail Workspace Drawer */}
-      {selectedTask && activeTaskBoard && (
-        <aside
-          data-testid="task-detail-drawer"
-          className="fixed inset-y-0 right-0 w-full sm:w-[540px] md:w-[620px] lg:w-[720px] xl:w-[780px] border-l border-border bg-background shadow-2xl h-full overflow-hidden flex flex-col z-50 transition-all duration-200 animate-in slide-in-from-right duration-250 ease-out"
-        >
-          <TaskDetailWorkspace
-            task={selectedTask}
-            board={activeTaskBoard}
-            members={activeTaskBoardMembers}
-            readOnly={false}
-            onClose={() => setSelectedTaskId(null)}
-            onUpdateTask={async (updates) => {
-              await updateTaskMutation.mutateAsync({
-                id: selectedTask.id,
-                data: updates,
-              });
-            }}
-            onDeleteTask={async (id) => {
-              try {
-                await taskApi.deleteTask(id);
-                queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
-                setSelectedTaskId(null);
-                toast.success("Task deleted");
-              } catch (err: any) {
-                toast.error(err.message || "Failed to delete task");
-              }
-            }}
-          />
-        </aside>
-      )}
+          {/* Right-Side Task Detail Workspace Drawer */}
+          {selectedTask && activeTaskBoard && (
+            <aside
+              data-testid="task-detail-drawer"
+              className="fixed inset-y-0 right-0 w-full sm:w-[540px] md:w-[620px] lg:w-[720px] xl:w-[780px] border-l border-border bg-background shadow-2xl h-full overflow-hidden flex flex-col z-50 transition-all duration-200 animate-in slide-in-from-right duration-250 ease-out"
+            >
+              <TaskDetailWorkspace
+                task={selectedTask}
+                board={activeTaskBoard}
+                members={activeTaskBoardMembers}
+                readOnly={false}
+                onClose={() => setSelectedTaskId(null)}
+                onUpdateTask={async (updates) => {
+                  await updateTaskMutation.mutateAsync({
+                    id: selectedTask.id,
+                    data: updates,
+                  });
+                }}
+                onDeleteTask={async (id) => {
+                  try {
+                    await taskApi.deleteTask(id);
+                    queryClient.invalidateQueries({ queryKey: ["globalTasks"] });
+                    setSelectedTaskId(null);
+                    toast.success("Task deleted");
+                  } catch (err: any) {
+                    toast.error(err.message || "Failed to delete task");
+                  }
+                }}
+              />
+            </aside>
+          )}
 
-      {/* Task Creation Modal */}
-      {activeTargetBoard && (
-        <TaskModal
-          isOpen={isNewTaskModalOpen}
-          onClose={() => setIsNewTaskModalOpen(false)}
-          task={null}
-          boardId={activeTargetBoard.id}
-          boardTasks={tasks}
-          columns={activeTargetBoard.columns || [{ id: "todo", title: "To Do" }]}
-          availableBoards={boards}
-          allowBoardChange={true}
-          onSave={async (data) => {
-            const targetBoardId = data.boardId || activeTargetBoard.id;
-            await createTaskMutation.mutateAsync({
-              ...data,
-              dueDate: data.dueDate || modalInitialDate,
-              boardId: targetBoardId,
-            });
-          }}
-        />
+          {/* Task Creation Modal */}
+          {activeTargetBoard && (
+            <TaskModal
+              isOpen={isNewTaskModalOpen}
+              onClose={() => setIsNewTaskModalOpen(false)}
+              task={null}
+              boardId={activeTargetBoard.id}
+              boardTasks={tasks}
+              columns={activeTargetBoard.columns || [{ id: "todo", title: "To Do" }]}
+              availableBoards={boards}
+              allowBoardChange={true}
+              onSave={async (data) => {
+                const targetBoardId = data.boardId || activeTargetBoard.id;
+                await createTaskMutation.mutateAsync({
+                  ...data,
+                  dueDate: data.dueDate || modalInitialDate,
+                  boardId: targetBoardId,
+                });
+              }}
+            />
+          )}
+        </>
       )}
     </div>
   );

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, useContext } from "react";
+import { QueryClientContext, QueryClient } from "@tanstack/react-query";
 import { Board, CreateBoardData, UpdateBoardData } from "@/types/board";
 import { boardApi } from "@/services/boardApi";
 import { toast } from "sonner";
@@ -68,6 +69,9 @@ let cachedBoards: Board[] | null = null;
 let cachedTrashedBoards: Board[] = [];
 let cachedUserId: string | undefined = undefined;
 let lastBoardsFetchTime = 0;
+let inFlightBoardsPromise: Promise<Board[]> | null = null;
+let hasFetchedTrashForUser: string | undefined = undefined;
+let lastQueryClient: QueryClient | undefined = undefined;
 export const BOARDS_CACHE_TTL_MS = 60_000;
 
 export function clearBoardsCache() {
@@ -75,6 +79,9 @@ export function clearBoardsCache() {
   cachedTrashedBoards = [];
   cachedUserId = undefined;
   lastBoardsFetchTime = 0;
+  inFlightBoardsPromise = null;
+  hasFetchedTrashForUser = undefined;
+  lastQueryClient?.removeQueries({ queryKey: ["boards"] });
 }
 
 if (typeof window !== "undefined") {
@@ -83,13 +90,29 @@ if (typeof window !== "undefined") {
 
 export function useBoards() {
   const { user } = useAuth();
+  const queryClient = useContext(QueryClientContext);
+  lastQueryClient = queryClient;
 
   // Invalidate cache if authenticated user changed
   if (cachedUserId !== user?.id) {
+    if (cachedUserId !== undefined) {
+      queryClient?.removeQueries({ queryKey: ["boards"] });
+    }
     cachedBoards = null;
     cachedTrashedBoards = [];
     cachedUserId = user?.id;
     lastBoardsFetchTime = 0;
+    inFlightBoardsPromise = null;
+    hasFetchedTrashForUser = undefined;
+  }
+
+  if (cachedBoards === null && queryClient) {
+    const rqBoards = queryClient.getQueryData<Board[]>(["boards"]);
+    if (rqBoards) {
+      cachedBoards = rqBoards;
+      cachedUserId = user?.id;
+      lastBoardsFetchTime = Date.now();
+    }
   }
 
   const hasCachedData = cachedBoards !== null;
@@ -141,41 +164,66 @@ export function useBoards() {
     [user?.id]
   );
 
-  const fetchBoards = useCallback(async (options?: { silent?: boolean }) => {
-    const isSilent = options?.silent ?? (hasLoadedRef.current || cachedBoards !== null);
-    try {
-      if (!isSilent) {
-        setLoading(true);
-      }
-      const data = await boardApi.getBoards();
-      setBoards(data);
-      cachedBoards = data;
-      cachedUserId = user?.id;
-      lastBoardsFetchTime = Date.now();
-      if (typeof boardApi.getTrashedBoards === "function") {
-        boardApi
-          .getTrashedBoards()
-          .then((trashed) => {
-            if (Array.isArray(trashed)) {
-              setTrashedBoards(trashed);
-              cachedTrashedBoards = trashed;
+  const fetchBoards = useCallback(
+    async (options?: { silent?: boolean; includeTrash?: boolean }) => {
+      const isSilent = options?.silent ?? (hasLoadedRef.current || cachedBoards !== null);
+      try {
+        if (!isSilent) {
+          setLoading(true);
+        }
+        if (!inFlightBoardsPromise) {
+          const promise = queryClient
+            ? queryClient.fetchQuery({
+                queryKey: ["boards"],
+                queryFn: () => boardApi.getBoards(),
+                staleTime: 1000,
+              })
+            : boardApi.getBoards();
+          inFlightBoardsPromise = promise.finally(() => {
+            if (inFlightBoardsPromise === promise) {
+              inFlightBoardsPromise = null;
             }
-          })
-          .catch(() => {
-            // Silently ignore if endpoint not mocked or unavailable
           });
+        }
+        const data = await inFlightBoardsPromise;
+        setBoards(data);
+        cachedBoards = data;
+        cachedUserId = user?.id;
+        lastBoardsFetchTime = Date.now();
+        queryClient?.setQueryData(["boards"], data);
+
+        const userKey = user?.id || "guest";
+        const shouldFetchTrash =
+          options?.includeTrash === true ||
+          (options?.includeTrash !== false && hasFetchedTrashForUser !== userKey);
+
+        if (shouldFetchTrash && typeof boardApi.getTrashedBoards === "function") {
+          hasFetchedTrashForUser = userKey;
+          boardApi
+            .getTrashedBoards()
+            .then((trashed) => {
+              if (Array.isArray(trashed)) {
+                setTrashedBoards(trashed);
+                cachedTrashedBoards = trashed;
+              }
+            })
+            .catch(() => {
+              // Silently ignore if endpoint not mocked or unavailable
+            });
+        }
+      } catch {
+        if (!isSilent) {
+          toast.error("Failed to load boards");
+        }
+      } finally {
+        hasLoadedRef.current = true;
+        if (!isSilent) {
+          setLoading(false);
+        }
       }
-    } catch {
-      if (!isSilent) {
-        toast.error("Failed to load boards");
-      }
-    } finally {
-      hasLoadedRef.current = true;
-      if (!isSilent) {
-        setLoading(false);
-      }
-    }
-  }, [user?.id]);
+    },
+    [user?.id, queryClient]
+  );
 
   useEffect(() => {
     const isFresh =
@@ -207,7 +255,7 @@ export function useBoards() {
 
     const intervalId = window.setInterval(() => {
       if (document.visibilityState === "visible") {
-        fetchBoards({ silent: true });
+        fetchBoards({ silent: true, includeTrash: false });
       }
     }, 8000);
 
@@ -230,6 +278,7 @@ export function useBoards() {
         setBoards((prev) => {
           const next = [...prev, board];
           cachedBoards = next;
+          queryClient?.setQueryData(["boards"], next);
           return next;
         });
         addActivity("create", board.name, `New board "${board.name}" created`);
@@ -239,7 +288,7 @@ export function useBoards() {
         toast.error("Failed to create board");
       }
     },
-    [addActivity]
+    [addActivity, queryClient]
   );
 
   const updateBoard = useCallback(
@@ -249,6 +298,7 @@ export function useBoards() {
         setBoards((prev) => {
           const next = prev.map((b) => (b.id === id ? board : b));
           cachedBoards = next;
+          queryClient?.setQueryData(["boards"], next);
           return next;
         });
         addActivity("update", board.name, `Board settings updated for "${board.name}"`);
@@ -259,7 +309,7 @@ export function useBoards() {
         throw err;
       }
     },
-    [addActivity]
+    [addActivity, queryClient]
   );
 
   const restoreBoard = useCallback(
@@ -275,6 +325,7 @@ export function useBoards() {
         setBoards((prev) => {
           const next = [restoredLocal, ...prev.filter((b) => b.id !== id)];
           cachedBoards = next;
+          queryClient?.setQueryData(["boards"], next);
           return next;
         });
       }
@@ -286,6 +337,7 @@ export function useBoards() {
             setBoards((prev) => {
               const next = [restored, ...prev.filter((b) => b.id !== id)];
               cachedBoards = next;
+              queryClient?.setQueryData(["boards"], next);
               return next;
             });
           }
@@ -294,10 +346,10 @@ export function useBoards() {
         toast.success(`Board "${trashed?.name || "Board"}" restored`);
       } catch {
         toast.error("Failed to restore board");
-        fetchBoards({ silent: true });
+        fetchBoards({ silent: true, includeTrash: true });
       }
     },
-    [trashedBoards, addActivity, fetchBoards]
+    [trashedBoards, addActivity, fetchBoards, queryClient]
   );
 
   const softDeleteBoard = useCallback(
@@ -314,6 +366,7 @@ export function useBoards() {
       setBoards((prev) => {
         const next = prev.filter((b) => b.id !== id);
         cachedBoards = next;
+        queryClient?.setQueryData(["boards"], next);
         return next;
       });
       setTrashedBoards((prev) => {
@@ -334,10 +387,10 @@ export function useBoards() {
       try {
         await boardApi.deleteBoard(id, { soft: true });
       } catch {
-        fetchBoards({ silent: true });
+        fetchBoards({ silent: true, includeTrash: true });
       }
     },
-    [boards, fetchBoards, addActivity, restoreBoard]
+    [boards, fetchBoards, addActivity, restoreBoard, queryClient]
   );
 
   const permanentlyDeleteBoard = useCallback(
@@ -352,6 +405,7 @@ export function useBoards() {
       setBoards((prev) => {
         const next = prev.filter((b) => b.id !== id);
         cachedBoards = next;
+        queryClient?.setQueryData(["boards"], next);
         return next;
       });
       if (target) {
@@ -363,10 +417,10 @@ export function useBoards() {
         await boardApi.deleteBoard(id, { confirmName: nameToConfirm });
       } catch (err: any) {
         toast.error(err.message || "Failed to permanently delete board");
-        fetchBoards({ silent: true });
+        fetchBoards({ silent: true, includeTrash: true });
       }
     },
-    [trashedBoards, boards, addActivity, fetchBoards]
+    [trashedBoards, boards, addActivity, fetchBoards, queryClient]
   );
 
   const deleteBoard = useCallback(

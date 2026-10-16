@@ -152,14 +152,14 @@ export function AppSidebar({
   // Fetch notes for active board if available
   const activeBoardId = boardId || (boards[0]?.id ?? "");
   const { data: notes = [] } = useQuery<Note[]>({
-    queryKey: ["notes", activeBoardId],
+    queryKey: ["boardNotes", activeBoardId],
     queryFn: () => (activeBoardId ? noteApi.getNotes(activeBoardId) : Promise.resolve([])),
-    enabled: !!activeBoardId,
+    enabled: Boolean(activeBoardId) && (Boolean(boardId) || isBoardFilesExpanded),
   });
 
   // Fetch all tasks for task badge
   const { data: allTasks = [] } = useQuery<Task[]>({
-    queryKey: ["tasks"],
+    queryKey: ["globalTasks"],
     queryFn: () => taskApi.getTasks(),
   });
 
@@ -207,6 +207,7 @@ export function AppSidebar({
       return noteApi.createNote(activeBoardId, data);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["boardNotes", activeBoardId] });
       queryClient.invalidateQueries({ queryKey: ["notes", activeBoardId] });
       toast.success("Document created successfully");
       setIsNoteModalOpen(false);

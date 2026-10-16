@@ -34,9 +34,8 @@ export function BottomNavBar() {
 
   // Fetch tasks to display total / active tasks badge on the middle button
   const { data: tasks = [] } = useQuery<Task[]>({
-    queryKey: ["tasks"],
+    queryKey: ["globalTasks"],
     queryFn: () => taskApi.getTasks(),
-    staleTime: 1000 * 30, // 30s cache
   });
 
   const activeTasksCount = tasks.filter(

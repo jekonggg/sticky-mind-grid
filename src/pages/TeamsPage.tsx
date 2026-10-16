@@ -216,23 +216,17 @@ export default function TeamsPage() {
     setIsInviteDialogOpen(true);
   };
 
-  if (isTeammatesLoading || settings.simulateSkeletonLoading) {
-    return (
-      <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background">
-        <BoardHeader showSearch={false} />
-        <TeamsPageSkeleton />
-      </div>
-    );
-  }
-
   return (
     <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background">
       <BoardHeader showSearch={false} />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20 space-y-8">
-        {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-1">
+      {isTeammatesLoading || settings.simulateSkeletonLoading ? (
+        <TeamsPageSkeleton />
+      ) : (
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20 space-y-8">
+          {/* Top Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="space-y-1">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
                 <Users className="h-4 w-4" />
@@ -643,6 +637,7 @@ export default function TeamsPage() {
           )}
         </div>
       </main>
+      )}
 
       {/* Invite Member Dialog */}
       <InviteMemberDialog

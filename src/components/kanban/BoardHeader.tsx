@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { boardApi } from "@/services/boardApi";
 import { Board } from "@/types/board";
@@ -47,7 +48,11 @@ export function BoardHeader({
   const { boardId } = useParams<{ boardId: string }>();
   const { user } = useAuth();
 
-  const [boards, setBoards] = useState<Board[]>([]);
+  const queryClient = useQueryClient();
+  const { data: boards = [] } = useQuery<Board[]>({
+    queryKey: ["boards"],
+    queryFn: () => boardApi.getBoards(),
+  });
   const [pinnedIds, setPinnedIds] = useState<string[]>(() => getPinnedBoardIds(user?.id));
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const { devSettings } = useDevMode();
@@ -66,16 +71,11 @@ export function BoardHeader({
 
   useEffect(() => {
     const loadBoards = () => {
-      boardApi.getBoards().then((data) => {
-        setBoards(data || []);
-      }).catch(() => {
-        // Silently catch in header
-      });
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
     };
-    loadBoards();
     window.addEventListener("smg-dev-data-mode-changed", loadBoards);
     return () => window.removeEventListener("smg-dev-data-mode-changed", loadBoards);
-  }, [boardId]);
+  }, [queryClient]);
 
   const currentBoard = boards.find((b) => b.id === boardId);
   const permissions = useBoardPermissions(currentBoard);

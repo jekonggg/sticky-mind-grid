@@ -310,15 +310,6 @@ export default function BoardsOverview() {
     }
   };
 
-  if (loading || settings.simulateSkeletonLoading) {
-    return (
-      <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background pb-20">
-        <BoardHeader showSearch={false} />
-        <BoardsOverviewSkeleton />
-      </div>
-    );
-  }
-
   const filterTabs: { id: BoardFilterOption; label: string }[] = [
     { id: "all", label: "All" },
     { id: "owned", label: "Owned by me" },
@@ -344,7 +335,11 @@ export default function BoardsOverview() {
       className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background pb-20"
     >
       <BoardHeader showSearch={false} />
-      <HeroBannerComponent compact={isScrolled} />
+      {loading || settings.simulateSkeletonLoading ? (
+        <BoardsOverviewSkeleton />
+      ) : (
+        <>
+          <HeroBannerComponent compact={isScrolled} />
 
       {/* Toolbox */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 -mt-8 md:-mt-12 relative z-10 w-full shrink-0">
@@ -800,6 +795,8 @@ export default function BoardsOverview() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </>
+      )}
     </div>
   );
 }
