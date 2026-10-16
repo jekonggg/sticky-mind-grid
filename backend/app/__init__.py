@@ -78,7 +78,8 @@ def create_app(config_class=Config):
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials", "X-Requested-With", "Accept", "Origin"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        expose_headers=["Content-Type", "Authorization"]
+        expose_headers=["Content-Type", "Authorization"],
+        max_age=86400
     )
 
     jwt.init_app(app)
