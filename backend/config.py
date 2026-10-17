@@ -2,6 +2,21 @@ import os
 import ssl
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
+try:
+    from dotenv import load_dotenv, find_dotenv
+    load_dotenv(find_dotenv(usecwd=True))
+except ImportError:
+    for env_candidate in [os.path.join(os.path.dirname(__file__), '..', '.env'), os.path.join(os.path.dirname(__file__), '.env')]:
+        if os.path.isfile(env_candidate):
+            with open(env_candidate, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        k, v = line.split('=', 1)
+                        k, v = k.strip(), v.strip().strip('"').strip("'")
+                        if k not in os.environ:
+                            os.environ[k] = v
+
 raw_db_url = os.environ.get('DATABASE_URL')
 connect_args = {
     "connect_timeout": 30,
@@ -91,6 +106,7 @@ class Config:
     SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
     SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
     EMAIL_FROM = os.environ.get('EMAIL_FROM', 'noreply@stickymindgrid.com')
+    FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:8080').rstrip('/')
 
     # HTTP Rate Limiting
     RATELIMIT_ENABLED = os.environ.get('RATELIMIT_ENABLED', 'true').lower() in ('true', '1')

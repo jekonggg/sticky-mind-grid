@@ -90,7 +90,8 @@ class EmailService:
     def send_board_invitation(cls, to_email: str, board_name: str, inviter_name: str, role: str, invite_link: str = None) -> bool:
         subject = f"Invitation: Join {board_name} on Sticky Mind Grid"
         role_label = role.capitalize()
-        link = invite_link or "http://localhost:8080/boards"
+        base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
+        link = invite_link or f"{base_url}/boards"
 
         text_body = (
             f"Hello,\n\n"
@@ -116,7 +117,8 @@ class EmailService:
     @classmethod
     def send_verification_email(cls, to_email: str, verification_token: str, verification_link: str = None) -> bool:
         subject = "Verify your email address for Sticky Mind Grid"
-        link = verification_link or f"http://localhost:8080/verify-email?token={verification_token}"
+        base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
+        link = verification_link or f"{base_url}/verify-email?token={verification_token}"
 
         text_body = (
             f"Welcome to Sticky Mind Grid!\n\n"
