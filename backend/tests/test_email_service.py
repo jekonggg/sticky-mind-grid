@@ -110,3 +110,64 @@ def test_board_invite_and_resend_dispatches_invitation_email(client, create_test
     assert len(outbox_resend) == 1
     assert outbox_resend[0]["to"] == invitee_email
     assert "Marketing Roadmap" in outbox_resend[0]["subject"]
+
+def test_email_service_emailjs_provider_dispatches_via_http():
+    """
+    EmailJSEmailProvider dispatches a JSON POST payload to the EmailJS REST API over HTTPS.
+    """
+    from app.services.email_service import EmailJSEmailProvider
+
+    provider = EmailJSEmailProvider(
+        service_id="service_test123",
+        template_id="template_test456",
+        public_key="public_key_789",
+        private_key="access_token_abc"
+    )
+
+    with patch("urllib.request.urlopen") as mock_urlopen:
+        mock_response = MagicMock()
+        mock_response.getcode.return_value = 200
+        mock_urlopen.return_value.__enter__.return_value = mock_response
+
+        success = provider.send_email(
+            to_email="colleague@example.com",
+            subject="Test Board Invitation",
+            text_body="Join my board",
+            html_body="<p>Join my board</p>",
+            board_name="Design Sprint",
+            inviter_name="Alice",
+            role="Editor",
+            invite_link="https://app.example.com/boards"
+        )
+
+        assert success is True
+        mock_urlopen.assert_called_once()
+        req = mock_urlopen.call_args[0][0]
+        assert req.get_full_url() == "https://api.emailjs.com/api/v1.0/email/send"
+        assert req.get_method() == "POST"
+
+        payload = json.loads(req.data.decode("utf-8"))
+        assert payload["service_id"] == "service_test123"
+        assert payload["template_id"] == "template_test456"
+        assert payload["user_id"] == "public_key_789"
+        assert payload["accessToken"] == "access_token_abc"
+        assert payload["template_params"]["to_email"] == "colleague@example.com"
+        assert payload["template_params"]["board_name"] == "Design Sprint"
+        assert payload["template_params"]["inviter_name"] == "Alice"
+        assert payload["template_params"]["role"] == "Editor"
+        assert payload["template_params"]["invite_link"] == "https://app.example.com/boards"
+
+def test_email_service_emailjs_provider_fails_on_missing_config():
+    """
+    EmailJSEmailProvider should safely log and return False if config is missing.
+    """
+    from app.services.email_service import EmailJSEmailProvider
+
+    provider = EmailJSEmailProvider(service_id="", template_id="", public_key="")
+    success = provider.send_email(
+        to_email="test@example.com",
+        subject="Test",
+        text_body="Hello"
+    )
+    assert success is False
+

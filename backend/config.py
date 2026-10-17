@@ -108,6 +108,12 @@ class Config:
     EMAIL_FROM = os.environ.get('EMAIL_FROM', 'noreply@stickymindgrid.com')
     FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:8080').rstrip('/')
 
+    # EmailJS Configuration (HTTPS Port 443 - Cloud & Render Free Tier Compatible)
+    EMAILJS_SERVICE_ID = os.environ.get('EMAILJS_SERVICE_ID', '')
+    EMAILJS_TEMPLATE_ID = os.environ.get('EMAILJS_TEMPLATE_ID', '')
+    EMAILJS_PUBLIC_KEY = os.environ.get('EMAILJS_PUBLIC_KEY', '')
+    EMAILJS_PRIVATE_KEY = os.environ.get('EMAILJS_PRIVATE_KEY', '')
+
     # HTTP Rate Limiting
     RATELIMIT_ENABLED = os.environ.get('RATELIMIT_ENABLED', 'true').lower() in ('true', '1')
     RATELIMIT_STORAGE_URI = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')

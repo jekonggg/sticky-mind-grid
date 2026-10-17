@@ -1,6 +1,9 @@
 import os
 import smtplib
 import logging
+import json
+import urllib.request
+import urllib.error
 from email.message import EmailMessage
 from abc import ABC, abstractmethod
 
@@ -8,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class EmailProvider(ABC):
     @abstractmethod
-    def send_email(self, to_email: str, subject: str, text_body: str, html_body: str = None) -> bool:
+    def send_email(self, to_email: str, subject: str, text_body: str, html_body: str = None, **kwargs) -> bool:
         pass
 
 class ConsoleEmailProvider(EmailProvider):
@@ -22,12 +25,13 @@ class ConsoleEmailProvider(EmailProvider):
     def clear_outbox(cls):
         cls._outbox.clear()
 
-    def send_email(self, to_email: str, subject: str, text_body: str, html_body: str = None) -> bool:
+    def send_email(self, to_email: str, subject: str, text_body: str, html_body: str = None, **kwargs) -> bool:
         message_record = {
             "to": to_email,
             "subject": subject,
             "text": text_body,
-            "html": html_body or ""
+            "html": html_body or "",
+            "params": kwargs
         }
         self._outbox.append(message_record)
         logger.info(f"[ConsoleEmailProvider] Outbox delivery to={to_email} subject='{subject}'")
@@ -42,7 +46,7 @@ class SMTPEmailProvider(EmailProvider):
         self.use_tls = use_tls if use_tls is not None else (os.environ.get("SMTP_USE_TLS", "true").lower() == "true")
         self.from_email = from_email or os.environ.get("EMAIL_FROM", "noreply@stickymindgrid.com")
 
-    def send_email(self, to_email: str, subject: str, text_body: str, html_body: str = None) -> bool:
+    def send_email(self, to_email: str, subject: str, text_body: str, html_body: str = None, **kwargs) -> bool:
         msg = EmailMessage()
         msg["Subject"] = subject
         msg["From"] = self.from_email
@@ -65,6 +69,68 @@ class SMTPEmailProvider(EmailProvider):
             logger.error(f"[SMTPEmailProvider] Failed to send email to {to_email}: {e}")
             return False
 
+class EmailJSEmailProvider(EmailProvider):
+    """
+    Sends transactional emails via EmailJS REST API over HTTPS (Port 443).
+    Compatible with cloud platforms (e.g. Render Free Tier) where SMTP ports are blocked.
+    """
+    def __init__(self, service_id=None, template_id=None, public_key=None, private_key=None):
+        self.service_id = service_id or os.environ.get("EMAILJS_SERVICE_ID", "")
+        self.template_id = template_id or os.environ.get("EMAILJS_TEMPLATE_ID", "")
+        self.public_key = public_key or os.environ.get("EMAILJS_PUBLIC_KEY", "")
+        self.private_key = private_key or os.environ.get("EMAILJS_PRIVATE_KEY", "")
+
+    def send_email(self, to_email: str, subject: str, text_body: str, html_body: str = None, **kwargs) -> bool:
+        if not self.service_id or not self.template_id or not self.public_key:
+            logger.error("[EmailJSEmailProvider] Missing EmailJS configuration (EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, or EMAILJS_PUBLIC_KEY)")
+            return False
+
+        template_params = {
+            "to_email": to_email,
+            "email": to_email,
+            "to_name": to_email.split('@')[0],
+            "subject": subject,
+            "message": html_body or text_body,
+            "text_message": text_body,
+            "html_message": html_body or "",
+            **kwargs
+        }
+
+        payload = {
+            "service_id": self.service_id,
+            "template_id": self.template_id,
+            "user_id": self.public_key,
+            "template_params": template_params
+        }
+        if self.private_key:
+            payload["accessToken"] = self.private_key
+
+        try:
+            req = urllib.request.Request(
+                "https://api.emailjs.com/api/v1.0/email/send",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": "StickyMindGrid-Backend/1.0"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                status = response.getcode()
+                if 200 <= status < 300:
+                    logger.info(f"[EmailJSEmailProvider] Successfully sent email to {to_email} via EmailJS")
+                    return True
+                else:
+                    logger.error(f"[EmailJSEmailProvider] Unexpected response status {status} from EmailJS")
+                    return False
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8") if e.fp else str(e)
+            logger.error(f"[EmailJSEmailProvider] HTTP error from EmailJS ({e.code}): {err_body}")
+            return False
+        except Exception as e:
+            logger.error(f"[EmailJSEmailProvider] Failed to send email to {to_email} via EmailJS: {e}")
+            return False
+
 class EmailService:
     _provider = None
 
@@ -74,6 +140,8 @@ class EmailService:
             provider_type = os.environ.get("EMAIL_PROVIDER", "console").lower()
             if provider_type == "smtp":
                 cls._provider = SMTPEmailProvider()
+            elif provider_type == "emailjs":
+                cls._provider = EmailJSEmailProvider()
             else:
                 cls._provider = ConsoleEmailProvider()
         return cls._provider
@@ -83,8 +151,8 @@ class EmailService:
         cls._provider = provider
 
     @classmethod
-    def send_email(cls, to_email: str, subject: str, text_body: str, html_body: str = None) -> bool:
-        return cls.get_provider().send_email(to_email, subject, text_body, html_body)
+    def send_email(cls, to_email: str, subject: str, text_body: str, html_body: str = None, **kwargs) -> bool:
+        return cls.get_provider().send_email(to_email, subject, text_body, html_body, **kwargs)
 
     @classmethod
     def send_board_invitation(cls, to_email: str, board_name: str, inviter_name: str, role: str, invite_link: str = None) -> bool:
@@ -112,7 +180,16 @@ class EmailService:
             f"</div>"
         )
 
-        return cls.send_email(to_email, subject, text_body, html_body)
+        return cls.send_email(
+            to_email=to_email,
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            board_name=board_name,
+            inviter_name=inviter_name,
+            role=role_label,
+            invite_link=link
+        )
 
     @classmethod
     def send_verification_email(cls, to_email: str, verification_token: str, verification_link: str = None) -> bool:
@@ -138,4 +215,11 @@ class EmailService:
             f"</div>"
         )
 
-        return cls.send_email(to_email, subject, text_body, html_body)
+        return cls.send_email(
+            to_email=to_email,
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            verification_token=verification_token,
+            verification_link=link
+        )
