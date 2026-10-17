@@ -165,6 +165,20 @@ def oauth_provider(provider):
     data = request.get_json() or {}
     return handle_oauth_flow(provider, data)
 
+def validate_password_complexity(password: str):
+    if not password or not isinstance(password, str):
+        return False, "Password is required"
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long"
+    if not any(c.isupper() for c in password):
+        return False, "Password must contain at least one uppercase letter (A-Z)"
+    if not any(c.isdigit() for c in password):
+        return False, "Password must contain at least one number (0-9)"
+    import re
+    if not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/~`]', password):
+        return False, "Password must contain at least one special character (!@#$%^&*...)"
+    return True, None
+
 @bp.route('/register', methods=['POST'])
 @limiter.limit("10 per minute")
 def register():
@@ -176,6 +190,10 @@ def register():
     clean_email, err = normalize_and_validate_email(data.get('email'))
     if err:
         return jsonify({'message': err}), 400
+
+    valid, pass_err = validate_password_complexity(data.get('password'))
+    if not valid:
+        return jsonify({'message': pass_err}), 400
         
     if User.query.filter_by(email=clean_email).first():
         return jsonify({'message': 'User already exists'}), 400
@@ -214,10 +232,9 @@ def register():
 
     # Note: attach_pending_invitations is intentionally NOT called until email is verified (OQ-17)
 
-    access_token = create_access_token(identity=user.id)
     return jsonify({
-        'user': user.to_dict(),
-        'token': access_token
+        'message': 'Account created successfully. Please sign in to continue.',
+        'user': user.to_dict()
     }), 201
 
 @bp.route('/verify-email', methods=['POST'])

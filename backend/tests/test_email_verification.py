@@ -35,7 +35,7 @@ def test_registration_does_not_autolink_pending_invites_until_verified(client, c
     # 2. Register newuser@example.com
     resp = client.post("/api/auth/register", json={
         "email": "newuser@example.com",
-        "password": "securepassword123",
+        "password": "SecurePassword123!",
         "fullName": "New User"
     })
     assert resp.status_code == 201
@@ -87,7 +87,7 @@ def test_resend_verification_email(client, create_test_user):
 
     resp = client.post("/api/auth/register", json={
         "email": "unverified@example.com",
-        "password": "password123",
+        "password": "SecurePassword123!",
         "fullName": "Unverified User"
     })
     assert resp.status_code == 201

@@ -23,6 +23,7 @@ export interface OAuthLoginPayload {
 
 export interface AuthResponse {
   user: User;
-  token: string;
+  token?: string;
+  message?: string;
   provider?: string;
 }

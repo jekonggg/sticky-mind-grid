@@ -5,7 +5,7 @@ def test_register_success(client):
         "/api/auth/register",
         data=json.dumps({
             "email": "newuser@example.com",
-            "password": "password123",
+            "password": "Password123!",
             "fullName": "New User"
         }),
         content_type="application/json"
@@ -14,7 +14,41 @@ def test_register_success(client):
     data = response.get_json()
     assert data["user"]["email"] == "newuser@example.com"
     assert data["user"]["fullName"] == "New User"
-    assert "token" in data
+    assert "token" not in data
+    assert "message" in data
+
+def test_register_password_complexity(client):
+    # Too short (< 8 chars)
+    res_short = client.post(
+        "/api/auth/register",
+        data=json.dumps({"email": "weak1@example.com", "password": "Pass1!"}),
+        content_type="application/json"
+    )
+    assert res_short.status_code == 400
+
+    # No uppercase
+    res_no_upper = client.post(
+        "/api/auth/register",
+        data=json.dumps({"email": "weak2@example.com", "password": "password123!"}),
+        content_type="application/json"
+    )
+    assert res_no_upper.status_code == 400
+
+    # No digit
+    res_no_digit = client.post(
+        "/api/auth/register",
+        data=json.dumps({"email": "weak3@example.com", "password": "Password!!!!"}),
+        content_type="application/json"
+    )
+    assert res_no_digit.status_code == 400
+
+    # No special symbol
+    res_no_special = client.post(
+        "/api/auth/register",
+        data=json.dumps({"email": "weak4@example.com", "password": "Password123"}),
+        content_type="application/json"
+    )
+    assert res_no_special.status_code == 400
 
 def test_register_duplicate_email(client, create_test_user):
     create_test_user(email="existing@example.com")
@@ -22,7 +56,7 @@ def test_register_duplicate_email(client, create_test_user):
         "/api/auth/register",
         data=json.dumps({
             "email": "existing@example.com",
-            "password": "password123",
+            "password": "Password123!",
             "fullName": "Existing User"
         }),
         content_type="application/json"
