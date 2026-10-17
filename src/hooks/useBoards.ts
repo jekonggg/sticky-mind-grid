@@ -257,7 +257,7 @@ export function useBoards() {
       if (document.visibilityState === "visible") {
         fetchBoards({ silent: true, includeTrash: false });
       }
-    }, 8000);
+    }, 30000);
 
     window.addEventListener("smg-dev-data-mode-changed", handleDataModeChange);
     window.addEventListener("focus", handleFocus);

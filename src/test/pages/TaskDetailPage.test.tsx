@@ -34,6 +34,8 @@ vi.mock("@/services/api", () => ({
 
 vi.mock("@/hooks/useBoardRealtime", () => ({
   useBoardRealtime: vi.fn(),
+  isBoardRealtimeConnected: vi.fn().mockReturnValue(false),
+  clearBoardRealtimeStatus: vi.fn(),
 }));
 
 const mockBoard: Board = {
@@ -84,7 +86,7 @@ describe("TaskDetailPage Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Engineering Roadmap")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Implement Notion Task Detail Page")).toBeInTheDocument();
-      expect(screen.getByText("Board")).toBeInTheDocument();
+      expect(screen.getByTitle("Back to board")).toBeInTheDocument();
     });
   });
 

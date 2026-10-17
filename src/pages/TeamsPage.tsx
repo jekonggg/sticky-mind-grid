@@ -58,14 +58,16 @@ export default function TeamsPage() {
   const { data: invitations = [] } = useQuery<BoardInvitation[]>({
     queryKey: ["pendingInvitations"],
     queryFn: () => boardApi.getPendingInvitations(),
-    refetchInterval: 6000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 
   // Fetch Sent / Outgoing Pending Invitations
   const { data: sentInvitations = [] } = useQuery<BoardInvitation[]>({
     queryKey: ["sentInvitations"],
     queryFn: () => boardApi.getSentInvitations(),
-    refetchInterval: 6000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 
   // Fetch Teammates

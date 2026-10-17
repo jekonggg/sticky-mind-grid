@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationApi } from "@/services/notificationApi";
 import { boardApi } from "@/services/boardApi";
@@ -35,7 +35,8 @@ export function NotificationBell() {
   const { data, isLoading } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => notificationApi.getNotifications(20),
-    refetchInterval: 6000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: pendingInvitations = [] } = useQuery<BoardInvitation[]>({
@@ -51,8 +52,16 @@ export function NotificationBell() {
       }
       return [];
     },
-    refetchInterval: 6000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
+
+  useEffect(() => {
+    if (open) {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["pendingInvitations"] });
+    }
+  }, [open, queryClient]);
 
   const notifications = data?.notifications || [];
   const unreadCount = data?.unreadCount || 0;

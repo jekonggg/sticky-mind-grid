@@ -3,6 +3,7 @@ import { Task, CreateTaskData, UpdateTaskData, TaskStatus, Column } from "@/type
 import { taskApi } from "@/services/api";
 import { useActivity } from "./useActivity";
 import { AuthContext } from "@/contexts/AuthContext";
+import { isBoardRealtimeConnected } from "./useBoardRealtime";
 
 const DEFAULT_COLUMNS: Column[] = [
   { id: "todo", title: "To Do" },
@@ -114,6 +115,8 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     window.addEventListener("task-updated", handleRefresh);
     const interval = setInterval(() => {
       if (document.visibilityState !== "visible" || !boardId) return;
+      // Skip redundant HTTP polling whenever real-time SSE stream is actively connected for this board
+      if (typeof isBoardRealtimeConnected === "function" && isBoardRealtimeConnected(boardId)) return;
       // Prevent periodic polling from clobbering recently applied local edits.
       if (Date.now() - tasksMutationState.last < 6000) return;
       taskApi
@@ -122,7 +125,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
           setTasks(data);
         })
         .catch(() => {});
-    }, 4000);
+    }, 15000);
     return () => {
       clearInterval(interval);
       window.removeEventListener("smg-dev-data-mode-changed", handleDataModeChange);

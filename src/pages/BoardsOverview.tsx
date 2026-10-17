@@ -218,7 +218,8 @@ export default function BoardsOverview() {
   const { data: invitations = [] } = useQuery<BoardInvitation[]>({
     queryKey: ["pendingInvitations"],
     queryFn: () => boardApi.getPendingInvitations(),
-    refetchInterval: 6000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 
   const acceptMutation = useMutation({

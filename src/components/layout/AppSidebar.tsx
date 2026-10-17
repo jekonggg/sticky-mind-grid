@@ -146,7 +146,8 @@ export function AppSidebar({
   const { data: invitations = [] } = useQuery({
     queryKey: ["pendingInvitations"],
     queryFn: () => boardApi.getPendingInvitations(),
-    refetchInterval: 10000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 
   // Fetch notes for active board if available

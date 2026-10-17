@@ -22,7 +22,8 @@ export function useConversations() {
   return useQuery<Conversation[]>({
     queryKey: CONVERSATIONS_QUERY_KEY,
     queryFn: () => messageApi.getConversations(),
-    refetchInterval: 15000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -45,7 +46,8 @@ export function useMessagesThread(conversationId?: string) {
     queryKey: messagesQueryKey(conversationId || ""),
     queryFn: () => (conversationId ? messageApi.getMessages(conversationId) : Promise.resolve([])),
     enabled: !!conversationId,
-    refetchInterval: 10000,
+    refetchInterval: 15000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -59,7 +61,8 @@ export function useUnreadMessageCount() {
       const data = await messageApi.getUnreadCount();
       return data.unreadCount;
     },
-    refetchInterval: 10000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 }
 

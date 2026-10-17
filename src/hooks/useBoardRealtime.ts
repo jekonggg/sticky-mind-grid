@@ -30,6 +30,24 @@ interface UseBoardRealtimeOptions {
   onTrashEmptied?: (data?: any) => void;
 }
 
+const activeConnectedBoards = new Set<string>();
+
+/**
+ * Returns true if a real-time SSE stream is actively connected for the given board.
+ * Used by useTasks and useActivity to suppress redundant HTTP polling while SSE is healthy.
+ */
+export function isBoardRealtimeConnected(boardId?: string | null): boolean {
+  return Boolean(boardId && activeConnectedBoards.has(boardId));
+}
+
+export function clearBoardRealtimeStatus(boardId?: string | null): void {
+  if (boardId) {
+    activeConnectedBoards.delete(boardId);
+  } else {
+    activeConnectedBoards.clear();
+  }
+}
+
 export function useBoardRealtime({
   boardId,
   onTaskChange,
@@ -52,6 +70,21 @@ export function useBoardRealtime({
   const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
+
+  const setConnected = useCallback(
+    (connected: boolean) => {
+      setIsConnected(connected);
+      if (boardId) {
+        if (connected) {
+          activeConnectedBoards.add(boardId);
+        } else {
+          activeConnectedBoards.delete(boardId);
+        }
+      }
+    },
+    [boardId]
+  );
+
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -122,7 +155,7 @@ export function useBoardRealtime({
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
-      setIsConnected(false);
+      setConnected(false);
       setIsReconnecting(true);
       needsReconnectSyncRef.current = true;
       return;
@@ -140,7 +173,7 @@ export function useBoardRealtime({
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
-      setIsConnected(true);
+      setConnected(true);
       setIsReconnecting(false);
       return;
     }
@@ -155,7 +188,7 @@ export function useBoardRealtime({
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
-      setIsConnected(false);
+      setConnected(false);
       setIsReconnecting(false);
       return;
     }
@@ -183,7 +216,7 @@ export function useBoardRealtime({
       es.onopen = () => {
         if (!isMounted) return;
         clearReconnectDebounce();
-        setIsConnected(true);
+        setConnected(true);
         setIsReconnecting(false);
         if (needsReconnectSyncRef.current || (hasConnectedOnceRef.current && openedOnceOnThisInstance)) {
           needsReconnectSyncRef.current = false;
@@ -235,7 +268,7 @@ export function useBoardRealtime({
             case "connected":
               if (isMounted) {
                 clearReconnectDebounce();
-                setIsConnected(true);
+                setConnected(true);
                 setIsReconnecting(false);
                 if (needsReconnectSyncRef.current || (hasConnectedOnceRef.current && connectedMsgOnceOnThisInstance)) {
                   needsReconnectSyncRef.current = false;
@@ -307,7 +340,7 @@ export function useBoardRealtime({
                   eventSourceRef.current = null;
                 }
                 if (isMounted) {
-                  setIsConnected(false);
+                  setConnected(false);
                   setIsReconnecting(false);
                 }
               }
@@ -328,7 +361,7 @@ export function useBoardRealtime({
                 eventSourceRef.current = null;
               }
               if (isMounted) {
-                setIsConnected(false);
+                setConnected(false);
                 setIsReconnecting(false);
               }
               callbacksRef.current.onForceDisconnect?.(payload.data);
@@ -379,7 +412,7 @@ export function useBoardRealtime({
 
       es.onerror = () => {
         if (isMounted) {
-          setIsConnected(false);
+          setConnected(false);
           // Debounce the read-only reconnect lock (OQ-10) to prevent jarring UI locks during brief disconnects
           if (!reconnectDebounceTimeoutRef.current) {
             reconnectDebounceTimeoutRef.current = setTimeout(() => {
@@ -403,7 +436,7 @@ export function useBoardRealtime({
 
     const handleOffline = () => {
       if (!isMounted) return;
-      setIsConnected(false);
+      setConnected(false);
       if (!reconnectDebounceTimeoutRef.current) {
         reconnectDebounceTimeoutRef.current = setTimeout(() => {
           if (isMounted) {
@@ -444,7 +477,7 @@ export function useBoardRealtime({
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
-      setIsConnected(false);
+      setConnected(false);
       setIsReconnecting(false);
     };
   }, [boardId, userId, authToken, devSettings.simulateSseDisconnect, devSettings.seedTakeoverPreset, queryClient]);

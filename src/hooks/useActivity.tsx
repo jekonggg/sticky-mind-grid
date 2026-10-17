@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { Activity, ActivityType } from "@/types/task";
 import { authenticatedFetch } from "@/services/apiUtils";
 import { useAuth } from "@/contexts/AuthContext";
+import { isBoardRealtimeConnected } from "./useBoardRealtime";
 
 interface ActivityContextType {
   activities: Activity[];
@@ -44,10 +45,11 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       };
       window.addEventListener("smg-dev-data-mode-changed", handleDataModeChange);
       const interval = setInterval(() => {
-        if (document.visibilityState === "visible") {
-          fetchActivities(currentBoardId);
-        }
-      }, 5000);
+        if (document.visibilityState !== "visible") return;
+        // Skip redundant HTTP polling whenever real-time SSE stream is actively connected for this board
+        if (currentBoardId && typeof isBoardRealtimeConnected === "function" && isBoardRealtimeConnected(currentBoardId)) return;
+        fetchActivities(currentBoardId);
+      }, 20000);
       return () => {
         clearInterval(interval);
         window.removeEventListener("smg-dev-data-mode-changed", handleDataModeChange);

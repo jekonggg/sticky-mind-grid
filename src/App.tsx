@@ -32,6 +32,7 @@ const queryClient = new QueryClient({
       gcTime: 10 * 60 * 1000, // 10 minutes cache retention in memory
       refetchOnWindowFocus: false, // Avoid network spikes on window focus
       refetchOnMount: false, // Reuse fresh cached data across component remounts
+      refetchIntervalInBackground: false, // Stop all periodic polling when tab is hidden or backgrounded
     },
   },
 });
