@@ -165,15 +165,17 @@ class EmailService:
             f"Hello,\n\n"
             f"{inviter_name} has invited you to collaborate on the board \"{board_name}\" with the role of {role_label}.\n\n"
             f"You can view and accept your invitation by navigating to:\n{link}\n\n"
+            f"Don't have an account yet? Simply click the link and sign up with this email address — your invitation will be waiting on your dashboard.\n\n"
             f"Note: This invitation will expire in 7 days.\n\n"
             f"— The Sticky Mind Grid Team"
         )
 
         html_body = (
-            f"<div style='font-family: sans-serif; line-height: 1.5; color: #1e293b; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; rounded: 8px;'>"
+            f"<div style='font-family: sans-serif; line-height: 1.5; color: #1e293b; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;'>"
             f"<h2 style='color: #0f172a; margin-top: 0;'>Board Collaboration Invitation</h2>"
             f"<p><strong>{inviter_name}</strong> has invited you to collaborate on the board <strong>\"{board_name}\"</strong> as <strong>{role_label}</strong>.</p>"
             f"<p style='margin: 24px 0;'><a href='{link}' style='background-color: #2563eb; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;'>View Invitation</a></p>"
+            f"<p style='font-size: 13px; color: #475569;'>Don't have an account yet? Simply click the link and sign up with this email address — your invitation will be waiting on your dashboard.</p>"
             f"<p style='font-size: 13px; color: #64748b;'>This invitation expires in 7 days. If you did not expect this invitation, you can safely ignore this message.</p>"
             f"<hr style='border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;' />"
             f"<p style='font-size: 12px; color: #94a3b8;'>Sticky Mind Grid — Real-Time Kanban Workspace</p>"

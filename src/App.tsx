@@ -61,6 +61,7 @@ const App = () => (
                     <Route element={<ProtectedRoute />}>
                       <Route element={<AppLayout />}>
                         <Route path="/" element={<BoardsOverview />} />
+                        <Route path="/boards" element={<BoardsOverview />} />
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/tasks" element={<TasksPage />} />
                         <Route path="/calendar" element={<CalendarPage />} />
