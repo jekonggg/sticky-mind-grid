@@ -15,10 +15,31 @@ export interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const getInitialAuthState = (): { user: User | null; token: string | null } => {
+  try {
+    const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const savedUser = localStorage.getItem("auth_user");
+
+    if (savedToken && !isJwtExpired(savedToken) && savedUser) {
+      return {
+        token: savedToken,
+        user: JSON.parse(savedUser) as User,
+      };
+    } else if (savedToken && isJwtExpired(savedToken)) {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem("auth_user");
+    }
+  } catch {
+    // Corrupted localStorage entry
+  }
+  return { token: null, user: null };
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [initialState] = useState(getInitialAuthState);
+  const [user, setUser] = useState<User | null>(initialState.user);
+  const [token, setToken] = useState<string | null>(initialState.token);
+  const [loading, setLoading] = useState(false);
 
   const login = (userData: User, authToken: string) => {
     setUser(userData);

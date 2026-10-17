@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { CommandSearchDialog } from "@/components/search/CommandSearchDialog";
 import { LayoutProvider, useLayout } from "@/contexts/LayoutContext";
+import { BoardsOverviewSkeleton } from "@/components/skeletons";
 
 function AppLayoutInner() {
   const location = useLocation();
@@ -97,7 +98,9 @@ function AppLayoutInner() {
 
       {/* Main Viewport Content Area */}
       <main className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative">
-        <Outlet />
+        <Suspense fallback={<BoardsOverviewSkeleton />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       {/* Global Command Palette */}

@@ -24,4 +24,30 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("recharts")) {
+              return "vendor-charts";
+            }
+            if (id.includes("@dnd-kit")) {
+              return "vendor-dnd";
+            }
+            if (id.includes("framer-motion")) {
+              return "vendor-motion";
+            }
+            if (id.includes("@radix-ui")) {
+              return "vendor-radix";
+            }
+            if (id.includes("lucide-react") || id.includes("@untitledui/icons")) {
+              return "vendor-icons";
+            }
+          }
+        },
+      },
+    },
+  },
 }));

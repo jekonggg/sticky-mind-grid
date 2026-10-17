@@ -4,26 +4,31 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Analytics } from "@vercel/analytics/react";
-import BoardsOverview from "./pages/BoardsOverview";
-import NotFound from "./pages/NotFound";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
+import React, { Suspense, lazy } from "react";
 import { ThemeProvider } from "next-themes";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { DevModeProvider } from "./contexts/DevModeContext";
 import { ActivityProvider } from "./hooks/useActivity";
-import { KanbanBoard } from "./components/kanban/KanbanBoard";
-import TaskDetailPage from "./pages/TaskDetailPage";
-import DashboardPage from "./pages/DashboardPage";
-import TasksPage from "./pages/TasksPage";
-import CalendarPage from "./pages/CalendarPage";
-import TeamsPage from "./pages/TeamsPage";
-import MessagesPage from "./pages/MessagesPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AppLayout } from "./components/layout/AppLayout";
-
+import { AppLayoutSkeleton } from "./components/skeletons";
 import { DevSkeletonToolbar } from "./components/common/DevSkeletonToolbar";
+
+// Lazy-loaded route pages for on-demand bundle splitting
+const BoardsOverview = lazy(() => import("./pages/BoardsOverview"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const KanbanBoard = lazy(() =>
+  import("./components/kanban/KanbanBoard").then((m) => ({ default: m.KanbanBoard }))
+);
+const TaskDetailPage = lazy(() => import("./pages/TaskDetailPage"));
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const TasksPage = lazy(() => import("./pages/TasksPage"));
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
+const TeamsPage = lazy(() => import("./pages/TeamsPage"));
+const MessagesPage = lazy(() => import("./pages/MessagesPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,26 +53,28 @@ const App = () => (
                 <ActivityProvider>
                 <Toaster />
                 <Sonner />
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  
-                  <Route element={<ProtectedRoute />}>
-                    <Route element={<AppLayout />}>
-                      <Route path="/" element={<BoardsOverview />} />
-                      <Route path="/dashboard" element={<DashboardPage />} />
-                      <Route path="/tasks" element={<TasksPage />} />
-                      <Route path="/calendar" element={<CalendarPage />} />
-                      <Route path="/teams" element={<TeamsPage />} />
-                      <Route path="/boards/:boardId" element={<KanbanBoard />} />
-                      <Route path="/boards/:boardId/tasks/:taskId" element={<TaskDetailPage />} />
-                      <Route path="/messages" element={<MessagesPage />} />
-                      <Route path="/messages/:conversationId" element={<MessagesPage />} />
+                <Suspense fallback={<AppLayoutSkeleton />}>
+                  <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    
+                    <Route element={<ProtectedRoute />}>
+                      <Route element={<AppLayout />}>
+                        <Route path="/" element={<BoardsOverview />} />
+                        <Route path="/dashboard" element={<DashboardPage />} />
+                        <Route path="/tasks" element={<TasksPage />} />
+                        <Route path="/calendar" element={<CalendarPage />} />
+                        <Route path="/teams" element={<TeamsPage />} />
+                        <Route path="/boards/:boardId" element={<KanbanBoard />} />
+                        <Route path="/boards/:boardId/tasks/:taskId" element={<TaskDetailPage />} />
+                        <Route path="/messages" element={<MessagesPage />} />
+                        <Route path="/messages/:conversationId" element={<MessagesPage />} />
+                      </Route>
                     </Route>
-                  </Route>
 
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
                 <Analytics />
                 <DevSkeletonToolbar />
               </ActivityProvider>
