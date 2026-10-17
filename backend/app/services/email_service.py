@@ -90,7 +90,7 @@ class EmailJSEmailProvider(EmailProvider):
             "email": to_email,
             "to_name": to_email.split('@')[0],
             "subject": subject,
-            "message": html_body or text_body,
+            "message": text_body,
             "text_message": text_body,
             "html_message": html_body or "",
             **kwargs
