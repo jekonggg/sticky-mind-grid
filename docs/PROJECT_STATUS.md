@@ -270,14 +270,20 @@ CORS_ORIGINS includes multiple localhost variants. Acceptable for development bu
 **Severity:** Low (performance)
 Large base64 strings stored in LONGTEXT columns can cause database bloat and slow queries.
 
+### Cloud Infrastructure & Decoupled Maintenance (Phases 1-3)
+- **Supabase Cloud Storage (Phase 1):** Avatars (public bucket with instant CDN resolution) and Task/Message Attachments (private bucket with 15-minute signed URL tokens). Built-in fallback to local disk storage for local offline development.
+- **Supabase Managed PostgreSQL Migration (Phase 2):** Migrated from MySQL to high-availability Supabase PostgreSQL with pooler port `6543` (Supavisor transaction mode) and direct port `5432` for migrations. Fully cross-compatible JSON/JSONB schemas across 14 tables. PostgREST RLS locked down (HTTP 401 for anon queries).
+- **Decoupled Background Purge & Webhook (Phase 3):** Background maintenance decoupled from in-process Flask/APScheduler (`SCHEDULER_ENABLED=false` on web instances). Dedicated maintenance endpoint `POST /api/internal/jobs/purge` secured via `X-Internal-Secret` and `hmac.compare_digest`. Cleans up boards and tasks soft-deleted > 30 days ago and deletes associated attachment files from storage.
+- **External Keep-Alive & Daily Cron Monitor:** Setup via free external monitoring (cron-job.org / UptimeRobot) pinging `GET /api/health` every 10 minutes to eliminate 50s cold starts on Render free tier, and triggering `POST /api/internal/jobs/purge` daily at midnight UTC.
+
 ---
 
 ## Testing Status
 
 ### Framework & Workflow
 - **Strategy:** Tiered testing with fast targeted tests during development, automated full verification checkpoints, and user-triggered Playwright E2E suite (see [`AGENTS.md`](../AGENTS.md)).
-- **Frontend:** Vitest 3.2.4 + React Testing Library 16 + jsdom + `@vitest/coverage-v8` (165 passed tests across 37 test files)
-- **Backend:** pytest + `pytest-cov` (configured with SQLite in-memory test database, 87 passed tests)
+- **Frontend:** Vitest 3.2.4 + React Testing Library 16 + jsdom + `@vitest/coverage-v8` (320 passed tests across 57 test files)
+- **Backend:** pytest + `pytest-cov` (configured with SQLite in-memory test database, 149 passed tests, 80% coverage)
 - **E2E:** Playwright 1.57.0 (12 spec suites covering 117 tests, isolated against `sticky_mind_grid_test`)
 - **CI:** GitHub Actions runs backend pytest + coverage, frontend typecheck + vitest coverage, and full-stack Playwright E2E
 

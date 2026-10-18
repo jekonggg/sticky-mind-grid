@@ -280,13 +280,13 @@ Services contain all business logic. Routes parse requests, call services, and f
 | `TaskService` | `backend/app/services/task_service.py` | Task CRUD, reorder, auto-progress derivation, cross-board move, trash/restore, 30-day auto-purge, concurrency conflict detection |
 | `ActivityService` | `backend/app/services/activity_service.py` | Activity creation, board/card scoped queries with retention filtering, immutable audit trail |
 | `CommentService` | `backend/app/services/comment_service.py` | Comment CRUD, @mention extraction and notifications, active member authorization checks |
-| `FileService` | `backend/app/services/file_service.py` | Magic-byte verification, malware signature scanner, board/owner storage quotas, authenticated file access, orphan cleanup |
+| `FileService` | `backend/app/services/file_service.py` | Supabase Cloud Storage integration (public avatar bucket, private signed-url attachment bucket), magic-byte verification, malware signature scanner, board/owner storage quotas, authenticated file access, orphan cleanup |
 | `NoteService` | `backend/app/services/note_service.py` | Board note CRUD with active membership validation and author/admin deletion checks |
 | `NotificationService` | `backend/app/services/notification_service.py` | In-app notification creation, user preference and board mute suppression |
 | `UserService` | `backend/app/services/user_service.py` | User profile, preferences, account deletion with ownership succession, personal data export |
 | `MessageService` | `backend/app/services/message_service.py` | Direct message conversations, participants, messaging, soft-unsend |
 | `EmailService` | `backend/app/services/email_service.py` | Outbound email provider interface (`ConsoleEmailProvider`, `SMTPEmailProvider`) for verification and invitations |
-| `SchedulerService` | `backend/app/services/scheduler_service.py` | Background maintenance scheduler (APScheduler) for 30-day soft-deleted board purges |
+| `SchedulerService` | `backend/app/services/scheduler_service.py` | Background maintenance scheduler & decoupled webhook executor (`POST /api/internal/jobs/purge`) for 30-day soft-deleted board & task purges and cloud attachment cleanup |
 
 ---
 
