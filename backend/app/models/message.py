@@ -1,6 +1,7 @@
 from datetime import datetime
 import uuid
 from app import db
+from app.models.types import CompatibleJSON
 
 def generate_uuid():
     return str(uuid.uuid4())
@@ -143,9 +144,9 @@ class Message(db.Model):
     conversation_id = db.Column(db.String(36), db.ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     sender_id = db.Column(db.String(36), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     content = db.Column(db.Text, nullable=True)
-    attachments = db.Column(db.JSON, default=list) # [{ name, url, size, mimeType }]
+    attachments = db.Column(CompatibleJSON, default=list) # [{ name, url, size, mimeType }]
     reply_to_id = db.Column(db.String(36), db.ForeignKey('messages.id', ondelete='SET NULL'), nullable=True)
-    reactions = db.Column(db.JSON, default=dict) # { "👍": ["userId1", "userId2"] }
+    reactions = db.Column(CompatibleJSON, default=dict) # { "👍": ["userId1", "userId2"] }
     is_forwarded = db.Column(db.Boolean, default=False, nullable=False)
     is_pinned = db.Column(db.Boolean, default=False, nullable=False)
     is_deleted = db.Column(db.Boolean, default=False, nullable=False)

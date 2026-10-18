@@ -28,6 +28,8 @@ class TestConfig(Config):
     SECRET_KEY = 'test-secret-key'
     RATELIMIT_ENABLED = False
     SCHEDULER_ENABLED = False
+    SUPABASE_URL = None
+    SUPABASE_SERVICE_ROLE_KEY = None
 
 @pytest.fixture
 def app():

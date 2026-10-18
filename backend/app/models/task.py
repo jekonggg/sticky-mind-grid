@@ -6,6 +6,7 @@ def generate_uuid():
     return str(uuid.uuid4())
 
 from sqlalchemy.dialects.mysql import LONGTEXT
+from app.models.types import CompatibleJSON
 
 class Task(db.Model):
     __tablename__ = 'tasks'
@@ -22,10 +23,10 @@ class Task(db.Model):
     assigned_to = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
     position = db.Column(db.Float, default=0.0, nullable=False)
-    checklist = db.Column(db.JSON, default=list) # [{id, title, completed}]
-    tags = db.Column(db.JSON, default=list) # [{id, name, color}]
-    attachments = db.Column(db.JSON, default=list)
-    followers = db.Column(db.JSON, default=list)
+    checklist = db.Column(CompatibleJSON, default=list) # [{id, title, completed}]
+    tags = db.Column(CompatibleJSON, default=list) # [{id, name, color}]
+    attachments = db.Column(CompatibleJSON, default=list)
+    followers = db.Column(CompatibleJSON, default=list)
     is_deleted = db.Column(db.Boolean, default=False, nullable=False)
     deleted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

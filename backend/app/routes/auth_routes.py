@@ -374,7 +374,35 @@ def update_me():
     if 'fullName' in data:
         user.full_name = data['fullName'].strip()
     if 'avatarUrl' in data:
-        user.avatar_url = data['avatarUrl']
+        import os
+        from app.services.file_service import FileService
+        from flask import current_app
+
+        raw_avatar = data['avatarUrl']
+        new_avatar = None
+        if raw_avatar:
+            raw_str = str(raw_avatar).strip()
+            if '/storage/v1/object/public/' in raw_str:
+                # e.g. https://<url>/storage/v1/object/public/avatars/<filename> -> avatars/<filename>
+                after_public = raw_str.split('/storage/v1/object/public/', 1)[1].split('?', 1)[0]
+                new_avatar = after_public if after_public.startswith('avatars/') else f"avatars/{after_public}"
+            elif raw_str.startswith('avatars/'):
+                new_avatar = raw_str
+            else:
+                new_avatar = raw_str
+
+        # If user had an existing Supabase avatar and is updating or removing it, delete the old file
+        old_avatar = user.avatar_url
+        if old_avatar and old_avatar != new_avatar and FileService.is_supabase_configured():
+            if 'avatars/' in str(old_avatar) or not str(old_avatar).startswith('/'):
+                bucket = current_app.config.get('SUPABASE_STORAGE_AVATARS_BUCKET', 'avatars')
+                old_clean = os.path.basename(str(old_avatar))
+                try:
+                    FileService.delete_from_supabase(bucket, old_clean)
+                except Exception:
+                    pass
+
+        user.avatar_url = new_avatar
     if 'password' in data and data['password']:
         current_password = data.get('currentPassword') or ''
         if not current_password or not user.check_password(current_password):

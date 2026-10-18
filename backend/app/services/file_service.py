@@ -33,6 +33,123 @@ class FileService:
         return UPLOAD_FOLDER
 
     @staticmethod
+    def is_supabase_configured() -> bool:
+        """Returns True if Supabase Cloud Storage credentials are present in application config."""
+        try:
+            return bool(
+                current_app.config.get('SUPABASE_URL') and
+                current_app.config.get('SUPABASE_SERVICE_ROLE_KEY')
+            )
+        except Exception:
+            return False
+
+    @staticmethod
+    def upload_to_supabase(file_bytes: bytes, bucket: str, path: str, content_type: str = 'application/octet-stream'):
+        """Uploads raw bytes to a Supabase Storage bucket using the service-role key."""
+        if not FileService.is_supabase_configured():
+            return False, "Supabase Storage is not configured"
+        try:
+            import urllib.request
+            import urllib.error
+
+            supabase_url = current_app.config.get('SUPABASE_URL').rstrip('/')
+            service_role_key = current_app.config.get('SUPABASE_SERVICE_ROLE_KEY')
+            clean_path = path.lstrip('/')
+            upload_url = f"{supabase_url}/storage/v1/object/{bucket}/{clean_path}"
+
+            req = urllib.request.Request(
+                upload_url,
+                data=file_bytes,
+                headers={
+                    "Authorization": f"Bearer {service_role_key}",
+                    "Content-Type": content_type or "application/octet-stream",
+                    "x-upsert": "true",
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=20) as res:
+                if res.status in (200, 201):
+                    return True, None
+                return False, f"Supabase Storage responded with HTTP {res.status}"
+        except urllib.error.HTTPError as e:
+            err_msg = e.read().decode('utf-8', errors='ignore') if e.fp else str(e)
+            return False, f"Cloud storage error ({e.code}): {err_msg}"
+        except Exception as e:
+            return False, f"Cloud storage network error: {str(e)}"
+
+    @staticmethod
+    def get_supabase_public_url(bucket: str, path: str) -> str:
+        """Constructs the public CDN URL for an object in a public Supabase Storage bucket."""
+        try:
+            supabase_url = current_app.config.get('SUPABASE_URL', '').rstrip('/')
+            clean_path = path.lstrip('/')
+            return f"{supabase_url}/storage/v1/object/public/{bucket}/{clean_path}"
+        except Exception:
+            return ""
+
+    @staticmethod
+    def create_supabase_signed_url(bucket: str, path: str, expires_in: int = 900):
+        """Generates a temporary signed URL for an object in a private Supabase Storage bucket."""
+        if not FileService.is_supabase_configured():
+            return None, "Supabase Storage is not configured"
+        try:
+            import urllib.request
+            import urllib.error
+            import json
+
+            supabase_url = current_app.config.get('SUPABASE_URL').rstrip('/')
+            service_role_key = current_app.config.get('SUPABASE_SERVICE_ROLE_KEY')
+            clean_path = path.lstrip('/')
+            sign_url = f"{supabase_url}/storage/v1/object/sign/{bucket}/{clean_path}"
+
+            payload = json.dumps({"expiresIn": expires_in}).encode('utf-8')
+            req = urllib.request.Request(
+                sign_url,
+                data=payload,
+                headers={
+                    "Authorization": f"Bearer {service_role_key}",
+                    "Content-Type": "application/json",
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=15) as res:
+                data = json.loads(res.read().decode('utf-8'))
+                signed_path = data.get("signedURL")
+                if signed_path:
+                    if signed_path.startswith("http"):
+                        return signed_path, None
+                    return f"{supabase_url}/storage/v1{signed_path}", None
+                return None, "No signed URL returned from Supabase"
+        except Exception as e:
+            return None, f"Failed to generate signed URL: {str(e)}"
+
+    @staticmethod
+    def delete_from_supabase(bucket: str, path: str):
+        """Deletes an object from a Supabase Storage bucket."""
+        if not FileService.is_supabase_configured():
+            return False, "Supabase Storage is not configured"
+        try:
+            import urllib.request
+
+            supabase_url = current_app.config.get('SUPABASE_URL').rstrip('/')
+            service_role_key = current_app.config.get('SUPABASE_SERVICE_ROLE_KEY')
+            clean_path = path.lstrip('/')
+            del_url = f"{supabase_url}/storage/v1/object/{bucket}/{clean_path}"
+
+            req = urllib.request.Request(
+                del_url,
+                headers={
+                    "Authorization": f"Bearer {service_role_key}",
+                },
+                method="DELETE"
+            )
+            with urllib.request.urlopen(req, timeout=15) as res:
+                return res.status in (200, 204), None
+        except Exception as e:
+            return False, str(e)
+
+
+    @staticmethod
     def _record_uploader(stored_filename: str, user_id):
         if not user_id or not stored_filename:
             return
@@ -244,6 +361,11 @@ class FileService:
             safe_name = secure_filename(str(stored_name))
             if not safe_name or safe_name in referenced_names:
                 continue
+            if FileService.is_supabase_configured():
+                bucket = current_app.config.get('SUPABASE_STORAGE_ATTACHMENTS_BUCKET', 'attachments')
+                clean_name = safe_name.replace('attachments/', '')
+                FileService.delete_from_supabase(bucket, clean_name)
+
             fpath = os.path.join(UPLOAD_FOLDER, safe_name)
             if os.path.exists(fpath):
                 try:
@@ -287,6 +409,11 @@ class FileService:
                             o_name = str(a.get('url')).split('/api/files/', 1)[1].split('?', 1)[0]
                         if o_name and secure_filename(str(o_name)) == safe_name:
                             return
+
+        if FileService.is_supabase_configured():
+            bucket = current_app.config.get('SUPABASE_STORAGE_ATTACHMENTS_BUCKET', 'attachments')
+            clean_name = safe_name.replace('attachments/', '')
+            FileService.delete_from_supabase(bucket, clean_name)
 
         try:
             upload_dir = current_app.config.get('UPLOAD_FOLDER', UPLOAD_FOLDER)
@@ -354,11 +481,13 @@ class FileService:
         ext = os.path.splitext(orig_filename)[1].lower().lstrip('.')
         content_type = (file_storage.content_type or 'application/octet-stream').lower()
 
-        if purpose == 'banner':
+        if purpose in ('banner', 'avatar'):
             if not ext or ext not in ALLOWED_BANNER_EXTENSIONS:
-                return None, f"Banner file type '.{ext or 'unknown'}' is not allowed. Allowed types: JPG, PNG, WebP, GIF"
+                label = 'Avatar' if purpose == 'avatar' else 'Banner'
+                return None, f"{label} file type '.{ext or 'unknown'}' is not allowed. Allowed types: JPG, PNG, WebP, GIF"
             if content_type != 'application/octet-stream' and content_type not in ALLOWED_BANNER_MIMES:
-                return None, f"Banner MIME type '{content_type}' is not allowed. Allowed types: JPG, PNG, WebP, GIF"
+                label = 'Avatar' if purpose == 'avatar' else 'Banner'
+                return None, f"{label} MIME type '{content_type}' is not allowed. Allowed types: JPG, PNG, WebP, GIF"
         else:
             allowed = current_app.config.get('ALLOWED_UPLOAD_EXTENSIONS') or []
             if not ext or (allowed and ext not in allowed):
@@ -385,7 +514,7 @@ class FileService:
         file_storage.save(filepath)
         size_bytes = os.path.getsize(filepath)
 
-        max_bytes = MAX_BANNER_SIZE_BYTES if purpose == 'banner' else current_app.config.get('MAX_CONTENT_LENGTH', 25 * 1024 * 1024)
+        max_bytes = MAX_BANNER_SIZE_BYTES if purpose in ('banner', 'avatar') else current_app.config.get('MAX_CONTENT_LENGTH', 25 * 1024 * 1024)
         if size_bytes > max_bytes:
             try:
                 os.remove(filepath)
@@ -394,7 +523,7 @@ class FileService:
             limit_mb = max_bytes // (1024 * 1024)
             return None, f"File size exceeds the {limit_mb}MB maximum limit"
 
-        if purpose == 'banner':
+        if purpose in ('banner', 'avatar'):
             try:
                 with open(filepath, 'rb') as f:
                     header_bytes = f.read(16)
@@ -420,6 +549,54 @@ class FileService:
         if user_id:
             FileService._record_uploader(stored_filename, user_id)
 
+        # Upload to Supabase Storage if configured
+        if FileService.is_supabase_configured():
+            try:
+                with open(filepath, 'rb') as f:
+                    file_bytes = f.read()
+            except Exception:
+                file_bytes = b''
+
+            if purpose == 'avatar':
+                bucket = current_app.config.get('SUPABASE_STORAGE_AVATARS_BUCKET', 'avatars')
+                success, upload_err = FileService.upload_to_supabase(file_bytes, bucket, stored_filename, content_type)
+                if not success:
+                    try:
+                        os.remove(filepath)
+                    except OSError:
+                        pass
+                    return None, f"Cloud storage upload failed: {upload_err}"
+
+                public_url = FileService.get_supabase_public_url(bucket, stored_filename)
+                return {
+                    'id': unique_id,
+                    'name': orig_filename,
+                    'storedName': f"avatars/{stored_filename}",
+                    'url': public_url,
+                    'type': content_type,
+                    'size': format_size(size_bytes),
+                    'sizeBytes': size_bytes
+                }, None
+            else:
+                bucket = current_app.config.get('SUPABASE_STORAGE_ATTACHMENTS_BUCKET', 'attachments')
+                success, upload_err = FileService.upload_to_supabase(file_bytes, bucket, stored_filename, content_type)
+                if not success:
+                    try:
+                        os.remove(filepath)
+                    except OSError:
+                        pass
+                    return None, f"Cloud storage upload failed: {upload_err}"
+
+                return {
+                    'id': unique_id,
+                    'name': orig_filename,
+                    'storedName': f"attachments/{stored_filename}",
+                    'url': f"/api/files/{stored_filename}",
+                    'type': content_type,
+                    'size': format_size(size_bytes),
+                    'sizeBytes': size_bytes
+                }, None
+
         formatted_size = format_size(size_bytes)
         url = f"/api/files/{stored_filename}"
 
@@ -435,7 +612,8 @@ class FileService:
 
     @staticmethod
     def verify_file_access(filename, user_id):
-        safe_name = secure_filename(filename)
+        safe_name = secure_filename(os.path.basename(filename))
+        from app import db
         from app.models.user import User
 
         # 0. User avatars are public profile pictures - accessible without authentication
@@ -450,20 +628,23 @@ class FileService:
         from app.utils.decorators import get_effective_role
 
         # 1. Check if the file is attached to any task
-        # Search active and deleted tasks for attachment record using SQL LIKE filter
-        candidate_tasks = Task.query.filter(Task.attachments.like(f"%{safe_name}%")).all()
+        # Cast JSON column to String for cross-DB compatibility (Postgres JSONB, MySQL JSON, SQLite)
+        candidate_tasks = Task.query.filter(db.cast(Task.attachments, db.String).like(f"%{safe_name}%")).all()
         matched_tasks = []
         for t in candidate_tasks:
             if not t.attachments or not isinstance(t.attachments, list):
                 continue
             for att in t.attachments:
-                if isinstance(att, dict) and (
-                    att.get('storedName') == safe_name or
-                    att.get('id') == safe_name or
-                    (att.get('url') and safe_name in att.get('url'))
-                ):
-                    matched_tasks.append(t)
-                    break
+                if isinstance(att, dict):
+                    att_stored = str(att.get('storedName') or '')
+                    att_url = str(att.get('url') or '')
+                    if (
+                        safe_name in att_stored or
+                        att.get('id') == safe_name or
+                        safe_name in att_url
+                    ):
+                        matched_tasks.append(t)
+                        break
 
         if matched_tasks:
             # User must have active membership on at least one board containing this task
@@ -474,19 +655,22 @@ class FileService:
 
         # 2. Check if the file is in a chat message
         from app.models.message import Message, ConversationParticipant
-        candidate_messages = Message.query.filter(Message.attachments.like(f"%{safe_name}%")).all()
+        candidate_messages = Message.query.filter(db.cast(Message.attachments, db.String).like(f"%{safe_name}%")).all()
         matched_conv_ids = set()
         for m in candidate_messages:
             if not m.attachments or not isinstance(m.attachments, list):
                 continue
             for att in m.attachments:
-                if isinstance(att, dict) and (
-                    att.get('storedName') == safe_name or
-                    att.get('id') == safe_name or
-                    (att.get('url') and safe_name in att.get('url'))
-                ):
-                    matched_conv_ids.add(m.conversation_id)
-                    break
+                if isinstance(att, dict):
+                    att_stored = str(att.get('storedName') or '')
+                    att_url = str(att.get('url') or '')
+                    if (
+                        safe_name in att_stored or
+                        att.get('id') == safe_name or
+                        safe_name in att_url
+                    ):
+                        matched_conv_ids.add(m.conversation_id)
+                        break
 
         if matched_conv_ids:
             is_participant = ConversationParticipant.query.filter(
@@ -514,8 +698,25 @@ class FileService:
 
     @staticmethod
     def get_file(filename, as_attachment=False, download_name=None):
-        safe_name = secure_filename(filename)
-        if not os.path.exists(os.path.join(UPLOAD_FOLDER, safe_name)):
+        safe_name = secure_filename(os.path.basename(filename))
+
+        if FileService.is_supabase_configured():
+            from app.models.user import User
+            from flask import redirect
+            is_avatar = bool(User.query.filter(User.avatar_url.like(f"%{safe_name}%")).first())
+            if is_avatar:
+                bucket = current_app.config.get('SUPABASE_STORAGE_AVATARS_BUCKET', 'avatars')
+                public_url = FileService.get_supabase_public_url(bucket, safe_name)
+                if public_url:
+                    return redirect(public_url)
+            else:
+                bucket = current_app.config.get('SUPABASE_STORAGE_ATTACHMENTS_BUCKET', 'attachments')
+                signed_url, err = FileService.create_supabase_signed_url(bucket, safe_name, expires_in=900)
+                if signed_url:
+                    return redirect(signed_url)
+
+        local_path = os.path.join(UPLOAD_FOLDER, safe_name)
+        if not os.path.exists(local_path):
             return abort(404, description="File not found")
 
         return send_from_directory(

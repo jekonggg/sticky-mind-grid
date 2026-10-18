@@ -6,6 +6,7 @@ def generate_uuid():
     return str(uuid.uuid4())
 
 from sqlalchemy.dialects.mysql import LONGTEXT
+from app.models.types import CompatibleJSON
 
 class Board(db.Model):
     __tablename__ = 'boards'
@@ -16,7 +17,7 @@ class Board(db.Model):
     description = db.Column(db.Text, nullable=True)
     color = db.Column(db.String(50), nullable=False, default='hsl(220, 80%, 56%)')
     hero_image_url = db.Column(db.Text().with_variant(LONGTEXT, "mysql"), nullable=True)
-    columns = db.Column(db.JSON, default=list)
+    columns = db.Column(CompatibleJSON, default=list)
     owner_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True) # Temporarily nullable for migration
     workspace_id = db.Column(db.String(36), nullable=True, index=True)
     is_deleted = db.Column(db.Boolean, default=False, nullable=False)

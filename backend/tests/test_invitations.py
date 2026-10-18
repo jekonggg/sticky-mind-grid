@@ -183,8 +183,15 @@ def test_invite_unregistered_email_and_auto_attach_on_signup(client, create_test
         content_type="application/json"
     )
     assert reg_res.status_code == 201
-    user_data = reg_res.get_json()
-    new_user_token = user_data["token"]
+    from app.models.user import User
+    new_user = User.query.filter_by(email=unregistered_email).first()
+    assert new_user is not None
+    verify_res = client.post("/api/auth/verify-email", json={"token": new_user.verification_token})
+    assert verify_res.status_code == 200
+
+    login_res = client.post("/api/auth/login", json={"email": unregistered_email, "password": "Password123!"})
+    assert login_res.status_code == 200
+    new_user_token = login_res.get_json()["token"]
     user_headers = {"Authorization": f"Bearer {new_user_token}"}
 
     # 3. New user sees the pending invitation

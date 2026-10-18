@@ -55,7 +55,7 @@ export function ProfileTab({ onClose }: { onClose?: () => void }) {
 
     try {
       setUploadingAvatar(true);
-      const uploaded = await fileApi.uploadFile(file);
+      const uploaded = await fileApi.uploadFile(file, "avatar");
       setAvatarUrl(uploaded.url);
 
       // Instantly persist avatar to user profile

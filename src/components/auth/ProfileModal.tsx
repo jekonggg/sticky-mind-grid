@@ -105,7 +105,7 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
 
     try {
       setUploadingAvatar(true);
-      const uploaded = await fileApi.uploadFile(file);
+      const uploaded = await fileApi.uploadFile(file, "avatar");
       const updatedUser = await authApi.updateMe({
         fullName: fullName.trim() || user?.fullName,
         avatarUrl: uploaded.url,

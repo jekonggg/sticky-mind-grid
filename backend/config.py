@@ -35,6 +35,10 @@ engine_options = {
 if raw_db_url:
     if raw_db_url.startswith('mysql://'):
         raw_db_url = raw_db_url.replace('mysql://', 'mysql+pymysql://', 1)
+    elif raw_db_url.startswith('postgres://'):
+        raw_db_url = raw_db_url.replace('postgres://', 'postgresql+psycopg2://', 1)
+    elif raw_db_url.startswith('postgresql://') and not raw_db_url.startswith('postgresql+'):
+        raw_db_url = raw_db_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
     
     # If Aiven or SSL query parameters are provided, strip non-standard query params and configure PyMySQL SSL
     if 'ssl-mode' in raw_db_url or 'ssl_mode' in raw_db_url or 'aivencloud.com' in raw_db_url:
@@ -51,6 +55,11 @@ if raw_db_url:
 
 if raw_db_url and 'mysql' in raw_db_url:
     engine_options["connect_args"] = connect_args
+elif raw_db_url and 'postgres' in raw_db_url:
+    engine_options["connect_args"] = {"connect_timeout": 30}
+    engine_options["pool_size"] = 5
+    engine_options["max_overflow"] = 10
+    engine_options["pool_recycle"] = 300
 
 
 class Config:
@@ -121,3 +130,9 @@ class Config:
 
     # Background Maintenance Scheduler
     SCHEDULER_ENABLED = os.environ.get('SCHEDULER_ENABLED', 'true').lower() in ('true', '1')
+
+    # Supabase Storage Configuration
+    SUPABASE_URL = os.environ.get('SUPABASE_URL', '').rstrip('/')
+    SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '')
+    SUPABASE_STORAGE_AVATARS_BUCKET = os.environ.get('SUPABASE_STORAGE_AVATARS_BUCKET', 'avatars')
+    SUPABASE_STORAGE_ATTACHMENTS_BUCKET = os.environ.get('SUPABASE_STORAGE_ATTACHMENTS_BUCKET', 'attachments')

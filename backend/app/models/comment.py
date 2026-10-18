@@ -1,6 +1,7 @@
 from datetime import datetime
 import uuid
 from app import db
+from app.models.types import CompatibleJSON
 
 def generate_uuid():
     return str(uuid.uuid4())
@@ -12,7 +13,7 @@ class Comment(db.Model):
     task_id = db.Column(db.String(36), db.ForeignKey('tasks.id', ondelete='CASCADE'), nullable=False)
     user_id = db.Column(db.String(36), db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     content = db.Column(db.Text, nullable=False)
-    mentions = db.Column(db.JSON, default=list) # List of mentioned user_ids
+    mentions = db.Column(CompatibleJSON, default=list) # List of mentioned user_ids
     is_edited = db.Column(db.Boolean, default=False, nullable=False)
     original_content = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

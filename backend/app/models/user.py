@@ -51,12 +51,27 @@ class User(db.Model):
         return bcrypt.check_password_hash(self.password_hash, password)
 
     def to_dict(self):
+        avatar = self.avatar_url
+        if avatar and not avatar.startswith('http://') and not avatar.startswith('https://'):
+            from flask import current_app
+            try:
+                supa_url = current_app.config.get('SUPABASE_URL') if current_app else None
+                bucket = current_app.config.get('SUPABASE_STORAGE_AVATARS_BUCKET', 'avatars') if current_app else 'avatars'
+                if supa_url and (avatar.startswith('avatars/') or not avatar.startswith('/')):
+                    clean_path = avatar.replace('avatars/', '', 1) if avatar.startswith('avatars/') else avatar
+                    avatar = f"{supa_url}/storage/v1/object/public/{bucket}/{clean_path}"
+                elif avatar.startswith('/uploads/'):
+                    avatar = None
+            except Exception:
+                pass
+
         return {
             'id': self.id,
             'email': self.email,
             'fullName': self.full_name,
-            'avatarUrl': self.avatar_url,
+            'avatarUrl': avatar,
             'authProvider': getattr(self, 'auth_provider', None) or 'local',
             'emailVerified': bool(getattr(self, 'email_verified', False)),
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None
         }
+
