@@ -1,5 +1,13 @@
 export type OAuthProvider = 'google' | 'github' | 'microsoft';
 
+export interface OAuthProviderInfo {
+  name: string;
+  enabled: boolean;
+  configured?: boolean;
+  clientId?: string | null;
+  tenantId?: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -13,6 +21,7 @@ export interface OAuthLoginPayload {
   provider: OAuthProvider;
   token?: string;
   code?: string;
+  redirectUri?: string;
   profile?: {
     email: string;
     fullName?: string;

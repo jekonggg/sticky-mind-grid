@@ -137,3 +137,16 @@ class Config:
     SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '')
     SUPABASE_STORAGE_AVATARS_BUCKET = os.environ.get('SUPABASE_STORAGE_AVATARS_BUCKET', 'avatars')
     SUPABASE_STORAGE_ATTACHMENTS_BUCKET = os.environ.get('SUPABASE_STORAGE_ATTACHMENTS_BUCKET', 'attachments')
+
+    # OAuth Provider Configuration (Google, GitHub, Microsoft)
+    GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '').strip()
+    GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '').strip()
+
+    GITHUB_CLIENT_ID = os.environ.get('GITHUB_CLIENT_ID', '').strip()
+    GITHUB_CLIENT_SECRET = os.environ.get('GITHUB_CLIENT_SECRET', '').strip()
+
+    MICROSOFT_CLIENT_ID = os.environ.get('MICROSOFT_CLIENT_ID', '').strip()
+    MICROSOFT_CLIENT_SECRET = os.environ.get('MICROSOFT_CLIENT_SECRET', '').strip()
+    MICROSOFT_TENANT_ID = os.environ.get('MICROSOFT_TENANT_ID', 'common').strip() or 'common'
+
+    OAUTH_REDIRECT_URI = os.environ.get('OAUTH_REDIRECT_URI', '').strip()

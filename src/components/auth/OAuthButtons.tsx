@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/services/authApi";
-import { OAuthProvider, OAuthLoginPayload } from "@/types/user";
+import { OAuthProvider, OAuthLoginPayload, OAuthProviderInfo } from "@/types/user";
+import {
+  buildProviderAuthUrl,
+  generateOAuthState,
+  getOAuthRedirectUri,
+  openOAuthPopup,
+} from "@/utils/oauth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,13 +21,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loading01 as Loader2 } from "@untitledui/icons";
+import { Loading01 as Loader2, InfoCircle } from "@untitledui/icons";
 
 interface OAuthButtonsProps {
   mode?: "login" | "register";
 }
 
-// Default presets for fast 1-click testing/login
+// Default presets for fast 1-click testing/sandbox login
 const PRESET_ACCOUNTS: Record<
   OAuthProvider,
   Array<{ name: string; email: string; avatarUrl: string }>
@@ -67,35 +73,124 @@ const PRESET_ACCOUNTS: Record<
 // Provider metadata
 const PROVIDER_INFO: Record<
   OAuthProvider,
-  { name: string; color: string; bgHover: string }
+  { name: string; color: string; bgHover: string; envVarName: string }
 > = {
   google: {
     name: "Google",
     color: "#4285F4",
     bgHover: "hover:bg-red-500/5 hover:border-red-500/30",
+    envVarName: "GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET",
   },
   github: {
     name: "GitHub",
     color: "#24292F",
     bgHover: "hover:bg-muted/80 hover:border-foreground/30",
+    envVarName: "GITHUB_CLIENT_ID & GITHUB_CLIENT_SECRET",
   },
   microsoft: {
     name: "Microsoft",
     color: "#00A4EF",
     bgHover: "hover:bg-blue-500/5 hover:border-blue-500/30",
+    envVarName: "MICROSOFT_CLIENT_ID & MICROSOFT_CLIENT_SECRET",
   },
 };
 
 export function OAuthButtons({ mode = "login" }: OAuthButtonsProps) {
   const [loadingProvider, setLoadingProvider] = useState<OAuthProvider | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<OAuthProvider | null>(null);
+  const [providerConfigs, setProviderConfigs] = useState<Record<OAuthProvider, OAuthProviderInfo>>({
+    google: { name: "Google", enabled: true, configured: false, clientId: null },
+    github: { name: "GitHub", enabled: true, configured: false, clientId: null },
+    microsoft: { name: "Microsoft", enabled: true, configured: false, clientId: null },
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customEmail, setCustomEmail] = useState("");
   const [customName, setCustomName] = useState("");
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleOAuthFlow = async (payload: OAuthLoginPayload) => {
+  useEffect(() => {
+    let isMounted = true;
+    if (typeof authApi.getOAuthProviders === "function") {
+      authApi
+        .getOAuthProviders()
+        .then((configs) => {
+          if (isMounted && configs) {
+            setProviderConfigs(configs);
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleRealOAuthFlow = async (provider: OAuthProvider) => {
+    const config = providerConfigs[provider];
+    if (!config || !config.configured || !config.clientId) {
+      handleOpenSandboxModal(provider);
+      return;
+    }
+
+    setLoadingProvider(provider);
+    try {
+      const redirectUri = getOAuthRedirectUri();
+      const state = generateOAuthState(provider);
+      const authUrl = buildProviderAuthUrl(provider, config, redirectUri, state);
+
+      let code: string;
+      try {
+        const popupResult = await openOAuthPopup(authUrl, `Sign in with ${PROVIDER_INFO[provider].name}`);
+        code = popupResult.code;
+      } catch (popupErr: any) {
+        if (popupErr.message && popupErr.message.includes("Popup blocked")) {
+          toast.info("Redirecting to authorization page...");
+          window.location.href = authUrl;
+          return;
+        }
+        throw popupErr;
+      }
+
+      const response = await authApi.oauthLogin({
+        provider,
+        code,
+        redirectUri,
+      });
+
+      login(response.user, response.token);
+      toast.success(
+        `Signed in with ${PROVIDER_INFO[provider].name}! Welcome, ${
+          response.user.fullName || response.user.email
+        }`
+      );
+      navigate("/");
+    } catch (error: any) {
+      if (!error.message?.includes("closed") && !error.message?.includes("cancelled")) {
+        toast.error(error.message || `Failed to sign in with ${PROVIDER_INFO[provider].name}`);
+      }
+    } finally {
+      setLoadingProvider(null);
+    }
+  };
+
+  const handleOpenSandboxModal = (provider: OAuthProvider) => {
+    setSelectedProvider(provider);
+    setCustomEmail("");
+    setCustomName("");
+    setIsModalOpen(true);
+  };
+
+  const handleProviderClick = (provider: OAuthProvider) => {
+    const config = providerConfigs[provider];
+    if (config?.configured && config?.clientId) {
+      handleRealOAuthFlow(provider);
+    } else {
+      handleOpenSandboxModal(provider);
+    }
+  };
+
+  const handleSandboxSubmit = async (payload: OAuthLoginPayload) => {
     setLoadingProvider(payload.provider);
     try {
       const response = await authApi.oauthLogin(payload);
@@ -114,18 +209,11 @@ export function OAuthButtons({ mode = "login" }: OAuthButtonsProps) {
     }
   };
 
-  const handleProviderClick = (provider: OAuthProvider) => {
-    setSelectedProvider(provider);
-    setCustomEmail("");
-    setCustomName("");
-    setIsModalOpen(true);
-  };
-
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProvider || !customEmail) return;
 
-    handleOAuthFlow({
+    handleSandboxSubmit({
       provider: selectedProvider,
       profile: {
         email: customEmail.trim(),
@@ -225,7 +313,7 @@ export function OAuthButtons({ mode = "login" }: OAuthButtonsProps) {
         </Button>
       </div>
 
-      {/* Interactive Account Selection Modal */}
+      {/* Interactive Account Selection Modal (Dev / Sandbox mode) */}
       {selectedProvider && (
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="sm:max-w-md">
@@ -267,15 +355,26 @@ export function OAuthButtons({ mode = "login" }: OAuthButtonsProps) {
                 <span>Continue with {PROVIDER_INFO[selectedProvider].name}</span>
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Choose a pre-configured profile or enter your {PROVIDER_INFO[selectedProvider].name} email to {mode === "register" ? "sign up" : "sign in"}.
+                Choose a test profile or enter your {PROVIDER_INFO[selectedProvider].name} email to {mode === "register" ? "sign up" : "sign in"}.
               </DialogDescription>
             </DialogHeader>
+
+            {/* Sandbox Notice Banner */}
+            <div className="flex items-start gap-2.5 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs leading-relaxed">
+              <InfoCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold">Developer Sandbox Mode</span>
+                <p className="text-[11px] opacity-90 mt-0.5">
+                  Real OAuth credentials are not configured in your <code className="font-mono text-[10px] bg-background/50 px-1 py-0.5 rounded">.env</code>. You can test sign-in using sandbox profiles below, or configure <code className="font-mono text-[10px] bg-background/50 px-1 py-0.5 rounded">{PROVIDER_INFO[selectedProvider].envVarName}</code> to enable live OAuth.
+                </p>
+              </div>
+            </div>
 
             <div className="space-y-4 py-2">
               {/* Quick Select Preset Cards */}
               <div className="space-y-2">
                 <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  1-Click Profiles
+                  1-Click Test Profiles
                 </Label>
                 <div className="grid grid-cols-1 gap-2">
                   {PRESET_ACCOUNTS[selectedProvider].map((account) => (
@@ -284,7 +383,7 @@ export function OAuthButtons({ mode = "login" }: OAuthButtonsProps) {
                       type="button"
                       disabled={loadingProvider !== null}
                       onClick={() =>
-                        handleOAuthFlow({
+                        handleSandboxSubmit({
                           provider: selectedProvider,
                           profile: {
                             email: account.email,

@@ -3,10 +3,16 @@ import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/test-utils";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { authApi } from "@/services/authApi";
+import * as oauthUtils from "@/utils/oauth";
 
 vi.mock("@/services/authApi", () => ({
   authApi: {
     oauthLogin: vi.fn(),
+    getOAuthProviders: vi.fn().mockResolvedValue({
+      google: { name: "Google", enabled: true, configured: false, clientId: null },
+      github: { name: "GitHub", enabled: true, configured: false, clientId: null },
+      microsoft: { name: "Microsoft", enabled: true, configured: false, clientId: null },
+    }),
   },
 }));
 
@@ -27,7 +33,7 @@ describe("OAuthButtons Component", () => {
     expect(screen.getByTitle("Continue with Microsoft")).toBeInTheDocument();
   });
 
-  it("opens account selection modal when clicking a provider button", async () => {
+  it("opens account selection modal when provider is in sandbox/unconfigured mode", async () => {
     renderWithProviders(<OAuthButtons mode="login" />, {
       authOverrides: { login: mockLogin },
     });
@@ -36,9 +42,10 @@ describe("OAuthButtons Component", () => {
 
     expect(await screen.findByText("Alex Johnson")).toBeInTheDocument();
     expect(screen.getByText("Sophia Chen")).toBeInTheDocument();
+    expect(screen.getByText("Developer Sandbox Mode")).toBeInTheDocument();
   });
 
-  it("authenticates when selecting a preset account", async () => {
+  it("authenticates when selecting a preset account in sandbox mode", async () => {
     (authApi.oauthLogin as any).mockResolvedValueOnce({
       user: {
         id: "oauth-user-1",
@@ -74,7 +81,7 @@ describe("OAuthButtons Component", () => {
     });
   });
 
-  it("allows entering a custom account email", async () => {
+  it("allows entering a custom account email in sandbox mode", async () => {
     (authApi.oauthLogin as any).mockResolvedValueOnce({
       user: {
         id: "oauth-user-custom",
@@ -106,5 +113,57 @@ describe("OAuthButtons Component", () => {
       });
       expect(mockLogin).toHaveBeenCalled();
     });
+  });
+
+  it("launches real OAuth popup and code exchange when provider is configured", async () => {
+    (authApi.getOAuthProviders as any).mockResolvedValueOnce({
+      google: { name: "Google", enabled: true, configured: true, clientId: "real-google-client-id" },
+      github: { name: "GitHub", enabled: true, configured: false, clientId: null },
+      microsoft: { name: "Microsoft", enabled: true, configured: false, clientId: null },
+    });
+
+    const openPopupSpy = vi.spyOn(oauthUtils, "openOAuthPopup").mockResolvedValueOnce({
+      code: "google-auth-code-12345",
+      state: "state-token",
+    });
+
+    (authApi.oauthLogin as any).mockResolvedValueOnce({
+      user: {
+        id: "real-google-user",
+        email: "live.user@gmail.com",
+        fullName: "Live Google User",
+        authProvider: "google",
+      },
+      token: "real-jwt-token",
+    });
+
+    renderWithProviders(<OAuthButtons mode="login" />, {
+      authOverrides: { login: mockLogin },
+    });
+
+    // Wait for provider config to load
+    await waitFor(() => {
+      expect(authApi.getOAuthProviders).toHaveBeenCalled();
+    });
+
+    const googleBtn = screen.getByTitle("Continue with Google");
+    fireEvent.click(googleBtn);
+
+    await waitFor(() => {
+      expect(openPopupSpy).toHaveBeenCalled();
+      expect(authApi.oauthLogin).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: "google",
+          code: "google-auth-code-12345",
+          redirectUri: expect.any(String),
+        })
+      );
+      expect(mockLogin).toHaveBeenCalledWith(
+        expect.objectContaining({ email: "live.user@gmail.com" }),
+        "real-jwt-token"
+      );
+    });
+
+    openPopupSpy.mockRestore();
   });
 });

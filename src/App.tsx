@@ -20,6 +20,7 @@ const BoardsOverview = lazy(() => import("./pages/BoardsOverview"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
+const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
 const KanbanBoard = lazy(() =>
   import("./components/kanban/KanbanBoard").then((m) => ({ default: m.KanbanBoard }))
 );
@@ -57,6 +58,8 @@ const App = () => (
                   <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/auth/callback" element={<OAuthCallback />} />
+                    <Route path="/auth/callback/:provider" element={<OAuthCallback />} />
                     
                     <Route element={<ProtectedRoute />}>
                       <Route element={<AppLayout />}>

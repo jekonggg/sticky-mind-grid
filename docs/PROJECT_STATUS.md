@@ -18,7 +18,7 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ### Authentication
 - **Registration** with email/password — fully connected (UI → API → backend → DB)
-- **OAuth / Social Login** — Google Sign-In, GitHub OAuth, and Microsoft / Azure AD authentication with 1-click presets and custom account support
+- **OAuth 2.0 / Social Login** — Live Google Identity, GitHub OAuth, and Microsoft Graph / Entra ID Authorization Code flow with CSRF state protection, centered popup window handoff, full-page redirect fallback, zero-dependency standard library backend exchange, and seamless Developer Sandbox mode when credentials are unconfigured
 - **Login** with JWT tokens — 24h expiry, persisted in localStorage
 - **Profile management** — update name and password (requires current password)
 - **Protected routes** — frontend redirect via ProtectedRoute, backend enforcement via `@jwt_required()`

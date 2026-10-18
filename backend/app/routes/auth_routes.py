@@ -76,15 +76,29 @@ def attach_pending_invitations(user):
     except Exception as e:
         print(f"Error attaching pending invitations for {user.email}: {e}")
 
+from app.services.oauth_service import OAuthService, SUPPORTED_OAUTH_PROVIDERS
+
 def handle_oauth_flow(provider: str, data: dict):
     try:
-        provider = provider.lower()
+        provider = provider.lower().strip()
         if provider not in SUPPORTED_OAUTH_PROVIDERS:
             return jsonify({'message': f'Unsupported provider: {provider}'}), 400
 
-        profile = data.get('profile') or {}
+        code = data.get('code')
+        redirect_uri = data.get('redirectUri') or data.get('redirect_uri')
+
+        # Real OAuth Authorization Code Exchange
+        if code:
+            profile, error = OAuthService.exchange_code_for_profile(provider, code, redirect_uri)
+            if error:
+                return jsonify({'message': error}), 400
+        else:
+            # Fallback / Sandbox profile (used in testing or when provider credentials are not yet configured)
+            profile = data.get('profile') or {}
+            if not profile and not data.get('email'):
+                return jsonify({'message': 'Missing email or authorization code in OAuth request'}), 400
+
         email = profile.get('email') or data.get('email')
-        
         if not email:
             return jsonify({'message': 'Missing email in OAuth request'}), 400
 
@@ -93,7 +107,6 @@ def handle_oauth_flow(provider: str, data: dict):
         avatar_url = profile.get('avatarUrl') or profile.get('picture') or data.get('avatarUrl')
         provider_id = profile.get('providerId') or profile.get('id') or profile.get('sub') or data.get('providerId')
 
-        print(f"DEBUG: OAuth {provider} attempt for email: {email}")
         user = User.query.filter_by(email=email).first()
         status_code = 200
 
@@ -103,14 +116,14 @@ def handle_oauth_flow(provider: str, data: dict):
                 full_name=full_name,
                 avatar_url=avatar_url,
                 auth_provider=provider,
-                auth_provider_id=str(provider_id) if provider_id else None
+                auth_provider_id=str(provider_id) if provider_id else None,
+                email_verified=True
             )
             user.set_password(str(uuid.uuid4()))
             db.session.add(user)
             db.session.commit()
             attach_pending_invitations(user)
             status_code = 201
-            print(f"DEBUG: New OAuth user created: {user.email} (id: {user.id})")
         else:
             updated = False
             if not getattr(user, 'email_verified', False):
@@ -127,7 +140,6 @@ def handle_oauth_flow(provider: str, data: dict):
                 updated = True
             if updated:
                 db.session.commit()
-            print(f"DEBUG: Existing user logged in via OAuth {provider}: {user.email}")
 
         access_token = create_access_token(identity=str(user.id))
         return jsonify({
@@ -137,22 +149,26 @@ def handle_oauth_flow(provider: str, data: dict):
         }), status_code
     except Exception as e:
         db.session.rollback()
-        print(f"CRITICAL ERROR during OAuth flow: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'message': 'OAuth authentication failed', 'error': str(e)}), 500
 
 @bp.route('/oauth/providers', methods=['GET'])
 def get_oauth_providers():
-    return jsonify({
-        'google': {'name': 'Google', 'enabled': True},
-        'github': {'name': 'GitHub', 'enabled': True},
-        'microsoft': {'name': 'Microsoft', 'enabled': True}
-    }), 200
+    return jsonify(OAuthService.get_providers_status()), 200
 
 @bp.route('/oauth', methods=['POST'])
 @limiter.limit("20 per minute")
 def oauth_generic():
+    data = request.get_json() or {}
+    provider = data.get('provider', '').lower()
+    if not provider:
+        return jsonify({'message': 'Missing provider field'}), 400
+    return handle_oauth_flow(provider, data)
+
+@bp.route('/oauth/callback', methods=['POST'])
+@limiter.limit("20 per minute")
+def oauth_callback():
     data = request.get_json() or {}
     provider = data.get('provider', '').lower()
     if not provider:

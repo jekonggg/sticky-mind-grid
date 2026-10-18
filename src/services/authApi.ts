@@ -1,4 +1,4 @@
-import { AuthResponse, OAuthLoginPayload } from "@/types/user";
+import { AuthResponse, OAuthLoginPayload, OAuthProvider, OAuthProviderInfo } from "@/types/user";
 import { API_AUTH_BASE, getStoredToken } from "@/config/api";
 
 export const authApi = {
@@ -28,14 +28,20 @@ export const authApi = {
     return res.json();
   },
 
-  async getOAuthProviders(): Promise<Record<string, { name: string; enabled: boolean }>> {
-    const res = await fetch(`${API_AUTH_BASE}/oauth/providers`);
-    if (!res.ok) return {
-      google: { name: "Google", enabled: true },
-      github: { name: "GitHub", enabled: true },
-      microsoft: { name: "Microsoft", enabled: true }
+  async getOAuthProviders(): Promise<Record<OAuthProvider, OAuthProviderInfo>> {
+    try {
+      const res = await fetch(`${API_AUTH_BASE}/oauth/providers`);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+      // Fallback on network error
+    }
+    return {
+      google: { name: "Google", enabled: true, configured: false, clientId: null },
+      github: { name: "GitHub", enabled: true, configured: false, clientId: null },
+      microsoft: { name: "Microsoft", enabled: true, configured: false, clientId: null },
     };
-    return res.json();
   },
 
   async register(email: string, password: string, fullName: string): Promise<AuthResponse> {
