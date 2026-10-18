@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="cardGradWhite" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#f8fafc" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="cardGradAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <filter id="shadow512" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0f172a" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Background App Tile -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad512)"/>
+
+  <!-- Subtle Ambient Grid Lines -->
+  <g opacity="0.08" stroke="#ffffff" stroke-width="2">
+    <line x1="0" y1="128" x2="512" y2="128"/>
+    <line x1="0" y1="256" x2="512" y2="256"/>
+    <line x1="0" y1="384" x2="512" y2="384"/>
+    <line x1="128" y1="0" x2="128" y2="512"/>
+    <line x1="256" y1="0" x2="256" y2="512"/>
+    <line x1="384" y1="0" x2="384" y2="512"/>
+  </g>
+
+  <!-- Kanban Column 1 (Left) -->
+  <rect x="74" y="102" width="108" height="308" rx="26" fill="#ffffff" fill-opacity="0.18"/>
+  <rect x="90" y="128" width="76" height="84" rx="16" fill="url(#cardGradWhite)" filter="url(#shadow512)"/>
+  <rect x="100" y="146" width="42" height="8" rx="4" fill="#3b82f6"/>
+  <rect x="100" y="164" width="54" height="6" rx="3" fill="#94a3b8"/>
+  <rect x="100" y="178" width="36" height="6" rx="3" fill="#cbd5e1"/>
+
+  <rect x="90" y="230" width="76" height="112" rx="16" fill="url(#cardGradWhite)" filter="url(#shadow512)"/>
+  <rect x="100" y="248" width="38" height="8" rx="4" fill="#10b981"/>
+  <rect x="100" y="266" width="48" height="6" rx="3" fill="#94a3b8"/>
+  <rect x="100" y="280" width="40" height="6" rx="3" fill="#cbd5e1"/>
+
+  <!-- Kanban Column 2 (Middle - Active) -->
+  <rect x="202" y="102" width="108" height="308" rx="26" fill="#ffffff" fill-opacity="0.25"/>
+  <rect x="218" y="128" width="76" height="122" rx="16" fill="url(#cardGradAccent)" filter="url(#shadow512)"/>
+  <rect x="228" y="146" width="44" height="8" rx="4" fill="#ffffff"/>
+  <rect x="228" y="164" width="54" height="6" rx="3" fill="#e0f2fe"/>
+  <rect x="228" y="186" width="34" height="6" rx="3" fill="#bae6fd"/>
+
+  <rect x="218" y="268" width="76" height="86" rx="16" fill="url(#cardGradWhite)" filter="url(#shadow512)"/>
+  <rect x="228" y="286" width="40" height="8" rx="4" fill="#f59e0b"/>
+  <rect x="228" y="304" width="50" height="6" rx="3" fill="#94a3b8"/>
+
+  <!-- Kanban Column 3 (Right) -->
+  <rect x="330" y="102" width="108" height="308" rx="26" fill="#ffffff" fill-opacity="0.18"/>
+  <rect x="346" y="128" width="76" height="96" rx="16" fill="url(#cardGradWhite)" filter="url(#shadow512)"/>
+  <rect x="356" y="146" width="38" height="8" rx="4" fill="#8b5cf6"/>
+  <rect x="356" y="164" width="48" height="6" rx="3" fill="#94a3b8"/>
+  <rect x="356" y="178" width="32" height="6" rx="3" fill="#cbd5e1"/>
+</svg>

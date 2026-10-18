@@ -77,6 +77,7 @@ class Config:
     # CORS Origins
     default_cors = (
         'http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,'
+        'capacitor://localhost,https://localhost,http://localhost,'
         'https://sticky-mind-grid.vercel.app'
     )
     CORS_ORIGINS = [

@@ -2,11 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <!-- TODO: Set the document title to the name of your application -->
     <title>Sticky Mind Grid | Task Board</title>
     <meta name="description" content="A powerful and flexible task management system for teams." />
     <meta name="author" content="Sticky Mind team" />
+
+    <!-- PWA & Mobile Web App Meta -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="StickyMind" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
 
     <!-- TODO: Update og:title to match your application name -->
     <meta property="og:title" content="Sticky Mind Grid" />
@@ -38,5 +47,14 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch((err) => {
+            console.debug('ServiceWorker registration error:', err);
+          });
+        });
+      }
+    </script>
   </body>
 </html>
