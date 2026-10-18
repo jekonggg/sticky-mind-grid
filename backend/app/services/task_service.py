@@ -856,3 +856,26 @@ class TaskService:
         broadcaster.broadcast(board_id, "activity:new", activity.to_dict())
 
         return count
+
+    @staticmethod
+    def purge_expired_tasks(retention_days=30):
+        """
+        Permanently delete soft-deleted tasks older than retention_days (default 30)
+        across all boards and clean up their attachments.
+        """
+        from datetime import timedelta
+        from app.services.file_service import FileService
+
+        cutoff = datetime.utcnow() - timedelta(days=retention_days)
+        expired_tasks = Task.query.filter(
+            Task.is_deleted.is_(True),
+            Task.deleted_at.isnot(None),
+            Task.deleted_at < cutoff
+        ).all()
+        purged_count = len(expired_tasks)
+        if expired_tasks:
+            for t in expired_tasks:
+                FileService.cleanup_task_attachments(t)
+                db.session.delete(t)
+            db.session.commit()
+        return purged_count

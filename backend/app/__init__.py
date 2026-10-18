@@ -152,6 +152,15 @@ def create_app(config_class=Config):
         except Exception as e:
             app.logger.warning(f"Failed to start scheduler: {e}")
 
+    @app.cli.command("purge-expired")
+    def purge_expired_cli():
+        """Purge soft-deleted boards and tasks older than 30 days."""
+        from app.services.board_service import BoardService
+        from app.services.task_service import TaskService
+        purged_b = BoardService.purge_expired_boards(retention_days=30)
+        purged_t = TaskService.purge_expired_tasks(retention_days=30)
+        print(f"Purged {purged_b} expired board(s) and {purged_t} expired task(s).")
+
     return app
 
 def _auto_sync_schema(app):

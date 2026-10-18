@@ -19,12 +19,20 @@ class SchedulerService:
         return cls._scheduler
 
     @classmethod
-    def run_purge_now(cls, app):
+    def run_purge_now(cls, app, retention_days=30, return_details=False):
         with app.app_context():
             from app.services.board_service import BoardService
-            purged = BoardService.purge_expired_boards(retention_days=30)
-            logger.info(f"[SchedulerService] Purged {purged} expired board(s)")
-            return purged
+            from app.services.task_service import TaskService
+            purged_boards = BoardService.purge_expired_boards(retention_days=retention_days)
+            purged_tasks = TaskService.purge_expired_tasks(retention_days=retention_days)
+            logger.info(f"[SchedulerService] Purged {purged_boards} expired board(s) and {purged_tasks} expired task(s)")
+            if return_details:
+                return {
+                    "purged_boards": purged_boards,
+                    "purged_tasks": purged_tasks,
+                    "total": purged_boards + purged_tasks
+                }
+            return purged_boards + purged_tasks
 
     @classmethod
     def start_scheduler(cls, app):

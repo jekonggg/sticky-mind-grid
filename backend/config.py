@@ -130,6 +130,7 @@ class Config:
 
     # Background Maintenance Scheduler
     SCHEDULER_ENABLED = os.environ.get('SCHEDULER_ENABLED', 'true').lower() in ('true', '1')
+    INTERNAL_JOB_SECRET = os.environ.get('INTERNAL_JOB_SECRET', '')
 
     # Supabase Storage Configuration
     SUPABASE_URL = os.environ.get('SUPABASE_URL', '').rstrip('/')

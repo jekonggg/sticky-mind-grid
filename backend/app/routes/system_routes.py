@@ -1,7 +1,8 @@
-from flask import Blueprint, jsonify
-from datetime import datetime
-from app import db
+import hmac
 import os
+from datetime import datetime
+from flask import Blueprint, jsonify, request, current_app
+from app import db
 
 bp = Blueprint('system_routes', __name__, url_prefix='/api')
 
@@ -20,3 +21,67 @@ def health_check():
         'environment': os.getenv('FLASK_ENV', 'development'),
         'timestamp': datetime.utcnow().isoformat() + 'Z'
     }), 200 if db_healthy else 503
+
+
+@bp.route('/internal/jobs/purge', methods=['POST'])
+def run_internal_purge_job():
+    """
+    Secure internal maintenance endpoint to purge soft-deleted boards and tasks
+    older than retention_days (default 30 days).
+    Requires header X-Internal-Secret matching current_app.config['INTERNAL_JOB_SECRET'].
+    """
+    secret_configured = (current_app.config.get('INTERNAL_JOB_SECRET') or '').strip()
+    if not secret_configured:
+        return jsonify({
+            'error': 'Internal job execution is disabled. INTERNAL_JOB_SECRET is not configured on the server.'
+        }), 403
+
+    # Check header X-Internal-Secret or Authorization: Bearer <secret>
+    provided_secret = (request.headers.get('X-Internal-Secret') or '').strip()
+    auth_header = (request.headers.get('Authorization') or '').strip()
+    if not provided_secret and auth_header.startswith('Bearer '):
+        provided_secret = auth_header[7:].strip()
+
+    if not provided_secret or not hmac.compare_digest(provided_secret, secret_configured):
+        return jsonify({
+            'error': 'Unauthorized. Invalid or missing X-Internal-Secret.'
+        }), 401
+
+    # Parse optional retention_days parameter
+    retention_days = 30
+    if request.is_json and request.json and 'retention_days' in request.json:
+        try:
+            retention_days = int(request.json['retention_days'])
+        except (ValueError, TypeError):
+            pass
+    elif 'retention_days' in request.args:
+        try:
+            retention_days = int(request.args['retention_days'])
+        except (ValueError, TypeError):
+            pass
+
+    if retention_days < 1:
+        return jsonify({'error': 'retention_days must be at least 1'}), 400
+
+    from app.services.board_service import BoardService
+    from app.services.task_service import TaskService
+
+    try:
+        purged_boards = BoardService.purge_expired_boards(retention_days=retention_days)
+        purged_tasks = TaskService.purge_expired_tasks(retention_days=retention_days)
+        
+        return jsonify({
+            'status': 'success',
+            'job': 'purge_expired_data',
+            'retention_days': retention_days,
+            'purged_boards': purged_boards,
+            'purged_tasks': purged_tasks,
+            'total_purged': purged_boards + purged_tasks,
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+    except Exception as e:
+        current_app.logger.exception(f"Error during internal purge job: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': 'An error occurred during data purge execution'
+        }), 500
