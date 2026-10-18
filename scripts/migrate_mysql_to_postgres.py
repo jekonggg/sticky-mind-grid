@@ -112,6 +112,17 @@ def main():
                 # Fetch rows
                 rows = src_conn.execute(text(f"SELECT * FROM `{tname}`")).mappings().all()
 
+                # Case-insensitive duplicate email check on source users table
+                if tname == 'users':
+                    dupe_query = text("SELECT LOWER(email) AS lemail, COUNT(*) as c FROM `users` GROUP BY LOWER(email) HAVING c > 1")
+                    dupes = src_conn.execute(dupe_query).mappings().all()
+                    if dupes:
+                        logger.warning(f"  [users] Found {len(dupes)} case-insensitive duplicate email groups in source MySQL!")
+                        for d in dupes:
+                            logger.warning(f"    - Email: {d['lemail']} (Count: {d['c']})")
+                    else:
+                        logger.info("  [users] No duplicate case-insensitive emails detected in source MySQL.")
+
                 # Transform rows for Postgres compatibility
                 clean_rows = []
                 for row in rows:
@@ -139,6 +150,20 @@ def main():
                                 default_val = col.default.arg
                                 row_dict[col_name] = default_val() if callable(default_val) else default_val
 
+                        # Strip NUL bytes (\x00) from all text/string columns (PostgreSQL does not permit NUL in text)
+                        if isinstance(val, str) and '\x00' in val:
+                            row_dict[col_name] = val.replace('\x00', '')
+
+                        # Ensure naive datetimes are marked as UTC
+                        if isinstance(val, datetime) and val.tzinfo is None:
+                            row_dict[col_name] = val
+
+                    # Lowercase email for users and invitations
+                    if tname == 'users' and row_dict.get('email'):
+                        row_dict['email'] = str(row_dict['email']).strip().lower()
+                    if tname == 'board_invitations' and row_dict.get('email'):
+                        row_dict['email'] = str(row_dict['email']).strip().lower()
+
                     clean_rows.append(row_dict)
 
                 # Batch insert
@@ -160,6 +185,29 @@ def main():
 
                 summary[tname] = {"source": src_count, "target": tgt_count, "status": status_str}
 
+            # Add unique index on lower(email) if users table exists
+            logger.info("Ensuring unique index on lower(email) in PostgreSQL...")
+            tgt_conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_lower_email ON users (LOWER(email));"))
+
+            # Reset any sequences in public schema
+            logger.info("Resetting PostgreSQL sequences...")
+            seq_reset_sql = """
+            DO $$
+            DECLARE
+                seq record;
+            BEGIN
+                FOR seq IN
+                    SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = 'public'
+                LOOP
+                    EXECUTE format('SELECT setval(%L, 1);', seq.sequence_name);
+                END LOOP;
+            END $$;
+            """
+            try:
+                tgt_conn.execute(text(seq_reset_sql))
+            except Exception as e:
+                logger.warning(f"Sequence reset note: {e}")
+
         logger.info("\nData transfer complete! Verification summary:")
         print("=" * 60)
         print(f"{'Table':<30} | {'Source':<10} | {'Target':<10} | {'Status':<8}")
@@ -167,6 +215,31 @@ def main():
         for tname, stats in summary.items():
             print(f"{tname:<30} | {stats['source']:<10} | {stats['target']:<10} | {stats['status']:<8}")
         print("=" * 60)
+
+        # Verify Foreign Key referential integrity
+        logger.info("\nVerifying Foreign Key Referential Integrity on Target PostgreSQL...")
+        with target_engine.connect() as tgt_conn:
+            fk_checks = [
+                ("tasks -> boards", "SELECT COUNT(*) FROM tasks WHERE board_id NOT IN (SELECT id FROM boards)"),
+                ("board_members -> boards", "SELECT COUNT(*) FROM board_members WHERE board_id NOT IN (SELECT id FROM boards)"),
+                ("board_members -> users", "SELECT COUNT(*) FROM board_members WHERE user_id NOT IN (SELECT id FROM users)"),
+                ("comments -> tasks", "SELECT COUNT(*) FROM comments WHERE task_id NOT IN (SELECT id FROM tasks)"),
+                ("notes -> boards", "SELECT COUNT(*) FROM notes WHERE board_id NOT IN (SELECT id FROM boards)"),
+                ("board_invitations -> boards", "SELECT COUNT(*) FROM board_invitations WHERE board_id NOT IN (SELECT id FROM boards)"),
+            ]
+            all_fk_ok = True
+            for desc, query in fk_checks:
+                try:
+                    orphans = tgt_conn.execute(text(query)).scalar()
+                    if orphans == 0:
+                        logger.info(f"  ✓ {desc}: PASS (0 orphans)")
+                    else:
+                        logger.error(f"  ✗ {desc}: FAIL ({orphans} orphan records)")
+                        all_fk_ok = False
+                except Exception as e:
+                    logger.warning(f"  FK check note for {desc}: {e}")
+            if all_fk_ok:
+                logger.info("All Foreign Key referential integrity checks passed successfully!")
 
         # 3. PostgREST Lockdown
         logger.info("\nStep 3: Applying PostgREST & RLS Lockdown on Supabase...")

@@ -66,6 +66,10 @@ def app():
             with db.engine.connect() as conn:
                 conn.execute(db.text("SET FOREIGN_KEY_CHECKS = 1;"))
                 conn.commit()
+        elif db.engine.dialect.name == 'postgresql':
+            with db.engine.connect() as conn:
+                conn.execute(db.text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
+                conn.commit()
         else:
             db.drop_all()
 
