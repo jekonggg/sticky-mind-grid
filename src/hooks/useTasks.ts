@@ -52,6 +52,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
   const [loading, setLoading] = useState(!hasCachedData);
   const { addActivity } = useActivity();
   const hasLoadedRef = useRef(hasCachedData);
+  const requestSeqRef = useRef(0);
 
   const setTasks = useCallback(
     (action: React.SetStateAction<Task[]>) => {
@@ -75,32 +76,43 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
 
   const fetchTasks = useCallback(async (forceLoading = false) => {
     if (!boardId) return;
+    const reqId = ++requestSeqRef.current;
     const hasCache = tasksCache.has(boardId);
     try {
       if (forceLoading || (!hasLoadedRef.current && !hasCache)) {
         setLoading(true);
       }
       const data = await taskApi.getTasks(boardId);
+      if (reqId !== requestSeqRef.current) return;
       setTasks(data);
       hasLoadedRef.current = true;
     } catch (err) {
+      if (reqId !== requestSeqRef.current) return;
       console.error("Failed to fetch tasks:", err);
     } finally {
-      setLoading(false);
+      if (reqId === requestSeqRef.current) {
+        setLoading(false);
+      }
     }
   }, [boardId, setTasks]);
 
   useEffect(() => {
     const cached = boardId ? tasksCache.get(boardId) : undefined;
-    const isFresh =
-      cached &&
-      (!cached.userId || cached.userId === user?.id) &&
-      Date.now() - cached.timestamp < TASKS_CACHE_TTL_MS;
+    const isCacheValid = cached && (!cached.userId || cached.userId === user?.id);
+    const isFresh = Boolean(isCacheValid && Date.now() - cached!.timestamp < TASKS_CACHE_TTL_MS);
+
+    if (isCacheValid && cached?.tasks) {
+      setTasksState(cached.tasks);
+      hasLoadedRef.current = true;
+      setLoading(false);
+    } else {
+      setTasksState([]);
+      hasLoadedRef.current = false;
+      setLoading(true);
+    }
 
     if (!isFresh) {
       fetchTasks(false);
-    } else {
-      hasLoadedRef.current = true;
     }
 
     const handleRefresh = () => {
@@ -126,7 +138,9 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
         })
         .catch(() => {});
     }, 15000);
+    const seqRef = requestSeqRef;
     return () => {
+      seqRef.current++;
       clearInterval(interval);
       window.removeEventListener("smg-dev-data-mode-changed", handleDataModeChange);
       window.removeEventListener("task-updated", handleRefresh);

@@ -4,7 +4,16 @@ import { AppSidebar } from "./AppSidebar";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { CommandSearchDialog } from "@/components/search/CommandSearchDialog";
 import { LayoutProvider, useLayout } from "@/contexts/LayoutContext";
-import { BoardsOverviewSkeleton } from "@/components/skeletons";
+import { BoardsOverviewSkeleton, BoardViewSkeleton } from "@/components/skeletons";
+
+function AppLayoutFallback() {
+  const location = useLocation();
+  const isBoardRoute = location.pathname.startsWith("/boards/") && location.pathname !== "/boards";
+  if (isBoardRoute) {
+    return <BoardViewSkeleton />;
+  }
+  return <BoardsOverviewSkeleton />;
+}
 
 function AppLayoutInner() {
   const location = useLocation();
@@ -98,7 +107,7 @@ function AppLayoutInner() {
 
       {/* Main Viewport Content Area */}
       <main className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative">
-        <Suspense fallback={<BoardsOverviewSkeleton />}>
+        <Suspense fallback={<AppLayoutFallback />}>
           <Outlet />
         </Suspense>
       </main>

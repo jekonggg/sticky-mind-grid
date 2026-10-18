@@ -556,7 +556,11 @@ export function AppSidebar({
                       return (
                         <button
                           key={b.id}
-                          onClick={() => navigate(`/boards/${b.id}`)}
+                          onClick={() => {
+                            if (boardId !== b.id) {
+                              navigate(`/boards/${b.id}`);
+                            }
+                          }}
                           className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors group cursor-pointer truncate ${
                             isCurrent
                               ? "bg-primary/10 text-primary font-bold border border-primary/20"

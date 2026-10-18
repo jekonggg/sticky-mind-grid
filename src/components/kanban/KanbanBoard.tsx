@@ -77,6 +77,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { PillNavBar } from "@/components/common/PillNavBar";
 
 import { BoardViewSkeleton } from "@/components/skeletons";
+import { motion } from "framer-motion";
 
 // Module-level in-memory cache for board metadata across route navigations
 export const boardMetadataCache = new Map<string, { board: Board; timestamp: number }>();
@@ -123,6 +124,7 @@ export function KanbanBoard() {
       navigate("/");
       return;
     }
+    let isCancelled = false;
     const loadBoard = (force = false) => {
       const cached = boardMetadataCache.get(boardId);
       const isFresh = cached && Date.now() - cached.timestamp < BOARD_METADATA_CACHE_TTL_MS;
@@ -131,11 +133,15 @@ export function KanbanBoard() {
       }
       if (!isFresh || force || !cached) {
         boardApi.getBoard(boardId).then((b) => {
+          if (isCancelled) return;
           if (!b) {
             navigate("/");
             return;
           }
           setBoard(b);
+        }).catch((err) => {
+          if (isCancelled) return;
+          console.error("Failed to load board:", err);
         });
       }
     };
@@ -145,7 +151,10 @@ export function KanbanBoard() {
       loadBoard(true);
     };
     window.addEventListener("smg-dev-data-mode-changed", handleDataModeChange);
-    return () => window.removeEventListener("smg-dev-data-mode-changed", handleDataModeChange);
+    return () => {
+      isCancelled = true;
+      window.removeEventListener("smg-dev-data-mode-changed", handleDataModeChange);
+    };
   }, [boardId, navigate, setBoard]);
 
   // Fetch Board Members for Assignee & Filters
@@ -764,7 +773,17 @@ export function KanbanBoard() {
   }, [tasks, isTaskMatchingFilters]);
 
   if (loading || !board || settings.simulateSkeletonLoading) {
-    return <BoardViewSkeleton />;
+    return (
+      <motion.div
+        key={`skeleton-${boardId}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.15 }}
+        className="h-full w-full"
+      >
+        <BoardViewSkeleton />
+      </motion.div>
+    );
   }
 
   const views = [
@@ -921,7 +940,13 @@ export function KanbanBoard() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background overflow-hidden font-sans">
+    <motion.div
+      key={`board-${board.id}`}
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className="flex flex-col h-screen bg-background overflow-hidden font-sans"
+    >
       <BoardHeader search={searchTerm} onSearchChange={setSearchTerm} />
 
       <div className="flex flex-1 overflow-hidden relative">
@@ -1307,6 +1332,6 @@ export function KanbanBoard() {
         boardId={board.id}
         canManage={permissions.canPurgeTask}
       />
-    </div>
+    </motion.div>
   );
 }

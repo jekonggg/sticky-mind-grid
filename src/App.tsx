@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useParams } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -30,6 +30,16 @@ const TasksPage = lazy(() => import("./pages/TasksPage"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const TeamsPage = lazy(() => import("./pages/TeamsPage"));
 const MessagesPage = lazy(() => import("./pages/MessagesPage"));
+
+function KanbanBoardRoute() {
+  const { boardId } = useParams<{ boardId: string }>();
+  return <KanbanBoard key={boardId} />;
+}
+
+function TaskDetailPageRoute() {
+  const { boardId, taskId } = useParams<{ boardId: string; taskId: string }>();
+  return <TaskDetailPage key={`${boardId}-${taskId}`} />;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,8 +79,8 @@ const App = () => (
                         <Route path="/tasks" element={<TasksPage />} />
                         <Route path="/calendar" element={<CalendarPage />} />
                         <Route path="/teams" element={<TeamsPage />} />
-                        <Route path="/boards/:boardId" element={<KanbanBoard />} />
-                        <Route path="/boards/:boardId/tasks/:taskId" element={<TaskDetailPage />} />
+                        <Route path="/boards/:boardId" element={<KanbanBoardRoute />} />
+                        <Route path="/boards/:boardId/tasks/:taskId" element={<TaskDetailPageRoute />} />
                         <Route path="/messages" element={<MessagesPage />} />
                         <Route path="/messages/:conversationId" element={<MessagesPage />} />
                       </Route>
