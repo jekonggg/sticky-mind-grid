@@ -127,7 +127,11 @@ def main():
         if level in ("ERROR", "FATAL") or "500" in msg or "traceback" in msg.lower() or "exception" in msg.lower():
             print(f"[{ts}] [{level}] ! {msg}")
         else:
-            print(f"[{ts}] [{level}] {msg}")
+            try:
+                print(f"[{ts}] [{level}] {msg}")
+            except UnicodeEncodeError:
+                safe_msg = msg.encode("ascii", errors="replace").decode("ascii")
+                print(f"[{ts}] [{level}] {safe_msg}")
 
 if __name__ == "__main__":
     main()
