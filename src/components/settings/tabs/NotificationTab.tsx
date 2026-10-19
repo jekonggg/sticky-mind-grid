@@ -13,6 +13,7 @@ import {
   MessageChatSquare as MessageSquare,
   Stars01 as Sparkles,
   InfoCircle as Info,
+  ArrowRight,
 } from "@untitledui/icons";
 
 export function NotificationTab() {
@@ -230,6 +231,30 @@ export function NotificationTab() {
               checked={settings.notifyComments}
               onCheckedChange={(checked) =>
                 updateSyncedSetting("notifyComments", checked)
+              }
+            />
+          </div>
+
+          {/* Card Movements */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/60 hover:bg-muted/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <ArrowRight className="h-4 w-4" />
+              </div>
+              <div>
+                <Label htmlFor="notify-card-moves" className="text-xs font-bold text-foreground cursor-pointer">
+                  Card Movements
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  When a card you follow or created is moved between columns
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="notify-card-moves"
+              checked={settings.notifyCardMoves}
+              onCheckedChange={(checked) =>
+                updateSyncedSetting("notifyCardMoves", checked)
               }
             />
           </div>

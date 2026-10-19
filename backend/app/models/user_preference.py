@@ -18,6 +18,7 @@ class UserPreference(db.Model):
     notify_assignments = db.Column(db.Boolean, default=True, nullable=False)
     notify_invites = db.Column(db.Boolean, default=True, nullable=False)
     notify_comments = db.Column(db.Boolean, default=True, nullable=False)
+    notify_card_moves = db.Column(db.Boolean, default=True, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = db.relationship('User', back_populates='preferences')
@@ -36,5 +37,6 @@ class UserPreference(db.Model):
             'notifyAssignments': self.notify_assignments,
             'notifyInvites': self.notify_invites,
             'notifyComments': self.notify_comments,
+            'notifyCardMoves': self.notify_card_moves,
             'updatedAt': self.updated_at.isoformat() + 'Z' if self.updated_at else None
         }

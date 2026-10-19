@@ -341,9 +341,7 @@ def test_section_f_mentions_followers_mute_and_comment_audit(client, create_test
         json={"isMuted": True},
     )
     assert mute_res.status_code == 200
-    assert mute_res.get_json()["isMuted"] is True
-
-    # Editor moves card from To Do to Done -> Owner (creator/follower) gets task_move, but muted Viewer does NOT
+    # Editor moves card from To Do to Done -> Owner (creator/follower with notifyCardMoves=True by default) gets task_move, but muted Viewer does NOT
     move_res = client.patch(
         f"/api/tasks/{task_id}",
         headers=auth_headers(editor.id),

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { userApi, SystemHealth } from "@/services/userApi";
 import { useSettings } from "@/contexts/SettingsContext";
-import { APP_VERSION } from "@/config/version";
+import { APP_VERSION, COMMIT_HASH } from "@/config/version";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -37,6 +37,7 @@ export function AboutTab() {
         status: "degraded",
         database: "disconnected",
         version: APP_VERSION,
+        commit: COMMIT_HASH,
         environment: "development",
         timestamp: new Date().toISOString(),
       });
@@ -74,8 +75,9 @@ export function AboutTab() {
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-1.5">
+          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-1.5 font-mono">
             <span>v{health?.version || APP_VERSION}</span>
+            <span className="text-[11px] opacity-70 font-mono tracking-wide">({health?.commit || COMMIT_HASH})</span>
             {health?.version && health.version === APP_VERSION && (
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="System in sync" />
             )}
@@ -239,9 +241,14 @@ export function AboutTab() {
 
       {/* Tech Stack Details */}
       <div className="p-4 rounded-xl bg-muted/30 border border-border/40 space-y-2 text-xs">
-        <div className="flex items-center gap-1.5 font-bold text-foreground">
-          <Code2 className="h-4 w-4 text-primary" />
-          <span>Technology & Architecture</span>
+        <div className="flex items-center justify-between font-bold text-foreground">
+          <div className="flex items-center gap-1.5">
+            <Code2 className="h-4 w-4 text-primary" />
+            <span>Technology & Architecture</span>
+          </div>
+          <span className="text-[10px] font-mono text-muted-foreground bg-muted/80 px-2 py-0.5 rounded border border-border/60">
+            commit {COMMIT_HASH}
+          </span>
         </div>
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           Powered by React 18, TypeScript, TailwindCSS, @dnd-kit, next-themes, Python Flask 3.0, and SQLAlchemy with multi-user Server-Sent Events real-time synchronization.

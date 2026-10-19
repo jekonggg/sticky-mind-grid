@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Conversation, Message, MessageAttachment, MessageReplySnippet } from "@/types/message";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage, getMediaUrl } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -523,14 +523,15 @@ export function ChatArea({
                                   const isVid = isVideoAttachment(att);
 
                                   if (isImg) {
+                                    const mediaUrl = getMediaUrl(att.url) || att.url;
                                     return (
                                       <div
                                         key={attIdx}
-                                        onClick={() => setLightboxImage(att.url)}
+                                        onClick={() => setLightboxImage(mediaUrl)}
                                         className="relative rounded-xl overflow-hidden border border-border/40 cursor-pointer group/img max-h-52 max-w-xs bg-black/10 shadow-xs"
                                       >
                                         <img
-                                          src={att.url}
+                                          src={mediaUrl}
                                           alt={att.name}
                                           className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
                                         />
@@ -539,6 +540,7 @@ export function ChatArea({
                                   }
 
                                   if (isVid) {
+                                    const mediaUrl = getMediaUrl(att.url) || att.url;
                                     return (
                                       <div
                                         key={attIdx}
@@ -546,7 +548,7 @@ export function ChatArea({
                                       >
                                         <video
                                           controls
-                                          src={att.url}
+                                          src={mediaUrl}
                                           className="w-full max-h-56 object-contain bg-black/60 rounded-t-xl"
                                           preload="metadata"
                                         />
@@ -787,7 +789,7 @@ export function ChatArea({
         >
           <div className="relative max-w-4xl max-h-[85vh] rounded-2xl overflow-hidden shadow-2xl border border-white/10">
             <img
-              src={lightboxImage}
+              src={getMediaUrl(lightboxImage) || lightboxImage}
               alt="Preview"
               className="w-full h-full object-contain max-h-[85vh]"
             />

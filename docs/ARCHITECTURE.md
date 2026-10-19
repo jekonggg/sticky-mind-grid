@@ -315,6 +315,7 @@ user_preferences
 ├── notify_assignments (Boolean, default True)
 ├── notify_invites (Boolean, default True)
 ├── notify_comments (Boolean, default True)
+├── notify_card_moves (Boolean, default True)
 ├── created_at (DateTime)
 └── updated_at (DateTime)
 

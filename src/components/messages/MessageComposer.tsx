@@ -13,6 +13,7 @@ import {
 } from "@untitledui/icons";
 import { MessageAttachment, MessageReplySnippet } from "@/types/message";
 import { fileApi } from "@/services/fileApi";
+import { getMediaUrl } from "@/components/ui/avatar";
 import { toast } from "sonner";
 
 interface MessageComposerProps {
@@ -200,7 +201,7 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
               {isImageFile(att.mimeType, att.name) ? (
                 <div className="h-8 w-8 rounded-lg overflow-hidden bg-background shrink-0 border border-border/50">
                   <img
-                    src={att.url}
+                    src={getMediaUrl(att.url) || att.url}
                     alt={att.name}
                     className="h-full w-full object-cover"
                   />

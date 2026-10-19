@@ -117,6 +117,12 @@ describe("MessagesPage & Messaging Flow", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    (global as any).EventSource = vi.fn().mockImplementation(() => ({
+      close: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
     (messageApi.getConversations as any).mockResolvedValue(mockConversations);
     (messageApi.getConversation as any).mockResolvedValue(mockConversations[0]);
@@ -358,6 +364,45 @@ describe("MessagesPage & Messaging Flow", () => {
 
     await waitFor(() => {
       expect(messageApi.togglePin).toHaveBeenCalledWith("msg-1");
+    });
+  });
+
+  it("renders image attachment with authenticated getMediaUrl token query parameter", async () => {
+    localStorage.setItem("auth_token", "fake-jwt-token");
+    const messageWithAttachment: Message = {
+      id: "msg-img-1",
+      conversationId: "conv-1",
+      senderId: "user-2",
+      sender: {
+        id: "user-2",
+        email: "sarah@example.com",
+        fullName: "Sarah Connor",
+        avatarUrl: null,
+        createdAt: new Date().toISOString(),
+      },
+      content: "Check this screenshot",
+      attachments: [
+        {
+          name: "screenshot.png",
+          url: "/api/files/screenshot-uuid.png",
+          size: 1024,
+          mimeType: "image/png",
+        },
+      ],
+      reactions: {},
+      isDeleted: false,
+      isPinned: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    (messageApi.getMessages as any).mockResolvedValueOnce([messageWithAttachment]);
+
+    renderWithProviders(<MessagesPage />);
+
+    await waitFor(() => {
+      const img = screen.getByAltText("screenshot.png") as HTMLImageElement;
+      expect(img).toBeInTheDocument();
+      expect(img.src).toContain("/api/files/screenshot-uuid.png?token=fake-jwt-token");
     });
   });
 });

@@ -51,6 +51,7 @@ const defaultSyncedPreferences: UserSyncedPreferences = {
   notifyAssignments: true,
   notifyInvites: true,
   notifyComments: true,
+  notifyCardMoves: true,
 };
 
 interface SettingsContextValue {

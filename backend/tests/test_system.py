@@ -5,6 +5,7 @@ def test_health_endpoint(client):
     assert data['status'] == 'healthy'
     assert data['database'] == 'connected'
     assert data['version'] == '1.3.0'
+    assert 'commit' in data
     assert 'timestamp' in data
 
 

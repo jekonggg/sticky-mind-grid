@@ -36,6 +36,8 @@ class NotificationService:
         if not user.preferences:
             return True
         prefs = user.preferences
+        if notif_type == 'task_move' and not getattr(prefs, 'notify_card_moves', True):
+            return False
         if notif_type == 'mention' and not prefs.notify_mentions:
             return False
         if notif_type == 'assignment' and not prefs.notify_assignments:

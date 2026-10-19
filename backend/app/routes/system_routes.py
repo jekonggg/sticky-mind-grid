@@ -6,6 +6,23 @@ from app import db
 
 bp = Blueprint('system_routes', __name__, url_prefix='/api')
 
+def get_git_commit():
+    commit = (
+        os.getenv('RENDER_GIT_COMMIT')
+        or os.getenv('VERCEL_GIT_COMMIT_SHA')
+        or os.getenv('GIT_COMMIT')
+    )
+    if commit:
+        return commit[:7]
+    try:
+        import subprocess
+        return subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            stderr=subprocess.DEVNULL
+        ).decode('utf-8').strip()
+    except Exception:
+        return 'dev'
+
 @bp.route('/health', methods=['GET'])
 def health_check():
     db_healthy = True
@@ -18,6 +35,7 @@ def health_check():
         'status': 'healthy' if db_healthy else 'degraded',
         'database': 'connected' if db_healthy else 'disconnected',
         'version': '1.3.0',
+        'commit': get_git_commit(),
         'environment': os.getenv('FLASK_ENV', 'development'),
         'timestamp': datetime.utcnow().isoformat() + 'Z'
     }), 200 if db_healthy else 503

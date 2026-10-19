@@ -39,6 +39,7 @@ export interface UserSyncedPreferences {
   notifyAssignments: boolean;
   notifyInvites: boolean;
   notifyComments: boolean;
+  notifyCardMoves: boolean;
 }
 
 export interface FullSettings extends LocalPreferences, UserSyncedPreferences {}

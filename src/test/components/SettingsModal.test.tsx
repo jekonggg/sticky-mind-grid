@@ -15,6 +15,7 @@ vi.mock("@/services/userApi", () => ({
       notifyAssignments: true,
       notifyInvites: true,
       notifyComments: true,
+      notifyCardMoves: true,
     }),
     updatePreferences: vi.fn().mockResolvedValue({}),
     exportUserData: vi.fn().mockResolvedValue(undefined),
@@ -22,6 +23,7 @@ vi.mock("@/services/userApi", () => ({
       status: "healthy",
       database: "connected",
       version: "1.3.0",
+      commit: "01f0ba1",
       environment: "test",
       timestamp: new Date().toISOString(),
     }),
@@ -123,6 +125,7 @@ describe("SettingsModal Component", () => {
     expect(screen.getByText("System & Diagnostics")).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText(/v1\.3\.0/)).toBeInTheDocument();
+      expect(screen.getAllByText(/01f0ba1/).length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText("System in sync")).toBeInTheDocument();
       expect(screen.getByText("Backend API")).toBeInTheDocument();
       expect(screen.getByText("Database Engine")).toBeInTheDocument();

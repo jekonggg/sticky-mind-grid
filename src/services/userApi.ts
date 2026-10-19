@@ -5,6 +5,7 @@ export interface SystemHealth {
   status: "healthy" | "degraded";
   database: "connected" | "disconnected";
   version: string;
+  commit?: string;
   environment: string;
   timestamp: string;
 }

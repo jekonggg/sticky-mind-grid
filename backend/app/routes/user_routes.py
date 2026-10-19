@@ -81,6 +81,9 @@ def update_preferences():
     if 'notifyComments' in data and isinstance(data['notifyComments'], bool):
         prefs.notify_comments = data['notifyComments']
 
+    if 'notifyCardMoves' in data and isinstance(data['notifyCardMoves'], bool):
+        prefs.notify_card_moves = data['notifyCardMoves']
+
     db.session.commit()
     return jsonify(prefs.to_dict()), 200
 

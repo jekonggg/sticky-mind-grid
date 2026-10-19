@@ -25,6 +25,7 @@ def test_get_default_preferences(client, create_test_user, auth_headers):
     assert data['notifyAssignments'] is True
     assert data['notifyInvites'] is True
     assert data['notifyComments'] is True
+    assert data['notifyCardMoves'] is True
 
 def test_update_preferences(client, create_test_user, auth_headers):
     user = create_test_user(email="prefs_update@example.com")
@@ -38,7 +39,8 @@ def test_update_preferences(client, create_test_user, auth_headers):
         'notifyMentions': False,
         'notifyAssignments': False,
         'notifyInvites': True,
-        'notifyComments': False
+        'notifyComments': False,
+        'notifyCardMoves': False
     }
 
     res = client.patch('/api/users/me/preferences', json=payload, headers=headers)
@@ -51,6 +53,7 @@ def test_update_preferences(client, create_test_user, auth_headers):
     assert data['notifyMentions'] is False
     assert data['notifyAssignments'] is False
     assert data['notifyComments'] is False
+    assert data['notifyCardMoves'] is False
 
 def test_notification_suppression_by_preferences(client, create_test_user, create_test_board, auth_headers):
     # User 1 creates board and turns off assignment notifications
@@ -88,6 +91,59 @@ def test_notification_suppression_by_preferences(client, create_test_user, creat
     # Check that User 1 did NOT receive an assignment notification
     notifs = Notification.query.filter_by(user_id=user1.id, type='assignment').all()
     assert len(notifs) == 0
+
+def test_card_move_notification_suppression_and_opt_in(client, create_test_user, create_test_board, auth_headers):
+    # 1. Setup User 1 (board owner/creator) and User 2 (editor)
+    user1 = create_test_user(email="move_u1@example.com")
+    board, _ = create_test_board(owner=user1, name="Move Board")
+    headers1 = auth_headers(user1.id)
+
+    user2 = create_test_user(email="move_u2@example.com")
+    member2 = BoardMember(
+        board_id=board.id,
+        user_id=user2.id,
+        role="editor",
+        status="accepted"
+    )
+    db.session.add(member2)
+
+    # User 1 creates a task
+    task = Task(
+        board_id=board.id,
+        title="Move Test Task",
+        status="todo",
+        created_by=user1.id,
+        followers=[user1.id]
+    )
+    db.session.add(task)
+    db.session.commit()
+
+    headers2 = auth_headers(user2.id)
+
+    # 2. User 2 moves task from 'todo' to 'in_progress'
+    # By default, User 1 has notifyCardMoves=True -> Notification IS created
+    res = client.patch(f"/api/tasks/{task.id}", json={"status": "in_progress"}, headers=headers2)
+    assert res.status_code == 200
+
+    notifs_default = Notification.query.filter_by(user_id=user1.id, type="task_move").all()
+    assert len(notifs_default) == 1
+    assert "moved \"Move Test Task\"" in notifs_default[0].message
+
+    # Verify board Activity audit was still recorded
+    activity = Activity.query.filter_by(board_id=board.id, type="move").first()
+    assert activity is not None
+    assert 'Moved "Move Test Task"' in activity.message
+
+    # 3. User 1 disables notifyCardMoves
+    client.patch('/api/users/me/preferences', json={'notifyCardMoves': False}, headers=headers1)
+
+    # 4. User 2 moves task to 'done'
+    res2 = client.patch(f"/api/tasks/{task.id}", json={"status": "done"}, headers=headers2)
+    assert res2.status_code == 200
+
+    # User 1 does NOT receive another task_move notification (count remains 1)
+    notifs_disabled = Notification.query.filter_by(user_id=user1.id, type="task_move").all()
+    assert len(notifs_disabled) == 1
 
 def test_user_data_export(client, create_test_user, create_test_board, auth_headers):
     user = create_test_user(email="export_user@example.com")

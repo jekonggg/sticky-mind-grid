@@ -59,6 +59,7 @@ erDiagram
         boolean notify_assignments
         boolean notify_invites
         boolean notify_comments
+        boolean notify_card_moves
         datetime updated_at
     }
 
@@ -280,7 +281,8 @@ GLOBAL / USER ROOT
 | `notify_assignments` | `Boolean` | `False` | `True` | — | `L18` |
 | `notify_invites` | `Boolean` | `False` | `True` | — | `L19` |
 | `notify_comments` | `Boolean` | `False` | `True` | — | `L20` |
-| `updated_at` | `DateTime` | `True` | `datetime.utcnow` | `onupdate=datetime.utcnow` | `L21` |
+| `notify_card_moves` | `Boolean` | `False` | `True` | — | `L21` |
+| `updated_at` | `DateTime` | `True` | `datetime.utcnow` | `onupdate=datetime.utcnow` | `L22` |
 
 ---
 
