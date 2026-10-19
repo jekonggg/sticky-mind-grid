@@ -14,11 +14,10 @@ import {
   Calendar,
   File06 as FileText,
   LayoutGrid01 as LayoutDashboard,
-  Percent01 as Percent,
   Trash01 as Trash2,
   Sliders01 as Sliders,
 } from "@untitledui/icons";
-import { BoardViewMode } from "@/types/settings";
+import { BoardViewMode, ExportFormat } from "@/types/settings";
 
 export function WorkflowTab() {
   const { settings, updateLocalSetting, updateSyncedSetting, isSyncing } =
@@ -37,7 +36,7 @@ export function WorkflowTab() {
       <div>
         <h3 className="text-base font-bold text-foreground">Task & Workflow Defaults</h3>
         <p className="text-xs text-muted-foreground">
-          Configure default view modes, task snapping, and deletion safeguards.
+          Configure default board view mode, export file format, and deletion safeguards.
         </p>
       </div>
 
@@ -84,35 +83,51 @@ export function WorkflowTab() {
         </Select>
       </div>
 
-      {/* Auto-Progress Snapping */}
-      <div className="space-y-3 pt-2">
-        <div className="flex items-center justify-between p-3.5 rounded-xl bg-card border border-border/60 hover:bg-muted/30 transition-colors">
-          <div className="flex items-start gap-3">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center mt-0.5">
-              <Percent className="h-4 w-4" />
-            </div>
-            <div>
-              <Label
-                htmlFor="auto-progress"
-                className="text-xs font-bold text-foreground cursor-pointer"
-              >
-                Auto-Progress Calculation
-              </Label>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Automatically snaps task progress to 0% (To Do), 30% (In Progress), and 100% (Done) when dragging between columns.
-              </p>
-            </div>
-          </div>
-          <Switch
-            id="auto-progress"
-            checked={settings.autoProgressSnapping}
-            onCheckedChange={(checked) =>
-              updateLocalSetting("autoProgressSnapping", checked)
-            }
-          />
+      {/* Preferred Export Format */}
+      <div className="space-y-2.5 p-4 rounded-xl bg-muted/40 border border-border/50">
+        <div>
+          <Label className="text-xs font-bold text-foreground">
+            Preferred Export File Format
+          </Label>
+          <p className="text-[11px] text-muted-foreground">
+            Choose default file format for exporting board data and task lists
+          </p>
         </div>
 
-        {/* Confirm on Delete */}
+        <Select
+          value={settings.exportFormat || "csv"}
+          onValueChange={(val) =>
+            updateLocalSetting("exportFormat", val as ExportFormat)
+          }
+        >
+          <SelectTrigger className="h-9 text-xs bg-background" data-testid="export-format-select">
+            <SelectValue placeholder="Select export format" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="csv" className="text-xs" data-testid="export-format-csv">
+              <div className="flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="font-semibold">CSV (.csv)</span>
+                <span className="text-muted-foreground text-[11px]">
+                  (Comma-separated values)
+                </span>
+              </div>
+            </SelectItem>
+            <SelectItem value="xlsx" className="text-xs" data-testid="export-format-xlsx">
+              <div className="flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5 text-primary" />
+                <span className="font-semibold">Excel (.xlsx)</span>
+                <span className="text-muted-foreground text-[11px]">
+                  (Native Microsoft Excel spreadsheet)
+                </span>
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Confirm on Delete */}
+      <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between p-3.5 rounded-xl bg-card border border-border/60 hover:bg-muted/30 transition-colors">
           <div className="flex items-start gap-3">
             <div className="h-8 w-8 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center mt-0.5">

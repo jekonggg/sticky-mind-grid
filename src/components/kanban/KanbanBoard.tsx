@@ -64,9 +64,9 @@ import { useBoardPermissions } from "@/hooks/useBoardPermissions";
 import { useBoardRealtime } from "@/hooks/useBoardRealtime";
 import { getContainerGeometry } from "@/utils/geometryUtils";
 import { computeTaskProgress, isDoneColumn } from "@/utils/taskUtils";
+import { exportTasksToCSV, exportTasksToExcel } from "@/utils/exportToExcel";
 
 import { BoardOverview } from "./BoardOverview";
-import { TaskListView } from "./TaskListView";
 import { CalendarView } from "./CalendarView";
 import { DocumentsView } from "./DocumentsView";
 import { BoardMembers } from "../board/BoardMembers";
@@ -202,14 +202,22 @@ export function KanbanBoard() {
   );
 
   useEffect(() => {
-    if (viewParam && ["overview", "list", "board", "calendar", "documents", "members"].includes(viewParam)) {
+    if (viewParam === "list" && board?.id) {
+      navigate(`/tasks?boardId=${board.id}`, { replace: true });
+      return;
+    }
+    if (viewParam && ["overview", "board", "calendar", "documents", "members"].includes(viewParam)) {
       setActiveView(viewParam as any);
     } else if (viewParam === "files" || viewParam === "docs") {
       setActiveView("documents");
     }
-  }, [viewParam]);
+  }, [viewParam, board?.id, navigate]);
 
   const handleViewChange = useCallback((id: string) => {
+    if (id === "list" && board?.id) {
+      navigate(`/tasks?boardId=${board.id}`);
+      return;
+    }
     setActiveView(id as any);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -220,7 +228,7 @@ export function KanbanBoard() {
       }
       return next;
     }, { replace: true });
-  }, [setSearchParams]);
+  }, [board?.id, navigate, setSearchParams]);
 
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [newTaskStatus, setNewTaskStatus] = useState<string>("todo");
@@ -498,6 +506,30 @@ export function KanbanBoard() {
       toast.error(err.message || "Failed to export board data");
     }
   };
+
+  const handleExportBoardTasks = () => {
+    if (!board) return;
+    try {
+      const cleanName = board.name.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const isXlsx = settings.exportFormat === "xlsx";
+      if (isXlsx) {
+        exportTasksToExcel(tasks, {
+          filename: `${cleanName}_tasks.xlsx`,
+          includeBoardName: false,
+        });
+        toast.success("Board tasks exported to Excel (.xlsx)");
+      } else {
+        exportTasksToCSV(tasks, {
+          filename: `${cleanName}_tasks.csv`,
+          includeBoardName: false,
+        });
+        toast.success("Board tasks exported to CSV (.csv)");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to export tasks");
+    }
+  };
+  const handleExportBoardCSV = handleExportBoardTasks;
 
   const handleRenameColumn = async (id: string, newTitle: string, emoji?: string) => {
     if (!board) return;
@@ -806,11 +838,7 @@ export function KanbanBoard() {
           </div>
         );
       case "list":
-        return (
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28">
-            <TaskListView tasks={filteredAllTasks} columns={board?.columns} selectedTaskId={selectedTaskId} onTaskClick={handleTaskClick} />
-          </div>
-        );
+        return null;
       case "calendar":
         return (
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28">
@@ -1033,15 +1061,41 @@ export function KanbanBoard() {
                       {board.isMuted ? <BellOff className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
                     </Button>
                     {permissions.canExportBoard && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0 text-muted-foreground hover:text-foreground" 
-                        onClick={handleExportBoard} 
-                        title="Export Board Data (JSON)"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0 text-muted-foreground hover:text-foreground" 
+                            title="Export Board Options"
+                            data-testid="board-export-dropdown"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52 text-xs font-medium">
+                          <DropdownMenuItem
+                            onClick={handleExportBoardTasks}
+                            className="gap-2 cursor-pointer"
+                            data-testid="export-board-csv"
+                          >
+                            <Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>
+                              {settings.exportFormat === "xlsx"
+                                ? "Export to Excel (.xlsx)"
+                                : "Export to CSV (.csv)"}
+                            </span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={handleExportBoard}
+                            className="gap-2 cursor-pointer"
+                            data-testid="export-board-json"
+                          >
+                            <FileText className="h-3.5 w-3.5 text-primary" />
+                            <span>Export Full Board (.json)</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                   {board.description && (
@@ -1054,7 +1108,7 @@ export function KanbanBoard() {
             </div>
 
             {/* Row 2: Left-Aligned Minimalist Filter Toolbar */}
-            {(activeView === "board" || activeView === "list" || activeView === "calendar") && (
+            {(activeView === "board" || activeView === "calendar") && (
               <div className={`${isCompact ? "px-4 pb-2 md:px-6" : "px-6 pb-2.5 md:px-8"} w-full flex items-center justify-between gap-3 flex-wrap`}>
                 <div className="flex items-center gap-1.5 overflow-x-auto max-w-full custom-scrollbar shrink-0 py-0.5">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground font-semibold shrink-0 mr-0.5">

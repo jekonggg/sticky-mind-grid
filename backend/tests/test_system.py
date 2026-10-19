@@ -4,7 +4,7 @@ def test_health_endpoint(client):
     data = response.get_json()
     assert data['status'] == 'healthy'
     assert data['database'] == 'connected'
-    assert 'version' in data
+    assert data['version'] == '1.3.0'
     assert 'timestamp' in data
 
 

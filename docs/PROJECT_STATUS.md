@@ -139,12 +139,19 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ### Global Workspace Hub & Navigation
 - **Workspace Dashboard (`/dashboard`)** — Welcome hero header, real-time KPI metric cards (Total Boards, Active Tasks, Completed Tasks, Overdue/Urgent Count), assigned priority tasks with quick completion checkboxes, upcoming deadlines agenda, and live workspace activity stream.
-- **Global Tasks Manager (`/tasks`)** — Unified cross-board task view with filter tabs ("All", "Assigned to Me", "Created by Me", "Completed", "Overdue"), board dropdown filter, priority filter, multi-criteria sorting (due date, priority, title, created), search query, and list/grid switchable views.
+- **Global Tasks Manager (`/tasks`)** — Unified cross-board and board-scoped task list with URL query scoping (`/tasks?boardId=...`), board navigation breadcrumb, filter tabs ("All", "Assigned to Me", "Created by Me", "Completed", "Overdue"), board dropdown filter, priority filter, multi-criteria sorting (due date, priority, title, created), search query, list/grid switchable views, and one-click Export to Excel (.csv) with UTF-8 BOM encoding. Consolidates both sidebar tasks and board-level list views into a single source of truth.
 - **Global Workspace Calendar (`/calendar`)** — 7-day month matrix displaying scheduled task deadlines across all boards with day inspection, timezone-safe date matching, day agenda sidebar, overdue tasks list, and direct task scheduling modal.
 - **Teams & Collaborators Directory (`/teams`)** — Workspace collaborator directory across shared boards, pending invitation cards with 1-click Accept/Decline, board roles & permissions overview, and direct message shortcuts.
 - **Personal Files & Scratchpad (`PersonalScratchpadModal`)** — User-scoped private sticky notes & markdown scratchpad modal with color presets (amber, emerald, blue, purple, rose), pinned notes, instant persistence, and quick action bar.
 - **Quick Search Command Palette (`CommandSearchDialog`)** — Global `⌘K` / `Ctrl+K` command dialog searching boards, tasks, teammates, and system actions with keyboard navigation.
 - **Unified App Layout & Sidebar (`AppSidebar`, `AppLayout`)** — Consistent layout wrapping all authenticated routes with responsive collapsed icon rail, active route indicators, tooltips, notification counters, and modal triggers.
+
+### System Theme & Colorway Customization
+- **Dual-Mode System Themes** — 7 cohesive designer colorways (`indigo`, `mast`, `neon`, `emerald`, `sunset`, `rose`, `ocean`) providing tailored HSL tokens for both Light Mode and Dark Mode.
+- **Light & Dark Mode Parity** — Full colorway customization across all display modes (Light, Dark, and System Auto).
+- **Settings Appearance Tab** — Interactive dual-mode split swatches (Day/Night previews), live mini-task board preview mockup, and theme preference selection.
+- **Advanced Custom Primary Accent** — Native color picker and HEX input allowing users to override the primary accent across buttons, badges, rings, and active indicators.
+- **Backward-Compatible Persistence** — Client-side `LocalPreferences` with automatic migration for legacy `darkColorway` storage keys and clean reset defaults.
 
 ---
 

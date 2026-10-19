@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { userApi, SystemHealth } from "@/services/userApi";
 import { useSettings } from "@/contexts/SettingsContext";
+import { APP_VERSION } from "@/config/version";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -35,7 +36,7 @@ export function AboutTab() {
       setHealth({
         status: "degraded",
         database: "disconnected",
-        version: "1.2.0",
+        version: APP_VERSION,
         environment: "development",
         timestamp: new Date().toISOString(),
       });
@@ -53,7 +54,7 @@ export function AboutTab() {
       <div>
         <h3 className="text-base font-bold text-foreground">System & Diagnostics</h3>
         <p className="text-xs text-muted-foreground">
-          System version information, backend service health, and real-time connectivity status.
+          System version information, application details, and developer tooling.
         </p>
       </div>
 
@@ -72,107 +73,121 @@ export function AboutTab() {
             </p>
           </div>
         </div>
-        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
-          v{health?.version || "1.2.0"}
-        </span>
-      </div>
-
-      {/* Live System Diagnostics */}
-      <div className="space-y-3 pt-2">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Live System Health Diagnostics
-          </Label>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={fetchHealth}
-            disabled={loading}
-            className="h-7 text-xs px-2 gap-1 text-muted-foreground hover:text-foreground"
-          >
-            {loading ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <RefreshCw className="h-3 w-3" />
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-1.5">
+            <span>v{health?.version || APP_VERSION}</span>
+            {health?.version && health.version === APP_VERSION && (
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="System in sync" />
             )}
-            Refresh
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* Backend API Status */}
-          <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
-                <Server className="h-3.5 w-3.5 text-primary" />
-                Backend API
-              </span>
-              {health?.status === "healthy" ? (
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              ) : (
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-              )}
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-muted-foreground">Flask REST</span>
-              <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  health?.status === "healthy"
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                }`}
-              >
-                {health?.status === "healthy" ? "Healthy (200)" : "Degraded"}
-              </span>
-            </div>
-          </div>
-
-          {/* Database Connectivity */}
-          <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
-                <Database className="h-3.5 w-3.5 text-primary" />
-                Database Engine
-              </span>
-              {health?.database === "connected" ? (
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              ) : (
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-              )}
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-muted-foreground">SQLAlchemy ORM</span>
-              <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  health?.database === "connected"
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                    : "bg-destructive/10 text-destructive border border-destructive/20"
-                }`}
-              >
-                {health?.database === "connected" ? "Connected" : "Disconnected"}
-              </span>
-            </div>
-          </div>
-
-          {/* SSE Real-Time Stream */}
-          <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
-                <Radio className="h-3.5 w-3.5 text-primary" />
-                Live Sync (SSE)
-              </span>
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-muted-foreground">Event Broadcaster</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                Active Stream
-              </span>
-            </div>
-          </div>
+          </span>
+          <span className="text-[10px] text-muted-foreground font-medium">
+            {health?.status === "healthy"
+              ? health.version === APP_VERSION
+                ? "System in sync"
+                : `API v${health.version} (sync pending)`
+              : "System ready"}
+          </span>
         </div>
       </div>
+
+      {/* Live System Diagnostics (Hidden in Production) */}
+      {!import.meta.env.PROD && (
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Live System Health Diagnostics
+            </Label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={fetchHealth}
+              disabled={loading}
+              className="h-7 text-xs px-2 gap-1 text-muted-foreground hover:text-foreground"
+            >
+              {loading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
+              Refresh
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Backend API Status */}
+            <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                  <Server className="h-3.5 w-3.5 text-primary" />
+                  Backend API
+                </span>
+                {health?.status === "healthy" ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                )}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">Flask REST</span>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    health?.status === "healthy"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                      : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                  }`}
+                >
+                  {health?.status === "healthy" ? "Healthy (200)" : "Degraded"}
+                </span>
+              </div>
+            </div>
+
+            {/* Database Connectivity */}
+            <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                  <Database className="h-3.5 w-3.5 text-primary" />
+                  Database Engine
+                </span>
+                {health?.database === "connected" ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                )}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">SQLAlchemy ORM</span>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    health?.database === "connected"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                      : "bg-destructive/10 text-destructive border border-destructive/20"
+                  }`}
+                >
+                  {health?.database === "connected" ? "Connected" : "Disconnected"}
+                </span>
+              </div>
+            </div>
+
+            {/* SSE Real-Time Stream */}
+            <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                  <Radio className="h-3.5 w-3.5 text-primary" />
+                  Live Sync (SSE)
+                </span>
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">Event Broadcaster</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  Active Stream
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Developer Mode Suite (Hidden in Production) */}
       {import.meta.env.DEV && (

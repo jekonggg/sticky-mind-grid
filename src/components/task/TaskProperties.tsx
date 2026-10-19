@@ -187,14 +187,19 @@ export function TaskProperties({
               </Badge>
             ) : (
               <Select value={status} onValueChange={onStatusChange}>
-                <SelectTrigger className="h-8 text-xs font-medium border-border/60 bg-card/60 hover:bg-muted/50 transition-colors w-full shadow-2xs">
+                <SelectTrigger
+                  aria-label="Status"
+                  className="h-8 text-xs font-medium border-border/60 bg-card/60 hover:bg-muted/50 transition-colors w-full shadow-2xs"
+                >
                   <SelectValue placeholder="Select Status" />
                 </SelectTrigger>
                 <SelectContent>
                   {columns.map((col) => (
-                    <SelectItem key={col.id} value={col.id} className="text-xs">
+                    <SelectItem key={col.id} value={col.id} hideIndicator className="text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: col.color || "var(--primary)" }} />
+                        {col.color && (
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: col.color }} />
+                        )}
                         <span>{col.title}</span>
                       </div>
                     </SelectItem>
@@ -221,35 +226,37 @@ export function TaskProperties({
               <Badge
                 variant="outline"
                 className={`capitalize text-xs font-bold gap-1.5 py-1 px-2.5 ${
-                  priority === "urgent"
-                    ? "bg-rose-500/10 text-rose-600 border-rose-500/30"
-                    : priority === "high"
-                    ? "bg-orange-500/10 text-orange-600 border-orange-500/30"
+                  priority === "urgent" || priority === "high"
+                    ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
                     : priority === "medium"
-                    ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
-                    : "bg-slate-500/10 text-slate-600 border-slate-500/30"
+                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                    : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
                 }`}
               >
                 <span className={`w-2 h-2 rounded-full shrink-0 ${
-                  priority === "urgent"
-                    ? "bg-rose-500"
-                    : priority === "high"
-                    ? "bg-orange-500"
+                  priority === "urgent" || priority === "high"
+                    ? "bg-red-500"
                     : priority === "medium"
                     ? "bg-amber-500"
-                    : "bg-slate-400"
+                    : "bg-blue-500"
                 }`} />
-                <span>{priority}</span>
+                <span>{priority === "urgent" ? "high" : priority}</span>
               </Badge>
             ) : (
-              <Select value={priority} onValueChange={(v) => onPriorityChange(v as Priority)}>
-                <SelectTrigger className="h-8 text-xs font-medium border-border/60 bg-card/60 hover:bg-muted/50 transition-colors w-full shadow-2xs">
+              <Select
+                value={priority === "urgent" ? "high" : priority}
+                onValueChange={(v) => onPriorityChange(v as Priority)}
+              >
+                <SelectTrigger
+                  aria-label="Priority"
+                  className="h-8 text-xs font-medium border-border/60 bg-card/60 hover:bg-muted/50 transition-colors w-full shadow-2xs"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low" className="text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
+                      <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
                       <span>Low</span>
                     </div>
                   </SelectItem>
@@ -261,14 +268,8 @@ export function TaskProperties({
                   </SelectItem>
                   <SelectItem value="high" className="text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+                      <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
                       <span>High</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="urgent" className="text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
-                      <span className="font-semibold text-rose-500">Urgent</span>
                     </div>
                   </SelectItem>
                 </SelectContent>

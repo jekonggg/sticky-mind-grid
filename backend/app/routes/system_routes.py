@@ -17,7 +17,7 @@ def health_check():
     return jsonify({
         'status': 'healthy' if db_healthy else 'degraded',
         'database': 'connected' if db_healthy else 'disconnected',
-        'version': '1.2.0',
+        'version': '1.3.0',
         'environment': os.getenv('FLASK_ENV', 'development'),
         'timestamp': datetime.utcnow().isoformat() + 'Z'
     }), 200 if db_healthy else 503

@@ -1,12 +1,25 @@
-export type ThemeMode = "light" | "dark" | "system";
-export type DarkColorway = "mast" | "neon" | "midnight";
+export type ThemeColorway = 
+  | "indigo" 
+  | "mast" 
+  | "neon" 
+  | "emerald" 
+  | "sunset" 
+  | "rose" 
+  | "ocean";
+
+// Backward-compatibility alias for existing references
+export type DarkColorway = ThemeColorway | "midnight";
+
 export type UIDensity = "comfortable" | "compact";
 export type BoardViewMode = "board" | "list" | "calendar" | "documents" | "overview";
 export type DateFormatOption = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD";
+export type ExportFormat = "csv" | "xlsx";
 
 export interface LocalPreferences {
   theme: ThemeMode;
-  darkColorway: DarkColorway;
+  colorTheme: ThemeColorway;
+  darkColorway: DarkColorway; // Maintained for backward compatibility
+  customAccentColor?: string;
   uiDensity: UIDensity;
   soundEffectsEnabled: boolean;
   soundVolume: number; // 0 to 1
@@ -14,6 +27,7 @@ export interface LocalPreferences {
   autoProgressSnapping: boolean;
   confirmOnDelete: boolean;
   simulateSkeletonLoading: boolean;
+  exportFormat: ExportFormat;
 }
 
 export interface UserSyncedPreferences {

@@ -56,48 +56,35 @@ describe("DateTimePicker Component", () => {
     expect(onChange).toHaveBeenCalledWith("");
   });
 
-  it("opens popover with presets and calendar when trigger is clicked", () => {
+  it("opens popover with clean calendar and time controls without crowded shortcuts or preset chips", () => {
     render(<DateTimePicker value="2026-10-25T14:30" onChange={vi.fn()} />);
 
     const trigger = screen.getByTestId("due-date-picker-trigger");
     fireEvent.click(trigger);
 
-    expect(screen.getByText("Quick Shortcuts")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /today \(5 pm\)/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /tomorrow \(9 am\)/i })).toBeInTheDocument();
-    expect(screen.getByText(/select time/i)).toBeInTheDocument();
+    expect(screen.getByText("Select Date")).toBeInTheDocument();
+    expect(screen.getByText("Select Time")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clear" })).toBeInTheDocument();
+
+    // Verify shortcuts and extra preset chips are not rendered
+    expect(screen.queryByText("Quick Shortcuts")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /today \(5 pm\)/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "12:00 PM" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: ":15" })).not.toBeInTheDocument();
   });
 
-  it("updates date and time when clicking a quick shortcut", () => {
-    const onChange = vi.fn();
-    render(<DateTimePicker value="" onChange={onChange} />);
-
-    const trigger = screen.getByTestId("due-date-picker-trigger");
-    fireEvent.click(trigger);
-
-    const todayShortcut = screen.getByRole("button", { name: /today \(5 pm\)/i });
-    fireEvent.click(todayShortcut);
-
-    expect(onChange).toHaveBeenCalled();
-    const calledValue = onChange.mock.calls[0][0];
-    // Check that it emits a string with 17:00 (5 PM)
-    expect(calledValue).toContain("T17:00");
-  });
-
-  it("updates time when clicking a time preset", () => {
+  it("toggles AM and PM accurately", () => {
     const onChange = vi.fn();
     render(<DateTimePicker value="2026-10-25T14:30" onChange={onChange} />);
 
     const trigger = screen.getByTestId("due-date-picker-trigger");
     fireEvent.click(trigger);
 
-    const preset12pm = screen.getByRole("button", { name: "12:00 PM" });
-    fireEvent.click(preset12pm);
+    const amBtn = screen.getByRole("button", { name: "AM" });
+    fireEvent.click(amBtn);
 
-    expect(onChange).toHaveBeenCalled();
-    const calledValue = onChange.mock.calls[0][0];
-    expect(calledValue).toContain("T12:00");
+    expect(onChange).toHaveBeenCalledWith("2026-10-25T02:30");
   });
 
   it("allows typing arbitrary minutes with two-digit format and no browser spinners", () => {
@@ -121,19 +108,6 @@ describe("DateTimePicker Component", () => {
     fireEvent.blur(minuteInput);
     expect(minuteInput).toHaveValue("07");
     expect(onChange).toHaveBeenCalledWith("2026-10-25T14:07");
-  });
-
-  it("updates minutes quickly with minute shortcut chips (:00, :15, :30, :45)", () => {
-    const onChange = vi.fn();
-    render(<DateTimePicker value="2026-10-25T14:30" onChange={onChange} />);
-
-    const trigger = screen.getByTestId("due-date-picker-trigger");
-    fireEvent.click(trigger);
-
-    const min45Chip = screen.getByRole("button", { name: ":45" });
-    fireEvent.click(min45Chip);
-
-    expect(onChange).toHaveBeenCalledWith("2026-10-25T14:45");
   });
 
   it("supports micro-step chevrons and arrow keys for 1-minute precision adjustments", () => {

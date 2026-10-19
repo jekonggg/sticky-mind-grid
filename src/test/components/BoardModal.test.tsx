@@ -251,5 +251,87 @@ describe("BoardModal Component", () => {
     expect(inProgressCol?.wipLimit).toBe(3);
     expect(todoCol?.wipLimit).toBeNull();
   });
+
+  it("supports Custom Kanban template with empty board states and allows adding custom states", () => {
+    const onSubmit = vi.fn();
+    renderWithProviders(
+      <BoardModal open={true} onClose={vi.fn()} board={null} onSubmit={onSubmit} />,
+      { user: mockUser }
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /customize/i }));
+
+    // Verify Custom Kanban template option is rendered with empty states description
+    const customTemplateBtn = screen.getByRole("button", { name: /custom kanban/i });
+    expect(customTemplateBtn).toBeInTheDocument();
+    expect(screen.getByText("Empty states (start from scratch)")).toBeInTheDocument();
+
+    // Select Custom Kanban template
+    fireEvent.click(customTemplateBtn);
+
+    // Board states should now be empty (0 columns)
+    expect(screen.getByText(/no workflow states yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/starter:/i)).toHaveTextContent("Custom Kanban");
+    expect(screen.getByText(/0 columns/i)).toBeInTheDocument();
+
+    // Trying to submit with 0 columns triggers validation and does not submit
+    fireEvent.change(screen.getByPlaceholderText("Project or Board name…"), {
+      target: { value: "Custom Board" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create Board" }));
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    // Add a custom state via the empty placeholder button
+    fireEvent.click(screen.getByRole("button", { name: /add first state/i }));
+    expect(screen.getByDisplayValue("New State")).toBeInTheDocument();
+
+    // Rename the state
+    fireEvent.change(screen.getByDisplayValue("New State"), {
+      target: { value: "Triage" },
+    });
+
+    // Add another state via the header Add State button
+    fireEvent.click(screen.getByRole("button", { name: /add state/i }));
+    const stateInputs = screen.getAllByPlaceholderText(/state \d+/i);
+    expect(stateInputs).toHaveLength(2);
+
+    fireEvent.change(stateInputs[1], {
+      target: { value: "Complete" },
+    });
+
+    // Now submit
+    fireEvent.click(screen.getByRole("button", { name: "Create Board" }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const submitted = onSubmit.mock.calls[0][0];
+    expect(submitted.name).toBe("Custom Board");
+    const nonArchiveCols = submitted.columns.filter((c: { id: string }) => c.id !== "archive");
+    expect(nonArchiveCols).toHaveLength(2);
+    expect(nonArchiveCols[0].title).toBe("Triage");
+    expect(nonArchiveCols[1].title).toBe("Complete");
+  }, 15000);
+
+  it("renders starter templates without emojis in template selection buttons", () => {
+    renderWithProviders(
+      <BoardModal open={true} onClose={vi.fn()} board={null} onSubmit={vi.fn()} />,
+      { user: mockUser }
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /customize/i }));
+
+    const starterTemplatesSection = screen.getByText("Starter Templates").parentElement;
+    expect(starterTemplatesSection).toBeInTheDocument();
+
+    const kanbanBtn = screen.getByRole("button", { name: /^kanban/i });
+    expect(kanbanBtn.textContent).toContain("Kanban");
+    expect(kanbanBtn.textContent).not.toContain("📋");
+
+    const sprintBtn = screen.getByRole("button", { name: /^sprint/i });
+    expect(sprintBtn.textContent).toContain("Sprint");
+    expect(sprintBtn.textContent).not.toContain("🏃");
+
+    const customBtn = screen.getByRole("button", { name: /custom kanban/i });
+    expect(customBtn.textContent).toContain("Custom Kanban");
+    expect(customBtn.textContent).not.toContain("✨");
+  });
 });
 

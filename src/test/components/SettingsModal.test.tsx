@@ -21,7 +21,7 @@ vi.mock("@/services/userApi", () => ({
     getHealth: vi.fn().mockResolvedValue({
       status: "healthy",
       database: "connected",
-      version: "1.2.0",
+      version: "1.3.0",
       environment: "test",
       timestamp: new Date().toISOString(),
     }),
@@ -89,7 +89,7 @@ describe("SettingsModal Component", () => {
     expect(screen.getByText("Task Assignments")).toBeInTheDocument();
   }, 15000);
 
-  it("switches to Workflow tab and shows default board view & auto-progress", async () => {
+  it("switches to Workflow tab and shows default board view & delete confirmation", async () => {
     renderWithProviders(<SettingsModal open={true} onClose={onClose} />);
 
     const workflowTabBtn = screen.getByRole("button", { name: /Task & Workflow/i });
@@ -97,7 +97,10 @@ describe("SettingsModal Component", () => {
 
     expect(screen.getByText("Task & Workflow Defaults")).toBeInTheDocument();
     expect(screen.getByText("Default Board View")).toBeInTheDocument();
-    expect(screen.getByText("Auto-Progress Calculation")).toBeInTheDocument();
+    expect(screen.getByText("Preferred Export File Format")).toBeInTheDocument();
+    expect(screen.getByTestId("export-format-select")).toBeInTheDocument();
+    expect(screen.getByText("Delete Confirmation Prompts")).toBeInTheDocument();
+    expect(screen.queryByText("Auto-Progress Calculation")).not.toBeInTheDocument();
   }, 15000);
 
   it("switches to Privacy tab and displays data export button", async () => {
@@ -119,6 +122,8 @@ describe("SettingsModal Component", () => {
 
     expect(screen.getByText("System & Diagnostics")).toBeInTheDocument();
     await waitFor(() => {
+      expect(screen.getByText(/v1\.3\.0/)).toBeInTheDocument();
+      expect(screen.getByText("System in sync")).toBeInTheDocument();
       expect(screen.getByText("Backend API")).toBeInTheDocument();
       expect(screen.getByText("Database Engine")).toBeInTheDocument();
     });

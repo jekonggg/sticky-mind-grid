@@ -295,61 +295,6 @@ export function AppSidebar({
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="start" className="w-64 p-1.5 mt-1">
-              {/* 3-Way Quick Theme Selector */}
-              <div className="px-2 py-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Theme
-                </p>
-                <div className="grid grid-cols-3 gap-1 bg-muted/50 p-1 rounded-lg">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateLocalSetting("theme", "light");
-                      setTheme("light");
-                    }}
-                    className={`flex items-center justify-center gap-1 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
-                      settings.theme === "light"
-                        ? "bg-background text-foreground shadow-xs font-bold"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Sun className="h-3 w-3" />
-                    <span>Light</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateLocalSetting("theme", "dark");
-                      setTheme("dark");
-                    }}
-                    className={`flex items-center justify-center gap-1 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
-                      settings.theme === "dark"
-                        ? "bg-background text-foreground shadow-xs font-bold"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Moon className="h-3 w-3" />
-                    <span>Dark</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateLocalSetting("theme", "system");
-                      setTheme("system");
-                    }}
-                    className={`flex items-center justify-center gap-1 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
-                      settings.theme === "system"
-                        ? "bg-background text-foreground shadow-xs font-bold"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <span>Auto</span>
-                  </button>
-                </div>
-              </div>
-
-              <DropdownMenuSeparator />
-
               <DropdownMenuItem
                 onClick={() => openSettingsTab("profile")}
                 className="cursor-pointer text-xs font-semibold py-2 flex items-center gap-2"
@@ -945,39 +890,145 @@ export function AppSidebar({
         </div>
 
         {/* 3. BOTTOM: Global Controls & Footer */}
-        <div className="p-2 border-t border-border/50 shrink-0 space-y-1">
-          {/* Light / Dark Theme Toggle */}
-          <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => {
-                  const nextTheme = theme === "dark" ? "light" : "dark";
-                  updateLocalSetting("theme", nextTheme);
-                  setTheme(nextTheme);
-                }}
-                className={`w-full h-9 flex items-center rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer ${
-                  isCollapsed ? "justify-center px-0" : "justify-between gap-2.5 px-2.5"
-                }`}
-              >
-                <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5 min-w-0"}`}>
-                  {theme === "dark" ? (
-                    <Moon className="h-4 w-4 shrink-0 text-amber-400" />
-                  ) : (
-                    <Sun className="h-4 w-4 shrink-0 text-amber-500" />
-                  )}
-                  {!isCollapsed && <span>{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>}
-                </div>
-                {!isCollapsed && (
-                  <span className="text-[10px] text-muted-foreground font-mono uppercase bg-muted/60 px-1.5 py-0.5 rounded">
-                    {theme || "system"}
-                  </span>
-                )}
-              </button>
-            </TooltipTrigger>
-            {isCollapsed && (
-              <TooltipContent side="right">Toggle Theme ({theme === "dark" ? "Dark" : "Light"})</TooltipContent>
-            )}
-          </Tooltip>
+        <div className="p-2 border-t border-border/50 shrink-0 space-y-1.5">
+          {/* 3-Way Theme Selector (Light, Dark, Auto) */}
+          {!isCollapsed ? (
+            <div className="space-y-1 px-1 py-0.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Theme
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono uppercase bg-muted/60 px-1.5 py-0.5 rounded">
+                  {settings.theme === "system" ? "Auto" : settings.theme === "dark" ? "Dark" : "Light"}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-1 bg-muted/50 p-1 rounded-lg border border-border/40">
+                <button
+                  type="button"
+                  data-testid="sidebar-theme-light-btn"
+                  onClick={() => {
+                    updateLocalSetting("theme", "light");
+                    setTheme("light");
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    settings.theme === "light"
+                      ? "bg-background text-foreground shadow-xs font-bold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+                  }`}
+                  title="Light Theme"
+                >
+                  <Sun className="h-3.5 w-3.5 text-amber-500" />
+                  <span>Light</span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="sidebar-theme-dark-btn"
+                  onClick={() => {
+                    updateLocalSetting("theme", "dark");
+                    setTheme("dark");
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    settings.theme === "dark"
+                      ? "bg-background text-foreground shadow-xs font-bold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+                  }`}
+                  title="Dark Theme"
+                >
+                  <Moon className="h-3.5 w-3.5 text-amber-400" />
+                  <span>Dark</span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="sidebar-theme-system-btn"
+                  onClick={() => {
+                    updateLocalSetting("theme", "system");
+                    setTheme("system");
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    settings.theme === "system"
+                      ? "bg-background text-foreground shadow-xs font-bold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+                  }`}
+                  title="System Theme"
+                >
+                  <Laptop className="h-3.5 w-3.5" />
+                  <span>Auto</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <DropdownMenu>
+              <Tooltip delayDuration={100}>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      data-testid="sidebar-theme-collapsed-btn"
+                      className="w-full h-9 flex items-center justify-center rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+                    >
+                      {settings.theme === "dark" ? (
+                        <Moon className="h-4 w-4 text-amber-400" />
+                      ) : settings.theme === "light" ? (
+                        <Sun className="h-4 w-4 text-amber-500" />
+                      ) : (
+                        <Laptop className="h-4 w-4 text-primary" />
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  Theme: {settings.theme === "system" ? "Auto" : settings.theme === "dark" ? "Dark" : "Light"}
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent side="right" align="end" className="w-36 p-1">
+                <DropdownMenuItem
+                  onClick={() => {
+                    updateLocalSetting("theme", "light");
+                    setTheme("light");
+                  }}
+                  className={`cursor-pointer text-xs font-semibold py-1.5 flex items-center justify-between ${
+                    settings.theme === "light" ? "bg-muted font-bold" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Sun className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Light</span>
+                  </div>
+                  {settings.theme === "light" && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    updateLocalSetting("theme", "dark");
+                    setTheme("dark");
+                  }}
+                  className={`cursor-pointer text-xs font-semibold py-1.5 flex items-center justify-between ${
+                    settings.theme === "dark" ? "bg-muted font-bold" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Moon className="h-3.5 w-3.5 text-amber-400" />
+                    <span>Dark</span>
+                  </div>
+                  {settings.theme === "dark" && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    updateLocalSetting("theme", "system");
+                    setTheme("system");
+                  }}
+                  className={`cursor-pointer text-xs font-semibold py-1.5 flex items-center justify-between ${
+                    settings.theme === "system" ? "bg-muted font-bold" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Laptop className="h-3.5 w-3.5" />
+                    <span>Auto</span>
+                  </div>
+                  {settings.theme === "system" && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {/* Collapse / Rail Mode Toggle */}
           <Tooltip delayDuration={isCollapsed ? 100 : 1000}>

@@ -4,7 +4,6 @@ import { renderWithProviders } from "../test-utils";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { TaskCard } from "@/components/kanban/TaskCard";
 import { KanbanColumn } from "@/components/kanban/KanbanColumn";
-import { TaskListView } from "@/components/kanban/TaskListView";
 import { Task } from "@/types/task";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 
@@ -17,7 +16,7 @@ vi.mock("@/services/userApi", () => ({
     getHealth: vi.fn().mockResolvedValue({
       status: "healthy",
       database: "connected",
-      version: "1.2.0",
+      version: "1.3.0",
       environment: "test",
       timestamp: new Date().toISOString(),
     }),
@@ -92,21 +91,14 @@ describe("UI Density Implementation", () => {
     expect(screen.getByText("Frontend")).toBeInTheDocument();
   }, 15000);
 
-  it("renders KanbanColumn and TaskListView with density responsiveness", () => {
+  it("renders KanbanColumn with density responsiveness", () => {
     const { container } = renderWithProviders(
-      <>
-        <KanbanColumn
-          id="in_progress"
-          title="In Progress"
-          tasks={[mockTask]}
-          onTaskClick={vi.fn()}
-        />
-        <TaskListView
-          tasks={[mockTask]}
-          columns={[{ id: "in_progress", title: "In Progress", color: "#3b82f6" }]}
-          onTaskClick={vi.fn()}
-        />
-      </>
+      <KanbanColumn
+        id="in_progress"
+        title="In Progress"
+        tasks={[mockTask]}
+        onTaskClick={vi.fn()}
+      />
     );
 
     expect(container.querySelector(".density-kanban-column")).toBeInTheDocument();

@@ -236,7 +236,7 @@ export function ChatArea({
             </div>
             <span className="text-[11px] text-muted-foreground truncate">
               {conversation.type === "group"
-                ? conversation.participants.map((p) => p.user?.fullName || p.user?.email).filter(Boolean).join(", ")
+                ? conversation.participants?.map((p) => p.user?.fullName || p.user?.email).filter(Boolean).join(", ") || "Group Chat"
                 : conversation.otherUser?.email || "Direct Message"}
             </span>
           </div>
@@ -270,7 +270,7 @@ export function ChatArea({
                     {conversation.participants?.map((p) => (
                       <div key={p.id} className="flex items-center gap-2 text-xs py-1">
                         <Avatar className="h-5 w-5 border border-border/50">
-                          <AvatarImage src={p.userId === user?.id ? (user?.avatarUrl ?? p.user?.avatarUrl) : p.user?.avatarUrl} />
+                          <AvatarImage src={p.userId === currentUser?.id ? (currentUser?.avatarUrl ?? p.user?.avatarUrl) : p.user?.avatarUrl} />
                           <AvatarFallback className="text-[9px]">
                             {p.user?.fullName?.charAt(0) || "U"}
                           </AvatarFallback>

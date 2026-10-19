@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { taskApi } from "@/services/api";
 import { boardApi } from "@/services/boardApi";
@@ -29,6 +29,7 @@ import {
   CheckCircle as CheckCircle2,
   Calendar,
   AlertCircle,
+  ArrowLeft,
   LayoutGrid01 as LayoutGrid,
   Columns03 as Kanban,
   List as ListIcon,
@@ -37,7 +38,9 @@ import {
   Tag01 as TagIcon,
   Stars01 as Sparkles,
   User01 as User,
+  Download01 as Download,
 } from "@untitledui/icons";
+import { exportTasksToCSV, exportTasksToExcel } from "@/utils/exportToExcel";
 import {
   Table,
   TableBody,
@@ -58,15 +61,18 @@ type SortOption = "dueDate" | "priority" | "title" | "created";
 
 export default function TasksPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { devSettings } = useDevMode();
   const { settings } = useSettings();
   const isCompact = settings.uiDensity === "compact";
 
+  const boardIdParam = searchParams.get("boardId");
+
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [search, setSearch] = useState("");
-  const [selectedBoardId, setSelectedBoardId] = useState<string>("all");
+  const [selectedBoardId, setSelectedBoardId] = useState<string>(boardIdParam || "all");
   const [selectedPriority, setSelectedPriority] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("dueDate");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -77,11 +83,36 @@ export default function TasksPage() {
 
   const now = useMemo(() => new Date(), []);
 
+  // Sync state if boardId in URL changes
+  useEffect(() => {
+    if (boardIdParam) {
+      setSelectedBoardId(boardIdParam);
+    }
+  }, [boardIdParam]);
+
+  const handleBoardChange = (newBoardId: string) => {
+    setSelectedBoardId(newBoardId);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (newBoardId === "all") {
+        next.delete("boardId");
+      } else {
+        next.set("boardId", newBoardId);
+      }
+      return next;
+    }, { replace: true });
+  };
+
   // Fetch all user boards
   const { data: boards = [] } = useQuery<Board[]>({
     queryKey: ["boards"],
     queryFn: () => boardApi.getBoards(),
   });
+
+  const currentScopedBoard = useMemo(() => {
+    if (selectedBoardId === "all") return null;
+    return boards.find((b) => b.id === selectedBoardId) || null;
+  }, [boards, selectedBoardId]);
 
   // Fetch all user tasks
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
@@ -216,6 +247,28 @@ export default function TasksPage() {
     setIsNewTaskModalOpen(true);
   };
 
+  const handleExportTasks = () => {
+    try {
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const isXlsx = settings.exportFormat === "xlsx";
+      if (isXlsx) {
+        exportTasksToExcel(filteredTasks, {
+          filename: `workspace_tasks_${dateStr}.xlsx`,
+          includeBoardName: true,
+        });
+        toast.success(`Exported ${filteredTasks.length} tasks to Excel (.xlsx)`);
+      } else {
+        exportTasksToCSV(filteredTasks, {
+          filename: `workspace_tasks_${dateStr}.csv`,
+          includeBoardName: true,
+        });
+        toast.success(`Exported ${filteredTasks.length} tasks to CSV (.csv)`);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to export tasks");
+    }
+  };
+
   const activeTargetBoard = boards.find((b) => b.id === targetBoardForNewTask) || boards[0];
 
   return (
@@ -226,20 +279,49 @@ export default function TasksPage() {
         {/* Header Title & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1">
+            {currentScopedBoard && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/boards/${currentScopedBoard.id}`)}
+                className="gap-1.5 text-xs text-muted-foreground hover:text-foreground h-7 px-2 -ml-2 mb-1 cursor-pointer inline-flex items-center"
+                title={`Back to ${currentScopedBoard.name} Board`}
+                data-testid="back-to-board-btn"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Back to {currentScopedBoard.name} Board</span>
+              </Button>
+            )}
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
                 <CheckSquare className="h-4 w-4" />
               </div>
               <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">
-                All Workspace Tasks
+                {currentScopedBoard ? `${currentScopedBoard.name} Tasks` : "All Workspace Tasks"}
               </h1>
             </div>
             <p className="text-xs text-muted-foreground">
-              Manage and track all tasks across your collaborative boards
+              {currentScopedBoard
+                ? `Manage and track all tasks for ${currentScopedBoard.name}`
+                : "Manage and track all tasks across your collaborative boards"}
             </p>
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportTasks}
+              className="gap-1.5 font-semibold text-xs h-9 cursor-pointer border-border/80 hover:bg-muted"
+              title={settings.exportFormat === "xlsx" ? "Export tasks to Excel (.xlsx)" : "Export tasks to CSV (.csv)"}
+              data-testid="tasks-page-export-btn"
+            >
+              <Download className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="hidden sm:inline">
+                {settings.exportFormat === "xlsx" ? "Export to Excel" : "Export to CSV"}
+              </span>
+            </Button>
+
             <PillNavBar
               items={[
                 { id: "list", label: "List", icon: ListIcon },
@@ -322,7 +404,7 @@ export default function TasksPage() {
             />
           </div>
 
-          <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
+          <Select value={selectedBoardId} onValueChange={handleBoardChange}>
             <SelectTrigger className="w-[160px] h-9 text-xs bg-background/60 border-border/60">
               <SelectValue placeholder="All Boards" />
             </SelectTrigger>
@@ -342,7 +424,6 @@ export default function TasksPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Priorities</SelectItem>
-              <SelectItem value="urgent">Urgent</SelectItem>
               <SelectItem value="high">High</SelectItem>
               <SelectItem value="medium">Medium</SelectItem>
               <SelectItem value="low">Low</SelectItem>
@@ -369,16 +450,19 @@ export default function TasksPage() {
               <Table className="min-w-[760px] w-full">
                 <TableHeader className="bg-muted/40">
                   <TableRow className="border-border/50 hover:bg-transparent">
-                    <TableHead className="w-[38%] py-3.5 pl-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                    <TableHead className="w-[24%] py-3.5 pl-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                       Task
                     </TableHead>
-                    <TableHead className="w-[18%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
-                      Board
+                    <TableHead className="w-[26%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                      Description
                     </TableHead>
                     <TableHead className="w-[14%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                      Board
+                    </TableHead>
+                    <TableHead className="w-[10%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                       Priority
                     </TableHead>
-                    <TableHead className="w-[18%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                    <TableHead className="w-[14%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                       Assigned
                     </TableHead>
                     <TableHead className="w-[12%] py-3.5 pr-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
@@ -419,16 +503,19 @@ export default function TasksPage() {
               <Table className="min-w-[760px] w-full">
                 <TableHeader className="bg-muted/40">
                   <TableRow className="border-border/50 hover:bg-transparent">
-                    <TableHead className={`w-[38%] ${isCompact ? "py-2 pl-3 text-[10px]" : "py-3.5 pl-4 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
+                    <TableHead className={`w-[24%] ${isCompact ? "py-2 pl-3 text-[10px]" : "py-3.5 pl-4 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Task
                     </TableHead>
-                    <TableHead className={`w-[18%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
-                      Board
+                    <TableHead className={`w-[26%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
+                      Description
                     </TableHead>
                     <TableHead className={`w-[14%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
+                      Board
+                    </TableHead>
+                    <TableHead className={`w-[10%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Priority
                     </TableHead>
-                    <TableHead className={`w-[18%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
+                    <TableHead className={`w-[14%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Assigned
                     </TableHead>
                     <TableHead className={`w-[12%] ${isCompact ? "py-2 pr-3 text-[10px]" : "py-3.5 pr-4 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
@@ -468,31 +555,37 @@ export default function TasksPage() {
                               {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
                             </button>
 
-                            <div className="flex flex-col min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                {!devSettings.disableEmojiCustomization && task.emoji && (
-                                  <span className="text-sm shrink-0 leading-none">
-                                    {task.emoji}
-                                  </span>
-                                )}
-                                <span
-                                  className={`text-sm font-semibold truncate ${
-                                    isDone
-                                      ? "line-through text-muted-foreground"
-                                      : "text-foreground group-hover/row:text-primary transition-colors"
-                                  }`}
-                                >
-                                  {task.title}
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              {!devSettings.disableEmojiCustomization && task.emoji && (
+                                <span className="text-sm shrink-0 leading-none">
+                                  {task.emoji}
                                 </span>
-                              </div>
-
-                              {task.description && (
-                                <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                                  {task.description}
-                                </p>
                               )}
+                              <span
+                                className={`text-sm font-semibold truncate ${
+                                  isDone
+                                    ? "line-through text-muted-foreground"
+                                    : "text-foreground group-hover/row:text-primary transition-colors"
+                                }`}
+                              >
+                                {task.title}
+                              </span>
                             </div>
                           </div>
+                        </TableCell>
+
+                        {/* Description Column */}
+                        <TableCell className={`${isCompact ? "py-2 px-3" : "py-3.5"}`}>
+                          {task.description ? (
+                            <p
+                              className="text-xs text-muted-foreground line-clamp-1 max-w-[260px] truncate"
+                              title={task.description}
+                            >
+                              {task.description}
+                            </p>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/40 italic">—</span>
+                          )}
                         </TableCell>
 
                         {/* Board Column */}
@@ -523,10 +616,10 @@ export default function TasksPage() {
                             variant="outline"
                             className={`text-[10px] uppercase font-mono px-2 py-0.5 font-bold tracking-tight ${
                               task.priority === "urgent" || task.priority === "high"
-                                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
+                                ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
                                 : task.priority === "medium"
                                 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
-                                : "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30"
+                                : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
                             }`}
                           >
                             {task.priority || "none"}
@@ -658,10 +751,10 @@ export default function TasksPage() {
                         variant="outline"
                         className={`text-[10px] uppercase font-mono px-1.5 py-0 ${
                           task.priority === "urgent" || task.priority === "high"
-                            ? "bg-rose-500/10 text-rose-600 border-rose-500/30"
+                            ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
                             : task.priority === "medium"
-                            ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
-                            : "bg-slate-500/10 text-slate-600 border-slate-500/30"
+                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
                         }`}
                       >
                         {task.priority || "none"}
@@ -715,10 +808,10 @@ export default function TasksPage() {
                         variant="outline"
                         className={`text-[10px] uppercase font-mono px-1.5 py-0 ${
                           task.priority === "high" || task.priority === "urgent"
-                            ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
+                            ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
                             : task.priority === "medium"
-                            ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                            : "bg-slate-500/10 text-slate-600 border-slate-500/20"
+                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
                         }`}
                       >
                         {task.priority}

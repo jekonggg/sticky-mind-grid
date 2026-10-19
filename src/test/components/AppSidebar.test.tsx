@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { Routes, Route } from "react-router-dom";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -114,18 +114,33 @@ describe("AppSidebar Component", () => {
     expect(screen.getByText("Personal Files")).toBeInTheDocument();
   });
 
-  it("renders bottom theme toggle and collapse sidebar button", () => {
+  it("renders bottom 3-way theme selector (Light, Dark, Auto) and collapse sidebar button", () => {
     const onToggleCollapse = vi.fn();
     renderWithProviders(
       <AppSidebar isCollapsed={false} onToggleCollapse={onToggleCollapse} />
     );
 
-    expect(screen.getByText(/mode/i)).toBeInTheDocument();
+    expect(screen.getByTestId("sidebar-theme-light-btn")).toBeInTheDocument();
+    expect(screen.getByTestId("sidebar-theme-dark-btn")).toBeInTheDocument();
+    expect(screen.getByTestId("sidebar-theme-system-btn")).toBeInTheDocument();
+
+    // Clicking theme buttons switches active theme
+    fireEvent.click(screen.getByTestId("sidebar-theme-dark-btn"));
+
     const collapseBtn = screen.getByText("Collapse Sidebar");
     expect(collapseBtn).toBeInTheDocument();
 
     fireEvent.click(collapseBtn);
     expect(onToggleCollapse).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders collapsed theme selector in rail mode", () => {
+    renderWithProviders(
+      <AppSidebar isCollapsed={true} onToggleCollapse={vi.fn()} />
+    );
+
+    const collapsedThemeBtn = screen.getByTestId("sidebar-theme-collapsed-btn");
+    expect(collapsedThemeBtn).toBeInTheDocument();
   });
 
   it("opens personal scratchpad when clicking Open Scratchpad", async () => {
@@ -249,7 +264,7 @@ describe("AppSidebar Component", () => {
     expect(onOpenSearch).not.toHaveBeenCalled();
   });
 
-  it("renders consolidated User menu dropdown with 3-way theme switcher, settings, My Boards, Developer Suite, and Log Out", async () => {
+  it("renders consolidated User menu dropdown with settings, My Boards, Developer Suite, and Log Out (without theme switcher)", async () => {
     renderWithProviders(
       <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />
     );
@@ -266,10 +281,11 @@ describe("AppSidebar Component", () => {
     expect(screen.getByText("Developer Suite")).toBeInTheDocument();
     expect(screen.getByText("Log Out")).toBeInTheDocument();
 
-    // 3-way quick theme switcher options
-    expect(screen.getByRole("button", { name: /light/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /dark/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /auto/i })).toBeInTheDocument();
+    // Theme selector is on the main sidebar footer, not inside the user menu dropdown
+    const userDropdown = screen.getByRole("menu");
+    expect(within(userDropdown).queryByText(/light/i)).not.toBeInTheDocument();
+    expect(within(userDropdown).queryByText(/dark/i)).not.toBeInTheDocument();
+    expect(within(userDropdown).queryByText(/auto/i)).not.toBeInTheDocument();
 
     // Profile card is not duplicated inside the dropdown
     expect(screen.getAllByText(mockUser.fullName)).toHaveLength(1);

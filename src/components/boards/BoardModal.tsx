@@ -54,7 +54,7 @@ export interface BoardTemplate {
   id: string;
   name: string;
   description: string;
-  emoji: string;
+  emoji?: string;
   columns: Column[];
 }
 
@@ -63,7 +63,6 @@ export const BOARD_TEMPLATES: BoardTemplate[] = [
     id: "kanban",
     name: "Kanban",
     description: "Classic 3-stage workflow",
-    emoji: "📋",
     columns: [
       { id: "todo", title: "To Do", emoji: "📝" },
       { id: "in_progress", title: "In Progress", emoji: "⏳" },
@@ -74,7 +73,6 @@ export const BOARD_TEMPLATES: BoardTemplate[] = [
     id: "sprint",
     name: "Sprint",
     description: "Agile sprint planning & review",
-    emoji: "🏃",
     columns: [
       { id: "backlog", title: "Backlog", emoji: "📋" },
       { id: "todo", title: "To Do", emoji: "📝" },
@@ -87,7 +85,6 @@ export const BOARD_TEMPLATES: BoardTemplate[] = [
     id: "personal",
     name: "Personal to-do",
     description: "Simple 2-step personal checklist",
-    emoji: "✅",
     columns: [
       { id: "todo", title: "To Do", emoji: "📌" },
       { id: "done", title: "Done", emoji: "✅" },
@@ -97,11 +94,16 @@ export const BOARD_TEMPLATES: BoardTemplate[] = [
     id: "ideas",
     name: "Ideas / Doing",
     description: "Lightweight capture & execution",
-    emoji: "💡",
     columns: [
       { id: "ideas", title: "Ideas", emoji: "💡" },
       { id: "doing", title: "Doing", emoji: "🛠️" },
     ],
+  },
+  {
+    id: "custom",
+    name: "Custom Kanban",
+    description: "Empty board states (start from scratch)",
+    columns: [],
   },
 ];
 
@@ -405,6 +407,7 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
 
     const activeCols = columns.filter((c) => c.id !== "archive" && c.title.trim());
     if (activeCols.length < MIN_COLUMNS) {
+      setIsCustomized(true);
       toast.error(`At least ${MIN_COLUMNS} workflow state is required.`);
       return;
     }
@@ -547,12 +550,13 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
                               : "border-border/70 hover:border-border hover:bg-muted/40"
                           }`}
                         >
-                          <div className="flex items-center gap-1.5 font-semibold text-xs text-foreground">
-                            <span>{template.emoji}</span>
+                          <div className="font-semibold text-xs text-foreground">
                             <span>{template.name}</span>
                           </div>
                           <span className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
-                            {template.columns.map((c) => c.title).join(" → ")}
+                            {template.columns.length > 0
+                              ? template.columns.map((c) => c.title).join(" → ")
+                              : "Empty states (start from scratch)"}
                           </span>
                         </button>
                       );
@@ -598,7 +602,25 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
                   )}
                 </div>
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {visibleColumns.map((col, idx) => {
+                  {visibleColumns.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-4 border border-dashed rounded-lg border-border/70 bg-muted/20 text-center">
+                      <p className="text-xs text-muted-foreground">
+                        No workflow states yet. Add states to build your custom board.
+                      </p>
+                      {canManageColumns && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleAddColumn}
+                          className="mt-2 h-7 text-xs font-semibold gap-1 text-primary hover:text-primary hover:bg-primary/10"
+                        >
+                          <Plus className="h-3 w-3" /> Add First State
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    visibleColumns.map((col, idx) => {
                     const cardCount = boardTasks.filter(
                       (t) => !t.isDeleted && t.status === col.id
                     ).length;
@@ -659,7 +681,7 @@ export function BoardModal({ open, onClose, board, onSubmit }: BoardModalProps) 
                         )}
                       </div>
                     );
-                  })}
+                  }))}
                 </div>
                 <p className="text-[10px] text-muted-foreground font-medium italic">
                   Minimum {MIN_COLUMNS} state required. Optional WIP limits highlight columns when at or over capacity.{" "}

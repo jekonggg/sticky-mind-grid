@@ -39,6 +39,7 @@ describe("TasksPage", () => {
       boardId: "board-1",
       boardName: "Engineering Sprint",
       title: "Write Vitest Tests",
+      description: "Ensure comprehensive test suite coverage",
       emoji: "🧪",
       status: "todo",
       priority: "high",
@@ -155,6 +156,55 @@ describe("TasksPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("task-detail-drawer")).toBeInTheDocument();
       expect(screen.getByTestId("task-drawer-backdrop")).toBeInTheDocument();
+    });
+  });
+
+  it("scopes to specific board when boardId search parameter is present and displays back button", async () => {
+    window.history.pushState({}, "", "/tasks?boardId=board-1");
+
+    renderWithProviders(<TasksPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Engineering Sprint Tasks")).toBeInTheDocument();
+      expect(screen.getByTestId("back-to-board-btn")).toBeInTheDocument();
+      expect(screen.getByText("Back to Engineering Sprint Board")).toBeInTheDocument();
+    });
+
+    // Reset URL
+    window.history.pushState({}, "", "/tasks");
+  });
+
+  it("renders export button on tasks page reflecting default CSV setting", async () => {
+    localStorage.removeItem("sticky_mind_grid_local_settings");
+    renderWithProviders(<TasksPage />);
+
+    const exportBtn = screen.getByTestId("tasks-page-export-btn");
+    expect(exportBtn).toBeInTheDocument();
+    expect(exportBtn).toHaveTextContent("Export to CSV");
+  });
+
+  it("renders Export to Excel button when user prefers xlsx in settings", async () => {
+    localStorage.setItem(
+      "sticky_mind_grid_local_settings",
+      JSON.stringify({ exportFormat: "xlsx" })
+    );
+    renderWithProviders(<TasksPage />);
+
+    const exportBtn = screen.getByTestId("tasks-page-export-btn");
+    expect(exportBtn).toBeInTheDocument();
+    expect(exportBtn).toHaveTextContent("Export to Excel");
+
+    localStorage.removeItem("sticky_mind_grid_local_settings");
+  });
+
+  it("renders dedicated Description column with task description and fallback placeholder", async () => {
+    renderWithProviders(<TasksPage />);
+
+    expect(screen.getByRole("columnheader", { name: /description/i })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Ensure comprehensive test suite coverage").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("—").length).toBeGreaterThan(0);
     });
   });
 });

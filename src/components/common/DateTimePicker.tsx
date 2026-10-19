@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   format,
-  isValid,
   isToday,
   isTomorrow,
   isPast,
   setHours,
   setMinutes,
-  addDays,
-  nextMonday,
-  nextSaturday,
 } from "date-fns";
 import {
   Calendar as CalendarIcon,
@@ -43,15 +39,6 @@ export interface DateTimePickerProps {
   align?: "start" | "center" | "end";
   ariaLabel?: string;
 }
-
-const COMMON_TIME_PRESETS = [
-  { label: "09:00 AM", hour24: 9, minute: 0 },
-  { label: "12:00 PM", hour24: 12, minute: 0 },
-  { label: "02:00 PM", hour24: 14, minute: 0 },
-  { label: "05:00 PM", hour24: 17, minute: 0 },
-  { label: "08:00 PM", hour24: 20, minute: 0 },
-  { label: "11:59 PM", hour24: 23, minute: 59 },
-];
 
 export function DateTimePicker({
   id = "due-date",
@@ -150,62 +137,6 @@ export function DateTimePicker({
     }
   };
 
-  // Preset Date handler
-  const handlePresetDate = (type: "today" | "tomorrow" | "weekend" | "next_week") => {
-    const now = new Date();
-    let targetDay: Date;
-    let targetHour = 17;
-    const targetMinute = 0;
-
-    switch (type) {
-      case "today":
-        targetDay = now;
-        targetHour = 17;
-        break;
-      case "tomorrow":
-        targetDay = addDays(now, 1);
-        targetHour = 9;
-        break;
-      case "weekend":
-        targetDay = nextSaturday(now);
-        targetHour = 12;
-        break;
-      case "next_week":
-        targetDay = nextMonday(now);
-        targetHour = 9;
-        break;
-    }
-
-    const p: "AM" | "PM" = targetHour >= 12 ? "PM" : "AM";
-    const h12 = targetHour % 12 === 0 ? 12 : targetHour % 12;
-
-    setSelectedDay(targetDay);
-    setHour12(h12);
-    setMinute(targetMinute);
-    setPeriod(p);
-    setHourInput(String(h12).padStart(2, "0"));
-    setMinuteInput(String(targetMinute).padStart(2, "0"));
-
-    let combined = setHours(targetDay, targetHour);
-    combined = setMinutes(combined, targetMinute);
-    onChange(format(combined, "yyyy-MM-dd'T'HH:mm"));
-  };
-
-  // Time preset handler
-  const handleTimePreset = (h24: number, min: number) => {
-    const p: "AM" | "PM" = h24 >= 12 ? "PM" : "AM";
-    const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-    setHour12(h12);
-    setMinute(min);
-    setPeriod(p);
-    setHourInput(String(h12).padStart(2, "0"));
-    setMinuteInput(String(min).padStart(2, "0"));
-
-    const baseDay = selectedDay || new Date();
-    setSelectedDay(baseDay);
-    commitDateTime(baseDay, h12, min, p);
-  };
-
   // Custom two-digit string input handlers (prevents native browser arrows & preserves padding)
   const handleHourInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/\D/g, "").slice(0, 2);
@@ -296,14 +227,6 @@ export function DateTimePicker({
       e.preventDefault();
       handleStepMinute(-1);
     }
-  };
-
-  const handleSelectMinuteShortcut = (m: number) => {
-    setMinute(m);
-    setMinuteInput(String(m).padStart(2, "0"));
-    const baseDay = selectedDay || new Date();
-    setSelectedDay(baseDay);
-    commitDateTime(baseDay, hour12, m, period);
   };
 
   const handlePeriodToggle = (newPeriod: "AM" | "PM") => {
@@ -463,17 +386,17 @@ export function DateTimePicker({
           sideOffset={6}
           collisionPadding={12}
           avoidCollisions={true}
-          className="w-auto p-3 rounded-2xl shadow-2xl border border-border/80 bg-popover/95 backdrop-blur-md z-50 animate-in fade-in-50 zoom-in-95 max-h-[85vh] overflow-y-auto custom-scrollbar"
+          className="w-auto p-0 rounded-2xl shadow-2xl border border-border/80 bg-popover/95 backdrop-blur-md z-50 animate-in fade-in-50 zoom-in-95 overflow-hidden"
         >
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch">
-            {/* Left Column: Compact Calendar */}
-            <div className="flex flex-col space-y-1.5 shrink-0">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <CalendarIcon className="h-3 w-3 text-primary" /> Select Date
+          <div className="flex flex-col">
+            {/* Date Section: Calendar */}
+            <div className="p-3">
+              <div className="flex items-center justify-between px-1 mb-2">
+                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <CalendarIcon className="h-3.5 w-3.5 text-primary" /> Select Date
                 </span>
                 {selectedDay && (
-                  <span className="text-[11px] font-semibold text-primary">
+                  <span className="text-xs font-semibold text-primary">
                     {format(selectedDay, "MMM d, yyyy")}
                   </span>
                 )}
@@ -487,269 +410,161 @@ export function DateTimePicker({
                   initialFocus
                   className="p-1"
                   classNames={{
-                    month: "space-y-1.5",
-                    caption: "flex justify-center pt-0 relative items-center mb-1",
+                    month: "space-y-2",
+                    caption: "flex justify-center pt-0 relative items-center mb-1.5",
                     caption_label: "text-xs font-bold",
                     nav_button: "h-6 w-6 p-0 opacity-70 hover:opacity-100",
                     nav_button_previous: "absolute left-0.5",
                     nav_button_next: "absolute right-0.5",
                     table: "w-full border-collapse space-y-0.5",
                     head_row: "flex",
-                    head_cell: "text-muted-foreground rounded-md w-7 font-semibold text-[10px]",
+                    head_cell: "text-muted-foreground rounded-md w-8 font-semibold text-[11px]",
                     row: "flex w-full mt-1",
-                    cell: "h-7 w-7 text-center text-xs p-0 relative",
-                    day: "h-7 w-7 p-0 text-xs font-medium aria-selected:opacity-100 rounded-md",
+                    cell: "h-8 w-8 text-center text-xs p-0 relative",
+                    day: "h-8 w-8 p-0 text-xs font-medium aria-selected:opacity-100 rounded-lg",
                   }}
                 />
               </div>
             </div>
 
-            {/* Vertical Divider on sm screens */}
-            <div className="hidden sm:block w-px bg-border/60 self-stretch my-1" />
-            <div className="block sm:hidden h-px bg-border/60 my-1" />
-
-            {/* Right Column: Shortcuts & Time */}
-            <div className="flex flex-col justify-between w-full sm:w-[190px] space-y-2">
-              {/* Quick Shortcuts */}
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                  Quick Shortcuts
-                </span>
-                <div className="grid grid-cols-2 sm:grid-cols-1 gap-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePresetDate("today")}
-                    className="h-6 text-[11px] font-medium justify-start px-2 bg-muted/30 hover:bg-muted/70 text-foreground"
-                  >
-                    Today (5 PM)
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePresetDate("tomorrow")}
-                    className="h-6 text-[11px] font-medium justify-start px-2 bg-muted/30 hover:bg-muted/70 text-foreground"
-                  >
-                    Tomorrow (9 AM)
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePresetDate("weekend")}
-                    className="h-6 text-[11px] font-medium justify-start px-2 bg-muted/30 hover:bg-muted/70 text-foreground"
-                  >
-                    Weekend (Sat 12 PM)
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePresetDate("next_week")}
-                    className="h-6 text-[11px] font-medium justify-start px-2 bg-muted/30 hover:bg-muted/70 text-foreground"
-                  >
-                    Next Week (Mon 9 AM)
-                  </Button>
-                </div>
+            {/* Time Section: Clean, uncluttered time controls */}
+            <div className="px-3 py-2.5 border-t border-border/60 bg-muted/20 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <Clock className="h-3.5 w-3.5 text-primary" />
+                <span>Select Time</span>
               </div>
 
-              <div className="border-t border-border/60" />
-
-              {/* Time Section */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3 text-primary" /> Select Time
-                  </span>
-                  <span className="text-[11px] font-bold text-primary">
-                    {String(hour12).padStart(2, "0")}:{String(minute).padStart(2, "0")} {period}
-                  </span>
-                </div>
-
-                {/* Common Time Presets (2 cols x 3 rows) */}
-                <div className="grid grid-cols-3 sm:grid-cols-2 gap-1">
-                  {COMMON_TIME_PRESETS.map((preset) => {
-                    const isActive =
-                      selectedDay &&
-                      hour12 === (preset.hour24 % 12 === 0 ? 12 : preset.hour24 % 12) &&
-                      minute === preset.minute &&
-                      period === (preset.hour24 >= 12 ? "PM" : "AM");
-
-                    return (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() => handleTimePreset(preset.hour24, preset.minute)}
-                        className={cn(
-                          "px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition-all cursor-pointer border text-center truncate",
-                          isActive
-                            ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                            : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border/50"
-                        )}
-                      >
-                        {preset.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
+              <div className="flex items-center gap-2">
                 {/* Custom Time Control */}
-                <div className="flex items-center justify-between gap-1.5 pt-0.5">
-                  <div className="flex items-center gap-1 bg-background border border-border/80 rounded-lg px-2 py-1 shadow-2xs focus-within:ring-1 focus-within:ring-primary/40 focus-within:border-primary/60 transition-all">
-                    {/* Hour Input with micro chevrons */}
-                    <div className="flex items-center">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={2}
-                        value={hourInput}
-                        onChange={handleHourInputChange}
-                        onBlur={handleHourInputBlur}
-                        onKeyDown={handleHourKeyDown}
-                        aria-label="Hour (1-12)"
-                        title="Hour (1-12)"
-                        className="w-5 text-center font-bold text-xs bg-transparent focus:outline-none text-foreground p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                      <div className="flex flex-col -space-y-0.5 ml-0.5">
-                        <button
-                          type="button"
-                          onClick={() => handleStepHour(1)}
-                          aria-label="Increment hour"
-                          title="Increment hour (+1)"
-                          className="p-0.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                        >
-                          <ChevronUp className="h-2.5 w-2.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleStepHour(-1)}
-                          aria-label="Decrement hour"
-                          title="Decrement hour (-1)"
-                          className="p-0.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                        >
-                          <ChevronDown className="h-2.5 w-2.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <span className="text-xs font-bold text-muted-foreground select-none px-0.5">:</span>
-
-                    {/* Minute Input with micro chevrons */}
-                    <div className="flex items-center">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={2}
-                        value={minuteInput}
-                        onChange={handleMinuteInputChange}
-                        onBlur={handleMinuteInputBlur}
-                        onKeyDown={handleMinuteKeyDown}
-                        aria-label="Minute (0-59)"
-                        title="Minute (0-59)"
-                        className="w-5 text-center font-bold text-xs bg-transparent focus:outline-none text-foreground p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                      <div className="flex flex-col -space-y-0.5 ml-0.5">
-                        <button
-                          type="button"
-                          onClick={() => handleStepMinute(1)}
-                          aria-label="Increment minute"
-                          title="Increment minute (+1)"
-                          className="p-0.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                        >
-                          <ChevronUp className="h-2.5 w-2.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleStepMinute(-1)}
-                          aria-label="Decrement minute"
-                          title="Decrement minute (-1)"
-                          className="p-0.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                        >
-                          <ChevronDown className="h-2.5 w-2.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* AM / PM Toggle */}
-                  <div className="flex bg-muted/60 p-0.5 rounded-lg border border-border/60">
-                    <button
-                      type="button"
-                      onClick={() => handlePeriodToggle("AM")}
-                      className={cn(
-                        "px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer",
-                        period === "AM"
-                          ? "bg-background text-foreground shadow-2xs"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      AM
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handlePeriodToggle("PM")}
-                      className={cn(
-                        "px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer",
-                        period === "PM"
-                          ? "bg-background text-foreground shadow-2xs"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      PM
-                    </button>
-                  </div>
-                </div>
-
-                {/* Minute Quick Selection Chips */}
-                <div className="flex items-center gap-1 pt-0.5">
-                  <span className="text-[10px] font-medium text-muted-foreground shrink-0 mr-0.5">Min:</span>
-                  {[0, 15, 30, 45].map((m) => {
-                    const isSelected = minute === m;
-                    return (
+                <div className="flex items-center gap-1 bg-background border border-border/80 rounded-lg px-2 py-1 shadow-2xs focus-within:ring-1 focus-within:ring-primary/40 focus-within:border-primary/60 transition-all">
+                  {/* Hour Input with micro chevrons */}
+                  <div className="flex items-center">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={2}
+                      value={hourInput}
+                      onChange={handleHourInputChange}
+                      onBlur={handleHourInputBlur}
+                      onKeyDown={handleHourKeyDown}
+                      aria-label="Hour (1-12)"
+                      title="Hour (1-12)"
+                      className="w-5 text-center font-bold text-xs bg-transparent focus:outline-none text-foreground p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <div className="flex flex-col -space-y-0.5 ml-0.5">
                       <button
-                        key={m}
                         type="button"
-                        onClick={() => handleSelectMinuteShortcut(m)}
-                        className={cn(
-                          "flex-1 py-0.5 px-1 text-[10px] font-semibold rounded-md transition-all cursor-pointer border text-center",
-                          isSelected
-                            ? "bg-primary text-primary-foreground border-primary shadow-2xs"
-                            : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border/50"
-                        )}
+                        onClick={() => handleStepHour(1)}
+                        aria-label="Increment hour"
+                        title="Increment hour (+1)"
+                        className="p-0.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                       >
-                        :{String(m).padStart(2, "0")}
+                        <ChevronUp className="h-2.5 w-2.5" />
                       </button>
-                    );
-                  })}
+                      <button
+                        type="button"
+                        onClick={() => handleStepHour(-1)}
+                        aria-label="Decrement hour"
+                        title="Decrement hour (-1)"
+                        className="p-0.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                      >
+                        <ChevronDown className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <span className="text-xs font-bold text-muted-foreground select-none px-0.5">:</span>
+
+                  {/* Minute Input with micro chevrons */}
+                  <div className="flex items-center">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={2}
+                      value={minuteInput}
+                      onChange={handleMinuteInputChange}
+                      onBlur={handleMinuteInputBlur}
+                      onKeyDown={handleMinuteKeyDown}
+                      aria-label="Minute (0-59)"
+                      title="Minute (0-59)"
+                      className="w-5 text-center font-bold text-xs bg-transparent focus:outline-none text-foreground p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <div className="flex flex-col -space-y-0.5 ml-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleStepMinute(1)}
+                        aria-label="Increment minute"
+                        title="Increment minute (+1)"
+                        className="p-0.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                      >
+                        <ChevronUp className="h-2.5 w-2.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleStepMinute(-1)}
+                        aria-label="Decrement minute"
+                        title="Decrement minute (-1)"
+                        className="p-0.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                      >
+                        <ChevronDown className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AM / PM Toggle */}
+                <div className="flex bg-muted/60 p-0.5 rounded-lg border border-border/60">
+                  <button
+                    type="button"
+                    onClick={() => handlePeriodToggle("AM")}
+                    className={cn(
+                      "px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer",
+                      period === "AM"
+                        ? "bg-background text-foreground shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    AM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePeriodToggle("PM")}
+                    className={cn(
+                      "px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer",
+                      period === "PM"
+                        ? "bg-background text-foreground shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    PM
+                  </button>
                 </div>
               </div>
+            </div>
 
-              {/* Action Bar Footer */}
-              <div className="flex items-center justify-between pt-1 border-t border-border/60">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClear}
-                  className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                >
-                  Clear
-                </Button>
+            {/* Action Bar Footer */}
+            <div className="flex items-center justify-between px-3 py-2 border-t border-border/60 bg-muted/10">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClear}
+                className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+              >
+                Clear
+              </Button>
 
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => setOpen(false)}
-                  className="h-6 px-2.5 text-[11px] font-bold gap-1 cursor-pointer bg-primary text-primary-foreground shadow-xs"
-                >
-                  <Check className="h-3 w-3" />
-                  <span>Done</span>
-                </Button>
-              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setOpen(false)}
+                className="h-7 px-3 text-xs font-semibold gap-1.5 cursor-pointer bg-primary text-primary-foreground shadow-xs"
+              >
+                <Check className="h-3.5 w-3.5" />
+                <span>Done</span>
+              </Button>
             </div>
           </div>
         </PopoverContent>

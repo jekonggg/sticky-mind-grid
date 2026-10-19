@@ -99,7 +99,66 @@ All colors MUST be HSL.
     --sidebar-ring: 268 95% 72%;
   }
 
-  /* Dark Colorway: Obsidian & Neon Lime (One Agency style) */
+  /* ==========================================================================
+     SYSTEM COLORWAYS & THEMES (Light & Dark Mode Tokens)
+     ========================================================================== */
+
+  /* 1. Linear Indigo & Slate (Default Linear style) */
+  .colorway-indigo:not(.dark),
+  .colorway-midnight:not(.dark) {
+    --primary: 226 70% 55%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 226 70% 55%;
+    --sidebar-primary: 226 70% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 226 70% 55%;
+  }
+
+  .colorway-indigo.dark, .dark.colorway-indigo, .dark .colorway-indigo,
+  .colorway-midnight.dark, .dark.colorway-midnight, .dark .colorway-midnight {
+    --background: 224 71% 4%;
+    --card: 222 47% 11%;
+    --border: 217 33% 20%;
+    --primary: 226 100% 64%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 226 100% 64%;
+    --sidebar-primary: 226 100% 64%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 226 100% 64%;
+  }
+
+  /* 2. Electric Lilac & Pastel (Mast style) */
+  .colorway-mast:not(.dark) {
+    --primary: 268 85% 58%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 268 85% 58%;
+    --sidebar-primary: 268 85% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 268 85% 58%;
+  }
+
+  .colorway-mast.dark, .dark.colorway-mast, .dark .colorway-mast {
+    --background: 0 0% 6%;
+    --card: 240 5% 12.5%;
+    --border: 240 4% 20%;
+    --primary: 268 95% 72%;
+    --primary-foreground: 240 10% 6%;
+    --ring: 268 95% 72%;
+    --sidebar-primary: 268 95% 72%;
+    --sidebar-primary-foreground: 240 10% 6%;
+    --sidebar-ring: 268 95% 72%;
+  }
+
+  /* 3. Obsidian & Neon Lime (One Agency style) */
+  .colorway-neon:not(.dark) {
+    --primary: 84 81% 38%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 84 81% 42%;
+    --sidebar-primary: 84 81% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 84 81% 42%;
+  }
+
   .colorway-neon.dark, .dark.colorway-neon, .dark .colorway-neon {
     --background: 240 10% 5%;
     --card: 240 8% 11.5%;
@@ -112,17 +171,92 @@ All colors MUST be HSL.
     --sidebar-ring: 84 81% 55%;
   }
 
-  /* Dark Colorway: Midnight Sapphire & Indigo (Linear style) */
-  .colorway-midnight.dark, .dark.colorway-midnight, .dark .colorway-midnight {
-    --background: 224 71% 4%;
-    --card: 222 47% 11%;
-    --border: 217 33% 20%;
-    --primary: 226 100% 64%;
+  /* 4. Forest & Emerald Mint */
+  .colorway-emerald:not(.dark) {
+    --primary: 158 64% 42%;
     --primary-foreground: 0 0% 100%;
-    --ring: 226 100% 64%;
-    --sidebar-primary: 226 100% 64%;
+    --ring: 158 64% 42%;
+    --sidebar-primary: 158 64% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-ring: 226 100% 64%;
+    --sidebar-ring: 158 64% 42%;
+  }
+
+  .colorway-emerald.dark, .dark.colorway-emerald, .dark .colorway-emerald {
+    --background: 160 30% 5%;
+    --card: 160 20% 10%;
+    --border: 160 20% 18%;
+    --primary: 152 76% 50%;
+    --primary-foreground: 160 30% 6%;
+    --ring: 152 76% 50%;
+    --sidebar-primary: 152 76% 50%;
+    --sidebar-primary-foreground: 160 30% 6%;
+    --sidebar-ring: 152 76% 50%;
+  }
+
+  /* 5. Sunset Amber & Coral */
+  .colorway-sunset:not(.dark) {
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 24 95% 53%;
+    --sidebar-primary: 24 95% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 24 95% 53%;
+  }
+
+  .colorway-sunset.dark, .dark.colorway-sunset, .dark .colorway-sunset {
+    --background: 24 20% 5%;
+    --card: 24 18% 11%;
+    --border: 24 15% 18%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 24 20% 6%;
+    --ring: 38 92% 50%;
+    --sidebar-primary: 38 92% 50%;
+    --sidebar-primary-foreground: 24 20% 6%;
+    --sidebar-ring: 38 92% 50%;
+  }
+
+  /* 6. Rose & Crimson Noir */
+  .colorway-rose:not(.dark) {
+    --primary: 346 77% 52%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 346 77% 52%;
+    --sidebar-primary: 346 77% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 346 77% 52%;
+  }
+
+  .colorway-rose.dark, .dark.colorway-rose, .dark .colorway-rose {
+    --background: 340 20% 5%;
+    --card: 340 16% 11%;
+    --border: 340 15% 18%;
+    --primary: 346 89% 65%;
+    --primary-foreground: 340 20% 6%;
+    --ring: 346 89% 65%;
+    --sidebar-primary: 346 89% 65%;
+    --sidebar-primary-foreground: 340 20% 6%;
+    --sidebar-ring: 346 89% 65%;
+  }
+
+  /* 7. Abyss Ocean & Cyan */
+  .colorway-ocean:not(.dark) {
+    --primary: 199 89% 48%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 199 89% 48%;
+    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 199 89% 48%;
+  }
+
+  .colorway-ocean.dark, .dark.colorway-ocean, .dark .colorway-ocean {
+    --background: 200 40% 5%;
+    --card: 200 30% 10.5%;
+    --border: 200 25% 18%;
+    --primary: 190 95% 50%;
+    --primary-foreground: 200 40% 6%;
+    --ring: 190 95% 50%;
+    --sidebar-primary: 190 95% 50%;
+    --sidebar-primary-foreground: 200 40% 6%;
+    --sidebar-ring: 190 95% 50%;
   }
   /* UI Density Design Tokens */
   :root {

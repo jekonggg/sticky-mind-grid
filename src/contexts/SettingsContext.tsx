@@ -8,15 +8,29 @@ import {
   UserSyncedPreferences,
   FullSettings,
   ThemeMode,
+  ThemeColorway,
   UIDensity,
   BoardViewMode,
   DateFormatOption,
+  ExportFormat,
 } from "@/types/settings";
 
 const LOCAL_PREFS_KEY = "sticky_mind_grid_local_settings";
 
+const ALL_COLORWAYS = [
+  "colorway-indigo",
+  "colorway-mast",
+  "colorway-neon",
+  "colorway-emerald",
+  "colorway-sunset",
+  "colorway-rose",
+  "colorway-ocean",
+  "colorway-midnight",
+];
+
 const defaultLocalPreferences: LocalPreferences = {
   theme: "light",
+  colorTheme: "mast",
   darkColorway: "mast",
   uiDensity: "comfortable",
   soundEffectsEnabled: true,
@@ -25,6 +39,7 @@ const defaultLocalPreferences: LocalPreferences = {
   autoProgressSnapping: true,
   confirmOnDelete: true,
   simulateSkeletonLoading: false,
+  exportFormat: "csv",
 };
 
 const defaultSyncedPreferences: UserSyncedPreferences = {
@@ -59,12 +74,24 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
 
-  // 1. Initialize local preferences from localStorage
+  // 1. Initialize local preferences from localStorage with seamless migration
   const [localPrefs, setLocalPrefs] = useState<LocalPreferences>(() => {
     try {
       const stored = localStorage.getItem(LOCAL_PREFS_KEY);
       if (stored) {
-        return { ...defaultLocalPreferences, ...JSON.parse(stored) };
+        const parsed = JSON.parse(stored);
+        const resolvedColorTheme: ThemeColorway = 
+          parsed.colorTheme || 
+          (parsed.darkColorway === "midnight" ? "indigo" : parsed.darkColorway) || 
+          "mast";
+
+        return { 
+          ...defaultLocalPreferences, 
+          ...parsed,
+          colorTheme: resolvedColorTheme,
+          darkColorway: parsed.darkColorway || resolvedColorTheme,
+          exportFormat: parsed.exportFormat === "xlsx" ? "xlsx" : "csv",
+        };
       }
     } catch {
       // Fallback
@@ -86,14 +113,25 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [theme]);
 
-  // Sync dark colorway class to root documentElement
+  // Sync colorway class and optional custom accent to root documentElement
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove("colorway-mast", "colorway-neon", "colorway-midnight");
-    if (localPrefs.darkColorway) {
-      root.classList.add(`colorway-${localPrefs.darkColorway}`);
+    root.classList.remove(...ALL_COLORWAYS);
+    const activeColorway = localPrefs.colorTheme || localPrefs.darkColorway || "mast";
+    if (activeColorway) {
+      root.classList.add(`colorway-${activeColorway}`);
     }
-  }, [localPrefs.darkColorway]);
+
+    if (localPrefs.customAccentColor) {
+      root.style.setProperty("--primary", localPrefs.customAccentColor);
+      root.style.setProperty("--ring", localPrefs.customAccentColor);
+      root.style.setProperty("--sidebar-primary", localPrefs.customAccentColor);
+    } else {
+      root.style.removeProperty("--primary");
+      root.style.removeProperty("--ring");
+      root.style.removeProperty("--sidebar-primary");
+    }
+  }, [localPrefs.colorTheme, localPrefs.darkColorway, localPrefs.customAccentColor]);
 
   // Sync UI density class and data-attribute to root documentElement
   useEffect(() => {
@@ -186,6 +224,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     <K extends keyof LocalPreferences>(key: K, val: LocalPreferences[K]) => {
       setLocalPrefs((prev) => {
         const next = { ...prev, [key]: val };
+        // Keep colorTheme and darkColorway bi-directionally synchronized
+        if (key === "colorTheme") {
+          next.darkColorway = val as any;
+        } else if (key === "darkColorway") {
+          next.colorTheme = val as any;
+        }
         try {
           localStorage.setItem(LOCAL_PREFS_KEY, JSON.stringify(next));
         } catch {
@@ -229,6 +273,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setLocalPrefs(defaultLocalPreferences);
     setTheme("system");
     localStorage.removeItem(LOCAL_PREFS_KEY);
+    const root = document.documentElement;
+    root.style.removeProperty("--primary");
+    root.style.removeProperty("--ring");
+    root.style.removeProperty("--sidebar-primary");
   }, [setTheme]);
 
   // Web Audio API Synthesizer

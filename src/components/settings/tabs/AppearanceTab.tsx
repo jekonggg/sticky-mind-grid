@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -9,18 +10,30 @@ import {
   Check,
   RefreshCcw01 as RotateCcw,
   Palette,
+  Sliders01 as Sliders,
 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
-import { ThemeMode, UIDensity, DarkColorway } from "@/types/settings";
+import { ThemeMode, UIDensity, ThemeColorway } from "@/types/settings";
+
+interface ColorwayOption {
+  id: ThemeColorway;
+  label: string;
+  desc: string;
+  lightHex: string;
+  darkHex: string;
+  lightBg: string;
+  darkBg: string;
+}
 
 export function AppearanceTab() {
   const { settings, updateLocalSetting, resetLocalSettings } = useSettings();
+  const [showCustomAccent, setShowCustomAccent] = useState(Boolean(settings.customAccentColor));
 
   const themeOptions: { mode: ThemeMode; label: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
     {
       mode: "light",
       label: "Light",
-      desc: "Scopeboard clean white & floating cards (Default)",
+      desc: "Clean white & floating cards (Default)",
       icon: Sun,
     },
     {
@@ -37,24 +50,69 @@ export function AppearanceTab() {
     },
   ];
 
-  const darkColorwayOptions: { id: DarkColorway; label: string; desc: string; previewClass: string }[] = [
+  const colorwayOptions: ColorwayOption[] = [
+    {
+      id: "indigo",
+      label: "Linear Indigo & Slate",
+      desc: "Royal sapphire indigo with clean slate surfaces (Linear style)",
+      lightHex: "#4F46E5",
+      darkHex: "#6366F1",
+      lightBg: "#FFFFFF",
+      darkBg: "#030712",
+    },
     {
       id: "mast",
       label: "Pitch Black & Pastel",
-      desc: "Jet pitch black with electric lilac & candy pills (Mast style)",
-      previewClass: "bg-[#0F0F10] text-[#C084FC] border-[#303038]",
+      desc: "Jet pitch black with electric lilac & candy glow (Mast style)",
+      lightHex: "#9333EA",
+      darkHex: "#C084FC",
+      lightBg: "#FAF5FF",
+      darkBg: "#0F0F10",
     },
     {
       id: "neon",
       label: "Obsidian & Neon Lime",
       desc: "Matte obsidian with electric chartreuse accent (One Agency style)",
-      previewClass: "bg-[#0D0E11] text-[#A3E635] border-[#2A2C37]",
+      lightHex: "#65A30D",
+      darkHex: "#A3E635",
+      lightBg: "#F7FEE7",
+      darkBg: "#0D0E11",
     },
     {
-      id: "midnight",
-      label: "Midnight Sapphire",
-      desc: "Deep sapphire slate with vibrant royal indigo (Linear style)",
-      previewClass: "bg-[#030712] text-[#6366F1] border-[#1E293B]",
+      id: "emerald",
+      label: "Forest & Emerald Mint",
+      desc: "Sage surfaces with vibrant emerald mint highlights",
+      lightHex: "#059669",
+      darkHex: "#34D399",
+      lightBg: "#ECFDF5",
+      darkBg: "#061A12",
+    },
+    {
+      id: "sunset",
+      label: "Sunset Amber & Coral",
+      desc: "Warm glowing amber with rich sunset coral tones",
+      lightHex: "#EA580C",
+      darkHex: "#FBBF24",
+      lightBg: "#FFF7ED",
+      darkBg: "#1C1208",
+    },
+    {
+      id: "rose",
+      label: "Rose & Crimson Noir",
+      desc: "Sophisticated ruby rose with velvet noir contrast",
+      lightHex: "#E11D48",
+      darkHex: "#FB7185",
+      lightBg: "#FFF1F2",
+      darkBg: "#1A080D",
+    },
+    {
+      id: "ocean",
+      label: "Abyss Ocean & Cyan",
+      desc: "Deep oceanic azure with vibrant cyan neon glow",
+      lightHex: "#0284C7",
+      darkHex: "#22D3EE",
+      lightBg: "#F0F9FF",
+      darkBg: "#041521",
     },
   ];
 
@@ -71,6 +129,23 @@ export function AppearanceTab() {
     },
   ];
 
+  const activeColorway = settings.colorTheme || (settings.darkColorway as ThemeColorway) || "mast";
+
+  const handleSelectColorway = (id: ThemeColorway) => {
+    updateLocalSetting("colorTheme", id);
+    if (settings.customAccentColor) {
+      updateLocalSetting("customAccentColor", undefined);
+    }
+  };
+
+  const handleCustomAccentChange = (hex: string) => {
+    updateLocalSetting("customAccentColor", hex);
+  };
+
+  const handleClearCustomAccent = () => {
+    updateLocalSetting("customAccentColor", undefined);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -80,7 +155,7 @@ export function AppearanceTab() {
         </p>
       </div>
 
-      {/* Theme Selection */}
+      {/* 1. Theme Preference */}
       <div className="space-y-3">
         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           Theme Preference
@@ -124,26 +199,35 @@ export function AppearanceTab() {
         </div>
       </div>
 
-      {/* Dark Mode Colorway Selection */}
+      {/* 2. System Theme & Colorway Selection (Light & Dark) */}
       <div className="space-y-3 pt-4 border-t border-border/50">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-            <Palette className="h-3.5 w-3.5 text-primary" />
-            Dark Mode Colorway
-          </Label>
-          <span className="text-[10px] text-muted-foreground font-medium">
-            Active in Dark & System Modes
-          </span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <div>
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Palette className="h-3.5 w-3.5 text-primary" />
+              System Theme & Colorways
+            </Label>
+            <p className="text-[11px] text-muted-foreground">
+              Personalizes accents, surfaces, and active highlights in both Light and Dark modes.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold">
+              Light & Dark Ready
+            </span>
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {darkColorwayOptions.map((opt) => {
-            const isSelected = (settings.darkColorway || "mast") === opt.id;
+
+        {/* Colorway Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          {colorwayOptions.map((opt) => {
+            const isSelected = activeColorway === opt.id && !settings.customAccentColor;
             return (
               <button
                 key={opt.id}
                 type="button"
-                onClick={() => updateLocalSetting("darkColorway", opt.id)}
-                className={`relative flex flex-col items-start p-3.5 rounded-xl border text-left transition-all ${
+                onClick={() => handleSelectColorway(opt.id)}
+                className={`relative flex flex-col items-start p-3.5 rounded-xl border text-left transition-all group ${
                   isSelected
                     ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-sm"
                     : "border-border/60 bg-card hover:bg-muted/50 hover:border-border"
@@ -154,24 +238,161 @@ export function AppearanceTab() {
                     <Check className="h-2.5 w-2.5 stroke-[3]" />
                   </div>
                 )}
-                <div className={`h-7 w-full rounded-md border flex items-center justify-between px-2 mb-2.5 ${opt.previewClass}`}>
-                  <span className="text-[10px] font-bold">Aa</span>
-                  <div className="flex gap-1">
-                    <div className="h-2 w-2 rounded-full bg-current opacity-80" />
-                    <div className="h-2 w-2 rounded-full bg-current opacity-40" />
+
+                {/* Dual-Mode Split Swatch Pill */}
+                <div className="h-8 w-full rounded-lg border border-border/70 overflow-hidden flex mb-2.5 shadow-2xs">
+                  {/* Left Half: Light Mode Accent & Surface */}
+                  <div
+                    className="flex-1 flex items-center justify-between px-2 transition-transform"
+                    style={{ backgroundColor: opt.lightBg }}
+                  >
+                    <span className="text-[9px] font-bold" style={{ color: opt.lightHex }}>
+                      Day
+                    </span>
+                    <div
+                      className="h-2.5 w-2.5 rounded-full shadow-2xs"
+                      style={{ backgroundColor: opt.lightHex }}
+                    />
+                  </div>
+                  {/* Right Half: Dark Mode Accent & Surface */}
+                  <div
+                    className="flex-1 flex items-center justify-between px-2 transition-transform"
+                    style={{ backgroundColor: opt.darkBg }}
+                  >
+                    <span className="text-[9px] font-bold" style={{ color: opt.darkHex }}>
+                      Night
+                    </span>
+                    <div
+                      className="h-2.5 w-2.5 rounded-full shadow-2xs"
+                      style={{ backgroundColor: opt.darkHex }}
+                    />
                   </div>
                 </div>
-                <span className="font-bold text-xs text-foreground">{opt.label}</span>
-                <span className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
+
+                <span className="font-bold text-xs text-foreground group-hover:text-primary transition-colors">
+                  {opt.label}
+                </span>
+                <span className="text-[10px] text-muted-foreground mt-0.5 leading-snug line-clamp-2">
                   {opt.desc}
                 </span>
               </button>
             );
           })}
         </div>
+
+        {/* 3. Live Interactive Theme Preview Card */}
+        <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 space-y-2 mt-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              Live Theme Preview
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              Current active system palette
+            </span>
+          </div>
+
+          <div className="p-3 rounded-lg bg-card border border-border/80 shadow-2xs space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                In Progress
+              </span>
+              <span className="text-[10px] text-muted-foreground font-mono">TASK-104</span>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold text-foreground leading-tight">
+                Design intuitive responsive workflows & theme tokens
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Accent highlights and primary interactive controls reflect your chosen theme.
+              </p>
+            </div>
+
+            {/* Progress Bar in Primary */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[9px] font-medium text-muted-foreground">
+                <span>Progress</span>
+                <span className="text-primary font-bold">75%</span>
+              </div>
+              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-300"
+                  style={{ width: "75%" }}
+                />
+              </div>
+            </div>
+
+            {/* Simulated Action Button */}
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center gap-1.5">
+                <div className="h-5 w-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">
+                  U
+                </div>
+                <span className="text-[10px] text-muted-foreground">Assigned to you</span>
+              </div>
+              <button
+                type="button"
+                className="h-6 px-2.5 rounded-md bg-primary text-primary-foreground text-[10px] font-bold shadow-2xs hover:opacity-90 transition-opacity"
+              >
+                Complete Task
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Advanced: Custom Primary Accent Color */}
+        <div className="pt-2">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setShowCustomAccent(!showCustomAccent)}
+              className="text-xs font-semibold text-primary hover:underline flex items-center gap-1.5 cursor-pointer"
+            >
+              <Sliders className="h-3.5 w-3.5" />
+              {showCustomAccent ? "Hide Custom Primary Accent" : "Advanced: Custom Primary Accent Color"}
+            </button>
+            {settings.customAccentColor && (
+              <button
+                type="button"
+                onClick={handleClearCustomAccent}
+                className="text-[11px] text-muted-foreground hover:text-foreground underline cursor-pointer"
+              >
+                Reset to Theme Default
+              </button>
+            )}
+          </div>
+
+          {showCustomAccent && (
+            <div className="mt-2.5 p-3 rounded-xl bg-card border border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-150">
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-foreground">Custom Primary Color</span>
+                <p className="text-[10px] text-muted-foreground">
+                  Pick any custom color for buttons, rings, and active indicators.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={settings.customAccentColor || "#4F46E5"}
+                  onChange={(e) => handleCustomAccentChange(e.target.value)}
+                  className="h-8 w-12 rounded cursor-pointer border border-border/60 bg-transparent p-0.5"
+                  title="Pick custom primary color"
+                />
+                <input
+                  type="text"
+                  value={settings.customAccentColor || ""}
+                  placeholder="#4F46E5"
+                  onChange={(e) => handleCustomAccentChange(e.target.value)}
+                  className="h-8 w-24 text-xs font-mono px-2 rounded-md bg-muted/50 border border-border/60 text-foreground"
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* UI Density Selection */}
+      {/* 5. UI Density Selection */}
       <div className="space-y-3 pt-4 border-t border-border/50">
         <div className="flex items-center justify-between">
           <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -239,7 +460,7 @@ export function AppearanceTab() {
         </div>
       </div>
 
-      {/* Reduced Motion Toggle */}
+      {/* 6. Reduced Motion Toggle */}
       <div className="space-y-4 pt-4 border-t border-border/50">
         <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/40">
           <div className="space-y-0.5">
@@ -258,7 +479,7 @@ export function AppearanceTab() {
         </div>
       </div>
 
-      {/* Reset Defaults */}
+      {/* 7. Reset Defaults */}
       <div className="flex items-center justify-between pt-4 border-t border-border/50">
         <span className="text-xs text-muted-foreground">
           Reset all local display settings to default values.

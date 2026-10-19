@@ -230,5 +230,90 @@ describe("TaskDetailWorkspace Component", () => {
       );
     }).not.toThrow();
   });
+
+  it("limits priority options to Low, Medium, and High without Urgent, and aligns priority colors", async () => {
+    renderWithProviders(
+      <TaskDetailWorkspace
+        task={mockTask}
+        board={mockBoard}
+        members={[]}
+        onClose={onClose}
+        onUpdateTask={onUpdateTask}
+        onDeleteTask={onDeleteTask}
+      />
+    );
+
+    // Click the priority dropdown
+    const priorityTrigger = screen.getByRole("combobox", { name: /priority/i });
+    expect(priorityTrigger).toBeInTheDocument();
+    fireEvent.click(priorityTrigger);
+
+    // Urgent should NOT exist in the options
+    expect(screen.queryByRole("option", { name: /urgent/i })).toBeNull();
+
+    // Low, Medium, High options should be present
+    const lowOption = screen.getByRole("option", { name: /low/i });
+    const medOption = screen.getByRole("option", { name: /medium/i });
+    const highOption = screen.getByRole("option", { name: /high/i });
+
+    expect(lowOption).toBeInTheDocument();
+    expect(medOption).toBeInTheDocument();
+    expect(highOption).toBeInTheDocument();
+
+    // Verify color indicators inside options: low = blue, medium = amber, high = red
+    expect(lowOption.querySelector(".bg-blue-500")).toBeInTheDocument();
+    expect(medOption.querySelector(".bg-amber-500")).toBeInTheDocument();
+    expect(highOption.querySelector(".bg-red-500")).toBeInTheDocument();
+
+    // Select Low priority
+    fireEvent.click(lowOption);
+    expect(onUpdateTask).toHaveBeenCalledWith(
+      expect.objectContaining({ priority: "low" })
+    );
+  });
+
+  it("renders readOnly priority badge with aligned colors and normalizes legacy urgent to high", () => {
+    renderWithProviders(
+      <TaskDetailWorkspace
+        task={{ ...mockTask, priority: "urgent" as any }}
+        board={mockBoard}
+        members={[]}
+        readOnly={true}
+        onClose={onClose}
+        onUpdateTask={onUpdateTask}
+        onDeleteTask={onDeleteTask}
+      />
+    );
+
+    // In readOnly mode, legacy urgent is rendered as High with red styling
+    const badge = screen.getByText("high");
+    expect(badge).toBeInTheDocument();
+    expect(badge.closest("div")?.querySelector(".bg-red-500")).toBeInTheDocument();
+  });
+  it("renders status dropdown without checkmark indicator on the selected item", () => {
+    renderWithProviders(
+      <TaskDetailWorkspace
+        task={mockTask}
+        board={mockBoard}
+        members={[]}
+        onClose={onClose}
+        onUpdateTask={onUpdateTask}
+        onDeleteTask={onDeleteTask}
+      />
+    );
+
+    // Open status dropdown
+    const statusTrigger = screen.getByRole("combobox", { name: /status/i });
+    expect(statusTrigger).toBeInTheDocument();
+    fireEvent.click(statusTrigger);
+
+    // Selected status is "To Do"
+    const todoOption = screen.getByRole("option", { name: /to do/i });
+    expect(todoOption).toBeInTheDocument();
+
+    // Verify no check icon is rendered inside the selected option
+    expect(todoOption.querySelector("svg.lucide-check")).toBeNull();
+  });
 });
+
 
