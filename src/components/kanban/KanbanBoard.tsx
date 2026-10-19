@@ -1109,28 +1109,35 @@ export function KanbanBoard() {
                             const isSelected = assigneeFilter === m.userId;
                             const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
                             const fullName = m.user?.fullName || m.user?.email || "Member";
+                            const isCurrentUser = m.userId === currentUser?.id;
+                            const memberAvatarUrl = isCurrentUser ? (currentUser?.avatarUrl ?? m.user?.avatarUrl) : m.user?.avatarUrl;
 
                             return (
-                              <button
-                                key={m.userId}
-                                onClick={() => setAssigneeFilter(isSelected ? "all" : m.userId)}
-                                title={`Filter by ${fullName}`}
-                                aria-label={`Filter by ${fullName}`}
-                                className={`relative rounded-full transition-transform cursor-pointer focus:outline-none ${
-                                  isSelected
-                                    ? "ring-2 ring-primary scale-110 z-20 shadow-xs"
-                                    : "ring-2 ring-background hover:scale-110 hover:z-10"
-                                }`}
-                              >
-                                <Avatar className={`${isCompact ? "h-6 w-6" : "h-7 w-7"} border-0`}>
-                                  <AvatarImage src={m.user?.avatarUrl} alt={fullName} />
-                                  <AvatarFallback className="text-[9px] font-bold bg-primary/10 text-primary">
-                                    {initial}
-                                  </AvatarFallback>
-                                </Avatar>
-                              </button>
-                            );
-                          })}
+                                <button
+                                  type="button"
+                                  key={m.userId}
+                                  onClick={() => setAssigneeFilter(isSelected ? "all" : m.userId)}
+                                  title={`Filter by ${fullName}`}
+                                  aria-label={`Filter by ${fullName}`}
+                                  className={`relative rounded-full transition-transform cursor-pointer focus:outline-none ${
+                                    isSelected
+                                      ? "ring-2 ring-primary scale-110 z-20 shadow-xs"
+                                      : "ring-2 ring-background hover:scale-110 hover:z-10"
+                                  }`}
+                                >
+                                  <Avatar
+                                    data-testid={`assignee-filter-avatar-${m.userId}`}
+                                    data-avatar-url={memberAvatarUrl || undefined}
+                                    className={`${isCompact ? "h-6 w-6" : "h-7 w-7"} border-0`}
+                                  >
+                                    <AvatarImage src={memberAvatarUrl} alt={fullName} />
+                                    <AvatarFallback className="text-[9px] font-bold bg-primary/10 text-primary">
+                                      {initial}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </button>
+                              );
+                            })}
 
                           {hasOverflow && (
                             <DropdownMenu>
@@ -1155,6 +1162,8 @@ export function KanbanBoard() {
                                   const isSelected = assigneeFilter === m.userId;
                                   const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
                                   const fullName = m.user?.fullName || m.user?.email || "Member";
+                                  const isCurrentUser = m.userId === currentUser?.id;
+                                  const memberAvatarUrl = isCurrentUser ? (currentUser?.avatarUrl ?? m.user?.avatarUrl) : m.user?.avatarUrl;
 
                                   return (
                                     <DropdownMenuItem
@@ -1163,7 +1172,7 @@ export function KanbanBoard() {
                                       className="flex items-center gap-2 cursor-pointer"
                                     >
                                       <Avatar className="h-5 w-5">
-                                        <AvatarImage src={m.user?.avatarUrl} alt={fullName} />
+                                        <AvatarImage src={memberAvatarUrl} alt={fullName} />
                                         <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">
                                           {initial}
                                         </AvatarFallback>

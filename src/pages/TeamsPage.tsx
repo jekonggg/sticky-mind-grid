@@ -572,12 +572,23 @@ export default function TeamsPage() {
                   className="p-5 rounded-2xl bg-card border border-border/60 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between gap-4"
                 >
                   <div className="flex items-start gap-3 min-w-0">
-                    <Avatar className="h-11 w-11 border border-border/60 shrink-0">
-                      <AvatarImage src={teammate.avatarUrl} />
-                      <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
-                        {(teammate.fullName?.charAt(0) || teammate.email?.charAt(0) || "U").toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    {(() => {
+                      const isCurrentUser =
+                        teammate.id === user?.id ||
+                        (user?.email && teammate.email === user.email);
+                      const avatarUrl = isCurrentUser
+                        ? (user?.avatarUrl ?? teammate.avatarUrl)
+                        : teammate.avatarUrl;
+
+                      return (
+                        <Avatar className="h-11 w-11 border border-border/60 shrink-0">
+                          <AvatarImage src={avatarUrl} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+                            {(teammate.fullName?.charAt(0) || teammate.email?.charAt(0) || "U").toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      );
+                    })()}
 
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-sm font-bold text-foreground truncate">

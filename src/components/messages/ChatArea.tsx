@@ -270,7 +270,7 @@ export function ChatArea({
                     {conversation.participants?.map((p) => (
                       <div key={p.id} className="flex items-center gap-2 text-xs py-1">
                         <Avatar className="h-5 w-5 border border-border/50">
-                          <AvatarImage src={p.user?.avatarUrl} />
+                          <AvatarImage src={p.userId === user?.id ? (user?.avatarUrl ?? p.user?.avatarUrl) : p.user?.avatarUrl} />
                           <AvatarFallback className="text-[9px]">
                             {p.user?.fullName?.charAt(0) || "U"}
                           </AvatarFallback>

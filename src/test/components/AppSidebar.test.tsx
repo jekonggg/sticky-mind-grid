@@ -305,5 +305,10 @@ describe("AppSidebar Component", () => {
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
+
+    // Close ('X') button is eliminated from the mobile sidebar drawer
+    expect(
+      screen.queryByRole("button", { name: /close/i })
+    ).not.toBeInTheDocument();
   });
 });

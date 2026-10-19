@@ -641,30 +641,39 @@ export default function DashboardPage() {
                 </p>
               ) : (
                 <div className="relative space-y-3.5 max-h-[250px] overflow-y-auto custom-scrollbar pr-1 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-px before:bg-border/50">
-                  {activities.slice(0, 10).map((act) => (
-                    <div key={act.id} className="relative flex items-start gap-3 text-xs">
-                      <Avatar className="relative z-10 h-6 w-6 mt-0.5 shrink-0 border border-border bg-card">
-                        <AvatarImage src={act.user?.avatarUrl} />
-                        <AvatarFallback className="text-[9px] font-bold">
-                          {act.user?.fullName?.charAt(0) || "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-muted-foreground leading-snug">
-                          <span className="font-semibold text-foreground">
-                            {act.user?.fullName || act.user?.email?.split("@")[0] || "Someone"}
-                          </span>{" "}
-                          {act.message}
-                        </p>
-                        <span className="text-[10px] text-muted-foreground/80 font-mono">
-                          {new Date(act.timestamp).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
+                  {activities.slice(0, 10).map((act) => {
+                    const isCurrentUser =
+                      act.userId === user?.id ||
+                      (user?.email && act.user?.email === user.email);
+                    const avatarUrl = isCurrentUser
+                      ? (user?.avatarUrl ?? act.user?.avatarUrl)
+                      : act.user?.avatarUrl;
+
+                    return (
+                      <div key={act.id} className="relative flex items-start gap-3 text-xs">
+                        <Avatar className="relative z-10 h-6 w-6 mt-0.5 shrink-0 border border-border bg-card">
+                          <AvatarImage src={avatarUrl} />
+                          <AvatarFallback className="text-[9px] font-bold">
+                            {act.user?.fullName?.charAt(0) || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-muted-foreground leading-snug">
+                            <span className="font-semibold text-foreground">
+                              {act.user?.fullName || act.user?.email?.split("@")[0] || "Someone"}
+                            </span>{" "}
+                            {act.message}
+                          </p>
+                          <span className="text-[10px] text-muted-foreground/80 font-mono">
+                            {new Date(act.timestamp).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

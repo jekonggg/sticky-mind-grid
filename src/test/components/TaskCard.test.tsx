@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { screen, fireEvent, render } from "@testing-library/react";
 import { TaskCard } from "@/components/kanban/TaskCard";
 import { Task } from "@/types/task";
+import { AuthContext } from "@/contexts/AuthContext";
 
 const mockTask: Task = {
   id: "task-1",
@@ -324,5 +325,77 @@ describe("TaskCard Component", () => {
     const checklistBadge = screen.getByTestId("task-checklist-badge");
     expect(checklistBadge).toBeInTheDocument();
     expect(checklistBadge.textContent).toContain("1/2");
+  });
+
+  it("reflects updated currentUser avatar when currentUser is task creator", () => {
+    const taskUnassigned: Task = {
+      ...mockTask,
+      createdBy: "user-current",
+      creator: {
+        id: "user-current",
+        email: "me@example.com",
+        fullName: "Current User",
+        avatarUrl: "https://old-avatar.png",
+      },
+      assignee: null,
+    };
+
+    const mockAuthContext: any = {
+      user: {
+        id: "user-current",
+        email: "me@example.com",
+        fullName: "Current User",
+        avatarUrl: "https://new-updated-avatar.png",
+      },
+      token: "token",
+      login: vi.fn(),
+      logout: vi.fn(),
+      updateUser: vi.fn(),
+      loading: false,
+    };
+
+    render(
+      <AuthContext.Provider value={mockAuthContext}>
+        <TaskCard task={taskUnassigned} onClick={vi.fn()} />
+      </AuthContext.Provider>
+    );
+
+    const avatarElem = screen.getByTestId("task-single-avatar");
+    expect(avatarElem).toHaveAttribute("data-avatar-url", "https://new-updated-avatar.png");
+  });
+
+  it("reflects updated currentUser avatar when currentUser is task assignee", () => {
+    const taskAssigned: Task = {
+      ...mockTask,
+      assignee: {
+        id: "user-current",
+        email: "me@example.com",
+        fullName: "Current User",
+        avatarUrl: "https://old-assignee-avatar.png",
+      },
+    };
+
+    const mockAuthContext: any = {
+      user: {
+        id: "user-current",
+        email: "me@example.com",
+        fullName: "Current User",
+        avatarUrl: "https://new-updated-avatar.png",
+      },
+      token: "token",
+      login: vi.fn(),
+      logout: vi.fn(),
+      updateUser: vi.fn(),
+      loading: false,
+    };
+
+    render(
+      <AuthContext.Provider value={mockAuthContext}>
+        <TaskCard task={taskAssigned} onClick={vi.fn()} />
+      </AuthContext.Provider>
+    );
+
+    const avatarElem = screen.getByTestId("task-single-avatar");
+    expect(avatarElem).toHaveAttribute("data-avatar-url", "https://new-updated-avatar.png");
   });
 });

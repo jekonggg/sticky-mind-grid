@@ -118,6 +118,52 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     const handleRefresh = () => {
       fetchTasks(false);
     };
+    const handleProfileUpdated = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      const updatedUser = detail || user;
+      if (!updatedUser) return;
+
+      setTasksState((prev) => {
+        let modified = false;
+        const updated = prev.map((t) => {
+          let tModified = false;
+          let newAssignee = t.assignee;
+          let newCreator = t.creator;
+
+          if (t.assignee && (t.assignee.id === updatedUser.id || (updatedUser.email && t.assignee.email === updatedUser.email))) {
+            newAssignee = {
+              ...t.assignee,
+              avatarUrl: updatedUser.avatarUrl !== undefined ? updatedUser.avatarUrl : t.assignee.avatarUrl,
+              fullName: updatedUser.fullName || t.assignee.fullName,
+            };
+            tModified = true;
+          }
+          if (t.creator && (t.creator.id === updatedUser.id || (updatedUser.email && t.creator.email === updatedUser.email) || t.createdBy === updatedUser.id)) {
+            newCreator = {
+              ...t.creator,
+              avatarUrl: updatedUser.avatarUrl !== undefined ? updatedUser.avatarUrl : t.creator.avatarUrl,
+              fullName: updatedUser.fullName || t.creator.fullName,
+            };
+            tModified = true;
+          }
+          if (tModified) {
+            modified = true;
+            return { ...t, assignee: newAssignee, creator: newCreator };
+          }
+          return t;
+        });
+
+        if (modified) {
+          if (boardId) {
+            tasksCache.set(boardId, { tasks: updated, timestamp: Date.now(), userId: updatedUser.id });
+          }
+          return updated;
+        }
+        return prev;
+      });
+
+      fetchTasks(false);
+    };
     const handleDataModeChange = () => {
       clearTasksCache();
       fetchTasks(true);
@@ -125,6 +171,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
 
     window.addEventListener("smg-dev-data-mode-changed", handleDataModeChange);
     window.addEventListener("task-updated", handleRefresh);
+    window.addEventListener("user:profile-updated", handleProfileUpdated);
     const interval = setInterval(() => {
       if (document.visibilityState !== "visible" || !boardId) return;
       // Skip redundant HTTP polling whenever real-time SSE stream is actively connected for this board
@@ -144,8 +191,9 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
       clearInterval(interval);
       window.removeEventListener("smg-dev-data-mode-changed", handleDataModeChange);
       window.removeEventListener("task-updated", handleRefresh);
+      window.removeEventListener("user:profile-updated", handleProfileUpdated);
     };
-  }, [boardId, fetchTasks, setTasks, user?.id]);
+  }, [boardId, fetchTasks, setTasks, user?.id, user?.avatarUrl, user?.fullName, user?.email]);
 
   const addTask = useCallback(async (data: CreateTaskData) => {
     const task = await taskApi.createTask({ ...data, boardId });

@@ -1,9 +1,11 @@
+import { useContext } from "react";
 import { Link } from "react-router-dom";
 import { Board } from "@/types/board";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AuthContext } from "@/contexts/AuthContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,6 +72,8 @@ export function BoardCard({
   onLeave,
 }: BoardCardProps) {
   const { devSettings } = useDevMode();
+  const authContext = useContext(AuthContext);
+  const currentUser = authContext?.user;
   const permissions = useBoardPermissions(board);
   const boardColor = board.color && board.color.startsWith("hsl") ? board.color : "hsl(220, 80%, 56%)";
   const showEmoji = !devSettings.disableEmojiCustomization && !!board.emoji;
@@ -383,19 +387,24 @@ export function BoardCard({
               data-testid="board-members-preview"
               className="relative z-10 flex items-center -space-x-2 shrink-0 pointer-events-none"
             >
-              {membersPreview.slice(0, 3).map((member) => (
-                <Avatar
-                  key={member.id}
-                  title={member.fullName}
-                  data-testid={`board-member-avatar-${member.id}`}
-                  className="h-6 w-6 border-2 border-card text-[10px] font-semibold pointer-events-auto"
-                >
-                  {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.fullName} />}
-                  <AvatarFallback className="text-[9px] font-bold bg-primary/10 text-primary">
-                    {getInitials(member.fullName)}
-                  </AvatarFallback>
-                </Avatar>
-              ))}
+              {membersPreview.slice(0, 3).map((member) => {
+                const isCurrentUser = member.id === currentUser?.id;
+                const avatarUrl = isCurrentUser ? (currentUser?.avatarUrl ?? member.avatarUrl) : member.avatarUrl;
+
+                return (
+                  <Avatar
+                    key={member.id}
+                    title={member.fullName}
+                    data-testid={`board-member-avatar-${member.id}`}
+                    className="h-6 w-6 border-2 border-card text-[10px] font-semibold pointer-events-auto"
+                  >
+                    {avatarUrl && <AvatarImage src={avatarUrl} alt={member.fullName} />}
+                    <AvatarFallback className="text-[9px] font-bold bg-primary/10 text-primary">
+                      {getInitials(member.fullName)}
+                    </AvatarFallback>
+                  </Avatar>
+                );
+              })}
               {membersPreview.length > 3 && (
                 <span
                   data-testid="board-members-overflow"

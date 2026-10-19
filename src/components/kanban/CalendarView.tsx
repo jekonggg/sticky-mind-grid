@@ -15,13 +15,14 @@ import {
   Plus,
   AlertCircle,
 } from "@untitledui/icons";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
+import { AuthContext } from "@/contexts/AuthContext";
 import { getProgressColor } from "@/utils/taskUtils";
 
 export interface CalendarViewProps {
@@ -51,6 +52,8 @@ export function CalendarView({
 }: CalendarViewProps) {
   const { devSettings } = useDevMode();
   const { settings } = useSettings();
+  const authContext = useContext(AuthContext);
+  const currentUser = authContext?.user;
   const isCompact = settings.uiDensity === "compact";
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date>(new Date());
@@ -580,19 +583,28 @@ export function CalendarView({
                                     )}
                                   </div>
 
-                                  {task.assignee && (
-                                    <div className="flex items-center gap-1 shrink-0 ml-auto" title={`Assigned to: ${assigneeName}`}>
-                                      <span className="text-[9px] font-semibold truncate max-w-[60px] hidden xl:inline">
-                                        {assigneeName?.split(" ")[0]}
-                                      </span>
-                                      <Avatar className="h-5 w-5 border border-primary/20 shrink-0">
-                                        <AvatarImage src={task.assignee.avatarUrl} alt={assigneeName} />
-                                        <AvatarFallback className="text-[8px] font-black bg-primary/10 text-primary">
-                                          {assigneeInitial}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                    </div>
-                                  )}
+                                  {task.assignee && (() => {
+                                    const isCurrentUser =
+                                      task.assignee.id === currentUser?.id ||
+                                      (currentUser?.email && task.assignee.email === currentUser.email);
+                                    const assigneeAvatarUrl = isCurrentUser
+                                      ? (currentUser?.avatarUrl ?? task.assignee.avatarUrl)
+                                      : task.assignee.avatarUrl;
+
+                                    return (
+                                      <div className="flex items-center gap-1 shrink-0 ml-auto" title={`Assigned to: ${assigneeName}`}>
+                                        <span className="text-[9px] font-semibold truncate max-w-[60px] hidden xl:inline">
+                                          {assigneeName?.split(" ")[0]}
+                                        </span>
+                                        <Avatar className="h-5 w-5 border border-primary/20 shrink-0">
+                                          <AvatarImage src={assigneeAvatarUrl} alt={assigneeName} />
+                                          <AvatarFallback className="text-[8px] font-black bg-primary/10 text-primary">
+                                            {assigneeInitial}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             );

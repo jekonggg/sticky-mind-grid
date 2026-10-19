@@ -174,17 +174,28 @@ export function TaskChecklist({ checklist, readOnly, onChange, onProgressSync }:
                       data-testid={`completed-by-${item.id}`}
                       className="flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs text-muted-foreground select-none cursor-default"
                     >
-                      <Avatar className="h-4 w-4 text-[8px] ring-1 ring-emerald-500/30">
-                        <AvatarImage
-                          src={item.completedBy.avatarUrl}
-                          alt={item.completedBy.fullName || item.completedBy.email}
-                        />
-                        <AvatarFallback className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">
-                          {(item.completedBy.fullName || item.completedBy.email || "U")
-                            .charAt(0)
-                            .toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      {(() => {
+                        const isCompletedByMe =
+                          item.completedBy.id === user?.id ||
+                          (user?.email && item.completedBy.email === user.email);
+                        const completedAvatarUrl = isCompletedByMe
+                          ? (user?.avatarUrl ?? item.completedBy.avatarUrl)
+                          : item.completedBy.avatarUrl;
+
+                        return (
+                          <Avatar className="h-4 w-4 text-[8px] ring-1 ring-emerald-500/30">
+                            <AvatarImage
+                              src={completedAvatarUrl}
+                              alt={item.completedBy.fullName || item.completedBy.email}
+                            />
+                            <AvatarFallback className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">
+                              {(item.completedBy.fullName || item.completedBy.email || "U")
+                                .charAt(0)
+                                .toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        );
+                      })()}
                       <span className="text-[11px] font-medium max-w-[120px] truncate text-foreground/80">
                         {item.completedBy.fullName || item.completedBy.email}
                       </span>

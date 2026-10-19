@@ -91,7 +91,7 @@ function AppLayoutInner() {
 
       {/* Mobile Slide-Over Drawer */}
       <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
-        <SheetContent side="left" className="p-0 w-64 border-r border-border/60">
+        <SheetContent side="left" hideClose className="p-0 w-64 border-r border-border/60">
           <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
           <SheetDescription className="sr-only">Workspace navigation drawer</SheetDescription>
           <AppSidebar

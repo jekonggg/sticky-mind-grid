@@ -218,7 +218,8 @@ export function TaskComments({ taskId, boardMembers, readOnly, canDeleteAnyComme
           comments.map((c) => {
             const authorName = c.user?.fullName || c.user?.email || "Former member";
             const initial = authorName.charAt(0).toUpperCase();
-            const isOwn = c.userId === currentUser?.id;
+            const isOwn = c.userId === currentUser?.id || (currentUser?.email && c.user?.email === currentUser.email);
+            const authorAvatarUrl = isOwn ? (currentUser?.avatarUrl ?? c.user?.avatarUrl) : c.user?.avatarUrl;
 
             return (
               <div
@@ -226,7 +227,7 @@ export function TaskComments({ taskId, boardMembers, readOnly, canDeleteAnyComme
                 className="flex items-start gap-2.5 p-2.5 rounded-xl bg-muted/40 border border-border/40 text-xs group/comment relative"
               >
                 <Avatar className="h-7 w-7 border border-primary/20 shrink-0 mt-0.5">
-                  <AvatarImage src={c.user?.avatarUrl} alt={authorName} />
+                  <AvatarImage src={authorAvatarUrl} alt={authorName} />
                   <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
                     {initial}
                   </AvatarFallback>
@@ -353,6 +354,13 @@ export function TaskComments({ taskId, boardMembers, readOnly, canDeleteAnyComme
                 {filteredMembers.map((m) => {
                   const name = m.user?.fullName || m.user?.email || "Member";
                   const initial = (m.user?.fullName || m.user?.email || "U").charAt(0).toUpperCase();
+                  const isCurrentUser =
+                    m.userId === currentUser?.id ||
+                    (currentUser?.email && m.user?.email === currentUser.email);
+                  const memberAvatarUrl = isCurrentUser
+                    ? (currentUser?.avatarUrl ?? m.user?.avatarUrl)
+                    : m.user?.avatarUrl;
+
                   return (
                     <button
                       key={m.userId}
@@ -361,7 +369,7 @@ export function TaskComments({ taskId, boardMembers, readOnly, canDeleteAnyComme
                       className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted text-left transition-colors cursor-pointer"
                     >
                       <Avatar className="h-5 w-5 border border-primary/20 shrink-0">
-                        <AvatarImage src={m.user?.avatarUrl} alt={name} />
+                        <AvatarImage src={memberAvatarUrl} alt={name} />
                         <AvatarFallback className="text-[9px] font-bold bg-primary/10 text-primary">
                           {initial}
                         </AvatarFallback>

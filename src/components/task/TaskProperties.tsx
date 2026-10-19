@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { Priority, Column, Tag, ChecklistItem } from "@/types/task";
 import { BoardMember } from "@/types/board";
 import {
@@ -28,6 +28,7 @@ import { format, formatDistanceToNow, isPast, isToday, isTomorrow } from "date-f
 import { parseSafeDate, formatSafe } from "@/utils/dateUtils";
 import { DateTimePicker } from "@/components/common/DateTimePicker";
 import { toast } from "sonner";
+import { AuthContext } from "@/contexts/AuthContext";
 import { useBoardLabels } from "@/hooks/useBoardLabels";
 import { normalizeTagName, deduplicateTags } from "@/utils/boardLabels";
 import { getTaskProgressInfo } from "@/utils/taskUtils";
@@ -45,6 +46,8 @@ interface TaskPropertiesProps {
   tags: Tag[];
   createdAt?: Date;
   updatedAt?: Date;
+  creator?: { id?: string; fullName?: string; email?: string; avatarUrl?: string } | null;
+  createdBy?: string;
   readOnly?: boolean;
   isStatusHighlighted?: boolean;
   checklist?: ChecklistItem[];
@@ -79,6 +82,8 @@ export function TaskProperties({
   tags,
   createdAt,
   updatedAt,
+  creator,
+  createdBy,
   readOnly,
   isStatusHighlighted = false,
   checklist,
@@ -89,6 +94,8 @@ export function TaskProperties({
   onProgressChange,
   onTagsChange,
 }: TaskPropertiesProps) {
+  const authContext = useContext(AuthContext);
+  const currentUser = authContext?.user;
   const hasChecklist = Boolean(checklist && checklist.length > 0);
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState("");
@@ -277,19 +284,26 @@ export function TaskProperties({
             <span>Assignee</span>
           </div>
           <div className="flex-1 min-w-0">
-            {readOnly ? (
-              <div className="flex items-center gap-2">
-                <Avatar className="h-5 w-5 border border-border/50 shrink-0">
-                  <AvatarImage src={assignedMember?.user?.avatarUrl} alt={assignedMember?.user?.fullName || "User"} />
-                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
-                    {(assignedMember?.user?.fullName || assignedMember?.user?.email || "U").charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-xs text-foreground font-medium truncate">
-                  {assignedMember ? (assignedMember.user?.fullName || assignedMember.user?.email) : "Unassigned"}
-                </span>
-              </div>
-            ) : (
+            {readOnly ? (() => {
+              const isAssignedCurrentUser = assignedMember?.userId === currentUser?.id;
+              const assignedAvatarUrl = isAssignedCurrentUser
+                ? (currentUser?.avatarUrl ?? assignedMember?.user?.avatarUrl)
+                : assignedMember?.user?.avatarUrl;
+
+              return (
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-5 w-5 border border-border/50 shrink-0">
+                    <AvatarImage src={assignedAvatarUrl} alt={assignedMember?.user?.fullName || "User"} />
+                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
+                      {(assignedMember?.user?.fullName || assignedMember?.user?.email || "U").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs text-foreground font-medium truncate">
+                    {assignedMember ? (assignedMember.user?.fullName || assignedMember.user?.email) : "Unassigned"}
+                  </span>
+                </div>
+              );
+            })() : (
               <Select value={assignedTo || "unassigned"} onValueChange={onAssigneeChange}>
                 <SelectTrigger className="h-8 text-xs font-medium border-border/60 bg-card/60 hover:bg-muted/50 transition-colors w-full shadow-2xs">
                   <SelectValue placeholder="Assign member" />
@@ -301,11 +315,16 @@ export function TaskProperties({
                   {assignableMembers.map((m) => {
                     const name = m.user?.fullName || m.user?.email || "User";
                     const initial = name.charAt(0).toUpperCase();
+                    const isMemberCurrentUser = m.userId === currentUser?.id;
+                    const memberAvatarUrl = isMemberCurrentUser
+                      ? (currentUser?.avatarUrl ?? m.user?.avatarUrl)
+                      : m.user?.avatarUrl;
+
                     return (
                       <SelectItem key={m.userId} value={m.userId} className="text-xs">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-4 w-4 shrink-0">
-                            <AvatarImage src={m.user?.avatarUrl} alt={name} />
+                            <AvatarImage src={memberAvatarUrl} alt={name} />
                             <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-bold">
                               {initial}
                             </AvatarFallback>
@@ -401,6 +420,47 @@ export function TaskProperties({
                     {progressInfo.label}
                   </span>
                 </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Created Property */}
+        {(creator || createdAt) && (() => {
+          const isCreatorCurrentUser =
+            creator?.id === currentUser?.id ||
+            (currentUser?.email && creator?.email === currentUser.email) ||
+            createdBy === currentUser?.id;
+          const creatorAvatarUrl = isCreatorCurrentUser
+            ? (currentUser?.avatarUrl ?? creator?.avatarUrl)
+            : creator?.avatarUrl;
+          const creatorName = isCreatorCurrentUser
+            ? (currentUser?.fullName || currentUser?.email || "You")
+            : (creator?.fullName || creator?.email || "Former member");
+          const creatorInitial = (creatorName || "U").charAt(0).toUpperCase();
+          const safeCreated = parseSafeDate(createdAt);
+
+          return (
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 select-none">
+                <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span>Created</span>
+              </div>
+              <div className="flex-1 min-w-0 flex items-center gap-2 text-xs text-muted-foreground font-medium truncate">
+                <Avatar className="h-5 w-5 border border-border/50 shrink-0">
+                  <AvatarImage src={creatorAvatarUrl} alt={creatorName} />
+                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
+                    {creatorInitial}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-foreground font-medium truncate">
+                  {creatorName}
+                </span>
+                {safeCreated && (
+                  <span className="text-muted-foreground truncate" title={formatSafe(safeCreated, "PPpp")}>
+                    • {formatSafe(safeCreated, "MMM d, yyyy")}
+                  </span>
+                )}
               </div>
             </div>
           );

@@ -199,18 +199,27 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
     <div className="flex flex-col gap-4">
       {/* Avatars summary row */}
       <div className="flex -space-x-2 overflow-hidden items-center group">
-        {acceptedMembers.map((member) => (
-          <Avatar
-            key={member.id}
-            className="inline-block h-9 w-9 rounded-full ring-2 ring-background transition-transform hover:scale-110 hover:z-10 cursor-pointer shadow-sm"
-            title={`${member.user?.fullName || member.user?.email || "Member"} (${member.role})`}
-          >
-            <AvatarImage src={member.user?.avatarUrl} alt={member.user?.fullName || member.user?.email} />
-            <AvatarFallback className="text-xs bg-muted font-bold">
-              {member.user?.fullName?.charAt(0).toUpperCase() || member.user?.email?.charAt(0).toUpperCase() || "M"}
-            </AvatarFallback>
-          </Avatar>
-        ))}
+        {acceptedMembers.map((member) => {
+          const isCurrentUser =
+            member.userId === currentUser?.id ||
+            (currentUser?.email && member.user?.email === currentUser.email);
+          const avatarUrl = isCurrentUser
+            ? (currentUser?.avatarUrl ?? member.user?.avatarUrl)
+            : member.user?.avatarUrl;
+
+          return (
+            <Avatar
+              key={member.id}
+              className="inline-block h-9 w-9 rounded-full ring-2 ring-background transition-transform hover:scale-110 hover:z-10 cursor-pointer shadow-sm"
+              title={`${member.user?.fullName || member.user?.email || "Member"} (${member.role})`}
+            >
+              <AvatarImage src={avatarUrl} alt={member.user?.fullName || member.user?.email} />
+              <AvatarFallback className="text-xs bg-muted font-bold">
+                {member.user?.fullName?.charAt(0).toUpperCase() || member.user?.email?.charAt(0).toUpperCase() || "M"}
+              </AvatarFallback>
+            </Avatar>
+          );
+        })}
       </div>
 
       {/* Active Members detailed list */}
@@ -250,7 +259,10 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
             >
               <div className="flex items-center gap-3 min-w-0">
                 <Avatar className="h-9 w-9 border border-border/80 shrink-0">
-                  <AvatarImage src={member.user?.avatarUrl} alt={member.user?.fullName || member.user?.email} />
+                  <AvatarImage
+                    src={isSelf ? (currentUser?.avatarUrl ?? member.user?.avatarUrl) : member.user?.avatarUrl}
+                    alt={member.user?.fullName || member.user?.email}
+                  />
                   <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
                     {member.user?.fullName?.charAt(0).toUpperCase() || member.user?.email?.charAt(0).toUpperCase() || "M"}
                   </AvatarFallback>
@@ -427,7 +439,10 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar className="h-9 w-9 border border-border/80 shrink-0">
-                    <AvatarImage src={member.user?.avatarUrl} alt={displayName} />
+                    <AvatarImage
+                      src={isSelf ? (currentUser?.avatarUrl ?? member.user?.avatarUrl) : member.user?.avatarUrl}
+                      alt={displayName}
+                    />
                     <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
                       {displayName.charAt(0).toUpperCase()}
                     </AvatarFallback>

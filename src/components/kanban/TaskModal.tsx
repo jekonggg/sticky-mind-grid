@@ -1035,31 +1035,40 @@ export function TaskModal({
                     <span className="truncate">{item.title}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    {item.completed && item.completedBy && (
-                      <div
-                        className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-muted-foreground"
-                        title={`Completed by ${item.completedBy.fullName || item.completedBy.email}${
-                          item.completedAt
-                            ? ` on ${new Date(item.completedAt).toLocaleDateString()}`
-                            : ""
-                        }`}
-                      >
-                        <Avatar className="h-3.5 w-3.5 text-[7px] ring-1 ring-emerald-500/30">
-                          <AvatarImage
-                            src={item.completedBy.avatarUrl}
-                            alt={item.completedBy.fullName || item.completedBy.email}
-                          />
-                          <AvatarFallback className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">
-                            {(item.completedBy.fullName || item.completedBy.email || "U")
-                              .charAt(0)
-                              .toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium max-w-[80px] truncate text-foreground/80">
-                          {item.completedBy.fullName || item.completedBy.email}
-                        </span>
-                      </div>
-                    )}
+                    {item.completed && item.completedBy && (() => {
+                      const isCompletedByMe =
+                        item.completedBy.id === currentUser?.id ||
+                        (currentUser?.email && item.completedBy.email === currentUser.email);
+                      const completedAvatarUrl = isCompletedByMe
+                        ? (currentUser?.avatarUrl ?? item.completedBy.avatarUrl)
+                        : item.completedBy.avatarUrl;
+
+                      return (
+                        <div
+                          className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-muted-foreground"
+                          title={`Completed by ${item.completedBy.fullName || item.completedBy.email}${
+                            item.completedAt
+                              ? ` on ${new Date(item.completedAt).toLocaleDateString()}`
+                              : ""
+                          }`}
+                        >
+                          <Avatar className="h-3.5 w-3.5 text-[7px] ring-1 ring-emerald-500/30">
+                            <AvatarImage
+                              src={completedAvatarUrl}
+                              alt={item.completedBy.fullName || item.completedBy.email}
+                            />
+                            <AvatarFallback className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">
+                              {(item.completedBy.fullName || item.completedBy.email || "U")
+                                .charAt(0)
+                                .toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium max-w-[80px] truncate text-foreground/80">
+                            {item.completedBy.fullName || item.completedBy.email}
+                          </span>
+                        </div>
+                      );
+                    })()}
                     {!readOnly && (
                       <button
                         type="button"

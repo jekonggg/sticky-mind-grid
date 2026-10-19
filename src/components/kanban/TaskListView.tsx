@@ -20,9 +20,11 @@ import {
   User01 as User,
   File06 as FileText,
 } from "@untitledui/icons";
+import React, { useContext } from "react";
 import { Button } from "@/components/ui/button";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
+import { AuthContext } from "@/contexts/AuthContext";
 
 interface TaskListViewProps {
   tasks: Task[];
@@ -32,6 +34,8 @@ interface TaskListViewProps {
 }
 
 export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick }: TaskListViewProps) {
+  const authContext = useContext(AuthContext);
+  const currentUser = authContext?.user;
   const { devSettings } = useDevMode();
   const { settings } = useSettings();
   const isCompact = settings.uiDensity === "compact";
@@ -167,19 +171,28 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                       })()}
                     </TableCell>
                     <TableCell className={`${isCompact ? "py-2 px-3" : "py-4 px-4"}`}>
-                      {task.assignee ? (
-                        <div className="flex items-center gap-1.5">
-                          <Avatar className={`${isCompact ? "h-5 w-5" : "h-6 w-6"} border border-primary/20`}>
-                            <AvatarImage src={task.assignee.avatarUrl} alt={assigneeName} />
-                            <AvatarFallback className={`font-bold bg-primary/10 text-primary ${isCompact ? "text-[8px]" : "text-[10px]"}`}>
-                              {assigneeInitial}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className={`${isCompact ? "text-[11px]" : "text-xs"} font-semibold text-foreground truncate max-w-[120px]`}>
-                            {assigneeName}
-                          </span>
-                        </div>
-                      ) : (
+                      {task.assignee ? (() => {
+                        const isCurrentUser =
+                          task.assignee.id === currentUser?.id ||
+                          (currentUser?.email && task.assignee.email === currentUser.email);
+                        const assigneeAvatarUrl = isCurrentUser
+                          ? (currentUser?.avatarUrl ?? task.assignee.avatarUrl)
+                          : task.assignee.avatarUrl;
+
+                        return (
+                          <div className="flex items-center gap-1.5">
+                            <Avatar className={`${isCompact ? "h-5 w-5" : "h-6 w-6"} border border-primary/20`}>
+                              <AvatarImage src={assigneeAvatarUrl} alt={assigneeName} />
+                              <AvatarFallback className={`font-bold bg-primary/10 text-primary ${isCompact ? "text-[8px]" : "text-[10px]"}`}>
+                                {assigneeInitial}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className={`${isCompact ? "text-[11px]" : "text-xs"} font-semibold text-foreground truncate max-w-[120px]`}>
+                              {assigneeName}
+                            </span>
+                          </div>
+                        );
+                      })() : (
                         <span className={`${isCompact ? "text-[11px]" : "text-xs"} text-muted-foreground italic flex items-center gap-1.5 opacity-60`}>
                           <User className="h-3 w-3" /> Unassigned
                         </span>

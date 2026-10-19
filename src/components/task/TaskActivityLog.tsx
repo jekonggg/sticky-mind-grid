@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useContext } from "react";
 import { useActivity } from "@/hooks/useActivity";
 import { Activity } from "@/types/task";
 import { authenticatedFetch } from "@/services/apiUtils";
@@ -9,6 +9,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
+import { AuthContext } from "@/contexts/AuthContext";
 
 interface TaskActivityLogProps {
   taskTitle: string;
@@ -17,6 +18,8 @@ interface TaskActivityLogProps {
 }
 
 export function TaskActivityLog({ taskTitle, taskId, boardId }: TaskActivityLogProps) {
+  const authContext = useContext(AuthContext);
+  const currentUser = authContext?.user;
   const { activities: contextActivities } = useActivity();
   const [cardActivities, setCardActivities] = useState<Activity[]>([]);
 
@@ -90,6 +93,12 @@ export function TaskActivityLog({ taskTitle, taskId, boardId }: TaskActivityLogP
             const formattedTime = !isNaN(date.getTime())
               ? formatDistanceToNow(date, { addSuffix: true })
               : "just now";
+            const isCurrentUser =
+              act.userId === currentUser?.id ||
+              (currentUser?.email && act.user?.email === currentUser.email);
+            const userAvatarUrl = isCurrentUser
+              ? (currentUser?.avatarUrl ?? act.user?.avatarUrl)
+              : act.user?.avatarUrl;
 
             return (
               <div key={act.id} className="relative flex items-start gap-3 text-xs">
@@ -97,7 +106,7 @@ export function TaskActivityLog({ taskTitle, taskId, boardId }: TaskActivityLogP
                 <div className="absolute -left-[23px] top-1 w-2.5 h-2.5 rounded-full bg-background border-2 border-primary" />
 
                 <Avatar className="h-5 w-5 mt-0.5 shrink-0">
-                  <AvatarImage src={act.user?.avatarUrl} alt={userName} />
+                  <AvatarImage src={userAvatarUrl} alt={userName} />
                   <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-bold">
                     {initial}
                   </AvatarFallback>

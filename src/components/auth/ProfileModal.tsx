@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/services/authApi";
 import { fileApi } from "@/services/fileApi";
@@ -48,6 +49,19 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
     }
   }, [user, open]);
 
+  const queryClient = useQueryClient();
+
+  const syncProfileUpdates = (updated: any) => {
+    updateUser(updated);
+    queryClient.invalidateQueries({ queryKey: ["boardMembers"] });
+    queryClient.invalidateQueries({ queryKey: ["boards"] });
+    queryClient.invalidateQueries({ queryKey: ["comments"] });
+    queryClient.invalidateQueries({ queryKey: ["activities"] });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("user:profile-updated", { detail: updated }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim()) {
@@ -79,7 +93,7 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
       }
 
       const updatedUser = await authApi.updateMe(payload);
-      updateUser(updatedUser);
+      syncProfileUpdates(updatedUser);
       toast.success("Profile updated successfully");
       onClose();
     } catch (err: any) {
@@ -110,7 +124,7 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
         fullName: fullName.trim() || user?.fullName,
         avatarUrl: uploaded.url,
       });
-      updateUser(updatedUser);
+      syncProfileUpdates(updatedUser);
       toast.success("Avatar updated successfully");
     } catch (err: any) {
       toast.error(err.message || "Failed to upload avatar");
@@ -127,7 +141,7 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
         fullName: fullName.trim() || user?.fullName,
         avatarUrl: null,
       });
-      updateUser(updatedUser);
+      syncProfileUpdates(updatedUser);
       toast.success("Avatar removed");
     } catch (err: any) {
       toast.error(err.message || "Failed to remove avatar");

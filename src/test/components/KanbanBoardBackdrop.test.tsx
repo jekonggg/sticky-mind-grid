@@ -183,4 +183,34 @@ describe("KanbanBoard Backdrop & Task Detail Drawer", () => {
     expect(overflowBadge).toBeInTheDocument();
     expect(overflowBadge).toHaveTextContent("+2");
   }, 15000);
+
+  it("reflects updated current user avatar in the header toolbar assignee filter", async () => {
+    const mockMembers = [
+      {
+        id: "m-me",
+        boardId: "board-1",
+        userId: "user-123",
+        role: "owner",
+        status: "accepted",
+        user: { id: "user-123", email: "testuser@example.com", fullName: "Test User", avatarUrl: "https://old.png" },
+      },
+    ];
+    (boardApi.getMembers as any).mockResolvedValue(mockMembers);
+
+    renderWithProviders(<KanbanBoard />, {
+      user: {
+        id: "user-123",
+        email: "testuser@example.com",
+        fullName: "Test User",
+        avatarUrl: "https://new-live-avatar.png",
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Sprint Engineering")).toBeInTheDocument();
+    });
+
+    const filterAvatar = screen.getByTestId("assignee-filter-avatar-user-123");
+    expect(filterAvatar).toHaveAttribute("data-avatar-url", "https://new-live-avatar.png");
+  }, 15000);
 });

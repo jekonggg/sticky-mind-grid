@@ -535,24 +535,33 @@ export default function TasksPage() {
 
                         {/* Assigned Column */}
                         <TableCell className={`${isCompact ? "py-2 px-3" : "py-3.5"}`}>
-                          {task.assignee ? (
-                            <div className="flex items-center gap-2 max-w-[160px]">
-                              <Avatar className={`${isCompact ? "h-5 w-5" : "h-6 w-6"} border border-border/80 shrink-0`}>
-                                <AvatarImage
-                                  src={task.assignee.avatarUrl}
-                                  alt={task.assignee.fullName || task.assignee.email}
-                                />
-                                <AvatarFallback className={`font-bold bg-primary/10 text-primary ${isCompact ? "text-[8px]" : "text-[9px]"}`}>
-                                  {(task.assignee.fullName || task.assignee.email || "U")
-                                    .charAt(0)
-                                    .toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-xs font-medium text-foreground truncate">
-                                {task.assignee.fullName || task.assignee.email}
-                              </span>
-                            </div>
-                          ) : (
+                          {task.assignee ? (() => {
+                            const isCurrentUser =
+                              task.assignee.id === user?.id ||
+                              (user?.email && task.assignee.email === user.email);
+                            const avatarUrl = isCurrentUser
+                              ? (user?.avatarUrl ?? task.assignee.avatarUrl)
+                              : task.assignee.avatarUrl;
+
+                            return (
+                              <div className="flex items-center gap-2 max-w-[160px]">
+                                <Avatar className={`${isCompact ? "h-5 w-5" : "h-6 w-6"} border border-border/80 shrink-0`}>
+                                  <AvatarImage
+                                    src={avatarUrl}
+                                    alt={task.assignee.fullName || task.assignee.email}
+                                  />
+                                  <AvatarFallback className={`font-bold bg-primary/10 text-primary ${isCompact ? "text-[8px]" : "text-[9px]"}`}>
+                                    {(task.assignee.fullName || task.assignee.email || "U")
+                                      .charAt(0)
+                                      .toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-xs font-medium text-foreground truncate">
+                                  {task.assignee.fullName || task.assignee.email}
+                                </span>
+                              </div>
+                            );
+                          })() : (
                             <span className="text-xs text-muted-foreground/50 italic flex items-center gap-1">
                               <User className="h-3 w-3 opacity-50" />
                               Unassigned
@@ -750,19 +759,28 @@ export default function TasksPage() {
                   </div>
 
                   <div className="pt-3 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground">
-                    {task.assignee ? (
-                      <div className="flex items-center gap-1.5">
-                        <Avatar className="h-5 w-5 border border-border/50">
-                          <AvatarImage src={task.assignee.avatarUrl} />
-                          <AvatarFallback className="text-[9px] font-bold">
-                            {task.assignee.fullName?.charAt(0) || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-[11px] font-medium truncate max-w-[100px]">
-                          {task.assignee.fullName || task.assignee.email}
-                        </span>
-                      </div>
-                    ) : (
+                    {task.assignee ? (() => {
+                      const isCurrentUser =
+                        task.assignee.id === user?.id ||
+                        (user?.email && task.assignee.email === user.email);
+                      const avatarUrl = isCurrentUser
+                        ? (user?.avatarUrl ?? task.assignee.avatarUrl)
+                        : task.assignee.avatarUrl;
+
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          <Avatar className="h-5 w-5 border border-border/50">
+                            <AvatarImage src={avatarUrl} />
+                            <AvatarFallback className="text-[9px] font-bold">
+                              {task.assignee.fullName?.charAt(0) || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-[11px] font-medium truncate max-w-[100px]">
+                            {task.assignee.fullName || task.assignee.email}
+                          </span>
+                        </div>
+                      );
+                    })() : (
                       <span className="italic text-[11px]">Unassigned</span>
                     )}
 

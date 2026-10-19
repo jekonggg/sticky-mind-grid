@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Task, Priority } from "@/types/task";
@@ -17,6 +17,7 @@ import {
 import { format } from "date-fns";
 import { parseSafeDate, formatSafe } from "@/utils/dateUtils";
 import { Avatar, AvatarFallback, AvatarImage, getMediaUrl } from "@/components/ui/avatar";
+import { AuthContext } from "@/contexts/AuthContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -128,6 +129,8 @@ export function TaskCard({
   const priorityKey = (task.priority?.toLowerCase() as Priority) || "low";
   const priority = PRIORITY_CONFIG[priorityKey] || PRIORITY_CONFIG.low;
   const tabGradientId = `tab-fade-${task.id}`;
+  const authContext = useContext(AuthContext);
+  const currentUser = authContext?.user;
 
   // Single card avatar determination: at most 1 avatar on the card (Assignee if assigned, otherwise Creator)
   const singleAvatar = React.useMemo(() => {
@@ -135,6 +138,11 @@ export function TaskCard({
     const primaryAssignee =
       task.assignee ||
       (Array.isArray((task as any).assignees) && (task as any).assignees[0] ? (task as any).assignees[0] : null);
+
+    const isAssigneeCurrentUser =
+      primaryAssignee &&
+      (primaryAssignee.id === currentUser?.id ||
+        (currentUser?.email && primaryAssignee.email === currentUser.email));
 
     if (primaryAssignee) {
       const name = primaryAssignee.fullName || primaryAssignee.email || "Assignee";
@@ -152,11 +160,15 @@ export function TaskCard({
         tooltip = `Assigned to ${name} • Created by ${cName}`;
       }
 
+      const avatarUrl = isAssigneeCurrentUser
+        ? (currentUser?.avatarUrl ?? primaryAssignee.avatarUrl)
+        : primaryAssignee.avatarUrl;
+
       return {
         id: primaryAssignee.id || primaryAssignee.email || "assignee",
         name,
         initial,
-        avatarUrl: primaryAssignee.avatarUrl,
+        avatarUrl,
         tooltip,
         role: "assignee" as const,
       };
@@ -164,24 +176,32 @@ export function TaskCard({
 
     // 2. Unassigned task: fall back to Creator
     if (task.creator) {
+      const isCreatorCurrentUser =
+        task.creator.id === currentUser?.id ||
+        (currentUser?.email && task.creator.email === currentUser.email) ||
+        task.createdBy === currentUser?.id;
       const name = task.creator.fullName || task.creator.email || "Creator";
       const initial = (name || "U").charAt(0).toUpperCase();
       const safeCreatedAt = parseSafeDate(task.createdAt);
       const createdDateStr = safeCreatedAt ? formatSafe(safeCreatedAt, "MMM d, yyyy") : "";
       const tooltip = `Created by ${name}${createdDateStr ? ` on ${createdDateStr}` : ""} (Unassigned)`;
 
+      const avatarUrl = isCreatorCurrentUser
+        ? (currentUser?.avatarUrl ?? task.creator.avatarUrl)
+        : task.creator.avatarUrl;
+
       return {
         id: task.creator.id || task.creator.email || "creator",
         name,
         initial,
-        avatarUrl: task.creator.avatarUrl,
+        avatarUrl,
         tooltip,
         role: "creator" as const,
       };
     }
 
     return null;
-  }, [task]);
+  }, [task, currentUser?.id, currentUser?.avatarUrl, currentUser?.email]);
 
   // Progress calculations for the 24-tick equalizer visualizer
   const totalChecklist = task.checklist?.length || 0;
@@ -575,24 +595,33 @@ export function TaskCard({
                               {item.title || item.text}
                             </span>
                           </div>
-                          {item.completed && item.completedBy && (
-                            <div
-                              className="flex items-center gap-1 shrink-0 pl-1"
-                              aria-label={`Completed by ${item.completedBy.fullName || item.completedBy.email}`}
-                            >
-                              <Avatar className="h-3.5 w-3.5 text-[7px] border border-card ring-1 ring-border/20">
-                                <AvatarImage
-                                  src={item.completedBy.avatarUrl}
-                                  alt={item.completedBy.fullName || item.completedBy.email}
-                                />
-                                <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                                  {(item.completedBy.fullName || item.completedBy.email || "U")
-                                    .charAt(0)
-                                    .toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                            </div>
-                          )}
+                          {item.completed && item.completedBy && (() => {
+                            const isCompletedByMe =
+                              item.completedBy.id === currentUser?.id ||
+                              (currentUser?.email && item.completedBy.email === currentUser.email);
+                            const completedAvatarUrl = isCompletedByMe
+                              ? (currentUser?.avatarUrl ?? item.completedBy.avatarUrl)
+                              : item.completedBy.avatarUrl;
+
+                            return (
+                              <div
+                                className="flex items-center gap-1 shrink-0 pl-1"
+                                aria-label={`Completed by ${item.completedBy.fullName || item.completedBy.email}`}
+                              >
+                                <Avatar className="h-3.5 w-3.5 text-[7px] border border-card ring-1 ring-border/20">
+                                  <AvatarImage
+                                    src={completedAvatarUrl}
+                                    alt={item.completedBy.fullName || item.completedBy.email}
+                                  />
+                                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                                    {(item.completedBy.fullName || item.completedBy.email || "U")
+                                      .charAt(0)
+                                      .toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </div>
+                            );
+                          })()}
                         </div>
                       ))}
                     </div>
@@ -625,6 +654,7 @@ export function TaskCard({
                   <TooltipTrigger asChild>
                     <Avatar
                       data-testid="task-single-avatar"
+                      data-avatar-url={singleAvatar.avatarUrl || undefined}
                       aria-label={singleAvatar.tooltip}
                       className={`${
                         isCompact ? "h-4 w-4 text-[7px]" : "h-5 w-5 text-[8px]"

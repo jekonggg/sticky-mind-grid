@@ -373,6 +373,8 @@ export function TaskDetailWorkspace({
           tags={localTags}
           createdAt={task.createdAt}
           updatedAt={task.updatedAt}
+          creator={task.creator}
+          createdBy={task.createdBy}
           readOnly={readOnly}
           isStatusHighlighted={isStatusHighlighted}
           checklist={localChecklist}
