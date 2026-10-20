@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 const mockNavigate = vi.fn();
 let mockLocationState: any = null;
+let mockSearchParams = new URLSearchParams();
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
@@ -14,6 +15,7 @@ vi.mock("react-router-dom", async () => {
     ...actual,
     useNavigate: () => mockNavigate,
     useLocation: () => ({ state: mockLocationState }),
+    useSearchParams: () => [mockSearchParams],
     Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
   };
 });
@@ -35,6 +37,7 @@ describe("Login Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockLocationState = null;
+    mockSearchParams = new URLSearchParams();
   });
 
   it("pre-fills email when passed in router location state", () => {
@@ -44,6 +47,32 @@ describe("Login Component", () => {
 
     const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
     expect(emailInput.value).toBe("prefilled@example.com");
+  });
+
+  it("pre-fills email and redirects to query param after login", async () => {
+    mockSearchParams = new URLSearchParams("email=invitee@example.com&redirect=/invite/invite-123");
+
+    const mockLoginFn = vi.fn();
+    (authApi.login as any).mockResolvedValueOnce({
+      user: { id: "1", email: "invitee@example.com", fullName: "Invitee User" },
+      token: "mock-jwt-token",
+    });
+
+    renderWithProviders(<Login />, {
+      user: null,
+      authOverrides: { login: mockLoginFn },
+    });
+
+    const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
+    expect(emailInput.value).toBe("invitee@example.com");
+
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: "Password123!" } });
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(mockLoginFn).toHaveBeenCalled();
+      expect(mockNavigate).toHaveBeenCalledWith("/invite/invite-123");
+    });
   });
 
   it("submits the form successfully and logs in", async () => {

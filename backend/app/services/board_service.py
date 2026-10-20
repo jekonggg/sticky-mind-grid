@@ -613,11 +613,15 @@ class BoardService:
         # Outbound email invitation
         try:
             from app.services.email_service import EmailService
+            import os
+            base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
+            invite_link = f"{base_url}/invite/{invitation.id}" if invitation else None
             EmailService.send_board_invitation(
                 to_email=clean_email,
                 board_name=board.name,
                 inviter_name=actor_name,
-                role=role
+                role=role,
+                invite_link=invite_link
             )
         except Exception as e:
             logger.error(f"Failed to send invitation email to {clean_email}: {e}")
@@ -899,13 +903,17 @@ class BoardService:
         # Outbound reminder email
         try:
             from app.services.email_service import EmailService
+            import os
+            base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
             target_email = invitation.email if invitation else (user.email if user else None)
+            invite_link = f"{base_url}/invite/{invitation.id}" if invitation else None
             if target_email:
                 EmailService.send_board_invitation(
                     to_email=target_email,
                     board_name=board.name,
                     inviter_name=actor_name,
-                    role=target_role
+                    role=target_role,
+                    invite_link=invite_link
                 )
         except Exception as e:
             logger.error(f"Failed to resend invitation email: {e}")
@@ -1378,3 +1386,66 @@ class BoardService:
             'members': [m.to_dict() for m in members],
             'exportedAt': datetime.utcnow().isoformat() + 'Z'
         }, None
+
+    @staticmethod
+    def get_invitation_by_id(invitation_id):
+        inv = db.session.get(BoardInvitation, invitation_id)
+        if not inv:
+            return None
+
+        now = datetime.utcnow()
+        if inv.status == 'pending' and inv.expires_at and now > inv.expires_at:
+            inv.status = 'expired'
+            db.session.commit()
+
+        board = inv.board
+        inviter = inv.inviter or (board.owner if board else None)
+        inviter_name = (inviter.full_name or inviter.email) if inviter else "Board Owner"
+
+        return {
+            'id': inv.id,
+            'boardId': inv.board_id,
+            'boardName': board.name if board else 'Unknown Board',
+            'boardEmoji': board.emoji if board else '📋',
+            'boardColor': board.color if board else '#3b82f6',
+            'inviterName': inviter_name,
+            'invitedEmail': inv.email,
+            'role': inv.role,
+            'status': inv.status,
+            'isExpired': inv.is_expired,
+            'expiresAt': inv.expires_at.isoformat() + 'Z' if inv.expires_at else None,
+            'createdAt': inv.created_at.isoformat() + 'Z' if inv.created_at else None,
+        }
+
+    @staticmethod
+    def accept_invitation_by_id(invitation_id, user_id):
+        inv = db.session.get(BoardInvitation, invitation_id)
+        if not inv:
+            return None, "Invitation not found"
+
+        user = db.session.get(User, user_id)
+        if not user:
+            return None, "User not found"
+
+        clean_user_email = (user.email or '').strip().lower()
+        if clean_user_email != inv.email.strip().lower():
+            return None, "Email mismatch: This invitation was sent to another email address"
+
+        return BoardService.accept_invitation(inv.board_id, user_id)
+
+    @staticmethod
+    def decline_invitation_by_id(invitation_id, user_id):
+        inv = db.session.get(BoardInvitation, invitation_id)
+        if not inv:
+            return False, "Invitation not found"
+
+        user = db.session.get(User, user_id)
+        if not user:
+            return False, "User not found"
+
+        clean_user_email = (user.email or '').strip().lower()
+        if clean_user_email != inv.email.strip().lower():
+            return False, "Email mismatch: This invitation was sent to another email address"
+
+        return BoardService.decline_invitation(inv.board_id, user_id)
+

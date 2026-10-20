@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { authApi } from "@/services/authApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,16 @@ interface PasswordRule {
 }
 
 export default function Register() {
-  const [email, setEmail] = useState("");
+  const [searchParams] = useSearchParams();
+  const redirectParam = searchParams.get("redirect");
+  const emailParam = searchParams.get("email");
+  const [email, setEmail] = useState(() => emailParam || "");
+
+  useEffect(() => {
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+  }, [emailParam]);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -83,7 +92,10 @@ export default function Register() {
         response.message || "Account created successfully! Please sign in with your credentials."
       );
       // Flow requirement: Do NOT log the user in immediately; redirect them to /login with pre-filled email
-      navigate("/login", { state: { email } });
+      const nextLoginUrl = redirectParam
+        ? `/login?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirectParam)}`
+        : "/login";
+      navigate(nextLoginUrl, { state: { email } });
     } catch (error: any) {
       toast.error(error.message || "Failed to register");
     } finally {
@@ -301,7 +313,10 @@ export default function Register() {
 
               <div className="text-center text-sm text-muted-foreground">
                 Already have an account?{" "}
-                <Link to="/login" className="text-primary hover:underline font-semibold">
+                <Link
+                  to={redirectParam ? `/login?${new URLSearchParams({ ...(email ? { email } : {}), redirect: redirectParam }).toString()}` : "/login"}
+                  className="text-primary hover:underline font-semibold"
+                >
                   Sign in
                 </Link>
               </div>

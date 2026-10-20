@@ -37,6 +37,34 @@ def get_sent_invitations():
     invitations = BoardService.get_sent_invitations(user_id)
     return jsonify(invitations), 200
 
+@bp.route('/invitations/<invitation_id>', methods=['GET'])
+@limiter.limit("60 per minute")
+def get_invitation_preview(invitation_id):
+    invitation = BoardService.get_invitation_by_id(invitation_id)
+    if not invitation:
+        return jsonify({'error': 'Invitation not found'}), 404
+    return jsonify(invitation), 200
+
+@bp.route('/invitations/<invitation_id>/accept', methods=['POST', 'PATCH'])
+@jwt_required()
+def accept_invitation_by_id(invitation_id):
+    user_id = get_jwt_identity()
+    membership, error = BoardService.accept_invitation_by_id(invitation_id, user_id)
+    if error:
+        status_code = 403 if "Email mismatch" in error else 400
+        return jsonify({'error': error}), status_code
+    return jsonify(membership.to_dict()), 200
+
+@bp.route('/invitations/<invitation_id>/decline', methods=['POST', 'PATCH', 'DELETE'])
+@jwt_required()
+def decline_invitation_by_id(invitation_id):
+    user_id = get_jwt_identity()
+    success, error = BoardService.decline_invitation_by_id(invitation_id, user_id)
+    if error:
+        status_code = 403 if "Email mismatch" in error else 400
+        return jsonify({'error': error}), status_code
+    return jsonify({'message': 'Invitation declined'}), 200
+
 @bp.route('/<board_id>/invitations/accept', methods=['POST', 'PATCH'])
 @jwt_required()
 def accept_invitation(board_id):

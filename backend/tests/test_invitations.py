@@ -421,4 +421,57 @@ def test_pending_invite_tenancy_redacts_description_and_report_blocks_inviter(
     invites_after = client.get("/api/boards/invitations", headers=recipient_headers).get_json()
     assert len(invites_after) == 0
 
+def test_invitation_preview_public_and_direct_accept_mismatch_guard(client, create_test_user, create_test_board, auth_headers):
+    from app.models.board_invitation import BoardInvitation
+    board, owner = create_test_board(name="Direct Preview Board")
+    user_a = create_test_user(email="usera_invite@example.com", full_name="User A")
+    user_b = create_test_user(email="userb_other@example.com", full_name="User B")
+
+    owner_headers = auth_headers(owner.id)
+    user_a_headers = auth_headers(user_a.id)
+    user_b_headers = auth_headers(user_b.id)
+
+    # 1. Owner invites User A
+    invite_res = client.post(
+        f"/api/boards/{board.id}/members",
+        headers=owner_headers,
+        data=json.dumps({"email": user_a.email, "role": "editor"}),
+        content_type="application/json"
+    )
+    assert invite_res.status_code == 201
+
+    inv = BoardInvitation.query.filter_by(board_id=board.id, email=user_a.email).first()
+    assert inv is not None
+
+    # 2. Public preview endpoint without auth headers
+    preview_res = client.get(f"/api/boards/invitations/{inv.id}")
+    assert preview_res.status_code == 200
+    preview = preview_res.get_json()
+    assert preview["boardName"] == "Direct Preview Board"
+    assert preview["invitedEmail"] == user_a.email
+    assert preview["role"] == "editor"
+    assert preview["status"] == "pending"
+    assert preview["isExpired"] is False
+
+    # 3. User B (mismatched account) attempts direct accept
+    mismatch_res = client.post(f"/api/boards/invitations/{inv.id}/accept", headers=user_b_headers)
+    assert mismatch_res.status_code == 403
+    assert "mismatch" in mismatch_res.get_json()["error"].lower()
+
+    # 4. User B attempts direct decline -> 403
+    mismatch_decline = client.post(f"/api/boards/invitations/{inv.id}/decline", headers=user_b_headers)
+    assert mismatch_decline.status_code == 403
+
+    # 5. User A (matching account) accepts
+    accept_res = client.post(f"/api/boards/invitations/{inv.id}/accept", headers=user_a_headers)
+    assert accept_res.status_code == 200
+    assert accept_res.get_json()["status"] == "accepted"
+
+    # 6. Preview now reflects accepted status
+    preview_after = client.get(f"/api/boards/invitations/{inv.id}").get_json()
+    assert preview_after["status"] == "accepted"
+
+    # 7. Non-existent invitation returns 404
+    missing_res = client.get("/api/boards/invitations/non-existent-uuid-12345")
+    assert missing_res.status_code == 404
 

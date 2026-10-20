@@ -103,3 +103,17 @@ export interface BoardInvitation {
   };
 }
 
+export interface InvitationPreview {
+  id: string;
+  boardId: string;
+  boardName: string;
+  boardEmoji?: string;
+  boardColor?: string;
+  inviterName: string;
+  invitedEmail: string;
+  role: string;
+  status: BoardMemberStatus;
+  isExpired?: boolean;
+  expiresAt?: string | null;
+  createdAt?: string | null;
+}

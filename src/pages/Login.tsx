@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/services/authApi";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,16 @@ import { OAuthButtons } from "@/components/auth/OAuthButtons";
 
 export default function Login() {
   const location = useLocation();
-  const [email, setEmail] = useState(() => (location.state as any)?.email || "");
+  const [searchParams] = useSearchParams();
+  const redirectParam = searchParams.get("redirect");
+  const emailParam = searchParams.get("email");
+  const [email, setEmail] = useState(() => emailParam || (location.state as any)?.email || "");
+
+  useEffect(() => {
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+  }, [emailParam]);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -33,7 +42,8 @@ export default function Login() {
       const response = await authApi.login(email, password);
       login(response.user, response.token);
       toast.success(`Welcome back, ${response.user.fullName || response.user.email}!`);
-      navigate("/");
+      const destination = redirectParam || (location.state as any)?.from || "/";
+      navigate(destination);
     } catch (error: any) {
       toast.error(error.message || "Failed to login");
     } finally {
@@ -125,7 +135,10 @@ export default function Login() {
 
               <div className="text-center text-sm text-muted-foreground">
                 Don&apos;t have an account?{" "}
-                <Link to="/register" className="text-primary hover:underline font-semibold">
+                <Link
+                  to={redirectParam ? `/register?${new URLSearchParams({ ...(email ? { email } : {}), redirect: redirectParam }).toString()}` : "/register"}
+                  className="text-primary hover:underline font-semibold"
+                >
                   Create one
                 </Link>
               </div>

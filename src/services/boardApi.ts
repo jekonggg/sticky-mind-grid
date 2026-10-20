@@ -1,4 +1,4 @@
-import { Board, CreateBoardData, UpdateBoardData, BoardMember } from "@/types/board";
+import { Board, CreateBoardData, UpdateBoardData, BoardMember, InvitationPreview } from "@/types/board";
 import { authenticatedFetch } from "./apiUtils";
 
 const mapBoard = (board: any): Board => ({
@@ -153,6 +153,36 @@ export const boardApi = {
     });
     if (!res.ok) {
       const error = await res.json();
+      throw new Error(error.error || "Failed to decline invitation");
+    }
+  },
+
+  async getInvitationPreview(invitationId: string): Promise<InvitationPreview> {
+    const res = await authenticatedFetch(`/boards/invitations/${invitationId}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to fetch invitation details");
+    }
+    return res.json();
+  },
+
+  async acceptInvitationById(invitationId: string): Promise<BoardMember> {
+    const res = await authenticatedFetch(`/boards/invitations/${invitationId}/accept`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to accept invitation");
+    }
+    return res.json();
+  },
+
+  async declineInvitationById(invitationId: string): Promise<void> {
+    const res = await authenticatedFetch(`/boards/invitations/${invitationId}/decline`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
       throw new Error(error.error || "Failed to decline invitation");
     }
   },

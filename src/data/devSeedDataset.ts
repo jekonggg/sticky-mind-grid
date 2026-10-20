@@ -1823,6 +1823,50 @@ export function handleSeedTakeoverRequest(
     return jsonResponse(sent);
   }
 
+  // Single Invitation Preview: /boards/invitations/:id
+  const singleInviteMatch = rawPath.match(/^\/boards\/invitations\/([^/]+)$/);
+  if (singleInviteMatch && method === "GET") {
+    const inviteId = singleInviteMatch[1];
+    const invite = store.invitations.find((i) => i.id === inviteId || i.boardId === inviteId);
+    if (invite) {
+      return jsonResponse({
+        id: invite.id,
+        boardId: invite.boardId,
+        boardName: invite.board?.name || "Collaborative Board",
+        boardEmoji: invite.board?.emoji || "📋",
+        boardColor: invite.board?.color || "hsl(220, 80%, 56%)",
+        inviterName: invite.inviterName || "Workspace Admin",
+        invitedEmail: invite.email || "usera@example.com",
+        role: invite.role || "editor",
+        status: invite.status || "pending",
+        isExpired: false,
+        expiresAt: invite.expiresAt,
+        createdAt: invite.createdAt,
+      });
+    }
+  }
+
+  // Direct Accept / Decline by Invitation ID: /boards/invitations/:id/:action
+  const directInviteActionMatch = rawPath.match(/^\/boards\/invitations\/([^/]+)\/(accept|decline)$/);
+  if (directInviteActionMatch && method === "POST") {
+    const [, inviteId, action] = directInviteActionMatch;
+    const inviteIdx = store.invitations.findIndex((i) => i.id === inviteId || i.boardId === inviteId);
+    const invite = inviteIdx >= 0 ? store.invitations[inviteIdx] : null;
+    if (invite) {
+      store.invitations.splice(inviteIdx, 1);
+      if (action === "accept") {
+        return jsonResponse({
+          id: `bm-${Date.now()}`,
+          boardId: invite.boardId,
+          userId: "current-user",
+          role: invite.role,
+          status: "accepted",
+        });
+      }
+      return jsonResponse({ message: "Invitation declined" });
+    }
+  }
+
   // Accept / Decline / Report Invitation: /boards/:boardId/invitations/:action
   const inviteActionMatch = rawPath.match(
     /^\/boards\/([^/]+)\/invitations\/(accept|decline|report)$/

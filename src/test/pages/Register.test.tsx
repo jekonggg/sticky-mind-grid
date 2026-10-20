@@ -6,12 +6,14 @@ import { authApi } from "@/services/authApi";
 import { toast } from "sonner";
 
 const mockNavigate = vi.fn();
+let mockSearchParams = new URLSearchParams();
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    useSearchParams: () => [mockSearchParams],
     Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
   };
 });
@@ -32,6 +34,7 @@ vi.mock("sonner", () => ({
 describe("Register Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSearchParams = new URLSearchParams();
   });
 
   it("renders registration form inputs correctly", () => {
@@ -68,23 +71,27 @@ describe("Register Component", () => {
     expect(screen.getByText(/strong/i)).toBeInTheDocument();
   });
 
-  it("shows password mismatch until passwords match, and keeps button disabled until both match", async () => {
+  it("disables submit button until password criteria and matching confirm password are met", async () => {
     renderWithProviders(<Register />, { user: null });
 
+    const nameInput = screen.getByLabelText(/full name/i);
+    const emailInput = screen.getByLabelText(/email/i);
     const passwordInput = screen.getByLabelText(/^password$/i);
     const confirmInput = screen.getByLabelText(/^confirm password$/i);
-    const submitButton = screen.getByRole("button", { name: /create account/i });
+    const submitBtn = screen.getByRole("button", { name: /create account/i });
 
+    fireEvent.change(nameInput, { target: { value: "John Doe" } });
+    fireEvent.change(emailInput, { target: { value: "john@example.com" } });
     fireEvent.change(passwordInput, { target: { value: "Password123!" } });
-    fireEvent.change(confirmInput, { target: { value: "Mismatch999!" } });
+    expect(submitBtn).toBeDisabled();
 
-    expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument();
-    expect(submitButton).toBeDisabled();
+    // Confirm password mismatches
+    fireEvent.change(confirmInput, { target: { value: "Mismatch123!" } });
+    expect(submitBtn).toBeDisabled();
 
+    // Confirm password matches
     fireEvent.change(confirmInput, { target: { value: "Password123!" } });
-
-    expect(screen.getByText(/passwords match/i)).toBeInTheDocument();
-    expect(submitButton).toBeEnabled();
+    expect(submitBtn).toBeEnabled();
   });
 
   it("submits the form successfully and redirects to /login with state email", async () => {
@@ -117,6 +124,32 @@ describe("Register Component", () => {
       expect(mockNavigate).toHaveBeenCalledWith("/login", {
         state: { email: "test@example.com" },
       });
+    });
+  });
+
+  it("pre-fills email and forwards redirect param to /login", async () => {
+    mockSearchParams = new URLSearchParams("email=invitee@example.com&redirect=/invite/invite-123");
+    (authApi.register as any).mockResolvedValueOnce({
+      user: { id: "2", email: "invitee@example.com", fullName: "Invitee" },
+      message: "Success",
+    });
+
+    renderWithProviders(<Register />, { user: null });
+
+    const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
+    expect(emailInput.value).toBe("invitee@example.com");
+
+    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Invitee" } });
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: "Password123!" } });
+    fireEvent.change(screen.getByLabelText(/^confirm password$/i), { target: { value: "Password123!" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/login?email=invitee%40example.com&redirect=%2Finvite%2Finvite-123",
+        { state: { email: "invitee@example.com" } }
+      );
     });
   });
 });

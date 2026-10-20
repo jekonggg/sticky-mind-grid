@@ -171,3 +171,28 @@ def test_email_service_emailjs_provider_fails_on_missing_config():
     )
     assert success is False
 
+def test_board_service_invite_member_dispatches_email_with_deep_invite_link(create_test_user, create_test_board):
+    from app.services.board_service import BoardService
+    from app.services.email_service import EmailService, ConsoleEmailProvider
+    from app.models.board_invitation import BoardInvitation
+
+    EmailService.set_provider(ConsoleEmailProvider())
+    ConsoleEmailProvider.clear_outbox()
+
+    board, owner = create_test_board(name="Deep Link Test Board")
+    target_email = "deep_link_user@example.com"
+
+    res, err = BoardService.add_member(board.id, target_email, "editor", actor_id=owner.id)
+    assert err is None
+
+    inv = BoardInvitation.query.filter_by(board_id=board.id, email=target_email).first()
+    assert inv is not None
+
+    outbox = ConsoleEmailProvider.get_outbox()
+    assert len(outbox) == 1
+    sent_mail = outbox[0]
+    assert sent_mail["to"] == target_email
+    expected_link = f"/invite/{inv.id}"
+    assert expected_link in sent_mail["text"]
+    assert expected_link in sent_mail["html"]
+
