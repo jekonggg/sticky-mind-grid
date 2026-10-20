@@ -454,10 +454,6 @@ flowchart LR
 | `GET` | `/api/notifications` | JWT | Self | Query: `limit?=30` | `200 OK` `{"notifications": Notification[], "unreadCount": number}` | `401` | `notification_routes.py:L8-L20` |
 | `PATCH`, `PUT` | `/api/notifications/<notification_id>/read` | JWT | Self (owner of notification) | — | `200 OK` `Notification` | `401`, `404` | `notification_routes.py:L22-L32` |
 | `PATCH`, `PUT` | `/api/notifications/read-all` | JWT | Self | — | `200 OK` `{"message": "All notifications marked as read"}` | `401` | `notification_routes.py:L34-L40` |
-| `GET` | `/api/notifications/vapid-public-key` | JWT | Self | — | `200 OK` `{"publicKey": string}` | `401` | `notification_routes.py:L43-L48` |
-| `POST` | `/api/notifications/push-subscriptions` | JWT | Self | JSON: `{"subscription": {"endpoint", "keys": {"p256dh", "auth"}}}` | `201 Created` `{"message": string, "subscription": PushSubscription}` | `400`, `401` | `notification_routes.py:L51-L68` |
-| `DELETE` | `/api/notifications/push-subscriptions` | JWT | Self | JSON or Query: `{"endpoint": string}` | `200 OK` `{"message": string}` | `400`, `401`, `404` | `notification_routes.py:L71-L85` |
-| `POST` | `/api/notifications/test-push` | JWT | Self | — | `200 OK` `{"message": string, "devicesNotified": number}` | `401` | `notification_routes.py:L88-L104` |
 
 ---
 

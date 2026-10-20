@@ -10,11 +10,10 @@ from app.models.note import Note
 from app.models.user_preference import UserPreference
 from app.models.message import Conversation, ConversationParticipant, Message
 from app.models.scratchpad_note import ScratchpadNote
-from app.models.push_subscription import PushSubscription
 
 __all__ = [
     'Board', 'Task', 'Activity', 'User', 'BoardMember', 'BoardInvitation',
     'Comment', 'Notification', 'Note', 'UserPreference',
     'Conversation', 'ConversationParticipant', 'Message',
-    'ScratchpadNote', 'PushSubscription'
+    'ScratchpadNote'
 ]

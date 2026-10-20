@@ -123,10 +123,6 @@ class Config:
     EMAILJS_TEMPLATE_ID = os.environ.get('EMAILJS_TEMPLATE_ID', '')
     EMAILJS_PUBLIC_KEY = os.environ.get('EMAILJS_PUBLIC_KEY', '')
     EMAILJS_PRIVATE_KEY = os.environ.get('EMAILJS_PRIVATE_KEY', '')
-    # Web Push / VAPID Configuration
-    VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
-    VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
-    VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'admin@stickymindgrid.com')
 
     # HTTP Rate Limiting
     RATELIMIT_ENABLED = os.environ.get('RATELIMIT_ENABLED', 'true').lower() in ('true', '1')

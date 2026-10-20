@@ -76,21 +76,5 @@ class NotificationService:
             link=link
         )
         db.session.add(notif)
-
-        # Dispatch push notification to user's registered mobile/desktop devices
-        try:
-            from app.services.push_notification_service import PushNotificationService
-            push_payload = {
-                "id": notif.id,
-                "title": title,
-                "message": message,
-                "link": link or "/",
-                "type": type,
-                "tag": f"smg-notif-{effective_board_id or notif.id}"
-            }
-            PushNotificationService.send_push_notification(user_id, push_payload, async_dispatch=True)
-        except Exception:
-            pass
-
         return notif
 
