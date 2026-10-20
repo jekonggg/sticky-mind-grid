@@ -12,7 +12,7 @@ import { ActivityProvider } from "./hooks/useActivity";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AppLayout } from "./components/layout/AppLayout";
-import { AppLayoutSkeleton } from "./components/skeletons";
+import { AuthPageSkeleton } from "./components/skeletons";
 import { DevSkeletonToolbar } from "./components/common/DevSkeletonToolbar";
 
 // Lazy-loaded route pages for on-demand bundle splitting
@@ -30,6 +30,12 @@ const TasksPage = lazy(() => import("./pages/TasksPage"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const TeamsPage = lazy(() => import("./pages/TeamsPage"));
 const MessagesPage = lazy(() => import("./pages/MessagesPage"));
+
+/** Keeps lazy public pages inside their own suspense boundary so they never
+ * fall back to the authenticated application shell. */
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<AuthPageSkeleton />}>{children}</Suspense>;
+}
 
 function KanbanBoardRoute() {
   const { boardId } = useParams<{ boardId: string }>();
@@ -64,31 +70,36 @@ const App = () => (
                 <ActivityProvider>
                 <Toaster />
                 <Sonner />
-                <Suspense fallback={<AppLayoutSkeleton />}>
-                  <Routes>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                    <Route path="/auth/callback" element={<OAuthCallback />} />
-                    <Route path="/auth/callback/:provider" element={<OAuthCallback />} />
-                    
-                    <Route element={<ProtectedRoute />}>
-                      <Route element={<AppLayout />}>
-                        <Route path="/" element={<BoardsOverview />} />
-                        <Route path="/boards" element={<BoardsOverview />} />
-                        <Route path="/dashboard" element={<DashboardPage />} />
-                        <Route path="/tasks" element={<TasksPage />} />
-                        <Route path="/calendar" element={<CalendarPage />} />
-                        <Route path="/teams" element={<TeamsPage />} />
-                        <Route path="/boards/:boardId" element={<KanbanBoardRoute />} />
-                        <Route path="/boards/:boardId/tasks/:taskId" element={<TaskDetailPageRoute />} />
-                        <Route path="/messages" element={<MessagesPage />} />
-                        <Route path="/messages/:conversationId" element={<MessagesPage />} />
-                      </Route>
-                    </Route>
+                <Routes>
+                  <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+                  <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+                  <Route path="/auth/callback" element={<PublicRoute><OAuthCallback /></PublicRoute>} />
+                  <Route path="/auth/callback/:provider" element={<PublicRoute><OAuthCallback /></PublicRoute>} />
 
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Suspense>
+                  <Route element={<ProtectedRoute />}>
+                    <Route element={<AppLayout />}>
+                      <Route path="/" element={<BoardsOverview />} />
+                      <Route path="/boards" element={<BoardsOverview />} />
+                      <Route path="/dashboard" element={<DashboardPage />} />
+                      <Route path="/tasks" element={<TasksPage />} />
+                      <Route path="/calendar" element={<CalendarPage />} />
+                      <Route path="/teams" element={<TeamsPage />} />
+                      <Route path="/boards/:boardId" element={<KanbanBoardRoute />} />
+                      <Route path="/boards/:boardId/tasks/:taskId" element={<TaskDetailPageRoute />} />
+                      <Route path="/messages" element={<MessagesPage />} />
+                      <Route path="/messages/:conversationId" element={<MessagesPage />} />
+                    </Route>
+                  </Route>
+
+                  <Route
+                    path="*"
+                    element={
+                      <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                        <NotFound />
+                      </Suspense>
+                    }
+                  />
+                </Routes>
                 <Analytics />
                 <DevSkeletonToolbar />
               </ActivityProvider>

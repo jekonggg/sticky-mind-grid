@@ -22,6 +22,7 @@ import {
   ChatAreaSkeleton,
   SidebarNavSkeleton,
   AppLayoutSkeleton,
+  AuthPageSkeleton,
 } from "@/components/skeletons";
 import { Table, TableBody } from "@/components/ui/table";
 
@@ -153,6 +154,11 @@ describe("Skeleton Loading System", () => {
     it("renders AppLayoutSkeleton with accessible role and label", () => {
       renderWithProviders(<AppLayoutSkeleton />);
       expect(screen.getByRole("status", { name: "Loading application" })).toBeInTheDocument();
+    });
+
+    it("renders AuthPageSkeleton with accessible role and label", () => {
+      renderWithProviders(<AuthPageSkeleton />);
+      expect(screen.getByRole("status", { name: "Loading auth page" })).toBeInTheDocument();
     });
   });
 });

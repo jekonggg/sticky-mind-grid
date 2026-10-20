@@ -34,3 +34,6 @@ export * from "./messages/ChatAreaSkeleton";
 // Layout & Shell
 export * from "./layout/SidebarNavSkeleton";
 export * from "./layout/AppLayoutSkeleton";
+
+// Auth
+export * from "./auth/AuthPageSkeleton";

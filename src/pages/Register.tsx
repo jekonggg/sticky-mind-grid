@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { authApi } from "@/services/authApi";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,11 @@ export default function Register() {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Warm the login chunk so "Sign in" navigates without a fallback flash.
+  useEffect(() => {
+    void import("./Login");
+  }, []);
 
   // Evaluate password complexity criteria in real-time
   const passwordRules: PasswordRule[] = useMemo(() => [

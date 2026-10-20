@@ -22,6 +22,22 @@ test.describe("Authentication", () => {
       await expect(page).toHaveURL("/register");
     });
 
+    test("never flashes the app shell skeleton while opening register", async ({ page }) => {
+      // Delay the lazily loaded register route so the Suspense fallback is observable.
+      await page.route("**/src/pages/Register.tsx*", async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await route.continue();
+      });
+
+      await page.goto("/login");
+      await page.getByRole("link", { name: "Create one" }).click();
+
+      await expect(page.getByRole("status", { name: "Loading auth page" })).toBeVisible();
+      await expect(page.getByRole("status", { name: "Loading application" })).not.toBeVisible();
+
+      await expect(page.getByRole("heading", { name: "Create an account" })).toBeVisible();
+    });
+
     test("rejects invalid credentials", async ({ page }) => {
       await page.goto("/login");
       await page.getByLabel("Email").fill("nonexistent@example.com");
