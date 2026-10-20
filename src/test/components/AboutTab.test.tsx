@@ -65,4 +65,19 @@ describe("AboutTab Component", () => {
     // Verify copyright notice
     expect(screen.getByText(SYSTEM_OWNER.copyright)).toBeInTheDocument();
   });
+
+  it("renders badges with responsive classes that prevent text overlap on mobile and tablet viewports", async () => {
+    renderWithProviders(<AboutTab />, { user: null });
+
+    const badge = screen.getByText(SYSTEM_OWNER.badge);
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveClass("whitespace-nowrap");
+    expect(badge).toHaveClass("shrink-0");
+
+    if (SYSTEM_OWNER.license) {
+      const licenseBadge = screen.getByText(SYSTEM_OWNER.license);
+      expect(licenseBadge).toBeInTheDocument();
+      expect(licenseBadge).toHaveClass("whitespace-nowrap");
+    }
+  });
 });

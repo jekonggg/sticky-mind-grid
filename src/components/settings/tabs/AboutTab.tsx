@@ -71,21 +71,21 @@ export function AboutTab() {
       </div>
 
       {/* App Branding Card */}
-      <div className="p-4 rounded-xl bg-muted/40 border border-border/50 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md shadow-primary/25">
+      <div className="p-4 rounded-xl bg-muted/40 border border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md shadow-primary/25 shrink-0">
             <div className="w-4 h-4 border-2 border-primary-foreground rounded-sm" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h4 className="text-sm font-black uppercase italic tracking-tight text-foreground">
               Sticky Mind <span className="text-primary not-italic">Grid</span>
             </h4>
-            <p className="text-[11px] text-muted-foreground font-medium">
+            <p className="text-[11px] text-muted-foreground font-medium truncate sm:whitespace-normal">
               Collaborative visual task management platform
             </p>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
+        <div className="flex flex-col sm:items-end items-start gap-1 shrink-0">
           <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-1.5 font-mono">
             <span>v{health?.version || APP_VERSION}</span>
             <span className="text-[11px] opacity-70 font-mono tracking-wide">({health?.commit || COMMIT_HASH})</span>
@@ -105,24 +105,29 @@ export function AboutTab() {
 
       {/* Creator & Ownership Attribution Card */}
       <div className="p-4 rounded-xl bg-card border border-border/60 shadow-sm space-y-3.5" data-testid="system-owner-card">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
             {SYSTEM_OWNER.avatarUrl ? (
               <img
                 src={SYSTEM_OWNER.avatarUrl}
                 alt={SYSTEM_OWNER.name}
-                className="w-11 h-11 rounded-full object-cover border border-primary/25 shadow-sm"
+                className="w-11 h-11 rounded-full object-cover border border-primary/25 shadow-sm shrink-0 mt-0.5"
               />
             ) : (
-              <div className="w-11 h-11 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center text-primary font-bold text-sm tracking-wider uppercase">
+              <div className="w-11 h-11 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center text-primary font-bold text-sm tracking-wider uppercase shrink-0 mt-0.5">
                 {SYSTEM_OWNER.initials || SYSTEM_OWNER.name.slice(0, 2).toUpperCase()}
               </div>
             )}
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-foreground">{SYSTEM_OWNER.name}</h4>
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h4 className="text-sm font-bold text-foreground leading-snug">
+                  {SYSTEM_OWNER.name}
+                </h4>
                 {SYSTEM_OWNER.badge && (
-                  <Badge variant="secondary" className="text-[10px] font-semibold bg-primary/10 text-primary border-primary/20">
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20 whitespace-nowrap shrink-0"
+                  >
                     {SYSTEM_OWNER.badge}
                   </Badge>
                 )}
@@ -132,10 +137,16 @@ export function AboutTab() {
               </p>
             </div>
           </div>
+
           {SYSTEM_OWNER.license && (
-            <Badge variant="outline" className="text-[10px] text-muted-foreground font-mono shrink-0">
-              {SYSTEM_OWNER.license}
-            </Badge>
+            <div className="flex items-center shrink-0 sm:pl-14 lg:pl-0">
+              <Badge
+                variant="outline"
+                className="text-[10px] text-muted-foreground font-mono whitespace-nowrap"
+              >
+                {SYSTEM_OWNER.license}
+              </Badge>
+            </div>
           )}
         </div>
 
