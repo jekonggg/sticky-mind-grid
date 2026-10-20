@@ -74,3 +74,72 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// 4. Web Push Notification Handlers
+self.addEventListener('push', (event) => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch {
+      data = { title: 'Sticky Mind Grid', message: event.data.text() };
+    }
+  }
+
+  const title = data.title || 'Sticky Mind Grid';
+  const options = {
+    body: data.message || 'You have a new update in your workspace.',
+    icon: '/icon-192.svg',
+    badge: '/icon-192.svg',
+    tag: data.tag || `smg-notif-${data.id || Date.now()}`,
+    renotify: true,
+    data: {
+      url: data.link || '/',
+      id: data.id,
+      timestamp: data.timestamp || Date.now()
+    },
+    vibrate: [100, 50, 100],
+    actions: [
+      { action: 'open', title: 'Open' },
+      { action: 'dismiss', title: 'Dismiss' }
+    ]
+  };
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Check if a client window for this app is currently focused
+      const isFocused = clientList.some((client) => client.focused);
+      if (isFocused) {
+        // App is already open and focused by the user in foreground; let in-app toasts handle it
+        return;
+      }
+      return self.registration.showNotification(title, options);
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  if (event.action === 'dismiss') {
+    return;
+  }
+
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          if ('navigate' in client && targetUrl !== '/') {
+            client.navigate(targetUrl);
+          }
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
+});

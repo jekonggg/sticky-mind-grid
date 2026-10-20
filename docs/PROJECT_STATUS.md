@@ -108,6 +108,7 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 - **Notification types** — mention, assignment, task_comment, invite, board_invite, invite_accepted, invite_declined, member_left, member_removed, system
 - **Mark read** — individual and mark-all-read
 - **6-second polling** — notification list auto-refreshes
+- **Mobile & Web Push Notifications** — Web Push API integration via Service Worker (`sw.js`) and VAPID protocol (`pywebpush`); delivers native lock-screen, background, and notification tray alerts to mobile phones (Android & iOS PWA) and desktop browsers with focus-detection deduplication and click-to-task routing
 
 ### Real-Time Collaboration
 - **SSE connection** — per-board EventSource with JWT auth
