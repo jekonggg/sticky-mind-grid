@@ -224,8 +224,8 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
 
       {/* Active Members detailed list */}
       <div className="space-y-2.5">
-        <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2 mb-3">
-          <ShieldAlert className="h-3.5 w-3.5 text-primary" /> Active Board Members ({acceptedMembers.length})
+        <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2 mb-3 whitespace-nowrap">
+          <ShieldAlert className="h-3.5 w-3.5 text-primary shrink-0" /> Active Board Members ({acceptedMembers.length})
         </h4>
 
         {acceptedMembers.map((member) => {
@@ -362,7 +362,7 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                     disabled={transferOwnershipMutation.isPending}
                   >
                     <Crown className="h-3 w-3 text-amber-500" />
-                    <span>Transfer Ownership</span>
+                    <span className="whitespace-nowrap">Transfer Ownership</span>
                   </Button>
                 )}
 
@@ -423,8 +423,8 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
       {/* Dedicated Invited Members / Pending Invitations Container */}
       {pendingMembers.length > 0 && (
         <div className="space-y-2.5 pt-4 border-t border-border/60" data-testid="board-invited-members-container">
-          <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2 mb-3">
-            <Mail className="h-3.5 w-3.5 text-amber-500" /> Invited Members ({pendingMembers.length})
+          <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2 mb-3 whitespace-nowrap">
+            <Mail className="h-3.5 w-3.5 text-amber-500 shrink-0" /> Invited Members ({pendingMembers.length})
           </h4>
 
           {pendingMembers.map((member) => {

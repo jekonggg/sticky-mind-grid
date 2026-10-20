@@ -246,15 +246,18 @@ export function CalendarView({
   return (
     <div className="p-4 md:p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-[1600px] mx-auto">
       {/* Header with Navigation and View Switcher */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-2 bg-primary/10 rounded-lg text-primary">
+      <div className="flex flex-col md:flex-row md:items-center justify-between bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 gap-4 min-w-0">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0">
             <CalendarIcon className="h-5 w-5" />
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
             {title && (
-              <div className="mb-0.5">
-                <h1 className="text-xl md:text-2xl font-black text-foreground tracking-tight leading-tight">
+              <div className="mb-0.5 min-w-0">
+                <h1
+                  className="text-xl md:text-2xl font-black text-foreground tracking-tight leading-tight truncate"
+                  title={title}
+                >
                   {title}
                 </h1>
                 {subtitle && (
@@ -262,8 +265,8 @@ export function CalendarView({
                 )}
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <div className="overflow-hidden">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="overflow-hidden min-w-0">
                 <AnimatePresence mode="popLayout" custom={slideDirection} initial={false}>
                   <motion.h2
                     key={getTitle()}
@@ -281,13 +284,13 @@ export function CalendarView({
                       duration: devSettings.forceReducedMotion ? 0 : 0.16,
                       ease: "easeOut",
                     }}
-                    className={`font-black text-foreground leading-tight ${title ? "text-sm text-primary font-bold" : "text-xl"}`}
+                    className={`font-black text-foreground leading-tight whitespace-nowrap ${title ? "text-sm text-primary font-bold" : "text-xl"}`}
                   >
                     {getTitle()}
                   </motion.h2>
                 </AnimatePresence>
               </div>
-              <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">
+              <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground whitespace-nowrap">
                 {title ? `• ${viewMode} View` : `${viewMode} View`}
               </span>
             </div>
@@ -332,7 +335,7 @@ export function CalendarView({
             <Button
               variant="outline"
               size="sm"
-              className="font-bold px-4"
+              className="font-bold px-4 whitespace-nowrap"
               onClick={handleToday}
             >
               Today
@@ -351,7 +354,7 @@ export function CalendarView({
           {onAddTask && (
             <Button
               onClick={() => onAddTask(selectedDay)}
-              className="gap-1.5 font-semibold text-xs h-9 shadow-xs"
+              className="gap-1.5 font-semibold text-xs h-9 shadow-xs whitespace-nowrap"
             >
               <Plus className="h-4 w-4" />
               Schedule Task

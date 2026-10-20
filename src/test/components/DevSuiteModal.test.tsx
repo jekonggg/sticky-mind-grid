@@ -105,4 +105,26 @@ describe("DevSuiteModal & Predefined Seed Takeover", () => {
       expect(screen.getByTestId("toolbar-seed-badge")).toHaveTextContent(/Seed:\s*Showcase/i);
     });
   });
+
+  it("allows switching kanban column color styles in DevSuiteModal", async () => {
+    renderWithProviders(<DevSkeletonToolbar />, { user: mockUser });
+
+    fireEvent.click(screen.getByRole("button", { name: /open developer suite/i }));
+
+    const geometryTab = await screen.findByRole("tab", { name: /geometry & radii/i });
+    fireEvent.mouseDown(geometryTab, { button: 0 });
+    fireEvent.click(geometryTab);
+
+    expect(await screen.findByText("Kanban Column Surface & Pod Theme")).toBeInTheDocument();
+    expect(screen.getByText("Frosted Glass (Translucent)")).toBeInTheDocument();
+    expect(screen.getByText("Warm Charcoal & Stone")).toBeInTheDocument();
+    expect(screen.getByText("Workflow Stage Ambient Tint")).toBeInTheDocument();
+    expect(screen.getByText("Classic Slate Blue (Legacy)")).toBeInTheDocument();
+
+    const glassButton = screen.getByRole("button", { name: /frosted glass \(translucent\)/i });
+    fireEvent.click(glassButton);
+
+    const stored = JSON.parse(localStorage.getItem(DEV_SETTINGS_STORAGE_KEY) || "{}");
+    expect(stored.columnColorStyle).toBe("glass");
+  });
 });

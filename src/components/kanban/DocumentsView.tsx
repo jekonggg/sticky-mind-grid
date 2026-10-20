@@ -189,15 +189,15 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
     <div className="p-6 md:p-8 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-screen">
       {/* Header Bar */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-primary/10 rounded-2xl text-primary border border-primary/20 shadow-sm">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2.5 bg-primary/10 rounded-2xl text-primary border border-primary/20 shadow-sm shrink-0">
             <HardDrive className="h-6 w-6" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-xl font-black text-foreground uppercase italic tracking-tight">
               Project <span className="text-primary not-italic">Hub</span>
             </h2>
-            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+            <p className="text-xs text-muted-foreground mt-0.5 font-medium line-clamp-1">
               Project documentation, shared notes, and task assets
             </p>
           </div>
@@ -218,9 +218,9 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
               onClick={handleOpenNewNote}
               variant="default"
               size="sm"
-              className="h-9 gap-1.5 font-black uppercase text-[11px] px-4 rounded-full shadow-sm"
+              className="h-9 gap-1.5 font-black uppercase text-[11px] px-4 rounded-full shadow-sm whitespace-nowrap shrink-0"
             >
-              <Plus className="h-3.5 w-3.5" /> New Note
+              <Plus className="h-3.5 w-3.5 shrink-0" /> New Note
             </Button>
           )}
         </div>
@@ -229,9 +229,9 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
       {/* Section 1: Project Notes */}
       <div className="space-y-4">
         <div className="flex items-center justify-between border-b border-border/40 pb-2">
-          <div className="flex items-center gap-2">
-            <StickyNote className="h-4 w-4 text-amber-500" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
+          <div className="flex items-center gap-2 min-w-0">
+            <StickyNote className="h-4 w-4 text-amber-500 shrink-0" />
+            <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-foreground whitespace-nowrap">
               Project Notes & Documentation ({filteredNotes.length})
             </h3>
           </div>

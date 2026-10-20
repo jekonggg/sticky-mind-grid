@@ -22,6 +22,7 @@ export const defaultDevSettings: DevSettings = {
   customPadding: null,
   customInnerRadius: null,
   customOuterRadius: null,
+  columnColorStyle: "theme",
 };
 
 export const prodSettings: DevSettings = {
@@ -38,6 +39,7 @@ export const prodSettings: DevSettings = {
   customPadding: 12,
   customInnerRadius: 8,
   customOuterRadius: 12,
+  columnColorStyle: "theme",
 };
 
 // Global synchronous getter for API services & non-React files
@@ -240,7 +242,8 @@ export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     (devSettings.disableEmojiCustomization ? 1 : 0) +
     (devSettings.customPadding !== null && devSettings.customPadding !== undefined ? 1 : 0) +
     (devSettings.customInnerRadius !== null && devSettings.customInnerRadius !== undefined ? 1 : 0) +
-    (devSettings.customOuterRadius !== null && devSettings.customOuterRadius !== undefined ? 1 : 0);
+    (devSettings.customOuterRadius !== null && devSettings.customOuterRadius !== undefined ? 1 : 0) +
+    (devSettings.columnColorStyle && devSettings.columnColorStyle !== "theme" ? 1 : 0);
 
   return (
     <DevModeContext.Provider

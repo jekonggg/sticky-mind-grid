@@ -257,7 +257,7 @@ export default function TeamsPage() {
               <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">
                 <Mail className="h-3.5 w-3.5" />
               </div>
-              <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
+              <h2 className="text-[11px] sm:text-sm font-bold uppercase tracking-wider text-foreground whitespace-nowrap">
                 Pending Board Invitations ({invitations.length})
               </h2>
             </div>
@@ -335,7 +335,7 @@ export default function TeamsPage() {
                 <div className="h-6 w-6 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600 text-xs font-bold">
                   <Send className="h-3.5 w-3.5" />
                 </div>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
+                <h2 className="text-[11px] sm:text-sm font-bold uppercase tracking-wider text-foreground whitespace-nowrap">
                   Pending Teammate Invitations ({sentInvitations.length})
                 </h2>
               </div>
@@ -462,8 +462,8 @@ export default function TeamsPage() {
         {/* 2. Workspace Boards & Role Overview */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-              <LayoutGrid className="h-4 w-4 text-primary" />
+            <h2 className="text-base font-bold text-foreground flex items-center gap-2 whitespace-nowrap">
+              <LayoutGrid className="h-4 w-4 text-primary shrink-0" />
               Workspace Boards ({boards.length})
             </h2>
           </div>
@@ -482,10 +482,10 @@ export default function TeamsPage() {
                     </div>
                   )}
                   <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                    <span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate" title={b.name}>
                       {b.name}
                     </span>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-[11px] text-muted-foreground whitespace-nowrap truncate">
                       {b.taskCount || 0} tasks • Role: {b.role || "member"}
                     </span>
                   </div>
@@ -499,9 +499,9 @@ export default function TeamsPage() {
                       e.stopPropagation();
                       handleOpenInvite(b.id);
                     }}
-                    className="h-7 px-2 text-xs font-semibold text-primary hover:bg-primary/10"
+                    className="h-7 px-2 text-xs font-semibold text-primary hover:bg-primary/10 whitespace-nowrap shrink-0"
                   >
-                    <Plus className="h-3 w-3 mr-1" /> Invite
+                    <Plus className="h-3 w-3 mr-1 shrink-0" /> Invite
                   </Button>
                 )}
               </div>
@@ -512,8 +512,8 @@ export default function TeamsPage() {
         {/* 3. Collaborators & Teammates Directory */}
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
+            <h2 className="text-base font-bold text-foreground flex items-center gap-2 whitespace-nowrap">
+              <Users className="h-4 w-4 text-primary shrink-0" />
               Collaborator Directory ({teammates.length})
             </h2>
 

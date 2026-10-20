@@ -8,7 +8,7 @@ import {
 
 test.describe("Board Members", () => {
   test.beforeEach(async ({ page }) => {
-    await registerUser(page, uniqueEmail("member-owner"), "testpassword123", "Owner User");
+    await registerUser(page, uniqueEmail("member-owner"), "Testpassword123!", "Owner User");
     await createBoard(page, "Members Test Board");
     await navigateToBoard(page, "Members Test Board");
   });

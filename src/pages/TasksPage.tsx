@@ -52,6 +52,8 @@ import {
 import { TaskModal } from "@/components/kanban/TaskModal";
 import { TaskDetailWorkspace } from "@/components/task/TaskDetailWorkspace";
 import { PillNavBar } from "@/components/common/PillNavBar";
+import { BoardViewRail } from "@/components/kanban/BoardViewRail";
+import { BOARD_VIEWS, type BoardViewId } from "@/config/boardViews";
 import { toast } from "sonner";
 import { TableRowSkeleton, TaskCardSkeleton } from "@/components/skeletons";
 import { BoardMember } from "@/types/board";
@@ -114,10 +116,22 @@ export default function TasksPage() {
     return boards.find((b) => b.id === selectedBoardId) || null;
   }, [boards, selectedBoardId]);
 
+  const handleBoardViewChange = (viewId: BoardViewId) => {
+    if (!currentScopedBoard) return;
+    if (viewId === "board") {
+      navigate(`/boards/${currentScopedBoard.id}`);
+      return;
+    }
+    navigate(`/boards/${currentScopedBoard.id}?view=${viewId}`);
+  };
+
   // Fetch all user tasks
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ["globalTasks"],
     queryFn: () => taskApi.getTasks(),
+    // The board-scoped list must reflect tasks created/edited in the board shell.
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const selectedTask = useMemo(
@@ -270,6 +284,12 @@ export default function TasksPage() {
   };
 
   const activeTargetBoard = boards.find((b) => b.id === targetBoardForNewTask) || boards[0];
+  const pageTitle = currentScopedBoard
+    ? `${currentScopedBoard.name} Tasks`
+    : "All Workspace Tasks";
+  const pageDescription = currentScopedBoard
+    ? `Manage and track all tasks for ${currentScopedBoard.name}`
+    : "Manage and track all tasks across your collaborative boards";
 
   return (
     <div className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background">
@@ -278,46 +298,47 @@ export default function TasksPage() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20 space-y-6">
         {/* Header Title & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0">
             {currentScopedBoard && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate(`/boards/${currentScopedBoard.id}`)}
-                className="gap-1.5 text-xs text-muted-foreground hover:text-foreground h-7 px-2 -ml-2 mb-1 cursor-pointer inline-flex items-center"
+                className="gap-1.5 text-xs text-muted-foreground hover:text-foreground h-7 px-2 -ml-2 mb-1 cursor-pointer inline-flex items-center max-w-full min-w-0"
                 title={`Back to ${currentScopedBoard.name} Board`}
                 data-testid="back-to-board-btn"
               >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                <span>Back to {currentScopedBoard.name} Board</span>
+                <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Back to {currentScopedBoard.name} Board</span>
               </Button>
             )}
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shrink-0">
                 <CheckSquare className="h-4 w-4" />
               </div>
-              <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">
-                {currentScopedBoard ? `${currentScopedBoard.name} Tasks` : "All Workspace Tasks"}
+              <h1
+                className="text-2xl lg:text-3xl font-black text-foreground tracking-tight truncate"
+                title={pageTitle}
+              >
+                {pageTitle}
               </h1>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {currentScopedBoard
-                ? `Manage and track all tasks for ${currentScopedBoard.name}`
-                : "Manage and track all tasks across your collaborative boards"}
+            <p className="text-xs text-muted-foreground line-clamp-1" title={pageDescription}>
+              {pageDescription}
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 sm:justify-end">
             <Button
               variant="outline"
               size="sm"
               onClick={handleExportTasks}
-              className="gap-1.5 font-semibold text-xs h-9 cursor-pointer border-border/80 hover:bg-muted"
+              className="gap-1.5 font-semibold text-xs h-9 cursor-pointer border-border/80 hover:bg-muted whitespace-nowrap"
               title={settings.exportFormat === "xlsx" ? "Export tasks to Excel (.xlsx)" : "Export tasks to CSV (.csv)"}
               data-testid="tasks-page-export-btn"
             >
-              <Download className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="hidden sm:inline">
+              <Download className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <span className="hidden lg:inline">
                 {settings.exportFormat === "xlsx" ? "Export to Excel" : "Export to CSV"}
               </span>
             </Button>
@@ -334,12 +355,28 @@ export default function TasksPage() {
               layoutId="tasksViewActivePill"
             />
 
-            <Button onClick={handleOpenNewTask} className="gap-1.5 font-semibold text-xs h-9">
-              <Plus className="h-4 w-4" />
-              <span>Create Task</span>
+            <Button
+              onClick={handleOpenNewTask}
+              className="gap-1.5 font-semibold text-xs h-9 whitespace-nowrap sm:w-9 sm:px-0 lg:w-auto lg:px-4"
+              title="Create Task"
+              aria-label="Create Task"
+              data-testid="tasks-page-create-btn"
+            >
+              <Plus className="h-4 w-4 shrink-0" />
+              <span className="sm:hidden lg:inline">Create Task</span>
             </Button>
           </div>
         </div>
+
+        {currentScopedBoard && (
+          <div className="md:hidden">
+            <BoardViewRail
+              items={BOARD_VIEWS}
+              activeId="list"
+              onChange={handleBoardViewChange}
+            />
+          </div>
+        )}
 
         {/* Tab Filters */}
         <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
@@ -897,6 +934,22 @@ export default function TasksPage() {
           </div>
         )}
       </main>
+
+      {currentScopedBoard && (
+        <div
+          data-testid="board-desktop-dock"
+          className="hidden md:flex fixed bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto max-w-[calc(100vw-2rem)]"
+        >
+          <PillNavBar
+            items={BOARD_VIEWS}
+            activeId="list"
+            onChange={handleBoardViewChange}
+            accentColor="primary"
+            layoutId="scopedTasksBoardDock"
+            ariaLabel="Board view switcher"
+          />
+        </div>
+      )}
 
       {/* Screen-Wide Backdrop Dimming Overlay when Task Drawer is Open */}
       {selectedTask && activeTaskBoard && (

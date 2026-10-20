@@ -208,15 +208,15 @@ export default function DashboardPage() {
           <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 space-y-5">
         {/* 1. COMPACT COMMAND BAR HEADER */}
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 pb-4 border-b border-border/50">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
+          <div className="space-y-1.5 min-w-0 flex-1">
+            <div className="flex items-center gap-2 min-w-0">
               <Badge
                 variant="outline"
-                className="bg-muted/50 text-foreground border-border/60 font-semibold px-2.5 py-0.5 text-[11px]"
+                className="bg-muted/50 text-foreground border-border/60 font-semibold px-2.5 py-0.5 text-[11px] whitespace-nowrap shrink-0"
               >
                 Workspace Dashboard
               </Badge>
-              <span className="text-xs text-muted-foreground font-mono">
+              <span className="text-xs text-muted-foreground font-mono whitespace-nowrap truncate">
                 {new Date().toLocaleDateString(undefined, {
                   weekday: "long",
                   month: "short",
@@ -225,18 +225,21 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">
+            <h1
+              className="text-2xl md:text-3xl font-black text-foreground tracking-tight truncate"
+              title={`Welcome back, ${user?.fullName || user?.email?.split("@")[0] || "Explorer"}!`}
+            >
               Welcome back, {user?.fullName || user?.email?.split("@")[0] || "Explorer"}! 👋
             </h1>
 
             {/* Scannable Inline Pulse Summary + Pills */}
             <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs text-muted-foreground">
-              <span>Here is your daily workspace pulse:</span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/50 border border-border/60 text-foreground font-medium">
+              <span className="whitespace-nowrap">Here is your daily workspace pulse:</span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/50 border border-border/60 text-foreground font-medium whitespace-nowrap">
                 <strong className="font-bold tabular-nums">{myTasks.length}</strong> assigned
               </span>
               <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border font-medium ${
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border font-medium whitespace-nowrap ${
                   overdueTasks.length > 0
                     ? "bg-destructive/10 border-destructive/25 text-destructive"
                     : "bg-muted/50 border-border/60 text-muted-foreground"
@@ -244,7 +247,7 @@ export default function DashboardPage() {
               >
                 <strong className="font-bold tabular-nums">{overdueTasks.length}</strong> overdue
               </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 border border-primary/25 text-primary font-medium">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 border border-primary/25 text-primary font-medium whitespace-nowrap">
                 <strong className="font-bold tabular-nums">{overallCompletionRate}%</strong> completion rate
               </span>
             </div>
@@ -260,7 +263,7 @@ export default function DashboardPage() {
                   setIsBoardModalOpen(true);
                 }
               }}
-              className="gap-1.5 font-semibold text-xs h-9 shadow-xs"
+              className="gap-1.5 font-semibold text-xs h-9 shadow-xs whitespace-nowrap"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>New Task</span>
@@ -268,7 +271,7 @@ export default function DashboardPage() {
             <Button
               variant="outline"
               onClick={() => setIsBoardModalOpen(true)}
-              className="gap-1.5 font-semibold text-xs h-9 bg-card border-border/60 hover:bg-muted/60"
+              className="gap-1.5 font-semibold text-xs h-9 bg-card border-border/60 hover:bg-muted/60 whitespace-nowrap"
             >
               <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
               <span>New Board</span>
@@ -276,7 +279,7 @@ export default function DashboardPage() {
             <Button
               variant="secondary"
               onClick={() => setIsScratchpadOpen(true)}
-              className="gap-1.5 font-semibold text-xs h-9"
+              className="gap-1.5 font-semibold text-xs h-9 whitespace-nowrap"
             >
               <FolderLock className="h-3.5 w-3.5 text-muted-foreground" />
               <span>Scratchpad</span>
@@ -294,16 +297,16 @@ export default function DashboardPage() {
               className="relative overflow-hidden sm:col-span-7 p-4 sm:p-5 rounded-2xl bg-card border border-border/60 hover:border-primary/40 shadow-xs transition-all cursor-pointer flex flex-col justify-between gap-3 group"
             >
               <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-primary/[0.07] to-transparent pointer-events-none" />
-              <div className="relative z-10 flex items-start justify-between gap-3">
-                <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              <div className="relative z-10 flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                     Active Tasks
                   </span>
                   <div className="text-3xl sm:text-4xl font-black text-foreground tabular-nums leading-none mt-1.5">
                     {activeTasksCount}
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground bg-muted/40 border border-border/50 px-2 py-1 rounded-lg">
+                <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium text-muted-foreground bg-muted/40 border border-border/50 px-2 py-1 rounded-lg">
                   <span className="text-foreground font-bold tabular-nums">{inProgressTasks.length}</span> in progress
                   <span className="opacity-40">·</span>
                   <span className="text-foreground font-bold tabular-nums">{todoTasks.length}</span> to do
@@ -327,7 +330,7 @@ export default function DashboardPage() {
               <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-emerald-500/[0.07] to-transparent pointer-events-none" />
               <div className="relative z-10">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                     Completed
                   </span>
                   <span className="h-2 w-2 rounded-full bg-emerald-500/80" />
@@ -336,9 +339,9 @@ export default function DashboardPage() {
                   {completedTasks.length}
                 </div>
               </div>
-              <div className="relative z-10 pt-2.5 border-t border-border/40 flex items-center justify-between text-xs">
-                <span className="text-muted-foreground font-medium">Tasks closed</span>
-                <span className="text-[11px] font-mono text-emerald-500 font-semibold">
+              <div className="relative z-10 pt-2.5 border-t border-border/40 flex items-center justify-between gap-2 text-xs">
+                <span className="text-muted-foreground font-medium whitespace-nowrap">Tasks closed</span>
+                <span className="text-[11px] font-mono text-emerald-500 font-semibold whitespace-nowrap">
                   {totalTasks > 0 ? `${completedTasks.length}/${totalTasks}` : "0/0"}
                 </span>
               </div>
@@ -354,7 +357,7 @@ export default function DashboardPage() {
             >
               <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-blue-500/[0.07] to-transparent pointer-events-none" />
               <div className="relative z-10">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                   Total Boards
                 </span>
                 <div className="text-3xl sm:text-4xl font-black text-foreground tabular-nums leading-none mt-1.5">
@@ -362,7 +365,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="relative z-10 pt-2.5 border-t border-border/40 flex items-center justify-between">
-                <p className="text-xs text-primary font-semibold hover:underline">
+                <p className="text-xs text-primary font-semibold hover:underline whitespace-nowrap">
                   View all boards →
                 </p>
               </div>
@@ -376,7 +379,7 @@ export default function DashboardPage() {
               <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-destructive/[0.08] to-transparent pointer-events-none" />
               <div className="relative z-10">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                     Overdue
                   </span>
                   {overdueTasks.length > 0 && (
@@ -388,7 +391,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="relative z-10 pt-2.5 border-t border-border/40 flex items-center justify-between text-xs">
-                <span className="text-muted-foreground font-medium">
+                <span className="text-muted-foreground font-medium whitespace-nowrap">
                   {highPriorityTasks.length} high priority
                 </span>
               </div>
@@ -401,8 +404,8 @@ export default function DashboardPage() {
           {/* LEFT PRIMARY PANEL (7 Cols): My Priority Tasks */}
           <div className="lg:col-span-7 p-5 rounded-2xl bg-card border border-border/60 shadow-xs flex flex-col">
             <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border/50 mb-3.5">
-              <div className="flex items-center gap-2.5">
-                <h2 className="text-sm font-bold text-foreground">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <h2 className="text-sm font-bold text-foreground whitespace-nowrap">
                   My Priority Tasks ({myTasks.length})
                 </h2>
 
@@ -420,7 +423,7 @@ export default function DashboardPage() {
                       key={tab.id}
                       type="button"
                       onClick={() => setTaskFilter(tab.id)}
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors ${
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-semibold whitespace-nowrap transition-colors ${
                         taskFilter === tab.id
                           ? "bg-card text-foreground shadow-2xs border border-border/50"
                           : "text-muted-foreground hover:text-foreground"
@@ -436,7 +439,7 @@ export default function DashboardPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate("/tasks")}
-                className="h-7 text-xs font-semibold text-primary px-2"
+                className="h-7 text-xs font-semibold text-primary px-2 whitespace-nowrap"
               >
                 View all →
               </Button>
@@ -506,7 +509,7 @@ export default function DashboardPage() {
                               {task.title}
                             </span>
                             <span
-                              className={`text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.2 rounded border shrink-0 ${pBadge.className}`}
+                              className={`text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.2 rounded border shrink-0 whitespace-nowrap ${pBadge.className}`}
                             >
                               {pBadge.label}
                             </span>
@@ -516,7 +519,8 @@ export default function DashboardPage() {
                             {task.boardName && (
                               <Badge
                                 variant="outline"
-                                className="text-[10px] px-1.5 py-0 font-medium bg-muted/50 text-muted-foreground border-border/50"
+                                className="text-[10px] px-1.5 py-0 font-medium bg-muted/50 text-muted-foreground border-border/50 max-w-[140px] truncate whitespace-nowrap"
+                                title={task.boardName}
                               >
                                 {task.boardName}
                               </Badge>
@@ -524,7 +528,7 @@ export default function DashboardPage() {
 
                             {task.dueDate && (
                               <span
-                                className={`text-[10px] font-medium flex items-center gap-1 ${
+                                className={`text-[10px] font-medium flex items-center gap-1 whitespace-nowrap ${
                                   isOverdue ? "text-destructive font-semibold" : "text-muted-foreground"
                                 }`}
                               >
@@ -565,9 +569,9 @@ export default function DashboardPage() {
             {/* Top Panel: Upcoming Deadlines */}
             <div className="p-5 rounded-2xl bg-card border border-border/60 shadow-xs flex flex-col">
               <div className="flex items-center justify-between pb-3 border-b border-border/50 mb-3">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-foreground">Upcoming Deadlines</h3>
-                  <span className="text-[11px] font-mono text-muted-foreground">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h3 className="text-sm font-bold text-foreground whitespace-nowrap">Upcoming Deadlines</h3>
+                  <span className="text-[11px] font-mono text-muted-foreground whitespace-nowrap">
                     ({upcomingDeadlines.length})
                   </span>
                 </div>
@@ -575,7 +579,7 @@ export default function DashboardPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate("/calendar")}
-                  className="h-7 text-xs font-semibold text-primary px-2"
+                  className="h-7 text-xs font-semibold text-primary px-2 whitespace-nowrap shrink-0"
                 >
                   Calendar →
                 </Button>
@@ -607,7 +611,7 @@ export default function DashboardPage() {
                           </span>
                         </div>
                         <span
-                          className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-md border shrink-0 ${
+                          className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-md border shrink-0 whitespace-nowrap ${
                             isOverdue
                               ? "bg-destructive/10 text-destructive border-destructive/20"
                               : "bg-primary/10 text-primary border-primary/20"
@@ -628,8 +632,8 @@ export default function DashboardPage() {
             {/* Bottom Panel: Workspace Audit Stream */}
             <div className="p-5 rounded-2xl bg-card border border-border/60 shadow-xs flex flex-col flex-1">
               <div className="flex items-center justify-between pb-3 border-b border-border/50 mb-3.5">
-                <h3 className="text-sm font-bold text-foreground">Workspace Audit Stream</h3>
-                <span className="inline-flex items-center gap-1.5 text-[10px] text-emerald-500 font-mono font-semibold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                <h3 className="text-sm font-bold text-foreground whitespace-nowrap">Workspace Audit Stream</h3>
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[10px] text-emerald-500 font-mono font-semibold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Live
                 </span>

@@ -13,6 +13,7 @@ interface KanbanColumnProps {
   id: TaskStatus;
   title: string;
   emoji?: string;
+  color?: string;
   wipLimit?: number | null;
   tasks: Task[];
   canRename?: boolean;
@@ -30,27 +31,31 @@ interface KanbanColumnProps {
 }
 
 // Map column status to indicator color
-function getStatusIndicatorColor(status: string): string {
+function getStatusIndicator(status: string, customColor?: string): { className: string; style?: React.CSSProperties } {
+  if (customColor) {
+    return { className: "", style: { backgroundColor: customColor } };
+  }
   const normalized = status.toLowerCase();
   if (normalized.includes("backlog") || normalized.includes("todo") || normalized.includes("not assigned") || normalized === "todo") {
-    return "bg-rose-500";
+    return { className: "bg-rose-500" };
   }
   if (normalized.includes("progress") || normalized.includes("doing") || normalized.includes("assigned") || normalized === "in_progress") {
-    return "bg-teal-500";
+    return { className: "bg-teal-500" };
   }
   if (normalized.includes("review") || normalized.includes("awaiting") || normalized.includes("test") || normalized === "in_review") {
-    return "bg-amber-500";
+    return { className: "bg-amber-500" };
   }
   if (normalized.includes("done") || normalized.includes("complete") || normalized.includes("closed") || normalized === "completed") {
-    return "bg-emerald-500";
+    return { className: "bg-emerald-500" };
   }
-  return "bg-primary";
+  return { className: "bg-primary" };
 }
 
 export function KanbanColumn({
   id,
   title,
   emoji,
+  color,
   wipLimit,
   tasks,
   canRename = true,
@@ -99,7 +104,67 @@ export function KanbanColumn({
     }
   };
 
-  const statusColor = getStatusIndicatorColor(id || title);
+  const statusIndicator = getStatusIndicator(id || title, color);
+  const colStyle = devSettings.columnColorStyle || "theme";
+
+  const getColumnStyleClasses = () => {
+    switch (colStyle) {
+      case "glass":
+        return {
+          container: "bg-card/60 dark:bg-card/30 backdrop-blur-md border-border/60 dark:border-border/40 shadow-2xs",
+          badge: "bg-background/80 dark:bg-card/60 text-foreground/80 border border-border/40",
+        };
+      case "charcoal":
+        return {
+          container: "bg-stone-100/90 dark:bg-zinc-950/70 border-stone-300/70 dark:border-zinc-800/80 shadow-2xs",
+          badge: "bg-stone-200/90 dark:bg-zinc-800/80 text-stone-700 dark:text-zinc-300 border border-stone-300/40 dark:border-zinc-700/40",
+        };
+      case "accent_tint": {
+        const norm = (id || title).toLowerCase();
+        if (norm.includes("backlog") || norm.includes("todo")) {
+          return {
+            container: "bg-rose-500/[0.05] dark:bg-rose-950/20 border-rose-500/25 shadow-2xs",
+            badge: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/25",
+          };
+        }
+        if (norm.includes("progress") || norm.includes("doing") || norm.includes("assigned")) {
+          return {
+            container: "bg-amber-500/[0.05] dark:bg-amber-950/20 border-amber-500/25 shadow-2xs",
+            badge: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25",
+          };
+        }
+        if (norm.includes("review") || norm.includes("qa") || norm.includes("test")) {
+          return {
+            container: "bg-purple-500/[0.05] dark:bg-purple-950/20 border-purple-500/25 shadow-2xs",
+            badge: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/25",
+          };
+        }
+        if (norm.includes("done") || norm.includes("complete") || norm.includes("closed")) {
+          return {
+            container: "bg-emerald-500/[0.05] dark:bg-emerald-950/20 border-emerald-500/25 shadow-2xs",
+            badge: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25",
+          };
+        }
+        return {
+          container: "bg-primary/[0.05] dark:bg-primary/15 border-primary/25 shadow-2xs",
+          badge: "bg-primary/15 text-primary border border-primary/25",
+        };
+      }
+      case "slate":
+        return {
+          container: "bg-slate-100/75 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800/80 shadow-xs",
+          badge: "bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300",
+        };
+      case "theme":
+      default:
+        return {
+          container: "bg-muted/40 dark:bg-muted/20 border-border/60 dark:border-border/40 shadow-2xs",
+          badge: "bg-muted dark:bg-muted/60 text-muted-foreground border border-border/40",
+        };
+    }
+  };
+
+  const styleClasses = getColumnStyleClasses();
   const hasWipLimit = typeof wipLimit === "number" && wipLimit >= 1;
   const isOverWipLimit = hasWipLimit && tasks.length > wipLimit;
   const isAtWipLimit = hasWipLimit && tasks.length === wipLimit;
@@ -127,7 +192,7 @@ export function KanbanColumn({
           ? "bg-rose-500/5 dark:bg-rose-950/20 border-rose-500/40 shadow-xs"
           : isAtWipLimit
           ? "bg-amber-500/5 dark:bg-amber-950/20 border-amber-500/40 shadow-xs"
-          : "bg-slate-100/75 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800/80 shadow-xs"
+          : styleClasses.container
       }`}
     >
       {/* Pod Column Header */}
@@ -139,7 +204,8 @@ export function KanbanColumn({
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {/* Status Circle Indicator */}
           <span
-            className={`h-3 w-3 rounded-full shrink-0 ${statusColor} shadow-2xs`}
+            className={`h-3 w-3 rounded-full shrink-0 ${statusIndicator.className} shadow-2xs`}
+            style={statusIndicator.style}
             aria-hidden="true"
           />
 
@@ -187,7 +253,7 @@ export function KanbanColumn({
                 ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30"
                 : isAtWipLimit
                 ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
-                : "bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                : styleClasses.badge
             }`}
           >
             {hasWipLimit ? `${tasks.length}/${wipLimit}` : tasks.length}

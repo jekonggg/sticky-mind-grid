@@ -9,7 +9,7 @@ import {
 
 test.describe("Kanban Board", () => {
   test.beforeEach(async ({ page }) => {
-    await registerUser(page, uniqueEmail("kanban"), "testpassword123", "Kanban User");
+    await registerUser(page, uniqueEmail("kanban"), "Testpassword123!", "Kanban User");
     await createBoard(page, "Kanban Board", "Board for kanban tests");
     await navigateToBoard(page, "Kanban Board");
   });

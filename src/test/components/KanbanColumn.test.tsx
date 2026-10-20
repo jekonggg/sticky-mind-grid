@@ -86,4 +86,57 @@ describe("KanbanColumn Component — Soft WIP Limits", () => {
     );
     expect(screen.getByText("Task 3")).toBeInTheDocument();
   });
+
+  it("applies theme-adaptive neutral column surface style by default", () => {
+    localStorage.removeItem("sticky_mind_grid_dev_settings");
+    renderWithProviders(
+      <DndContext>
+        <KanbanColumn
+          id="todo"
+          title="To Do"
+          tasks={[]}
+          onTaskClick={vi.fn()}
+        />
+      </DndContext>
+    );
+
+    const column = screen.getByTestId("kanban-column-todo");
+    expect(column.className).toContain("bg-muted/40");
+    expect(column.className).not.toContain("bg-slate-100/75");
+  });
+
+  it("applies glass column style when configured in devSettings", () => {
+    localStorage.setItem("sticky_mind_grid_dev_settings", JSON.stringify({ columnColorStyle: "glass" }));
+    renderWithProviders(
+      <DndContext>
+        <KanbanColumn
+          id="todo"
+          title="To Do"
+          tasks={[]}
+          onTaskClick={vi.fn()}
+        />
+      </DndContext>
+    );
+
+    const column = screen.getByTestId("kanban-column-todo");
+    expect(column.className).toContain("backdrop-blur-md");
+    localStorage.removeItem("sticky_mind_grid_dev_settings");
+  });
+
+  it("respects custom column color on status indicator circle", () => {
+    const { container } = renderWithProviders(
+      <DndContext>
+        <KanbanColumn
+          id="custom_col"
+          title="Custom Col"
+          color="#8b5cf6"
+          tasks={[]}
+          onTaskClick={vi.fn()}
+        />
+      </DndContext>
+    );
+
+    const indicator = container.querySelector('span[aria-hidden="true"]');
+    expect(indicator).toHaveStyle({ backgroundColor: "rgb(139, 92, 246)" });
+  });
 });

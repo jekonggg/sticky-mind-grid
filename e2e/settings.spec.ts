@@ -6,7 +6,7 @@ test.describe("Settings Modal", () => {
 
   test.beforeEach(async ({ page }) => {
     currentEmail = uniqueEmail("settings");
-    await registerUser(page, currentEmail, "testpassword123", "Settings User");
+    await registerUser(page, currentEmail, "Testpassword123!", "Settings User");
     await page.getByRole("button", { name: /user menu/i }).click();
     await page.getByRole("menuitem", { name: /all settings/i }).click();
     await expect(page.getByRole("dialog")).toBeVisible();

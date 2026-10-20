@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor, fireEvent } from "@testing-library/react";
+import { screen, waitFor, fireEvent, within } from "@testing-library/react";
 import TasksPage from "@/pages/TasksPage";
 import { renderWithProviders, mockUser } from "@/test/test-utils";
 import { boardApi } from "@/services/boardApi";
@@ -168,6 +168,23 @@ describe("TasksPage", () => {
       expect(screen.getByText("Engineering Sprint Tasks")).toBeInTheDocument();
       expect(screen.getByTestId("back-to-board-btn")).toBeInTheDocument();
       expect(screen.getByText("Back to Engineering Sprint Board")).toBeInTheDocument();
+    });
+
+    const rail = screen.getByTestId("board-view-rail");
+    expect(within(rail).getByRole("button", { name: "List" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+
+    const dock = screen.getByTestId("board-desktop-dock");
+    expect(within(dock).getByRole("tab", { name: "List" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+
+    fireEvent.click(within(dock).getByRole("tab", { name: "Board" }));
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/boards/board-1");
     });
 
     // Reset URL

@@ -318,12 +318,13 @@ describe("Developer Mode Suite", () => {
   });
 
   describe("Production Defaults & Configuration", () => {
-    it("configures the production specification: sora font, disabled emojis, 12 outer radius, 8 inner radius, 12 padding", () => {
+    it("configures the production specification: sora font, disabled emojis, 12 outer radius, 8 inner radius, 12 padding, theme adaptive columns", () => {
       expect(prodSettings.fontFamily).toBe("sora");
       expect(prodSettings.disableEmojiCustomization).toBe(true);
       expect(prodSettings.customOuterRadius).toBe(12);
       expect(prodSettings.customInnerRadius).toBe(8);
       expect(prodSettings.customPadding).toBe(12);
+      expect(prodSettings.columnColorStyle).toBe("theme");
     });
 
     it("allows applying the production preset via dev settings", () => {
@@ -335,6 +336,7 @@ describe("Developer Mode Suite", () => {
         result.current.updateDevSetting("customOuterRadius", 12);
         result.current.updateDevSetting("customInnerRadius", 8);
         result.current.updateDevSetting("customPadding", 12);
+        result.current.updateDevSetting("columnColorStyle", "theme");
       });
 
       expect(result.current.devSettings.fontFamily).toBe("sora");
@@ -342,6 +344,7 @@ describe("Developer Mode Suite", () => {
       expect(result.current.devSettings.customOuterRadius).toBe(12);
       expect(result.current.devSettings.customInnerRadius).toBe(8);
       expect(result.current.devSettings.customPadding).toBe(12);
+      expect(result.current.devSettings.columnColorStyle).toBe("theme");
     });
   });
 });

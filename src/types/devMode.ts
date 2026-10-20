@@ -20,6 +20,8 @@ export interface SseLogEntry {
   payload: any;
 }
 
+export type { DevColumnColorStyle } from "@/constants/columnColors";
+
 export interface DevSettings {
   simulateSkeletonLoading: boolean;
   networkLatencyMs: number;
@@ -34,4 +36,5 @@ export interface DevSettings {
   customPadding?: number | null;
   customInnerRadius?: number | null;
   customOuterRadius?: number | null;
+  columnColorStyle?: import("@/constants/columnColors").DevColumnColorStyle;
 }

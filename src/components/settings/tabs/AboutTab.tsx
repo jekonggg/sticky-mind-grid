@@ -19,7 +19,18 @@ import {
   Code01 as Code2,
   Stars01 as Sparkles,
   Sliders01 as Sliders,
+  Globe01 as Globe,
+  Mail01 as Mail,
 } from "@untitledui/icons";
+import { SYSTEM_OWNER } from "@/config/about";
+
+function FacebookIcon({ className = "h-3 w-3" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+    </svg>
+  );
+}
 
 export function AboutTab() {
   const { settings, updateLocalSetting } = useSettings();
@@ -89,6 +100,113 @@ export function AboutTab() {
                 : `API v${health.version} (sync pending)`
               : "System ready"}
           </span>
+        </div>
+      </div>
+
+      {/* Creator & Ownership Attribution Card */}
+      <div className="p-4 rounded-xl bg-card border border-border/60 shadow-sm space-y-3.5" data-testid="system-owner-card">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {SYSTEM_OWNER.avatarUrl ? (
+              <img
+                src={SYSTEM_OWNER.avatarUrl}
+                alt={SYSTEM_OWNER.name}
+                className="w-11 h-11 rounded-full object-cover border border-primary/25 shadow-sm"
+              />
+            ) : (
+              <div className="w-11 h-11 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center text-primary font-bold text-sm tracking-wider uppercase">
+                {SYSTEM_OWNER.initials || SYSTEM_OWNER.name.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-foreground">{SYSTEM_OWNER.name}</h4>
+                {SYSTEM_OWNER.badge && (
+                  <Badge variant="secondary" className="text-[10px] font-semibold bg-primary/10 text-primary border-primary/20">
+                    {SYSTEM_OWNER.badge}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground font-medium">
+                {SYSTEM_OWNER.role}
+              </p>
+            </div>
+          </div>
+          {SYSTEM_OWNER.license && (
+            <Badge variant="outline" className="text-[10px] text-muted-foreground font-mono shrink-0">
+              {SYSTEM_OWNER.license}
+            </Badge>
+          )}
+        </div>
+
+        {SYSTEM_OWNER.bio && (
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            {SYSTEM_OWNER.bio}
+          </p>
+        )}
+
+        {/* Verifiable Links & Copyright */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {SYSTEM_OWNER.links.github && (
+              <a
+                href={SYSTEM_OWNER.links.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-muted/60 hover:bg-muted text-foreground transition-colors font-medium text-[11px]"
+              >
+                <Code2 className="h-3 w-3 text-muted-foreground" />
+                <span>GitHub</span>
+              </a>
+            )}
+            {SYSTEM_OWNER.links.linkedin && (
+              <a
+                href={SYSTEM_OWNER.links.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-muted/60 hover:bg-muted text-foreground transition-colors font-medium text-[11px]"
+              >
+                <Globe className="h-3 w-3 text-muted-foreground" />
+                <span>LinkedIn</span>
+              </a>
+            )}
+            {SYSTEM_OWNER.links.website && (
+              <a
+                href={SYSTEM_OWNER.links.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-muted/60 hover:bg-muted text-foreground transition-colors font-medium text-[11px]"
+              >
+                <Globe className="h-3 w-3 text-muted-foreground" />
+                <span>Website</span>
+              </a>
+            )}
+            {SYSTEM_OWNER.links.facebook && (
+              <a
+                href={SYSTEM_OWNER.links.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-muted/60 hover:bg-muted text-foreground transition-colors font-medium text-[11px]"
+              >
+                <FacebookIcon className="h-3 w-3 text-muted-foreground" />
+                <span>Facebook</span>
+              </a>
+            )}
+            {SYSTEM_OWNER.links.email && (
+              <a
+                href={`mailto:${SYSTEM_OWNER.links.email}`}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-muted/60 hover:bg-muted text-foreground transition-colors font-medium text-[11px]"
+              >
+                <Mail className="h-3 w-3 text-muted-foreground" />
+                <span>Contact</span>
+              </a>
+            )}
+          </div>
+          {SYSTEM_OWNER.copyright && (
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {SYSTEM_OWNER.copyright}
+            </span>
+          )}
         </div>
       </div>
 

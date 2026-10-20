@@ -17,6 +17,7 @@ export interface PillNavBarProps<T extends string = string> {
   size?: "sm" | "default";
   className?: string;
   layoutId?: string;
+  ariaLabel?: string;
 }
 
 export function PillNavBar<T extends string = string>({
@@ -27,6 +28,7 @@ export function PillNavBar<T extends string = string>({
   size = "default",
   className,
   layoutId = "metaPillActiveBg",
+  ariaLabel = "Navigation View Switcher",
 }: PillNavBarProps<T>) {
   const getAccentClass = () => {
     switch (accentColor) {
@@ -47,7 +49,7 @@ export function PillNavBar<T extends string = string>({
   return (
     <nav
       role="tablist"
-      aria-label="Navigation View Switcher"
+      aria-label={ariaLabel}
       className={cn(
         "inline-flex items-center p-1.5 rounded-full h-11 box-border",
         "bg-white/90 dark:bg-[#0e0e10]/95",
@@ -70,7 +72,7 @@ export function PillNavBar<T extends string = string>({
             tabIndex={isActive ? 0 : -1}
             onClick={() => onChange(item.id)}
             className={cn(
-              "relative z-10 flex items-center justify-center gap-2 rounded-full transition-colors cursor-pointer",
+              "relative z-10 flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full transition-colors cursor-pointer",
               "outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
               isSmall ? "px-2.5 py-1 text-[11px]" : "px-3.5 py-1.5 text-xs",
               isActive
@@ -94,7 +96,7 @@ export function PillNavBar<T extends string = string>({
               )}
             />
 
-            <span>{item.label}</span>
+            <span className="whitespace-nowrap">{item.label}</span>
 
             {item.badge !== undefined && (
               <span

@@ -71,9 +71,12 @@ export function BoardOverview({ board, tasks }: BoardOverviewProps) {
         {stats.map((stat) => (
           <Card key={stat.label} className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden group hover:shadow-md transition-all">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">
+              <div className="flex items-center justify-between gap-3 min-w-0">
+                <div className="min-w-0">
+                  <p
+                    className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1 whitespace-nowrap truncate"
+                    title={stat.label}
+                  >
                     {stat.label}
                   </p>
                   <h3 className="text-3xl font-black text-foreground">

@@ -34,14 +34,11 @@ import {
   Signal01 as Radio,
   Trash01 as Trash2,
   Tag01 as TagIcon,
-  LayoutGrid01 as LayoutGrid,
-  List,
-  Calendar,
   File06 as FileText,
-  BarChart01 as BarChart3,
   Download01 as Download,
   Bell01 as Bell,
   BellOff01 as BellOff,
+  DotsHorizontal as MoreHorizontal,
 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +47,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
@@ -67,6 +65,7 @@ import { computeTaskProgress, isDoneColumn } from "@/utils/taskUtils";
 import { exportTasksToCSV, exportTasksToExcel } from "@/utils/exportToExcel";
 
 import { BoardOverview } from "./BoardOverview";
+import { TaskListView } from "./TaskListView";
 import { CalendarView } from "./CalendarView";
 import { DocumentsView } from "./DocumentsView";
 import { BoardMembers } from "../board/BoardMembers";
@@ -75,6 +74,8 @@ import { InviteMemberDialog } from "../board/InviteMemberDialog";
 import { useActivity } from "@/hooks/useActivity";
 import { useSettings } from "@/contexts/SettingsContext";
 import { PillNavBar } from "@/components/common/PillNavBar";
+import { BoardViewRail } from "./BoardViewRail";
+import { BOARD_VIEWS } from "@/config/boardViews";
 
 import { BoardViewSkeleton } from "@/components/skeletons";
 import { motion } from "framer-motion";
@@ -202,22 +203,14 @@ export function KanbanBoard() {
   );
 
   useEffect(() => {
-    if (viewParam === "list" && board?.id) {
-      navigate(`/tasks?boardId=${board.id}`, { replace: true });
-      return;
-    }
-    if (viewParam && ["overview", "board", "calendar", "documents", "members"].includes(viewParam)) {
+    if (viewParam && ["overview", "list", "board", "calendar", "documents", "members"].includes(viewParam)) {
       setActiveView(viewParam as any);
     } else if (viewParam === "files" || viewParam === "docs") {
       setActiveView("documents");
     }
-  }, [viewParam, board?.id, navigate]);
+  }, [viewParam]);
 
   const handleViewChange = useCallback((id: string) => {
-    if (id === "list" && board?.id) {
-      navigate(`/tasks?boardId=${board.id}`);
-      return;
-    }
     setActiveView(id as any);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -228,7 +221,7 @@ export function KanbanBoard() {
       }
       return next;
     }, { replace: true });
-  }, [board?.id, navigate, setSearchParams]);
+  }, [setSearchParams]);
 
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [newTaskStatus, setNewTaskStatus] = useState<string>("todo");
@@ -271,6 +264,27 @@ export function KanbanBoard() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const permissions = useBoardPermissions(board, members);
   const queryClient = useQueryClient();
+
+  const roleLabel = permissions.role
+    ? permissions.role.charAt(0).toUpperCase() + permissions.role.slice(1)
+    : "Member";
+
+  const handleToggleBoardMute = useCallback(async () => {
+    if (!board) return;
+    const nextMuted = !board.isMuted;
+    setBoard((prev) => (prev ? { ...prev, isMuted: nextMuted } : prev));
+    try {
+      await boardApi.setBoardMute(board.id, nextMuted);
+      toast.success(
+        nextMuted
+          ? `Muted notifications for "${board.name}"`
+          : `Unmuted notifications for "${board.name}"`
+      );
+    } catch (err: any) {
+      setBoard((prev) => (prev ? { ...prev, isMuted: !nextMuted } : prev));
+      toast.error(err?.message || "Failed to update notification mute setting");
+    }
+  }, [board, setBoard]);
 
   // Extract unique tags across tasks
   const availableTags = useMemo(() => {
@@ -818,42 +832,42 @@ export function KanbanBoard() {
     );
   }
 
-  const views = [
-    { id: "board", label: "Board", icon: LayoutGrid },
-    { id: "list", label: "List", icon: List },
-    { id: "calendar", label: "Calendar", icon: Calendar },
-    { id: "documents", label: "Docs & Files", icon: FileText },
-    { id: "overview", label: "Analytics", icon: BarChart3 },
-    { id: "members", label: "Team", icon: Users },
-  ] as const;
-
   const isCompact = settings.uiDensity === "compact";
 
   const renderActiveView = () => {
     switch (activeView) {
       case "overview":
         return (
-          <div className={`${isCompact ? "p-3.5 md:p-4" : "p-6 md:p-8"} flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28`}>
+          <div className={`${isCompact ? "p-3.5 md:p-4" : "p-6 md:p-8"} flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-8 md:pb-28`}>
             <BoardOverview board={board} tasks={tasks} />
           </div>
         );
       case "list":
-        return null;
+        return (
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-8 md:pb-28">
+            <TaskListView
+              tasks={filteredAllTasks}
+              columns={board?.columns}
+              selectedTaskId={selectedTaskId}
+              onTaskClick={handleTaskClick}
+            />
+          </div>
+        );
       case "calendar":
         return (
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28">
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-8 md:pb-28">
             <CalendarView tasks={filteredAllTasks} columns={board?.columns} selectedTaskId={selectedTaskId} onTaskClick={handleTaskClick} />
           </div>
         );
       case "documents":
         return (
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28">
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-8 md:pb-28">
             <DocumentsView tasks={filteredAllTasks} boardId={board.id} readOnly={effectiveReadOnly} onTaskClick={handleTaskClick} />
           </div>
         );
       case "members":
         return (
-          <div className={`${isCompact ? "p-3.5 md:p-4" : "p-6 md:p-8"} max-w-4xl mx-auto w-full flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28`}>
+          <div className={`${isCompact ? "p-3.5 md:p-4" : "p-6 md:p-8"} max-w-4xl mx-auto w-full flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-8 md:pb-28`}>
             <div className={`flex items-center justify-between ${isCompact ? "mb-4" : "mb-8"}`}>
               <div>
                 <h2 className={`${isCompact ? "text-2xl" : "text-3xl"} font-black tracking-tight text-foreground`}>Board Members</h2>
@@ -898,7 +912,7 @@ export function KanbanBoard() {
             >
               <div
                 style={geom.isCustom ? { gap: `${geom.padding}px` } : undefined}
-                className={`flex ${isCompact ? "gap-2" : "gap-3"} h-full min-w-max pb-20 md:pb-24 items-stretch`}
+                className={`flex ${isCompact ? "gap-2" : "gap-3"} h-full min-w-max pb-6 md:pb-24 items-stretch`}
               >
                 {(() => {
                   const workflowCols = columns.filter((col) => col.id !== "archive");
@@ -908,6 +922,7 @@ export function KanbanBoard() {
                       id={col.id}
                       title={col.title}
                       emoji={col.emoji}
+                      color={col.color}
                       wipLimit={col.wipLimit}
                       tasks={filteredTasksByStatus(col.id)}
                       canRename={permissions.canEditBoard && !effectiveReadOnly}
@@ -982,31 +997,120 @@ export function KanbanBoard() {
         <div className="flex-1 h-full min-w-0 relative flex flex-col overflow-hidden">
           {/* Pinned Board Header */}
           <div className="bg-background border-b border-border/50 shrink-0">
-            {/* Row 1: Board Name, Emoji, Badges, & Edit */}
-            <div className={`${isCompact ? "px-4 pt-2.5 pb-1.5 md:px-6" : "px-6 pt-3.5 pb-2 md:px-8"} flex items-center justify-between gap-4 w-full`}>
-              <div className="flex items-center gap-3 min-w-0">
+            {/* Row 1: Board Name, Emoji, Badges, & Actions */}
+            <div className={`${isCompact ? "px-4 pt-2.5 pb-1.5 md:px-6" : "px-4 sm:px-6 pt-3.5 pb-2 md:px-8"} flex items-center justify-between gap-2 sm:gap-4 w-full`}>
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                 {!devSettings.disableEmojiCustomization && board.emoji && (
                   <div className="h-10 w-10 md:h-11 md:w-11 bg-primary/10 flex items-center justify-center rounded-xl border border-primary/20 shadow-2xs shrink-0">
                     <span className="text-xl md:text-2xl">{board.emoji}</span>
                   </div>
                 )}
-                <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-2 group/title flex-wrap">
-                    <h1 className="text-lg md:text-2xl font-black text-foreground tracking-tight truncate">
+                <div className="flex flex-col min-w-0 flex-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h1
+                      className="text-lg md:text-2xl font-black text-foreground tracking-tight truncate"
+                      title={board.name}
+                    >
                       {board.name}
                     </h1>
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 capitalize text-[10px] font-bold py-0.5 px-2 shrink-0">
-                      {devSettings.disableEmojiCustomization
-                        ? permissions.role
-                        : permissions.role === "owner"
-                        ? "👑 Owner"
-                        : permissions.role === "admin"
-                        ? "🛡️ Admin"
-                        : permissions.role === "commenter"
-                        ? "💬 Commenter"
-                        : permissions.role === "viewer"
-                        ? "👁️ Viewer"
-                        : "✏️ Editor"}
+
+                    {/* Desktop badges and actions stay inline as before */}
+                    <div className="hidden md:flex items-center gap-2 flex-wrap shrink-0">
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 capitalize text-[10px] font-bold py-0.5 px-2 shrink-0">
+                        {devSettings.disableEmojiCustomization
+                          ? permissions.role
+                          : permissions.role === "owner"
+                          ? "👑 Owner"
+                          : permissions.role === "admin"
+                          ? "🛡️ Admin"
+                          : permissions.role === "commenter"
+                          ? "💬 Commenter"
+                          : permissions.role === "viewer"
+                          ? "👁️ Viewer"
+                          : "✏️ Editor"}
+                      </Badge>
+                      {isConnected && !isReconnecting && (
+                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 gap-1 text-[10px] font-bold py-0.5 px-2 shrink-0">
+                          <Radio className="h-3 w-3 animate-pulse text-emerald-500" /> Live
+                        </Badge>
+                      )}
+                      {isReconnecting && (
+                        <Badge
+                          data-testid="realtime-reconnecting-badge"
+                          variant="outline"
+                          className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1 text-[10px] font-bold py-0.5 px-2 shrink-0"
+                        >
+                          <Radio className="h-3 w-3 animate-pulse text-amber-500" /> Read-only • Reconnecting...
+                        </Badge>
+                      )}
+                      {permissions.canEditBoard && !effectiveReadOnly && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0 text-muted-foreground hover:text-foreground" 
+                          onClick={() => setIsBoardModalOpen(true)} 
+                          title="Edit Board & Icon"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0 ${
+                          board.isMuted ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        onClick={handleToggleBoardMute}
+                        title={board.isMuted ? "Unmute board notifications" : "Mute board notifications"}
+                        aria-label={board.isMuted ? "Unmute board notifications" : "Mute board notifications"}
+                        data-testid="board-mute-toggle"
+                      >
+                        {board.isMuted ? <BellOff className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
+                      </Button>
+                      {permissions.canExportBoard && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0 text-muted-foreground hover:text-foreground" 
+                              title="Export Board Options"
+                              data-testid="board-export-dropdown"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-52 text-xs font-medium">
+                            <DropdownMenuItem
+                              onClick={handleExportBoardTasks}
+                              className="gap-2 cursor-pointer"
+                              data-testid="export-board-csv"
+                            >
+                              <Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span>
+                                {settings.exportFormat === "xlsx"
+                                  ? "Export to Excel (.xlsx)"
+                                  : "Export to CSV (.csv)"}
+                              </span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={handleExportBoard}
+                              className="gap-2 cursor-pointer"
+                              data-testid="export-board-json"
+                            >
+                              <FileText className="h-3.5 w-3.5 text-primary" />
+                              <span>Export Full Board (.json)</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Mobile status row */}
+                  <div className="flex md:hidden items-center gap-1.5 mt-1 min-w-0 overflow-hidden">
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold py-0.5 px-2 shrink-0">
+                      {roleLabel}
                     </Badge>
                     {isConnected && !isReconnecting && (
                       <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 gap-1 text-[10px] font-bold py-0.5 px-2 shrink-0">
@@ -1015,89 +1119,14 @@ export function KanbanBoard() {
                     )}
                     {isReconnecting && (
                       <Badge
-                        data-testid="realtime-reconnecting-badge"
                         variant="outline"
                         className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1 text-[10px] font-bold py-0.5 px-2 shrink-0"
                       >
-                        <Radio className="h-3 w-3 animate-pulse text-amber-500" /> Read-only • Reconnecting...
+                        <Radio className="h-3 w-3 animate-pulse text-amber-500" /> Reconnecting...
                       </Badge>
                     )}
-                    {permissions.canEditBoard && !effectiveReadOnly && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0 text-muted-foreground hover:text-foreground" 
-                        onClick={() => setIsBoardModalOpen(true)} 
-                        title="Edit Board & Icon"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={`h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0 ${
-                        board.isMuted ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      onClick={async () => {
-                        const nextMuted = !board.isMuted;
-                        setBoard((prev) => (prev ? { ...prev, isMuted: nextMuted } : prev));
-                        try {
-                          await boardApi.setBoardMute(board.id, nextMuted);
-                          toast.success(
-                            nextMuted
-                              ? `Muted notifications for "${board.name}"`
-                              : `Unmuted notifications for "${board.name}"`
-                          );
-                        } catch (err: any) {
-                          setBoard((prev) => (prev ? { ...prev, isMuted: !nextMuted } : prev));
-                          toast.error(err?.message || "Failed to update notification mute setting");
-                        }
-                      }}
-                      title={board.isMuted ? "Unmute board notifications" : "Mute board notifications"}
-                      aria-label={board.isMuted ? "Unmute board notifications" : "Mute board notifications"}
-                      data-testid="board-mute-toggle"
-                    >
-                      {board.isMuted ? <BellOff className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
-                    </Button>
-                    {permissions.canExportBoard && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0 text-muted-foreground hover:text-foreground" 
-                            title="Export Board Options"
-                            data-testid="board-export-dropdown"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-52 text-xs font-medium">
-                          <DropdownMenuItem
-                            onClick={handleExportBoardTasks}
-                            className="gap-2 cursor-pointer"
-                            data-testid="export-board-csv"
-                          >
-                            <Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                            <span>
-                              {settings.exportFormat === "xlsx"
-                                ? "Export to Excel (.xlsx)"
-                                : "Export to CSV (.csv)"}
-                            </span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={handleExportBoard}
-                            className="gap-2 cursor-pointer"
-                            data-testid="export-board-json"
-                          >
-                            <FileText className="h-3.5 w-3.5 text-primary" />
-                            <span>Export Full Board (.json)</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
                   </div>
+
                   {board.description && (
                     <p className="text-xs text-muted-foreground font-medium line-clamp-1 opacity-80">
                       {board.description}
@@ -1105,11 +1134,96 @@ export function KanbanBoard() {
                   )}
                 </div>
               </div>
+
+              {/* Mobile header actions: Add Task + board actions menu */}
+              <div className="flex md:hidden items-center gap-1 shrink-0">
+                {permissions.canCreateTask && !effectiveReadOnly && (
+                  <Button
+                    variant="default"
+                    size="icon"
+                    className="h-11 w-11 rounded-xl shadow-sm"
+                    onClick={() => openNewModal()}
+                    title="Add task"
+                    aria-label="Add task"
+                    data-testid="board-mobile-add-task"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11 rounded-xl text-muted-foreground hover:text-foreground"
+                      title="Board actions"
+                      aria-label="Board actions"
+                      data-testid="board-mobile-actions"
+                    >
+                      <MoreHorizontal className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 text-xs font-medium">
+                    {permissions.canEditBoard && !effectiveReadOnly && (
+                      <DropdownMenuItem
+                        onClick={() => setIsBoardModalOpen(true)}
+                        className="gap-2 cursor-pointer"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        <span>Edit board & icon</span>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
+                      onClick={handleToggleBoardMute}
+                      className="gap-2 cursor-pointer"
+                    >
+                      {board.isMuted ? (
+                        <BellOff className="h-3.5 w-3.5 text-amber-500" />
+                      ) : (
+                        <Bell className="h-3.5 w-3.5" />
+                      )}
+                      <span>{board.isMuted ? "Unmute board" : "Mute board"}</span>
+                    </DropdownMenuItem>
+                    {permissions.canExportBoard && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={handleExportBoardTasks}
+                          className="gap-2 cursor-pointer"
+                        >
+                          <Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>
+                            {settings.exportFormat === "xlsx"
+                              ? "Export to Excel (.xlsx)"
+                              : "Export to CSV (.csv)"}
+                          </span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={handleExportBoard}
+                          className="gap-2 cursor-pointer"
+                        >
+                          <FileText className="h-3.5 w-3.5 text-primary" />
+                          <span>Export full board (.json)</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            {/* Mobile view switcher: replaces the floating bottom dock below md */}
+            <div className={`${isCompact ? "px-4 pb-2 md:px-6" : "px-4 sm:px-6 pb-2 md:px-8"} md:hidden`}>
+              <BoardViewRail
+                items={BOARD_VIEWS}
+                activeId={activeView}
+                onChange={handleViewChange}
+              />
             </div>
 
             {/* Row 2: Left-Aligned Minimalist Filter Toolbar */}
-            {(activeView === "board" || activeView === "calendar") && (
-              <div className={`${isCompact ? "px-4 pb-2 md:px-6" : "px-6 pb-2.5 md:px-8"} w-full flex items-center justify-between gap-3 flex-wrap`}>
+            {(activeView === "board" || activeView === "calendar" || activeView === "list") && (
+              <div className={`${isCompact ? "px-4 pb-2 md:px-6" : "px-4 sm:px-6 pb-2.5 md:px-8"} w-full flex items-center justify-between gap-3 flex-wrap`}>
                 <div className="flex items-center gap-1.5 overflow-x-auto max-w-full custom-scrollbar shrink-0 py-0.5">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground font-semibold shrink-0 mr-0.5">
                     <Filter className="h-3.5 w-3.5" />
@@ -1292,13 +1406,17 @@ export function KanbanBoard() {
         </div>
 
         {/* Meta Floating Dock Pill Navigation Bar + Adjacent Add Task Button (Fixed Bottom Center) */}
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-2.5 max-w-[calc(100vw-2rem)]">
+        <div
+          data-testid="board-desktop-dock"
+          className="hidden md:flex fixed bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto items-center gap-2.5 max-w-[calc(100vw-2rem)]"
+        >
           <PillNavBar
-            items={views}
+            items={BOARD_VIEWS}
             activeId={activeView}
             onChange={handleViewChange}
             accentColor="primary"
             layoutId="metaFloatingBottomDock"
+            ariaLabel="Board view switcher"
           />
 
           {/* Adjacent Add Task Button: Left-to-Right Expansion */}

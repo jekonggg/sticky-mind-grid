@@ -24,6 +24,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { getContainerGeometry } from "@/utils/geometryUtils";
 import { ChaosErrorMode, SimulatedRole, DevFontFamily, SeedTakeoverPreset } from "@/types/devMode";
 import { DEV_FONT_OPTIONS } from "@/constants/fonts";
+import { COLUMN_COLOR_STYLES } from "@/constants/columnColors";
 import { SEED_PRESET_OPTIONS, SEED_AVATARS } from "@/data/devSeedDataset";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { taskApi } from "@/services/api";
@@ -431,7 +432,8 @@ export function DevSuiteModal() {
                           updateDevSetting("customOuterRadius", 12);
                           updateDevSetting("customInnerRadius", 8);
                           updateDevSetting("customPadding", 12);
-                          toast.success("Applied Production Standard (Sora, Clean UI, 12o / 8i / 12p)");
+                          updateDevSetting("columnColorStyle", "theme");
+                          toast.success("Applied Production Standard (Sora, Clean UI, 12o / 8i / 12p, Theme Adaptive)");
                         }}
                         className="h-6 px-2 text-[11px] font-bold text-primary hover:text-primary gap-1 border-primary/30"
                       >
@@ -654,6 +656,85 @@ export function DevSuiteModal() {
                         </div>
                       </div>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Kanban Column Surface & Color Styling */}
+              <Card className="border-border/60 bg-muted/20">
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <h4 className="text-sm font-bold text-foreground">
+                          Kanban Column Surface & Pod Theme
+                        </h4>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Select a surface color treatment for kanban columns to harmonize with the system theme (replaces off-color default blue).
+                      </p>
+                    </div>
+
+                    <Badge className="text-[10px] font-bold bg-primary text-primary-foreground">
+                      Active: {COLUMN_COLOR_STYLES.find((s) => s.id === (devSettings.columnColorStyle || "theme"))?.label || "Theme Adaptive"}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+                    {COLUMN_COLOR_STYLES.map((style) => {
+                      const isSelected = (devSettings.columnColorStyle || "theme") === style.id;
+                      return (
+                        <button
+                          key={style.id}
+                          type="button"
+                          onClick={() => {
+                            updateDevSetting("columnColorStyle", style.id);
+                            toast.success(`Applied Column Style: ${style.label}`);
+                          }}
+                          className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 relative ${
+                            isSelected
+                              ? "bg-card border-primary shadow-sm ring-2 ring-primary/20"
+                              : "bg-card/50 border-border/70 hover:border-border hover:bg-card/80"
+                          }`}
+                        >
+                          <div className="space-y-1.5 w-full">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-xs font-bold text-foreground">
+                                {style.label}
+                              </span>
+                              {style.isDefault && (
+                                <Badge variant="outline" className="text-[9px] py-0 px-1 border-primary/40 text-primary">
+                                  Recommended
+                                </Badge>
+                              )}
+                              {isSelected && (
+                                <Badge className="text-[9px] py-0 px-1 bg-primary text-primary-foreground">
+                                  Active
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-[11px] font-medium text-muted-foreground line-clamp-1">
+                              {style.tagline}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
+                              {style.description}
+                            </p>
+                          </div>
+
+                          {/* Mini Pod Preview Swatch */}
+                          <div className={`p-2 rounded-lg border ${style.previewClass} flex items-center justify-between gap-2 mt-1 w-full`}>
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                              <span className="text-[10px] font-bold text-foreground">Stage Pod</span>
+                            </div>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${style.badgePreviewClass}`}>
+                              3
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
