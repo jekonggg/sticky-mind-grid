@@ -5,6 +5,7 @@ import { boardApi } from "@/services/boardApi";
 import { toast } from "sonner";
 import { useActivity } from "./useActivity";
 import { useAuth } from "@/contexts/AuthContext";
+import { unpinBoardId } from "@/utils/pinnedBoardsUtils";
 
 export type SortOption = "updated" | "name" | "created";
 export type BoardFilterOption = "all" | "owned" | "shared";
@@ -186,11 +187,14 @@ export function useBoards() {
           });
         }
         const data = await inFlightBoardsPromise;
-        setBoards(data);
-        cachedBoards = data;
+        const validData = Array.isArray(data)
+          ? data.filter((b) => !b.isDeleted && !cachedTrashedBoards.some((t) => t.id === b.id))
+          : [];
+        setBoards(validData);
+        cachedBoards = validData;
         cachedUserId = user?.id;
         lastBoardsFetchTime = Date.now();
-        queryClient?.setQueryData(["boards"], data);
+        queryClient?.setQueryData(["boards"], validData);
 
         const userKey = user?.id || "guest";
         const shouldFetchTrash =
@@ -357,6 +361,11 @@ export function useBoards() {
       const board = boards.find((b) => b.id === id);
       if (!board) return;
 
+      // Cancel in-flight queries and unpin immediately
+      inFlightBoardsPromise = null;
+      void queryClient?.cancelQueries({ queryKey: ["boards"] });
+      unpinBoardId(id, user?.id);
+
       const trashedEntry: Board = {
         ...board,
         isDeleted: true,
@@ -390,13 +399,19 @@ export function useBoards() {
         fetchBoards({ silent: true, includeTrash: true });
       }
     },
-    [boards, fetchBoards, addActivity, restoreBoard, queryClient]
+    [boards, fetchBoards, addActivity, restoreBoard, queryClient, user?.id]
   );
 
   const permanentlyDeleteBoard = useCallback(
     async (id: string, confirmName?: string) => {
       const target = trashedBoards.find((b) => b.id === id) || boards.find((b) => b.id === id);
       const nameToConfirm = confirmName || target?.name;
+
+      // Cancel in-flight queries and unpin immediately
+      inFlightBoardsPromise = null;
+      void queryClient?.cancelQueries({ queryKey: ["boards"] });
+      unpinBoardId(id, user?.id);
+
       setTrashedBoards((prev) => {
         const next = prev.filter((b) => b.id !== id);
         cachedTrashedBoards = next;
@@ -420,7 +435,7 @@ export function useBoards() {
         fetchBoards({ silent: true, includeTrash: true });
       }
     },
-    [trashedBoards, boards, addActivity, fetchBoards, queryClient]
+    [trashedBoards, boards, addActivity, fetchBoards, queryClient, user?.id]
   );
 
   const deleteBoard = useCallback(
@@ -431,7 +446,7 @@ export function useBoards() {
   );
 
   const filteredBoards = useMemo(() => {
-    let result = boards;
+    let result = boards.filter((b) => !b.isDeleted);
     if (filter === "owned") {
       result = result.filter((b) => isBoardOwnedByUser(b, user?.id));
     } else if (filter === "shared") {

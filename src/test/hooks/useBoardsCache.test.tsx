@@ -7,6 +7,7 @@ import { AuthContext, AuthContextType } from "@/contexts/AuthContext";
 import { ActivityProvider } from "@/hooks/useActivity";
 import { Board } from "@/types/board";
 import { User } from "@/types/user";
+import { togglePinnedBoardId, getPinnedBoardIds } from "@/utils/pinnedBoardsUtils";
 
 vi.mock("@/services/boardApi", () => ({
   boardApi: {
@@ -174,5 +175,61 @@ describe("useBoards In-Memory Caching (Stale-While-Revalidate)", () => {
     await waitFor(() => {
       expect(secondRender.result.current.loading).toBe(false);
     });
+  });
+
+  it("softDeleteBoard unpins the board, updates trashed state, and prevents resurrecting via background fetch", async () => {
+    // Pin board-c1 first
+    togglePinnedBoardId("board-c1", mockUser.id);
+    expect(getPinnedBoardIds(mockUser.id)).toEqual(["board-c1"]);
+
+    const { result } = renderHook(() => useBoards(), {
+      wrapper: createWrapper(mockUser),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+      expect(result.current.boards).toHaveLength(1);
+    });
+
+    // Execute soft delete
+    await act(async () => {
+      await result.current.softDeleteBoard("board-c1");
+    });
+
+    // Board must be removed from active boards and added to trashedBoards
+    expect(result.current.boards).toHaveLength(0);
+    expect(result.current.trashedBoards).toHaveLength(1);
+    expect(result.current.trashedBoards[0].id).toBe("board-c1");
+
+    // Board must be automatically unpinned from storage
+    expect(getPinnedBoardIds(mockUser.id)).toEqual([]);
+
+    // Even if background fetch returns old list, deleted board must NOT be resurrected
+    vi.mocked(boardApi.getBoards).mockResolvedValueOnce(mockBoardList);
+    await act(async () => {
+      await result.current.refreshBoards({ silent: true });
+    });
+
+    expect(result.current.boards).toHaveLength(0);
+  });
+
+  it("permanentlyDeleteBoard unpins the board from storage", async () => {
+    togglePinnedBoardId("board-c1", mockUser.id);
+    expect(getPinnedBoardIds(mockUser.id)).toEqual(["board-c1"]);
+
+    const { result } = renderHook(() => useBoards(), {
+      wrapper: createWrapper(mockUser),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.permanentlyDeleteBoard("board-c1", "Engineering Sprint");
+    });
+
+    expect(getPinnedBoardIds(mockUser.id)).toEqual([]);
+    expect(result.current.boards).toHaveLength(0);
   });
 });

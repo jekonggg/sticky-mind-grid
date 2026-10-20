@@ -56,7 +56,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { boardApi } from "@/services/boardApi";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { getPinnedBoardIds, togglePinnedBoardId } from "@/utils/pinnedBoardsUtils";
+import { getPinnedBoardIds, togglePinnedBoardId, unpinBoardId } from "@/utils/pinnedBoardsUtils";
 import { cn } from "@/lib/utils";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -180,8 +180,9 @@ export default function BoardsOverview() {
 
   // Apply filter and sort locally if useBoards was partially mocked in unit tests without hookFilter
   const boards = useMemo(() => {
-    if (hookFilter !== undefined) return rawBoards;
-    const filtered = rawBoards.filter((b) => {
+    const nonDeleted = rawBoards.filter((b) => !b.isDeleted);
+    if (hookFilter !== undefined) return nonDeleted;
+    const filtered = nonDeleted.filter((b) => {
       if (activeFilter === "owned") return isBoardOwnedByUser(b, user?.id);
       if (activeFilter === "shared") return !isBoardOwnedByUser(b, user?.id);
       return true;
@@ -200,12 +201,12 @@ export default function BoardsOverview() {
   }, [rawBoards, hookFilter, activeFilter, activeSort, user?.id]);
 
   const pinnedBoards = useMemo(
-    () => boards.filter((b) => pinnedIds.includes(b.id)),
+    () => boards.filter((b) => !b.isDeleted && pinnedIds.includes(b.id)),
     [boards, pinnedIds]
   );
 
   const unpinnedBoards = useMemo(
-    () => boards.filter((b) => !pinnedIds.includes(b.id)),
+    () => boards.filter((b) => !b.isDeleted && !pinnedIds.includes(b.id)),
     [boards, pinnedIds]
   );
 
@@ -717,7 +718,13 @@ export default function BoardsOverview() {
                         size="sm"
                         variant="ghost"
                         data-testid={`delete-forever-board-${trashed.id}`}
-                        onClick={() => permanentlyDeleteBoard(trashed.id, trashed.name)}
+                        onClick={() => {
+                          if (trashed.id) {
+                            unpinBoardId(trashed.id, user?.id);
+                            setPinnedIds(getPinnedBoardIds(user?.id));
+                          }
+                          permanentlyDeleteBoard(trashed.id, trashed.name);
+                        }}
                         className="h-8 min-h-[44px] sm:min-h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         Delete Forever
@@ -786,7 +793,11 @@ export default function BoardsOverview() {
                   e.preventDefault();
                   return;
                 }
-                if (deletingBoard) deleteBoard(deletingBoard.id);
+                if (deletingBoard) {
+                  unpinBoardId(deletingBoard.id, user?.id);
+                  setPinnedIds(getPinnedBoardIds(user?.id));
+                  void deleteBoard(deletingBoard.id);
+                }
                 setDeletingBoard(null);
                 setDeleteConfirmName("");
               }}

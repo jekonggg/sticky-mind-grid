@@ -22,6 +22,27 @@ export function isBoardPinned(boardId: string, userId?: string, boardPinnedFlag?
   return getPinnedBoardIds(userId).includes(boardId);
 }
 
+export function unpinBoardId(boardId: string, userId?: string): boolean {
+  const current = getPinnedBoardIds(userId);
+  if (!current.includes(boardId)) return false;
+
+  const next = current.filter((id) => id !== boardId);
+
+  try {
+    localStorage.setItem(getStorageKey(userId), JSON.stringify(next));
+  } catch {
+    // Ignore storage errors
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("pinned_boards_updated", {
+      detail: { boardId, isPinned: false, pinnedIds: next },
+    })
+  );
+
+  return true;
+}
+
 export function togglePinnedBoardId(boardId: string, userId?: string): boolean {
   const current = getPinnedBoardIds(userId);
   const exists = current.includes(boardId);

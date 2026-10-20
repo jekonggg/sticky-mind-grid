@@ -491,12 +491,12 @@ export function AppSidebar({
               {/* Nested Board Items */}
               {!isCollapsed && isBoardsExpanded && (
                 <div className="pl-4 pr-1 py-1 space-y-0.5 border-l border-border/40 ml-4 my-1">
-                  {boards.length === 0 ? (
+                  {boards.filter((b) => !b.isDeleted).length === 0 ? (
                     <p className="text-[11px] text-muted-foreground px-2 py-1 italic">
                       No boards yet
                     </p>
                   ) : (
-                    boards.map((b) => {
+                    boards.filter((b) => !b.isDeleted).map((b) => {
                       const isCurrent = boardId === b.id;
                       return (
                         <button

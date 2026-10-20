@@ -77,13 +77,14 @@ export function BoardHeader({
     return () => window.removeEventListener("smg-dev-data-mode-changed", loadBoards);
   }, [queryClient]);
 
-  const currentBoard = boards.find((b) => b.id === boardId);
+  const activeBoards = boards.filter((b) => !b.isDeleted);
+  const currentBoard = activeBoards.find((b) => b.id === boardId);
   const permissions = useBoardPermissions(currentBoard);
 
-  const pinnedSwitcherBoards = boards.filter(
+  const pinnedSwitcherBoards = activeBoards.filter(
     (b) => pinnedIds.includes(b.id) || isBoardPinned(b.id, user?.id, b.isPinned)
   );
-  const unpinnedSwitcherBoards = boards.filter(
+  const unpinnedSwitcherBoards = activeBoards.filter(
     (b) => !pinnedIds.includes(b.id) && !isBoardPinned(b.id, user?.id, b.isPinned)
   );
 
