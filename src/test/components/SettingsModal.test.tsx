@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { renderWithProviders } from "../test-utils";
+import { userApi } from "@/services/userApi";
 
 // Mock userApi
 vi.mock("@/services/userApi", () => ({
@@ -19,6 +20,7 @@ vi.mock("@/services/userApi", () => ({
     }),
     updatePreferences: vi.fn().mockResolvedValue({}),
     exportUserData: vi.fn().mockResolvedValue(undefined),
+    deleteAccount: vi.fn().mockResolvedValue(undefined),
     getHealth: vi.fn().mockResolvedValue({
       status: "healthy",
       database: "connected",
@@ -105,7 +107,7 @@ describe("SettingsModal Component", () => {
     expect(screen.queryByText("Auto-Progress Calculation")).not.toBeInTheDocument();
   }, 15000);
 
-  it("switches to Privacy tab and displays data export button", async () => {
+  it("switches to Privacy tab and tests delete account type-to-confirm dialog flow", async () => {
     renderWithProviders(<SettingsModal open={true} onClose={onClose} />);
 
     const privacyTabBtn = screen.getByRole("button", { name: /Privacy & Data/i });
@@ -114,6 +116,41 @@ describe("SettingsModal Component", () => {
     expect(screen.getByText("Privacy & Data Management")).toBeInTheDocument();
     expect(screen.getByText("Export All User Data")).toBeInTheDocument();
     expect(screen.getByText("Download JSON Export")).toBeInTheDocument();
+
+    // Trigger delete account dialog
+    const deleteTriggerBtn = screen.getByTestId("delete-account-trigger-btn");
+    fireEvent.click(deleteTriggerBtn);
+
+    // Dialog should be open
+    expect(screen.getByText("Permanently Delete Account?")).toBeInTheDocument();
+    const confirmBtn = screen.getByTestId("confirm-delete-account-btn");
+    expect(confirmBtn).toBeDisabled();
+
+    // Type incorrect text
+    const input = screen.getByTestId("confirm-delete-account-input");
+    fireEvent.change(input, { target: { value: "del" } });
+    expect(confirmBtn).toBeDisabled();
+
+    // Cancel dialog first to test reset
+    const cancelBtn = screen.getByRole("button", { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+
+    // Re-open dialog
+    fireEvent.click(deleteTriggerBtn);
+    const reopenedInput = screen.getByTestId("confirm-delete-account-input");
+    expect((reopenedInput as HTMLInputElement).value).toBe("");
+
+    // Type exact "DELETE"
+    fireEvent.change(reopenedInput, { target: { value: "DELETE" } });
+    const reopenedConfirmBtn = screen.getByTestId("confirm-delete-account-btn");
+    expect(reopenedConfirmBtn).not.toBeDisabled();
+
+    // Click confirm delete
+    fireEvent.click(reopenedConfirmBtn);
+
+    await waitFor(() => {
+      expect(userApi.deleteAccount).toHaveBeenCalledTimes(1);
+    });
   }, 15000);
 
   it("switches to About tab and fetches health diagnostics", async () => {

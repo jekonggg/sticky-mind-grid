@@ -4,6 +4,16 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   Download01 as Download,
@@ -22,6 +32,10 @@ export function PrivacyTab() {
   const { logout } = useAuth();
   const [exporting, setExporting] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+  const isDeleteConfirmed = deleteConfirmText.trim() === "DELETE";
 
   const handleExportData = async () => {
     try {
@@ -42,15 +56,14 @@ export function PrivacyTab() {
   };
 
   const handleDeleteAccount = async () => {
-    const confirmed = window.confirm(
-      "Are you sure you want to permanently delete your account?\n\n• Boards you own with other members will automatically transfer to the oldest administrator.\n• Your created cards and comments will remain intact under 'Former member'.\n• This action cannot be undone."
-    );
-    if (!confirmed) return;
+    if (!isDeleteConfirmed) return;
 
     try {
       setDeletingAccount(true);
       await userApi.deleteAccount();
       toast.success("Account successfully deleted");
+      setDeleteDialogOpen(false);
+      setDeleteConfirmText("");
       logout();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to delete account";
@@ -193,20 +206,92 @@ export function PrivacyTab() {
               type="button"
               variant="destructive"
               size="sm"
-              onClick={handleDeleteAccount}
-              disabled={deletingAccount}
+              onClick={() => {
+                setDeleteConfirmText("");
+                setDeleteDialogOpen(true);
+              }}
               className="h-8 text-xs font-bold gap-2"
+              data-testid="delete-account-trigger-btn"
             >
-              {deletingAccount ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="h-3.5 w-3.5" />
-              )}
+              <Trash2 className="h-3.5 w-3.5" />
               Delete My Account
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Type-to-Confirm Account Deletion Dialog */}
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!deletingAccount) {
+            setDeleteDialogOpen(open);
+            if (!open) {
+              setDeleteConfirmText("");
+            }
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive flex items-center gap-2">
+              <AlertTriangleIcon className="h-5 w-5 shrink-0" />
+              Permanently Delete Account?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 text-left pt-1">
+              <span className="block text-xs text-foreground/90">
+                This action is <span className="font-semibold text-destructive">permanent and cannot be undone</span>. All personal workspace data, active sessions, and local preferences will be permanently wiped.
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                • Boards you own with other members will automatically transfer to the oldest administrator.<br />
+                • Created cards and comments will remain intact under "Former member".
+              </span>
+              <span className="block text-xs pt-1 text-foreground font-medium">
+                To confirm, please type <span className="font-mono font-bold text-destructive">DELETE</span> below:
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <Input
+              placeholder="DELETE"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              disabled={deletingAccount}
+              aria-label="Type DELETE to confirm account deletion"
+              data-testid="confirm-delete-account-input"
+              autoFocus
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={deletingAccount}
+              onClick={() => setDeleteConfirmText("")}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!isDeleteConfirmed || deletingAccount}
+              onClick={handleDeleteAccount}
+              data-testid="confirm-delete-account-btn"
+              className="gap-2"
+            >
+              {deletingAccount ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete Account Permanently
+                </>
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
