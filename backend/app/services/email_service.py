@@ -194,6 +194,42 @@ class EmailService:
         )
 
     @classmethod
+    def send_ownership_transfer_notice(cls, to_email: str, board_name: str, former_owner_name: str, board_link: str = None) -> bool:
+        subject = f"[Sticky Mind Grid] You are now the Owner of {board_name}"
+        base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
+        link = board_link or f"{base_url}/boards"
+
+        text_body = (
+            f"Hello,\n\n"
+            f"The previous owner ({former_owner_name}) of the board \"{board_name}\" has deleted their account.\n\n"
+            f"As the oldest active administrator or team member, board ownership has been automatically transferred to you.\n\n"
+            f"You now have full owner permissions, including board management, member administration, and column settings.\n\n"
+            f"Access your board here:\n{link}\n\n"
+            f"— The Sticky Mind Grid Team"
+        )
+
+        html_body = (
+            f"<div style='font-family: sans-serif; line-height: 1.5; color: #1e293b; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;'>"
+            f"<h2 style='color: #0f172a; margin-top: 0;'>Board Ownership Transferred</h2>"
+            f"<p>The previous owner (<strong>{former_owner_name}</strong>) of <strong>\"{board_name}\"</strong> has deleted their account.</p>"
+            f"<p>As the oldest active administrator or team member, <strong>board ownership has been automatically transferred to you</strong>. You now have full owner permissions, including member management and board administration.</p>"
+            f"<p style='margin: 24px 0;'><a href='{link}' style='background-color: #2563eb; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;'>Open Board</a></p>"
+            f"<hr style='border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;' />"
+            f"<p style='font-size: 12px; color: #94a3b8;'>Sticky Mind Grid — Real-Time Kanban Workspace</p>"
+            f"</div>"
+        )
+
+        return cls.send_email(
+            to_email=to_email,
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            board_name=board_name,
+            former_owner_name=former_owner_name,
+            board_link=link
+        )
+
+    @classmethod
     def send_verification_email(cls, to_email: str, verification_token: str, verification_link: str = None) -> bool:
         subject = "Verify your email address for Sticky Mind Grid"
         base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")

@@ -109,6 +109,15 @@ def test_account_deletion_auto_promotes_oldest_admin(create_test_user):
     admin1_membership = BoardMember.query.filter_by(board_id=board.id, user_id=admin1.id).first()
     assert admin1_membership.role == "owner"
 
+    # Assert in-app notification was dispatched to successor
+    from app.models.notification import Notification
+    notif = Notification.query.filter_by(user_id=admin1.id, type='board_ownership_transferred').first()
+    assert notif is not None
+    assert notif.title == "Board Ownership Transferred"
+    assert "Multi Member Board" in notif.message
+    assert "Original Owner" in notif.message
+    assert notif.link == f"/boards/{board.id}"
+
 def test_account_deletion_no_admin_promotes_oldest_member(create_test_user):
     """When no admin exists, oldest editor/member is promoted to owner."""
     owner = create_test_user(email="owner2@smg.com", full_name="Owner Two")
@@ -132,6 +141,15 @@ def test_account_deletion_no_admin_promotes_oldest_member(create_test_user):
 
     member_membership = BoardMember.query.filter_by(board_id=board.id, user_id=member.id).first()
     assert member_membership.role == "owner"
+
+    # Assert in-app notification was dispatched to oldest active member
+    from app.models.notification import Notification
+    notif = Notification.query.filter_by(user_id=member.id, type='board_ownership_transferred').first()
+    assert notif is not None
+    assert notif.title == "Board Ownership Transferred"
+    assert "Member Board" in notif.message
+    assert "Owner Two" in notif.message
+    assert notif.link == f"/boards/{board.id}"
 
 def test_account_deletion_sole_owner_removes_board(create_test_user):
     """When a sole owner with no other members deletes account, board is cleanly deleted."""

@@ -21,8 +21,12 @@ class NotificationService:
         if not user:
             return False
 
+        # Critical system/administrative notifications are never suppressed
+        if notif_type in ('system', 'board_ownership_transferred', 'ownership_transferred'):
+            return True
+
         # Check board-level membership and per-board mute
-        if board_id and notif_type not in ('invite', 'board_invite', 'system'):
+        if board_id and notif_type not in ('invite', 'board_invite', 'system', 'board_ownership_transferred', 'ownership_transferred'):
             if get_effective_role(board_id, user_id) < ROLE_HIERARCHY['viewer']:
                 return False
             bm = BoardMember.query.filter_by(

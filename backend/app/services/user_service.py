@@ -51,6 +51,31 @@ class UserService:
                     user_id=successor.user_id
                 )
                 db.session.add(activity)
+
+                # In-App Notification to Successor (the new board owner)
+                from app.services.notification_service import NotificationService
+                NotificationService.create_notification(
+                    user_id=successor.user_id,
+                    type='board_ownership_transferred',
+                    title='Board Ownership Transferred',
+                    message=f'The previous owner ({user_name}) deleted their account. You are now the Owner of "{board.name}".',
+                    link=f'/boards/{board.id}',
+                    board_id=board.id
+                )
+
+                # Email notification to successor
+                if successor.user and successor.user.email:
+                    try:
+                        from app.services.email_service import EmailService
+                        EmailService.send_ownership_transfer_notice(
+                            to_email=successor.user.email,
+                            board_name=board.name,
+                            former_owner_name=user_name,
+                            board_link=f'/boards/{board.id}'
+                        )
+                    except Exception:
+                        pass
+
                 broadcaster.broadcast(board.id, "member:role_updated", {"userId": successor.user_id, "role": "owner"})
                 broadcaster.broadcast(board.id, "activity:new", activity.to_dict())
             else:

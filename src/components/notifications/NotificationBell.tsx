@@ -22,6 +22,7 @@ import {
   XCircle,
   LogOut01 as LogOut,
   ArrowRight,
+  Award01 as Crown,
 } from "@untitledui/icons";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
@@ -125,6 +126,8 @@ export function NotificationBell() {
         return <MessageSquare className="h-3.5 w-3.5 text-amber-500" />;
       case "task_move":
         return <ArrowRight className="h-3.5 w-3.5 text-indigo-500" />;
+      case "board_ownership_transferred":
+        return <Crown className="h-3.5 w-3.5 text-amber-500" />;
       default:
         return <Bell className="h-3.5 w-3.5 text-primary" />;
     }

@@ -117,4 +117,42 @@ describe("NotificationBell Component", () => {
       expect(notificationApi.markAllAsRead).toHaveBeenCalled();
     });
   });
+
+  it("renders board_ownership_transferred notification with proper content and navigates on click", async () => {
+    vi.mocked(notificationApi.getNotifications).mockResolvedValue({
+      notifications: [
+        {
+          id: "notif-own-1",
+          userId: "user-123",
+          type: "board_ownership_transferred",
+          title: "Board Ownership Transferred",
+          message: "The previous owner deleted their account. You are now the Owner of \"Sprint Alpha\".",
+          isRead: false,
+          link: "/boards/board-1",
+          createdAt: new Date(),
+        },
+      ],
+      unreadCount: 1,
+    });
+    vi.mocked(notificationApi.markAsRead).mockResolvedValue({} as any);
+
+    renderWithProviders(<NotificationBell />);
+
+    const bellBtn = screen.getByTitle("Notifications");
+    fireEvent.click(bellBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Board Ownership Transferred")).toBeInTheDocument();
+      expect(
+        screen.getByText(/The previous owner deleted their account. You are now the Owner/i)
+      ).toBeInTheDocument();
+    });
+
+    const notifItem = screen.getByText("Board Ownership Transferred");
+    fireEvent.click(notifItem);
+
+    await waitFor(() => {
+      expect(notificationApi.markAsRead).toHaveBeenCalledWith("notif-own-1");
+    });
+  });
 });

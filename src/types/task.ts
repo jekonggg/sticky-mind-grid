@@ -167,6 +167,7 @@ export type NotificationType =
   | "invite_declined"
   | "member_left"
   | "member_removed"
+  | "board_ownership_transferred"
   | "system";
 
 export interface Notification {
