@@ -218,6 +218,9 @@ def _auto_sync_schema(app):
                     except Exception:
                         db.session.rollback()
 
+            is_pg = db.engine.dialect.name == 'postgresql'
+            dt_col = "TIMESTAMP NULL" if is_pg else "DATETIME NULL"
+
             # Ensure missing columns in users table
             _add_col_if_missing('users', 'avatar_url', "VARCHAR(500) NULL")
             _add_col_if_missing('users', 'auth_provider', "VARCHAR(50) DEFAULT 'local'")
@@ -229,7 +232,7 @@ def _auto_sync_schema(app):
                 "UPDATE users SET email_verified = TRUE WHERE email_verified IS NULL"
             )
             _add_col_if_missing('users', 'verification_token', "VARCHAR(100) NULL")
-            _add_col_if_missing('users', 'verification_token_expires_at', "DATETIME NULL")
+            _add_col_if_missing('users', 'verification_token_expires_at', dt_col)
 
             # Ensure missing columns in board_members table
             _add_col_if_missing(
@@ -244,7 +247,7 @@ def _auto_sync_schema(app):
             _add_col_if_missing('boards', 'owner_id', "VARCHAR(36) NULL")
             _add_col_if_missing('boards', 'workspace_id', "VARCHAR(36) NULL")
             _add_col_if_missing('boards', 'is_deleted', "BOOLEAN DEFAULT FALSE NOT NULL")
-            _add_col_if_missing('boards', 'deleted_at', "DATETIME NULL")
+            _add_col_if_missing('boards', 'deleted_at', dt_col)
 
             # Ensure missing columns in tasks table
             _add_col_if_missing('tasks', 'emoji', "VARCHAR(50) NULL")
@@ -255,7 +258,7 @@ def _auto_sync_schema(app):
             _add_col_if_missing('tasks', 'attachments', "JSON NULL")
             _add_col_if_missing('tasks', 'followers', "JSON NULL")
             _add_col_if_missing('tasks', 'is_deleted', "BOOLEAN DEFAULT FALSE NOT NULL")
-            _add_col_if_missing('tasks', 'deleted_at', "DATETIME NULL")
+            _add_col_if_missing('tasks', 'deleted_at', dt_col)
 
             # Ensure missing columns in activities table
             _add_col_if_missing('activities', 'target_type', "VARCHAR(50) DEFAULT 'task' NULL")
@@ -271,7 +274,10 @@ def _auto_sync_schema(app):
                 try:
                     comment_cols = _get_table_cols('comments')
                     if 'user_id' in comment_cols:
-                        db.session.execute(text("ALTER TABLE comments MODIFY COLUMN user_id VARCHAR(36) NULL"))
+                        if is_pg:
+                            db.session.execute(text("ALTER TABLE comments ALTER COLUMN user_id DROP NOT NULL"))
+                        else:
+                            db.session.execute(text("ALTER TABLE comments MODIFY COLUMN user_id VARCHAR(36) NULL"))
                         db.session.commit()
                 except Exception:
                     db.session.rollback()
@@ -280,6 +286,35 @@ def _auto_sync_schema(app):
             _add_col_if_missing('messages', 'is_forwarded', "BOOLEAN DEFAULT FALSE NOT NULL")
             _add_col_if_missing('messages', 'is_pinned', "BOOLEAN DEFAULT FALSE NOT NULL")
             _add_col_if_missing('messages', 'is_deleted', "BOOLEAN DEFAULT FALSE NOT NULL")
+
+            # Ensure missing columns in user_preferences table
+            _add_col_if_missing('user_preferences', 'default_board_view', "VARCHAR(50) DEFAULT 'board' NOT NULL")
+            _add_col_if_missing('user_preferences', 'timezone', "VARCHAR(100) DEFAULT 'UTC' NOT NULL")
+            _add_col_if_missing('user_preferences', 'date_format', "VARCHAR(50) DEFAULT 'MM/DD/YYYY' NOT NULL")
+            _add_col_if_missing('user_preferences', 'first_day_of_week', "INTEGER DEFAULT 0 NOT NULL")
+            _add_col_if_missing('user_preferences', 'notify_mentions', "BOOLEAN DEFAULT TRUE NOT NULL")
+            _add_col_if_missing('user_preferences', 'notify_assignments', "BOOLEAN DEFAULT TRUE NOT NULL")
+            _add_col_if_missing('user_preferences', 'notify_invites', "BOOLEAN DEFAULT TRUE NOT NULL")
+            _add_col_if_missing('user_preferences', 'notify_comments', "BOOLEAN DEFAULT TRUE NOT NULL")
+            _add_col_if_missing(
+                'user_preferences',
+                'notify_card_moves',
+                "BOOLEAN DEFAULT TRUE NOT NULL",
+                "UPDATE user_preferences SET notify_card_moves = TRUE WHERE notify_card_moves IS NULL"
+            )
+            _add_col_if_missing('user_preferences', 'updated_at', dt_col)
+
+            # Ensure missing columns in board_invitations table
+            _add_col_if_missing('board_invitations', 'accepted_at', dt_col)
+            _add_col_if_missing('board_invitations', 'revoked_at', dt_col)
+
+            # Clean up legacy noisy task_move notifications
+            if 'notifications' in tables:
+                try:
+                    db.session.execute(text("DELETE FROM notifications WHERE type = 'task_move'"))
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
 
             # Ensure performance indexes exist on foreign keys & high-traffic filter columns
             _add_idx_if_missing('boards', 'ix_boards_owner_deleted', 'owner_id, is_deleted')

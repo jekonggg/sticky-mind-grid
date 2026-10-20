@@ -33,18 +33,22 @@ class NotificationService:
             if bm and getattr(bm, 'is_muted', False):
                 return False
 
-        if not user.preferences:
+        try:
+            prefs = user.preferences
+        except Exception:
             return True
-        prefs = user.preferences
+
+        if not prefs:
+            return True
         if notif_type == 'task_move' and not getattr(prefs, 'notify_card_moves', True):
             return False
-        if notif_type == 'mention' and not prefs.notify_mentions:
+        if notif_type == 'mention' and not getattr(prefs, 'notify_mentions', True):
             return False
-        if notif_type == 'assignment' and not prefs.notify_assignments:
+        if notif_type == 'assignment' and not getattr(prefs, 'notify_assignments', True):
             return False
-        if notif_type in ('invite', 'board_invite') and not prefs.notify_invites:
+        if notif_type in ('invite', 'board_invite') and not getattr(prefs, 'notify_invites', True):
             return False
-        if notif_type in ('comment', 'task_comment') and not prefs.notify_comments:
+        if notif_type in ('comment', 'task_comment') and not getattr(prefs, 'notify_comments', True):
             return False
         return True
 

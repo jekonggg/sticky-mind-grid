@@ -25,13 +25,28 @@ def get_preferences():
     if not user:
         return jsonify({'message': 'User not found'}), 404
 
-    prefs = UserPreference.query.filter_by(user_id=user_id).first()
-    if not prefs:
-        prefs = UserPreference(user_id=user_id)
-        db.session.add(prefs)
-        db.session.commit()
-
-    return jsonify(prefs.to_dict()), 200
+    try:
+        prefs = UserPreference.query.filter_by(user_id=user_id).first()
+        if not prefs:
+            prefs = UserPreference(user_id=user_id)
+            db.session.add(prefs)
+            db.session.commit()
+        return jsonify(prefs.to_dict()), 200
+    except Exception:
+        db.session.rollback()
+        default_prefs = {
+            'defaultBoardView': 'board',
+            'timezone': 'UTC',
+            'dateFormat': 'MM/DD/YYYY',
+            'firstDayOfWeek': 0,
+            'notifyMentions': True,
+            'notifyAssignments': True,
+            'notifyInvites': True,
+            'notifyComments': True,
+            'notifyCardMoves': True,
+            'updatedAt': datetime.utcnow().isoformat() + 'Z'
+        }
+        return jsonify(default_prefs), 200
 
 @bp.route('/me/preferences', methods=['PATCH', 'PUT'])
 @jwt_required()

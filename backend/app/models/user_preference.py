@@ -33,10 +33,10 @@ class UserPreference(db.Model):
             'timezone': self.timezone,
             'dateFormat': self.date_format,
             'firstDayOfWeek': self.first_day_of_week,
-            'notifyMentions': self.notify_mentions,
-            'notifyAssignments': self.notify_assignments,
-            'notifyInvites': self.notify_invites,
-            'notifyComments': self.notify_comments,
-            'notifyCardMoves': self.notify_card_moves,
+            'notifyMentions': getattr(self, 'notify_mentions', True) if getattr(self, 'notify_mentions', True) is not None else True,
+            'notifyAssignments': getattr(self, 'notify_assignments', True) if getattr(self, 'notify_assignments', True) is not None else True,
+            'notifyInvites': getattr(self, 'notify_invites', True) if getattr(self, 'notify_invites', True) is not None else True,
+            'notifyComments': getattr(self, 'notify_comments', True) if getattr(self, 'notify_comments', True) is not None else True,
+            'notifyCardMoves': getattr(self, 'notify_card_moves', True) if getattr(self, 'notify_card_moves', True) is not None else True,
             'updatedAt': self.updated_at.isoformat() + 'Z' if self.updated_at else None
         }

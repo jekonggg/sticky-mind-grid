@@ -243,7 +243,7 @@ export function PrivacyTab() {
                 This action is <span className="font-semibold text-destructive">permanent and cannot be undone</span>. All personal workspace data, active sessions, and local preferences will be permanently wiped.
               </span>
               <span className="block text-xs text-muted-foreground">
-                • Boards you own with other members will automatically transfer to the oldest administrator.<br />
+                • Boards you own with other members will automatically transfer to the oldest administrator (or oldest active member).<br />
                 • Created cards and comments will remain intact under "Former member".
               </span>
               <span className="block text-xs pt-1 text-foreground font-medium">
