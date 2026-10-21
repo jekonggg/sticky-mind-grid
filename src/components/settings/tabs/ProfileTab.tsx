@@ -192,7 +192,7 @@ export function ProfileTab({ onClose }: { onClose?: () => void }) {
         </div>
 
         <div className="space-y-1.5 flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-bold text-sm text-foreground truncate">
               {fullName || "User"}
             </span>
@@ -205,7 +205,7 @@ export function ProfileTab({ onClose }: { onClose?: () => void }) {
             {user?.email}
           </p>
 
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-2 pt-1">
             <input
               type="file"
               ref={fileInputRef}

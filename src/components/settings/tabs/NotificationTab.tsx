@@ -31,16 +31,16 @@ export function NotificationTab() {
 
       {/* Audio Feedback Section */}
       <div className="space-y-4 p-4 rounded-xl bg-muted/40 border border-border/50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               {settings.soundEffectsEnabled ? (
                 <Volume2 className="h-4.5 w-4.5" />
               ) : (
                 <VolumeX className="h-4.5 w-4.5 text-muted-foreground" />
               )}
             </div>
-            <div>
+            <div className="min-w-0">
               <Label
                 htmlFor="sound-toggle"
                 className="text-xs font-bold text-foreground cursor-pointer"
@@ -54,6 +54,7 @@ export function NotificationTab() {
           </div>
           <Switch
             id="sound-toggle"
+            className="shrink-0"
             checked={settings.soundEffectsEnabled}
             onCheckedChange={(checked) =>
               updateLocalSetting("soundEffectsEnabled", checked)
@@ -140,12 +141,12 @@ export function NotificationTab() {
 
         <div className="space-y-2">
           {/* Mentions */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/60 hover:bg-muted/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border/60 hover:bg-muted/30 transition-colors">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="h-8 w-8 shrink-0 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
                 <AtSign className="h-4 w-4" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label htmlFor="notify-mentions" className="text-xs font-bold text-foreground cursor-pointer">
                   Mentions
                 </Label>
@@ -155,6 +156,7 @@ export function NotificationTab() {
               </div>
             </div>
             <Switch
+              className="shrink-0"
               id="notify-mentions"
               checked={settings.notifyMentions}
               onCheckedChange={(checked) =>
@@ -164,12 +166,12 @@ export function NotificationTab() {
           </div>
 
           {/* Assignments */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/60 hover:bg-muted/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border/60 hover:bg-muted/30 transition-colors">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="h-8 w-8 shrink-0 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                 <UserCheck className="h-4 w-4" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label htmlFor="notify-assignments" className="text-xs font-bold text-foreground cursor-pointer">
                   Task Assignments
                 </Label>
@@ -179,6 +181,7 @@ export function NotificationTab() {
               </div>
             </div>
             <Switch
+              className="shrink-0"
               id="notify-assignments"
               checked={settings.notifyAssignments}
               onCheckedChange={(checked) =>
@@ -188,12 +191,12 @@ export function NotificationTab() {
           </div>
 
           {/* Board Invites */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/60 hover:bg-muted/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border/60 hover:bg-muted/30 transition-colors">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="h-8 w-8 shrink-0 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
                 <MailPlus className="h-4 w-4" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label htmlFor="notify-invites" className="text-xs font-bold text-foreground cursor-pointer">
                   Board Invitations
                 </Label>
@@ -203,6 +206,7 @@ export function NotificationTab() {
               </div>
             </div>
             <Switch
+              className="shrink-0"
               id="notify-invites"
               checked={settings.notifyInvites}
               onCheckedChange={(checked) =>
@@ -212,12 +216,12 @@ export function NotificationTab() {
           </div>
 
           {/* Comments on Assigned Tasks */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/60 hover:bg-muted/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border/60 hover:bg-muted/30 transition-colors">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="h-8 w-8 shrink-0 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                 <MessageSquare className="h-4 w-4" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label htmlFor="notify-comments" className="text-xs font-bold text-foreground cursor-pointer">
                   Comments on My Tasks
                 </Label>
@@ -227,6 +231,7 @@ export function NotificationTab() {
               </div>
             </div>
             <Switch
+              className="shrink-0"
               id="notify-comments"
               checked={settings.notifyComments}
               onCheckedChange={(checked) =>
@@ -236,12 +241,12 @@ export function NotificationTab() {
           </div>
 
           {/* Card Movements */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/60 hover:bg-muted/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border/60 hover:bg-muted/30 transition-colors">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="h-8 w-8 shrink-0 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                 <ArrowRight className="h-4 w-4" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label htmlFor="notify-card-moves" className="text-xs font-bold text-foreground cursor-pointer">
                   Card Movements
                 </Label>
@@ -251,6 +256,7 @@ export function NotificationTab() {
               </div>
             </div>
             <Switch
+              className="shrink-0"
               id="notify-card-moves"
               checked={settings.notifyCardMoves}
               onCheckedChange={(checked) =>

@@ -480,7 +480,7 @@ export function AppearanceTab() {
       </div>
 
       {/* 7. Reset Defaults */}
-      <div className="flex items-center justify-between pt-4 border-t border-border/50">
+      <div className="flex flex-col gap-3 pt-4 border-t border-border/50 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-xs text-muted-foreground">
           Reset all local display settings to default values.
         </span>
@@ -489,7 +489,7 @@ export function AppearanceTab() {
           variant="outline"
           size="sm"
           onClick={resetLocalSettings}
-          className="h-8 text-xs gap-1.5"
+          className="h-8 w-full text-xs gap-1.5 sm:w-auto"
         >
           <RotateCcw className="h-3.5 w-3.5" />
           Reset Defaults

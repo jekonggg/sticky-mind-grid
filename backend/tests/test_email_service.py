@@ -196,3 +196,121 @@ def test_board_service_invite_member_dispatches_email_with_deep_invite_link(crea
     assert expected_link in sent_mail["text"]
     assert expected_link in sent_mail["html"]
 
+
+
+def test_send_ownership_transfer_notice_normalizes_relative_link():
+    """
+    Ownership transfer notice must resolve relative board links to full absolute URLs
+    so they are clickable in email clients and webmail applications.
+    """
+    from app.services.email_service import EmailService, ConsoleEmailProvider
+
+    EmailService.set_provider(ConsoleEmailProvider())
+    ConsoleEmailProvider.clear_outbox()
+
+    success = EmailService.send_ownership_transfer_notice(
+        to_email="successor@example.com",
+        board_name="Sprint Alpha",
+        former_owner_name="Jane Doe",
+        board_link="/boards/2107491c-4ec1-44b1-b7fb-738b0e987135"
+    )
+    assert success is True
+
+    outbox = ConsoleEmailProvider.get_outbox()
+    assert len(outbox) == 1
+    msg = outbox[0]
+
+    expected_url = "http://localhost:8080/boards/2107491c-4ec1-44b1-b7fb-738b0e987135"
+    assert expected_url in msg["text"]
+    assert f"href='{expected_url}'" in msg["html"]
+    assert msg["params"]["board_link"] == expected_url
+    assert "/boards/2107491c-4ec1-44b1-b7fb-738b0e987135" in msg["text"]
+    assert "http://" in msg["text"]
+
+
+def test_send_ownership_transfer_notice_preserves_absolute_url():
+    """
+    If an absolute URL is already provided, it should be preserved without duplication.
+    """
+    from app.services.email_service import EmailService, ConsoleEmailProvider
+
+    EmailService.set_provider(ConsoleEmailProvider())
+    ConsoleEmailProvider.clear_outbox()
+
+    abs_url = "https://custom.stickymindgrid.com/boards/xyz-789"
+    success = EmailService.send_ownership_transfer_notice(
+        to_email="successor2@example.com",
+        board_name="Sprint Beta",
+        former_owner_name="John Smith",
+        board_link=abs_url
+    )
+    assert success is True
+
+    outbox = ConsoleEmailProvider.get_outbox()
+    assert len(outbox) == 1
+    msg = outbox[0]
+    assert abs_url in msg["text"]
+    assert f"href='{abs_url}'" in msg["html"]
+    assert msg["params"]["board_link"] == abs_url
+
+
+def test_send_ownership_transfer_notice_defaults_when_omitted():
+    """
+    When board_link is omitted or None, it defaults to the full /boards URL.
+    """
+    from app.services.email_service import EmailService, ConsoleEmailProvider
+
+    EmailService.set_provider(ConsoleEmailProvider())
+    ConsoleEmailProvider.clear_outbox()
+
+    success = EmailService.send_ownership_transfer_notice(
+        to_email="successor3@example.com",
+        board_name="Default Board",
+        former_owner_name="Alice"
+    )
+    assert success is True
+
+    outbox = ConsoleEmailProvider.get_outbox()
+    assert len(outbox) == 1
+    assert "http://localhost:8080/boards" in outbox[0]["text"]
+    assert "href='http://localhost:8080/boards'" in outbox[0]["html"]
+
+
+def test_user_deletion_dispatches_ownership_transfer_with_absolute_clickable_link(client, create_test_user):
+    """
+    Full workflow: When a board owner deletes their account, the successor receives an
+    email containing a clickable absolute URL to the transferred board.
+    """
+    from app import db
+    from app.models.board import Board
+    from app.models.board_member import BoardMember
+    from app.services.user_service import UserService
+    from app.services.email_service import EmailService, ConsoleEmailProvider
+
+    EmailService.set_provider(ConsoleEmailProvider())
+    ConsoleEmailProvider.clear_outbox()
+
+    owner = create_test_user(email="deleting_owner@example.com", full_name="Jane Marie Tagalag")
+    successor = create_test_user(email="successor_admin@example.com", full_name="New Owner")
+
+    board = Board(name="Testing A", owner_id=owner.id, columns=[{"id": "todo", "title": "To Do"}])
+    db.session.add(board)
+    db.session.commit()
+
+    db.session.add(BoardMember(board_id=board.id, user_id=owner.id, role="owner", status="accepted"))
+    db.session.add(BoardMember(board_id=board.id, user_id=successor.id, role="admin", status="accepted"))
+    db.session.commit()
+
+    # Owner deletes account
+    success, err = UserService.delete_account(owner.id)
+    assert success is True
+
+    outbox = ConsoleEmailProvider.get_outbox()
+    assert len(outbox) == 1
+    email = outbox[0]
+    assert email["to"] == "successor_admin@example.com"
+    assert "You are now the Owner of Testing A" in email["subject"]
+    expected_board_url = f"http://localhost:8080/boards/{board.id}"
+    assert expected_board_url in email["text"]
+    assert f"href='{expected_board_url}'" in email["html"]
+    assert email["params"]["board_link"] == expected_board_url

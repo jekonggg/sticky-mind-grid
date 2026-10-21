@@ -121,12 +121,12 @@ export function PrivacyTab() {
         </Label>
 
         <div className="p-3.5 rounded-xl bg-card border border-border/60 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="h-8 w-8 shrink-0 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                 <Smartphone className="h-4 w-4" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <span className="text-xs font-bold text-foreground block">
                   Current Web Session
                 </span>
@@ -136,18 +136,18 @@ export function PrivacyTab() {
                 </span>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
               Active Now
             </span>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-muted/30 border border-border/40 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+        <div className="p-3.5 rounded-xl bg-muted/30 border border-border/40 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="h-8 w-8 shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
               <Key className="h-4 w-4" />
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-xs font-bold text-foreground block">
                 Two-Factor Authentication (2FA)
               </span>
@@ -156,7 +156,7 @@ export function PrivacyTab() {
               </span>
             </div>
           </div>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+          <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
             Coming Soon
           </span>
         </div>
@@ -164,7 +164,7 @@ export function PrivacyTab() {
 
       {/* Local Storage & Cache Management */}
       <div className="space-y-3 pt-4 border-t border-border/50">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Label className="text-xs font-bold text-foreground">
               Clear Client Storage
@@ -178,7 +178,7 @@ export function PrivacyTab() {
             variant="outline"
             size="sm"
             onClick={handleClearCache}
-            className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
+            className="h-8 w-full text-xs text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 sm:w-auto"
           >
             <Trash2 className="h-3.5 w-3.5" />
             Clear Cache

@@ -61,7 +61,7 @@ import { NoteModal } from "@/components/documents/NoteModal";
 import { PersonalScratchpadModal } from "@/components/documents/PersonalScratchpadModal";
 import { getPersonalNotesCount } from "@/utils/scratchpadUtils";
 import { NewChatModal } from "@/components/messages/NewChatModal";
-import { SettingsTab } from "@/types/settings";
+import { SettingsTab, SettingsView } from "@/types/settings";
 import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { toast } from "sonner";
 
@@ -69,12 +69,15 @@ interface AppSidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onOpenSearch?: () => void;
+  /** Called to dismiss the mobile navigation drawer, e.g. after settings closes. */
+  onNavigate?: () => void;
 }
 
 export function AppSidebar({
   isCollapsed,
   onToggleCollapse,
   onOpenSearch,
+  onNavigate,
 }: AppSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,6 +102,7 @@ export function AppSidebar({
   // Modal dialog states
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
+  const [settingsView, setSettingsView] = useState<SettingsView>("list");
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isScratchpadOpen, setIsScratchpadOpen] = useState(false);
@@ -224,8 +228,12 @@ export function AppSidebar({
     navigate("/login");
   };
 
-  const openSettingsTab = (tab: SettingsTab = "profile") => {
+  const openSettingsTab = (
+    tab: SettingsTab = "profile",
+    view: SettingsView = "list"
+  ) => {
     setSettingsTab(tab);
+    setSettingsView(view);
     setIsSettingsOpen(true);
   };
 
@@ -296,7 +304,7 @@ export function AppSidebar({
 
             <DropdownMenuContent align="start" className="w-64 p-1.5 mt-1">
               <DropdownMenuItem
-                onClick={() => openSettingsTab("profile")}
+                onClick={() => openSettingsTab("profile", "detail")}
                 className="cursor-pointer text-xs font-semibold py-2 flex items-center gap-2"
               >
                 <User className="h-4 w-4 text-muted-foreground" />
@@ -304,7 +312,7 @@ export function AppSidebar({
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => openSettingsTab("appearance")}
+                onClick={() => openSettingsTab("appearance", "detail")}
                 className="cursor-pointer text-xs font-semibold py-2 flex items-center gap-2"
               >
                 <Palette className="h-4 w-4 text-muted-foreground" />
@@ -1055,8 +1063,12 @@ export function AppSidebar({
       {/* Global Modals integrated into sidebar actions */}
       <SettingsModal
         open={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={() => {
+          setIsSettingsOpen(false);
+          onNavigate?.();
+        }}
         initialTab={settingsTab}
+        initialView={settingsView}
       />
 
       <BoardModal

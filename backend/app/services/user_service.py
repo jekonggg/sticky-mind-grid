@@ -67,11 +67,14 @@ class UserService:
                 if successor.user and successor.user.email:
                     try:
                         from app.services.email_service import EmailService
+                        import os
+                        base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
+                        board_link = f"{base_url}/boards/{board.id}"
                         EmailService.send_ownership_transfer_notice(
                             to_email=successor.user.email,
                             board_name=board.name,
                             former_owner_name=user_name,
-                            board_link=f'/boards/{board.id}'
+                            board_link=board_link
                         )
                     except Exception:
                         pass

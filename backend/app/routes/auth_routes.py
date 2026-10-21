@@ -232,20 +232,9 @@ def register():
     # Dispatch verification email via EmailService
     try:
         from app.services.email_service import EmailService
-        verify_url = f"/verify-email?token={token}"
-        subject = "Verify your Sticky Mind Grid email address"
-        body = (
-            f"Hello {user.full_name or 'there'},\n\n"
-            f"Please verify your email address to activate your account and link any pending board invitations:\n\n"
-            f"Verification Token: {token}\n"
-            f"Link: {verify_url}\n\n"
-            f"This token expires in 24 hours.\n\n"
-            f"If you did not request this, please ignore this email."
-        )
-        EmailService.send_email(to_email=user.email, subject=subject, text_body=body)
+        EmailService.send_verification_email(to_email=user.email, verification_token=token)
     except Exception as e:
         print(f"Warning: Failed to dispatch verification email to {user.email}: {e}")
-
     # Note: attach_pending_invitations is intentionally NOT called until email is verified (OQ-17)
 
     return jsonify({
@@ -315,16 +304,7 @@ def resend_verification():
 
     try:
         from app.services.email_service import EmailService
-        verify_url = f"/verify-email?token={token}"
-        subject = "Verify your Sticky Mind Grid email address"
-        body = (
-            f"Hello {user.full_name or 'there'},\n\n"
-            f"Here is your new email verification token:\n\n"
-            f"Verification Token: {token}\n"
-            f"Link: {verify_url}\n\n"
-            f"This token expires in 24 hours."
-        )
-        EmailService.send_email(to_email=user.email, subject=subject, text_body=body)
+        EmailService.send_verification_email(to_email=user.email, verification_token=token)
     except Exception as e:
         print(f"Warning: Failed to resend verification email: {e}")
 

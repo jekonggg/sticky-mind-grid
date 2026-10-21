@@ -101,6 +101,7 @@ function AppLayoutInner() {
               setIsMobileOpen(false);
               setIsCommandSearchOpen(true);
             }}
+            onNavigate={() => setIsMobileOpen(false)}
           />
         </SheetContent>
       </Sheet>

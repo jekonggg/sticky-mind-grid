@@ -52,3 +52,9 @@ export type SettingsTab =
   | "region" 
   | "privacy" 
   | "about";
+
+/**
+ * Mobile settings uses a two-screen flow: an index list of sections and a
+ * detail screen for the selected section.
+ */
+export type SettingsView = "list" | "detail";

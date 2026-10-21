@@ -155,11 +155,26 @@ class EmailService:
         return cls.get_provider().send_email(to_email, subject, text_body, html_body, **kwargs)
 
     @classmethod
+    def _ensure_absolute_url(cls, url: str = None, fallback_path: str = "/boards") -> str:
+        """
+        Ensures that an email link is an absolute URL with a scheme (http:// or https://).
+        If url is a relative path (e.g. '/boards/xyz'), prepends FRONTEND_URL.
+        If url is None or empty, returns FRONTEND_URL joined with fallback_path.
+        """
+        base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
+        if not url:
+            path = fallback_path if fallback_path.startswith("/") else f"/{fallback_path}"
+            return f"{base_url}{path}"
+        if url.startswith("http://") or url.startswith("https://"):
+            return url
+        path = url if url.startswith("/") else f"/{url}"
+        return f"{base_url}{path}"
+
+    @classmethod
     def send_board_invitation(cls, to_email: str, board_name: str, inviter_name: str, role: str, invite_link: str = None) -> bool:
         subject = f"Invitation: Join {board_name} on Sticky Mind Grid"
         role_label = role.capitalize()
-        base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
-        link = invite_link or f"{base_url}/boards"
+        link = cls._ensure_absolute_url(invite_link, fallback_path="/boards")
 
         text_body = (
             f"Hello,\n\n"
@@ -196,8 +211,7 @@ class EmailService:
     @classmethod
     def send_ownership_transfer_notice(cls, to_email: str, board_name: str, former_owner_name: str, board_link: str = None) -> bool:
         subject = f"[Sticky Mind Grid] You are now the Owner of {board_name}"
-        base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
-        link = board_link or f"{base_url}/boards"
+        link = cls._ensure_absolute_url(board_link, fallback_path="/boards")
 
         text_body = (
             f"Hello,\n\n"
@@ -232,8 +246,8 @@ class EmailService:
     @classmethod
     def send_verification_email(cls, to_email: str, verification_token: str, verification_link: str = None) -> bool:
         subject = "Verify your email address for Sticky Mind Grid"
-        base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
-        link = verification_link or f"{base_url}/verify-email?token={verification_token}"
+        fallback = f"/verify-email?token={verification_token}" if verification_token else "/login"
+        link = cls._ensure_absolute_url(verification_link, fallback_path=fallback)
 
         text_body = (
             f"Welcome to Sticky Mind Grid!\n\n"
