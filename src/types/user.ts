@@ -14,6 +14,9 @@ export interface User {
   fullName: string | null;
   avatarUrl?: string | null;
   authProvider?: string | null;
+  emailVerified?: boolean;
+  legacyUnverified?: boolean;
+  legacyDeadline?: string | null;
   createdAt?: string;
 }
 

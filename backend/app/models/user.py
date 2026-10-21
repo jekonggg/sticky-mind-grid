@@ -18,6 +18,11 @@ class User(db.Model):
     email_verified = db.Column(db.Boolean, default=False, nullable=False)
     verification_token = db.Column(db.String(100), nullable=True, index=True)
     verification_token_expires_at = db.Column(db.DateTime, nullable=True)
+    legacy_unverified = db.Column(db.Boolean, default=False, nullable=False)
+    legacy_deadline = db.Column(db.DateTime, nullable=True)
+    pending_email = db.Column(db.String(255), nullable=True)
+    pending_email_token = db.Column(db.String(100), nullable=True, index=True)
+    pending_email_token_expires_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -32,7 +37,7 @@ class User(db.Model):
     conversation_participations = db.relationship('ConversationParticipant', back_populates='user', lazy=True, cascade="all, delete-orphan")
     sent_messages = db.relationship('Message', foreign_keys='Message.sender_id', back_populates='sender', lazy=True, cascade="all, delete-orphan")
 
-    def __init__(self, email: str, full_name: str = "", avatar_url: str = None, auth_provider: str = 'local', auth_provider_id: str = None, email_verified: bool = None, **kwargs):
+    def __init__(self, email: str, full_name: str = "", avatar_url: str = None, auth_provider: str = 'local', auth_provider_id: str = None, email_verified: bool = None, legacy_unverified: bool = False, legacy_deadline = None, **kwargs):
         super().__init__(**kwargs)
         self.email = email
         self.full_name = full_name
@@ -43,6 +48,8 @@ class User(db.Model):
             self.email_verified = email_verified
         else:
             self.email_verified = True if (auth_provider and auth_provider != 'local') else False
+        self.legacy_unverified = legacy_unverified
+        self.legacy_deadline = legacy_deadline
 
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
@@ -72,6 +79,8 @@ class User(db.Model):
             'avatarUrl': avatar,
             'authProvider': getattr(self, 'auth_provider', None) or 'local',
             'emailVerified': bool(getattr(self, 'email_verified', False)),
+            'legacyUnverified': bool(getattr(self, 'legacy_unverified', False)),
+            'legacyDeadline': self.legacy_deadline.isoformat() + 'Z' if getattr(self, 'legacy_deadline', None) else None,
             'createdAt': self.created_at.isoformat() + 'Z' if self.created_at else None
         }
 

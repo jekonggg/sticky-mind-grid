@@ -107,6 +107,12 @@ def handle_oauth_flow(provider: str, data: dict):
         avatar_url = profile.get('avatarUrl') or profile.get('picture') or data.get('avatarUrl')
         provider_id = profile.get('providerId') or profile.get('id') or profile.get('sub') or data.get('providerId')
 
+        if 'email_verified' in profile:
+            provider_email_verified = bool(profile['email_verified'])
+        elif 'emailVerified' in profile:
+            provider_email_verified = bool(profile['emailVerified'])
+        else:
+            provider_email_verified = False if code else True
         user = User.query.filter_by(email=email).first()
         status_code = 200
 
@@ -117,17 +123,33 @@ def handle_oauth_flow(provider: str, data: dict):
                 avatar_url=avatar_url,
                 auth_provider=provider,
                 auth_provider_id=str(provider_id) if provider_id else None,
-                email_verified=True
+                email_verified=provider_email_verified,
+                legacy_unverified=False,
+                legacy_deadline=None
             )
             user.set_password(str(uuid.uuid4()))
+            token = None
+            if not provider_email_verified:
+                token = secrets.token_urlsafe(32)
+                user.verification_token = token
+                user.verification_token_expires_at = datetime.utcnow() + timedelta(hours=24)
             db.session.add(user)
             db.session.commit()
-            attach_pending_invitations(user)
+            if provider_email_verified:
+                attach_pending_invitations(user)
+            else:
+                try:
+                    from app.services.email_service import EmailService
+                    EmailService.send_verification_email(to_email=user.email, verification_token=token)
+                except Exception as e:
+                    logger.error(f"Failed to send verification for unverified OAuth account: {e}")
             status_code = 201
         else:
             updated = False
-            if not getattr(user, 'email_verified', False):
+            if provider_email_verified and not getattr(user, 'email_verified', False):
                 user.email_verified = True
+                user.legacy_unverified = False
+                user.legacy_deadline = None
                 attach_pending_invitations(user)
                 updated = True
             if not user.avatar_url and avatar_url:
@@ -140,6 +162,16 @@ def handle_oauth_flow(provider: str, data: dict):
                 updated = True
             if updated:
                 db.session.commit()
+
+        # Requirement 3: Only issue JWT if email is verified or legacy unverified
+        if not getattr(user, 'email_verified', False) and not getattr(user, 'legacy_unverified', False):
+            can_sign_up_again = not user_has_any_data(user.id)
+            return jsonify({
+                'message': 'Your OAuth email was not verified by the provider. Please verify your email before signing in.',
+                'emailVerified': False,
+                'email': user.email,
+                'canSignUpAgain': can_sign_up_again
+            }), 403
 
         access_token = create_access_token(identity=str(user.id))
         return jsonify({
@@ -195,6 +227,35 @@ def validate_password_complexity(password: str):
         return False, "Password must contain at least one special character (!@#$%^&*...)"
     return True, None
 
+def user_has_any_data(user_id: str) -> bool:
+    """Returns True if the user has created or joined any boards, or created tasks."""
+    try:
+        from app.models.board import Board
+        from app.models.board_member import BoardMember
+        from app.models.task import Task
+        if Board.query.filter_by(owner_id=user_id).first():
+            return True
+        if BoardMember.query.filter_by(user_id=user_id).first():
+            return True
+        if Task.query.filter_by(created_by=user_id).first():
+            return True
+    except Exception:
+        pass
+    return False
+
+def mask_email(email: str) -> str:
+    """Masks an email for security display (e.g., j***@example.com)."""
+    if not email or '@' not in email:
+        return '***'
+    local_part, domain = email.split('@', 1)
+    if len(local_part) <= 1:
+        masked_local = local_part + '***'
+    elif len(local_part) == 2:
+        masked_local = local_part[0] + '***'
+    else:
+        masked_local = local_part[0] + '***' + local_part[-1]
+    return f"{masked_local}@{domain}"
+
 @bp.route('/register', methods=['POST'])
 @limiter.limit("10 per minute")
 def register():
@@ -211,16 +272,37 @@ def register():
     if not valid:
         return jsonify({'message': pass_err}), 400
         
-    if User.query.filter_by(email=clean_email).first():
-        return jsonify({'message': 'User already exists'}), 400
+    existing_user = User.query.filter_by(email=clean_email).first()
+    if existing_user:
+        if existing_user.email_verified:
+            return jsonify({'message': 'An account with this email already exists. Please sign in.'}), 400
         
+        # Requirement 6: Re-registering with an unverified email resends verification.
+        # Never overwrite password or user data.
+        token = secrets.token_urlsafe(32)
+        existing_user.verification_token = token
+        existing_user.verification_token_expires_at = datetime.utcnow() + timedelta(hours=24)
+        db.session.commit()
+        try:
+            from app.services.email_service import EmailService
+            EmailService.send_verification_email(to_email=existing_user.email, verification_token=token)
+        except Exception as e:
+            logger.error(f"Failed to resend verification email on duplicate register: {e}")
+        return jsonify({
+            'message': 'An unverified account with this email already exists. A new verification link has been sent to your inbox.',
+            'emailResent': True,
+            'user': existing_user.to_dict()
+        }), 200
+
     token = secrets.token_urlsafe(32)
     expires_at = datetime.utcnow() + timedelta(hours=24)
 
     user = User(
         email=clean_email,
         full_name=data.get('fullName', ''),
-        email_verified=False
+        email_verified=False,
+        legacy_unverified=False,
+        legacy_deadline=None
     )
     user.verification_token = token
     user.verification_token_expires_at = expires_at
@@ -252,19 +334,46 @@ def verify_email():
 
     now = datetime.utcnow()
     user = User.query.filter_by(verification_token=token).first()
-    if not user:
-        return jsonify({'message': 'Invalid verification token'}), 400
+    is_link_flow = False
+    old_email = None
 
-    if user.verification_token_expires_at and now > user.verification_token_expires_at:
-        return jsonify({'message': 'Verification token has expired'}), 400
+    if not user:
+        # Check pending email token from link-email flow
+        user = User.query.filter_by(pending_email_token=token).first()
+        if user:
+            is_link_flow = True
+            if user.pending_email_token_expires_at and now > user.pending_email_token_expires_at:
+                return jsonify({'message': 'Verification token has expired'}), 400
+            old_email = user.email
+            user.email = user.pending_email
+            user.pending_email = None
+            user.pending_email_token = None
+            user.pending_email_token_expires_at = None
+        else:
+            return jsonify({'message': 'Invalid verification token'}), 400
+    else:
+        if user.verification_token_expires_at and now > user.verification_token_expires_at:
+            return jsonify({'message': 'Verification token has expired'}), 400
+        user.verification_token = None
+        user.verification_token_expires_at = None
 
     user.email_verified = True
-    user.verification_token = None
-    user.verification_token_expires_at = None
+    user.legacy_unverified = False
+    user.legacy_deadline = None
     db.session.commit()
 
     # Link pending board invitations now that the email is verified
     attach_pending_invitations(user)
+
+    # Dispatch confirmation notice to the verified email and notice to old email if link flow
+    try:
+        from app.services.email_service import EmailService
+        EmailService.send_verification_confirmation(to_email=user.email)
+        if is_link_flow and old_email:
+            masked = mask_email(user.email)
+            EmailService.send_email_change_alert(to_email=old_email, masked_new_email=masked)
+    except Exception as e:
+        logger.error(f"Failed to dispatch post-verification email notices: {e}")
 
     return jsonify({
         'message': 'Email verified successfully',
@@ -330,6 +439,27 @@ def login():
         if not user.check_password(data['password']):
             print(f"DEBUG: Password mismatch for user: {clean_email}")
             return jsonify({'message': 'Invalid credentials'}), 401
+
+        # Check verification status & legacy unverified grandfathering (Req 1, 2, 9)
+        if not getattr(user, 'email_verified', False):
+            if getattr(user, 'legacy_unverified', False):
+                now = datetime.utcnow()
+                if user.legacy_deadline and now > user.legacy_deadline:
+                    return jsonify({
+                        'message': 'Your verification deadline has passed. Please link a verified email to unlock your account.',
+                        'legacyExpired': True,
+                        'email': user.email
+                    }), 403
+                # Legacy unverified users before deadline can still log in
+            else:
+                # New unverified accounts: strictly blocked from logging in (Req 2, 4)
+                can_sign_up_again = not user_has_any_data(user.id)
+                return jsonify({
+                    'message': 'Please verify your email address before signing in.',
+                    'emailVerified': False,
+                    'email': user.email,
+                    'canSignUpAgain': can_sign_up_again
+                }), 403
             
         print(f"DEBUG: User authenticated successfully: {user.email}")
         access_token = create_access_token(identity=str(user.id))
@@ -351,8 +481,85 @@ def get_me():
     
     if not user:
         return jsonify({'message': 'User not found'}), 404
+
+    # Protect session restore for unverified accounts
+    if not getattr(user, 'email_verified', False):
+        if getattr(user, 'legacy_unverified', False):
+            now = datetime.utcnow()
+            if user.legacy_deadline and now > user.legacy_deadline:
+                return jsonify({
+                    'message': 'Your verification deadline has passed. Please link a verified email to unlock your account.',
+                    'legacyExpired': True,
+                    'email': user.email
+                }), 403
+        else:
+            return jsonify({
+                'message': 'Please verify your email address before accessing this service.',
+                'emailVerified': False,
+                'email': user.email
+            }), 403
         
     return jsonify(user.to_dict()), 200
+
+@bp.route('/link-email/request', methods=['POST'])
+@limiter.limit("5 per minute")
+def request_link_email():
+    """
+    Initiates linking a new contact email to an existing account.
+    Can be called by an authenticated legacy user (via JWT) or a locked-out user
+    providing originalEmail + password for account unlock.
+    """
+    data = request.get_json() or {}
+    new_email = data.get('newEmail')
+    if not new_email:
+        return jsonify({'message': 'Missing new email address'}), 400
+
+    clean_new_email, err = normalize_and_validate_email(new_email)
+    if err:
+        return jsonify({'message': err}), 400
+
+    # Determine user identity: from JWT or credentials
+    user = None
+    try:
+        from flask_jwt_extended import verify_jwt_in_request
+        verify_jwt_in_request(optional=True)
+        current_id = get_jwt_identity()
+        if current_id:
+            user = db.session.get(User, current_id)
+    except Exception:
+        pass
+
+    if not user:
+        orig_email = (data.get('originalEmail') or '').strip().lower()
+        password = data.get('password')
+        if not orig_email or not password:
+            return jsonify({'message': 'Authentication or account credentials required'}), 401
+        candidate = User.query.filter_by(email=orig_email).first()
+        if candidate and candidate.check_password(password):
+            user = candidate
+
+    if not user:
+        return jsonify({'message': 'Invalid credentials'}), 401
+
+    # Privacy guarantee: Never reveal if new_email is already registered
+    existing = User.query.filter_by(email=clean_new_email).first()
+    if existing and existing.id != user.id:
+        logger.info(f"Link email requested for already-registered address {clean_new_email}; silently suppressed disclosure.")
+        return jsonify({'message': 'If this email address is eligible, a verification link has been sent.'}), 200
+
+    token = secrets.token_urlsafe(32)
+    user.pending_email = clean_new_email
+    user.pending_email_token = token
+    user.pending_email_token_expires_at = datetime.utcnow() + timedelta(hours=24)
+    db.session.commit()
+
+    try:
+        from app.services.email_service import EmailService
+        EmailService.send_link_email_verification(to_email=clean_new_email, verification_token=token)
+    except Exception as e:
+        logger.error(f"Failed to dispatch link email verification to {clean_new_email}: {e}")
+
+    return jsonify({'message': 'If this email address is eligible, a verification link has been sent.'}), 200
 
 @bp.route('/me', methods=['PATCH', 'PUT'])
 @jwt_required()

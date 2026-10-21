@@ -91,10 +91,11 @@ export default function Register() {
       toast.success(
         response.message || "Account created successfully! Please sign in with your credentials."
       );
-      // Flow requirement: Do NOT log the user in immediately; redirect them to /login with pre-filled email
-      const nextLoginUrl = redirectParam
-        ? `/login?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirectParam)}`
-        : "/login";
+      // Requirement 5 & 7: Store pre-fill email in sessionStorage (never password)
+      sessionStorage.setItem("login_prefill_email", email.trim().toLowerCase());
+      const nextLoginUrl = redirectParam ? `/login?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirectParam)}` : "/login";
+
+
       navigate(nextLoginUrl, { state: { email } });
     } catch (error: any) {
       toast.error(error.message || "Failed to register");

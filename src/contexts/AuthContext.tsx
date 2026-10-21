@@ -46,6 +46,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(authToken);
     localStorage.setItem(TOKEN_STORAGE_KEY, authToken);
     localStorage.setItem("auth_user", JSON.stringify(userData));
+    sessionStorage.removeItem("login_prefill_email");
+    sessionStorage.removeItem("dismiss_legacy_banner");
   };
 
   const logout = useCallback((showNotice: boolean = false) => {
@@ -53,6 +55,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     localStorage.removeItem("auth_user");
+    sessionStorage.removeItem("login_prefill_email");
+    sessionStorage.removeItem("dismiss_legacy_banner");
+    sessionStorage.removeItem("dismiss_legacy_banner");
     if (showNotice) {
       toast.info("Your session has expired. Please log in again.");
     }
@@ -67,6 +72,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         setToken(savedToken);
         setUser(JSON.parse(savedUser));
+        // Synchronize fresh user profile and verification status from backend
+        authApi.getMe(savedToken).then((freshUser) => {
+          if (freshUser && freshUser.id) {
+            setUser(freshUser);
+            localStorage.setItem("auth_user", JSON.stringify(freshUser));
+          }
+        }).catch(() => {});
       } catch {
         logout();
       }

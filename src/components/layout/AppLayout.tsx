@@ -1,5 +1,9 @@
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { LinkEmailModal } from "@/components/auth/LinkEmailModal";
+import { AlertTriangle, XClose } from "@untitledui/icons";
 import { AppSidebar } from "./AppSidebar";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { CommandSearchDialog } from "@/components/search/CommandSearchDialog";
@@ -17,6 +21,70 @@ function AppLayoutFallback() {
 
 function AppLayoutInner() {
   const location = useLocation();
+  const { user } = useAuth();
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [isBannerDismissed, setIsBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      setIsBannerDismissed(sessionStorage.getItem(`dismiss_legacy_banner_${user.id}`) === "true");
+    } else {
+      setIsBannerDismissed(false);
+    }
+  }, [user?.id]);
+
+  const deadlineInfo = useMemo(() => {
+    // Only display for unverified accounts
+    if (!user || user.emailVerified) return null;
+
+    let deadline: Date;
+    if (user.legacyDeadline) {
+      deadline = new Date(user.legacyDeadline);
+    } else {
+      deadline = new Date();
+      deadline.setDate(deadline.getDate() + 30);
+    }
+
+    const now = new Date();
+    const diffMs = deadline.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const formattedDate = deadline.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+
+    let urgency: "default" | "warning" | "high" | "critical" = "default";
+    let bgClasses = "bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200";
+    let badgeClasses = "bg-amber-500/20 text-amber-700 dark:text-amber-300";
+
+    if (diffDays <= 1) {
+      urgency = "critical";
+      bgClasses = "bg-destructive/15 border-destructive/40 text-destructive animate-pulse";
+      badgeClasses = "bg-destructive text-destructive-foreground font-bold";
+    } else if (diffDays <= 3) {
+      urgency = "critical";
+      bgClasses = "bg-red-500/15 border-red-500/30 text-red-900 dark:text-red-200";
+      badgeClasses = "bg-red-500 text-white font-bold";
+    } else if (diffDays <= 7) {
+      urgency = "high";
+      bgClasses = "bg-orange-500/15 border-orange-500/30 text-orange-900 dark:text-orange-200";
+      badgeClasses = "bg-orange-500/20 text-orange-800 dark:text-orange-200 font-semibold";
+    } else if (diffDays <= 14) {
+      urgency = "warning";
+      bgClasses = "bg-amber-500/15 border-amber-500/30 text-amber-900 dark:text-amber-200";
+      badgeClasses = "bg-amber-500/20 text-amber-800 dark:text-amber-200";
+    }
+
+    return {
+      diffDays,
+      formattedDate,
+      urgency,
+      bgClasses,
+      badgeClasses,
+    };
+  }, [user]);
+
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem("sidebar_collapsed");
     if (saved !== null) return saved === "true";
@@ -108,10 +176,66 @@ function AppLayoutInner() {
 
       {/* Main Viewport Content Area */}
       <main className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative">
+        {user && !user.emailVerified && !isBannerDismissed && deadlineInfo && (
+          <div
+            className={`w-full px-4 py-2 border-b flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm z-30 transition-colors ${deadlineInfo.bgClasses}`}
+            role="alert"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>
+                <strong>Please link a verified email to keep your account secure.</strong>{" "}
+                {deadlineInfo.diffDays > 0 ? (
+                  <>
+                    <span className={`px-1.5 py-0.5 rounded text-[11px] font-mono mr-1 ${deadlineInfo.badgeClasses}`}>
+                      {deadlineInfo.diffDays} {deadlineInfo.diffDays === 1 ? "day" : "days"} left
+                    </span>
+                    (Deadline: {deadlineInfo.formattedDate})
+                  </>
+                ) : (
+                  <span className="font-bold underline text-destructive">Deadline expired</span>
+                )}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <Button
+                size="sm"
+                variant="default"
+                className="h-7 text-xs font-semibold px-2.5"
+                onClick={() => setIsLinkModalOpen(true)}
+              >
+                Link Verified Email
+              </Button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (user?.id) {
+                    sessionStorage.setItem(`dismiss_legacy_banner_${user.id}`, "true");
+                  }
+                  setIsBannerDismissed(true);
+                }}
+                className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+                title="Dismiss for this session"
+                aria-label="Dismiss banner"
+              >
+                <XClose className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
         <Suspense fallback={<AppLayoutFallback />}>
           <Outlet />
         </Suspense>
       </main>
+
+      {/* Legacy Link Email Dialog */}
+      {user && (
+        <LinkEmailModal
+          open={isLinkModalOpen}
+          onOpenChange={setIsLinkModalOpen}
+          currentEmail={user.email}
+        />
+      )}
 
       {/* Global Command Palette */}
       <CommandSearchDialog

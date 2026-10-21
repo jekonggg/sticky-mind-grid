@@ -35,6 +35,7 @@ class ConsoleEmailProvider(EmailProvider):
         }
         self._outbox.append(message_record)
         logger.info(f"[ConsoleEmailProvider] Outbox delivery to={to_email} subject='{subject}'")
+
         return True
 
 class SMTPEmailProvider(EmailProvider):
@@ -152,6 +153,7 @@ class EmailService:
 
     @classmethod
     def send_email(cls, to_email: str, subject: str, text_body: str, html_body: str = None, **kwargs) -> bool:
+        print(f"\n======== [CONSOLE EMAIL DISPATCH] ========\nTo: {to_email}\nSubject: {subject}\n\n{text_body}\n==========================================\n", flush=True)
         return cls.get_provider().send_email(to_email, subject, text_body, html_body, **kwargs)
 
     @classmethod
@@ -275,3 +277,111 @@ class EmailService:
             verification_token=verification_token,
             verification_link=link
         )
+
+    @classmethod
+    def send_verification_confirmation(cls, to_email: str) -> bool:
+        """Dispatches a confirmation notice once an email has been verified."""
+        subject = "Your email is verified - Sticky Mind Grid"
+        login_url = cls._ensure_absolute_url("/login", fallback_path="/login")
+        text_body = (
+            f"Hello,\n\n"
+            f"Your email address ({to_email}) has been successfully verified.\n\n"
+            f"You can now log in to your account and access your boards:\n{login_url}\n\n"
+            f"— The Sticky Mind Grid Team"
+        )
+        html_body = (
+            f"<div style='font-family: sans-serif; line-height: 1.5; color: #1e293b; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;'>"
+            f"<h2 style='color: #0f172a; margin-top: 0;'>Email Verified Successfully</h2>"
+            f"<p>Your email address (<strong>{to_email}</strong>) is now verified. You have full access to your Sticky Mind Grid workspaces.</p>"
+            f"<p style='margin: 24px 0;'><a href='{login_url}' style='background-color: #10b981; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;'>Log In to Sticky Mind Grid</a></p>"
+            f"<hr style='border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;' />"
+            f"<p style='font-size: 12px; color: #94a3b8;'>Sticky Mind Grid — Real-Time Kanban Workspace</p>"
+            f"</div>"
+        )
+        try:
+            return cls.send_email(to_email=to_email, subject=subject, text_body=text_body, html_body=html_body, login_url=login_url)
+        except Exception as e:
+            logger.error(f"Failed to dispatch verification confirmation to {to_email}: {e}")
+            return False
+
+    @classmethod
+    def send_email_change_alert(cls, to_email: str, masked_new_email: str) -> bool:
+        """Dispatches a security notification to the old email when the account email is changed."""
+        subject = "[Security Alert] Your account email was changed - Sticky Mind Grid"
+        text_body = (
+            f"Hello,\n\n"
+            f"Your account email was changed to {masked_new_email}.\n\n"
+            f"If this wasn't you, please contact support immediately.\n\n"
+            f"— The Sticky Mind Grid Security Team"
+        )
+        html_body = (
+            f"<div style='font-family: sans-serif; line-height: 1.5; color: #1e293b; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #fecaca; border-radius: 8px; background-color: #fef2f2;'>"
+            f"<h2 style='color: #991b1b; margin-top: 0;'>Account Email Changed</h2>"
+            f"<p>Your Sticky Mind Grid account contact email was recently changed to <strong>{masked_new_email}</strong>.</p>"
+            f"<p><strong>If you did not perform this change, please contact support or your workspace administrator immediately.</strong></p>"
+            f"<hr style='border: none; border-top: 1px solid #fecaca; margin: 24px 0;' />"
+            f"<p style='font-size: 12px; color: #94a3b8;'>Sticky Mind Grid — Security Notice</p>"
+            f"</div>"
+        )
+        try:
+            return cls.send_email(to_email=to_email, subject=subject, text_body=text_body, html_body=html_body, masked_new_email=masked_new_email)
+        except Exception as e:
+            logger.error(f"Failed to dispatch email change alert to {to_email}: {e}")
+            return False
+
+    @classmethod
+    def send_link_email_verification(cls, to_email: str, verification_token: str) -> bool:
+        """Dispatches a verification email for linking a new contact email to an existing account."""
+        subject = "Confirm linking your email to Sticky Mind Grid"
+        fallback = f"/verify-email?token={verification_token}"
+        link = cls._ensure_absolute_url(fallback, fallback_path=fallback)
+        text_body = (
+            f"Hello,\n\n"
+            f"A request was made to link this email address to a Sticky Mind Grid account.\n\n"
+            f"Please verify this email to complete the process and keep your account secure:\n{link}\n\n"
+            f"This link expires in 24 hours.\n\n"
+            f"If you did not make this request, you can safely ignore this email.\n\n"
+            f"— The Sticky Mind Grid Team"
+        )
+        html_body = (
+            f"<div style='font-family: sans-serif; line-height: 1.5; color: #1e293b; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;'>"
+            f"<h2 style='color: #0f172a; margin-top: 0;'>Verify Your New Contact Email</h2>"
+            f"<p>A request was made to link <strong>{to_email}</strong> to a Sticky Mind Grid account.</p>"
+            f"<p style='margin: 24px 0;'><a href='{link}' style='background-color: #2563eb; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;'>Confirm Email Link</a></p>"
+            f"<p style='font-size: 13px; color: #64748b;'>This link will expire in 24 hours.</p>"
+            f"<hr style='border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;' />"
+            f"<p style='font-size: 12px; color: #94a3b8;'>Sticky Mind Grid — Real-Time Kanban Workspace</p>"
+            f"</div>"
+        )
+        try:
+            return cls.send_email(to_email=to_email, subject=subject, text_body=text_body, html_body=html_body, verification_token=verification_token, verification_link=link)
+        except Exception as e:
+            logger.error(f"Failed to dispatch link email verification to {to_email}: {e}")
+            return False
+
+    @classmethod
+    def send_legacy_deadline_reminder(cls, to_email: str, days_left: int, deadline_str: str) -> bool:
+        """Dispatches an email reminder for legacy unverified users approaching their deadline."""
+        subject = f"[Action Required] {days_left} days left to link a verified email - Sticky Mind Grid"
+        login_url = cls._ensure_absolute_url("/login", fallback_path="/login")
+        text_body = (
+            f"Hello,\n\n"
+            f"To keep your Sticky Mind Grid account secure and retain access to your boards, please link a verified email address.\n\n"
+            f"You have {days_left} days remaining until your verification deadline ({deadline_str}).\n\n"
+            f"Sign in now to verify your contact email:\n{login_url}\n\n"
+            f"— The Sticky Mind Grid Team"
+        )
+        html_body = (
+            f"<div style='font-family: sans-serif; line-height: 1.5; color: #1e293b; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #fed7aa; border-radius: 8px; background-color: #fff7ed;'>"
+            f"<h2 style='color: #c2410c; margin-top: 0;'>Verify Your Email Before Deadline</h2>"
+            f"<p>You have <strong>{days_left} days remaining</strong> (until {deadline_str}) to link a verified email to your Sticky Mind Grid account.</p>"
+            f"<p style='margin: 24px 0;'><a href='{login_url}' style='background-color: #ea580c; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;'>Sign In and Link Email</a></p>"
+            f"<hr style='border: none; border-top: 1px solid #fed7aa; margin: 24px 0;' />"
+            f"<p style='font-size: 12px; color: #94a3b8;'>Sticky Mind Grid — Security Notice</p>"
+            f"</div>"
+        )
+        try:
+            return cls.send_email(to_email=to_email, subject=subject, text_body=text_body, html_body=html_body, days_left=days_left, deadline_str=deadline_str)
+        except Exception as e:
+            logger.error(f"Failed to dispatch legacy deadline reminder to {to_email}: {e}")
+            return False

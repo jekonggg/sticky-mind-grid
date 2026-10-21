@@ -72,7 +72,7 @@ def test_supabase_attachment_upload_and_signed_url_redirect(app, client):
         app.config['SUPABASE_STORAGE_ATTACHMENTS_BUCKET'] = 'attachments'
 
         # Create a user and board
-        user = User(email='uploader@example.com', full_name='Uploader')
+        user = User(email='uploader@example.com', full_name='Uploader', email_verified=True)
         user.set_password('Secret123!')
         db.session.add(user)
         db.session.commit()
@@ -127,7 +127,7 @@ def test_update_me_normalizes_avatar_and_deletes_old_object(app, client):
         app.config['SUPABASE_SERVICE_ROLE_KEY'] = 'mock-service-role-key'
         app.config['SUPABASE_STORAGE_AVATARS_BUCKET'] = 'avatars'
 
-        user = User(email='changer@example.com', full_name='Changer', avatar_url='avatars/old-pic.png')
+        user = User(email='changer@example.com', full_name='Changer', avatar_url='avatars/old-pic.png', email_verified=True)
         user.set_password('Secret123!')
         db.session.add(user)
         db.session.commit()

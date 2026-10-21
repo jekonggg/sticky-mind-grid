@@ -184,7 +184,7 @@ class OAuthService:
             'fullName': user_data.get('name') or user_data.get('given_name') or email.split('@')[0],
             'avatarUrl': user_data.get('picture'),
             'providerId': str(user_data.get('sub') or ''),
-            'email_verified': bool(user_data.get('email_verified', True))
+            'email_verified': bool(user_data.get('email_verified', False))
         }, None
 
     @staticmethod

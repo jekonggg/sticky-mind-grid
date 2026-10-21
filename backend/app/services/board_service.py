@@ -610,19 +610,21 @@ class BoardService:
 
         db.session.commit()
 
-        # Outbound email invitation
+        # Outbound email invitation (never send to unverified legacy email)
         try:
-            from app.services.email_service import EmailService
-            import os
-            base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
-            invite_link = f"{base_url}/invite/{invitation.id}" if invitation else None
-            EmailService.send_board_invitation(
-                to_email=clean_email,
-                board_name=board.name,
-                inviter_name=actor_name,
-                role=role,
-                invite_link=invite_link
-            )
+            is_legacy_unverified = user and getattr(user, 'legacy_unverified', False) and not user.email_verified
+            if not is_legacy_unverified:
+                from app.services.email_service import EmailService
+                import os
+                base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
+                invite_link = f"{base_url}/invite/{invitation.id}" if invitation else None
+                EmailService.send_board_invitation(
+                    to_email=clean_email,
+                    board_name=board.name,
+                    inviter_name=actor_name,
+                    role=role,
+                    invite_link=invite_link
+                )
         except Exception as e:
             logger.error(f"Failed to send invitation email to {clean_email}: {e}")
 
@@ -906,8 +908,10 @@ class BoardService:
             import os
             base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
             target_email = invitation.email if invitation else (user.email if user else None)
+            target_u = user if user else (User.query.filter_by(email=target_email).first() if target_email else None)
+            is_legacy_unverified = target_u and getattr(target_u, 'legacy_unverified', False) and not target_u.email_verified
             invite_link = f"{base_url}/invite/{invitation.id}" if invitation else None
-            if target_email:
+            if target_email and not is_legacy_unverified:
                 EmailService.send_board_invitation(
                     to_email=target_email,
                     board_name=board.name,

@@ -31,6 +31,7 @@ const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const TeamsPage = lazy(() => import("./pages/TeamsPage"));
 const MessagesPage = lazy(() => import("./pages/MessagesPage"));
 const AcceptInvitePage = lazy(() => import("./pages/AcceptInvitePage"));
+const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 
 /** Keeps lazy public pages inside their own suspense boundary so they never
  * fall back to the authenticated application shell. */
@@ -77,6 +78,7 @@ const App = () => (
                   <Route path="/auth/callback" element={<PublicRoute><OAuthCallback /></PublicRoute>} />
                   <Route path="/auth/callback/:provider" element={<PublicRoute><OAuthCallback /></PublicRoute>} />
                   <Route path="/invite/:invitationId" element={<PublicRoute><AcceptInvitePage /></PublicRoute>} />
+                  <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
 
                   <Route element={<ProtectedRoute />}>
                     <Route element={<AppLayout />}>

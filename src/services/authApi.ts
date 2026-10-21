@@ -9,8 +9,11 @@ export const authApi = {
       body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.message || "Failed to login");
+      const error = await res.json().catch(() => ({ message: "Failed to login" }));
+      const err: any = new Error(error.message || "Failed to login");
+      err.status = res.status;
+      err.data = error;
+      throw err;
     }
     return res.json();
   },
@@ -80,6 +83,55 @@ export const authApi = {
     if (!res.ok) {
       const error = await res.json();
       throw new Error(error.message || "Failed to update profile");
+    }
+    return res.json();
+  },
+
+async resendVerification(email?: string): Promise<{ message: string }> {
+    const token = getStoredToken();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    const res = await fetch(`${API_AUTH_BASE}/resend-verification`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(email ? { email } : {}),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ message: "Failed to resend verification email" }));
+      throw new Error(error.message || "Failed to resend verification email");
+    }
+    return res.json();
+  },
+
+  async requestLinkEmail(payload: { newEmail: string; originalEmail?: string; password?: string }): Promise<{ message: string }> {
+    const token = getStoredToken();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    const res = await fetch(`${API_AUTH_BASE}/link-email/request`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ message: "Failed to request email link" }));
+      throw new Error(error.message || "Failed to request email link");
+    }
+    return res.json();
+  },
+
+  async verifyEmail(token: string): Promise<{ message: string; user?: any }> {
+    const res = await fetch(`${API_AUTH_BASE}/verify-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ message: "Email verification failed" }));
+      throw new Error(error.message || "Email verification failed");
     }
     return res.json();
   },

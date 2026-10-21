@@ -233,6 +233,21 @@ def _auto_sync_schema(app):
             )
             _add_col_if_missing('users', 'verification_token', "VARCHAR(100) NULL")
             _add_col_if_missing('users', 'verification_token_expires_at', dt_col)
+            _add_col_if_missing('users', 'legacy_unverified', "BOOLEAN DEFAULT FALSE NOT NULL")
+            _add_col_if_missing('users', 'legacy_deadline', dt_col)
+            _add_col_if_missing('users', 'pending_email', "VARCHAR(255) NULL")
+            _add_col_if_missing('users', 'pending_email_token', "VARCHAR(100) NULL")
+            _add_col_if_missing('users', 'pending_email_token_expires_at', dt_col)
+            try:
+                if is_pg:
+                    db.session.execute(text("UPDATE users SET legacy_unverified = TRUE, legacy_deadline = (NOW() + INTERVAL '30 days') WHERE email_verified = FALSE AND (legacy_unverified = FALSE OR legacy_unverified IS NULL)"))
+                elif db.engine.dialect.name == 'sqlite':
+                    db.session.execute(text("UPDATE users SET legacy_unverified = 1, legacy_deadline = datetime('now', '+30 days') WHERE email_verified = 0 AND (legacy_unverified = 0 OR legacy_unverified IS NULL)"))
+                else:
+                    db.session.execute(text("UPDATE users SET legacy_unverified = TRUE, legacy_deadline = DATE_ADD(NOW(), INTERVAL 30 DAY) WHERE email_verified = FALSE AND (legacy_unverified = FALSE OR legacy_unverified IS NULL)"))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
             # Ensure missing columns in board_members table
             _add_col_if_missing(

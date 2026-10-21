@@ -30,6 +30,12 @@ class TestConfig(Config):
     SCHEDULER_ENABLED = False
     SUPABASE_URL = None
     SUPABASE_SERVICE_ROLE_KEY = None
+    GOOGLE_CLIENT_ID = None
+    GOOGLE_CLIENT_SECRET = None
+    GITHUB_CLIENT_ID = None
+    GITHUB_CLIENT_SECRET = None
+    MICROSOFT_CLIENT_ID = None
+    MICROSOFT_CLIENT_SECRET = None
 
 @pytest.fixture
 def app():
@@ -94,8 +100,8 @@ def auth_headers():
 
 @pytest.fixture
 def create_test_user(app):
-    def _create_user(email="testuser@example.com", password="password123", full_name="Test User"):
-        user = User(email=email, full_name=full_name)
+    def _create_user(email="testuser@example.com", password="password123", full_name="Test User", email_verified=True):
+        user = User(email=email, full_name=full_name, email_verified=email_verified)
         user.set_password(password)
         db.session.add(user)
         db.session.commit()

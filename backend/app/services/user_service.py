@@ -63,21 +63,23 @@ class UserService:
                     board_id=board.id
                 )
 
-                # Email notification to successor
+                # Email notification to successor (only if verified; never send to an unverified legacy email)
                 if successor.user and successor.user.email:
-                    try:
-                        from app.services.email_service import EmailService
-                        import os
-                        base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
-                        board_link = f"{base_url}/boards/{board.id}"
-                        EmailService.send_ownership_transfer_notice(
-                            to_email=successor.user.email,
-                            board_name=board.name,
-                            former_owner_name=user_name,
-                            board_link=board_link
-                        )
-                    except Exception:
-                        pass
+                    is_legacy_unverified = getattr(successor.user, 'legacy_unverified', False) and not successor.user.email_verified
+                    if not is_legacy_unverified:
+                        try:
+                            from app.services.email_service import EmailService
+                            import os
+                            base_url = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
+                            board_link = f"{base_url}/boards/{board.id}"
+                            EmailService.send_ownership_transfer_notice(
+                                to_email=successor.user.email,
+                                board_name=board.name,
+                                former_owner_name=user_name,
+                                board_link=board_link
+                            )
+                        except Exception:
+                            pass
 
                 broadcaster.broadcast(board.id, "member:role_updated", {"userId": successor.user_id, "role": "owner"})
                 broadcaster.broadcast(board.id, "activity:new", activity.to_dict())

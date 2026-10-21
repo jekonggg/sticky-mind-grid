@@ -726,6 +726,8 @@ def test_oq_09_email_normalization_and_validation(client, create_test_user, auth
     user_in_db = User.query.filter_by(email="alice.oq09@example.com").first()
     assert user_in_db is not None
     assert user_in_db.email == "alice.oq09@example.com"
+    user_in_db.email_verified = True
+    db.session.commit()
 
     # 3. Login with different casing and whitespace succeeds
     resp_login = client.post(
