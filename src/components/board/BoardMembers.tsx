@@ -255,9 +255,9 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
           return (
             <div
               key={member.id}
-              className="flex items-center justify-between p-3 rounded-xl bg-card/60 border border-border/60 hover:border-border transition-all shadow-sm gap-3"
+              className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-card/60 border border-border/60 hover:border-border transition-all shadow-sm gap-2.5 sm:gap-3"
             >
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
                 <Avatar className="h-9 w-9 border border-border/80 shrink-0">
                   <AvatarImage
                     src={isSelf ? (currentUser?.avatarUrl ?? member.user?.avatarUrl) : member.user?.avatarUrl}
@@ -271,7 +271,7 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                   <span className="text-xs md:text-sm font-bold text-foreground truncate flex items-center gap-1.5">
                     {member.user?.fullName || member.user?.email || "Member"}
                     {isSelf && (
-                      <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.2 rounded font-black">
+                      <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.2 rounded font-black shrink-0">
                         You
                       </span>
                     )}
@@ -283,7 +283,7 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto pt-2.5 sm:pt-0 border-t border-border/40 sm:border-0 shrink-0">
                 {canEditThisMember ? (
                   <Select
                     value={member.role}
@@ -299,7 +299,7 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                     }}
                     disabled={updateRoleMutation.isPending}
                   >
-                    <SelectTrigger className="h-8 w-28 text-xs font-semibold capitalize bg-background/50 border-border/70">
+                    <SelectTrigger className="h-8 w-28 text-xs font-semibold capitalize bg-background/50 border-border/70 shrink-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -337,7 +337,7 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                 ) : (
                   <Badge
                     variant="outline"
-                    className={`capitalize text-[11px] font-bold py-1 px-2.5 flex items-center ${getRoleColor(
+                    className={`capitalize text-[11px] font-bold py-1 px-2.5 flex items-center shrink-0 ${getRoleColor(
                       member.role
                     )}`}
                   >
@@ -346,74 +346,78 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                   </Badge>
                 )}
 
-                {/* Transfer Ownership button for Owner */}
-                {canTransferToThisMember && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 rounded-lg gap-1"
-                    title="Transfer board ownership"
-                    onClick={() => {
-                      setPendingOwnerPromotion({
-                        member,
-                        mode: "transfer_ownership",
-                      });
-                    }}
-                    disabled={transferOwnershipMutation.isPending}
-                  >
-                    <Crown className="h-3 w-3 text-amber-500" />
-                    <span className="whitespace-nowrap">Transfer Ownership</span>
-                  </Button>
-                )}
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  {/* Transfer Ownership button for Owner */}
+                  {canTransferToThisMember && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label="Transfer ownership"
+                      className="h-8 px-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 rounded-lg gap-1 shrink-0"
+                      title="Transfer board ownership"
+                      onClick={() => {
+                        setPendingOwnerPromotion({
+                          member,
+                          mode: "transfer_ownership",
+                        });
+                      }}
+                      disabled={transferOwnershipMutation.isPending}
+                    >
+                      <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                      <span className="sm:hidden whitespace-nowrap">Transfer</span>
+                      <span className="hidden sm:inline whitespace-nowrap">Transfer Ownership</span>
+                    </Button>
+                  )}
 
-                {/* Remove member button */}
-                {canRemoveThisMember && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-                    title="Remove member from board"
-                    onClick={() => {
-                      if (confirm(`Remove ${member.user?.fullName || member.user?.email || "this member"} from this board?`)) {
-                        removeMutation.mutate(member.userId || member.id);
-                      }
-                    }}
-                    disabled={removeMutation.isPending}
-                  >
-                    <UserMinus className="h-4 w-4" />
-                  </Button>
-                )}
+                  {/* Remove member button */}
+                  {canRemoveThisMember && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg shrink-0"
+                      title="Remove member from board"
+                      onClick={() => {
+                        if (confirm(`Remove ${member.user?.fullName || member.user?.email || "this member"} from this board?`)) {
+                          removeMutation.mutate(member.userId || member.id);
+                        }
+                      }}
+                      disabled={removeMutation.isPending}
+                    >
+                      <UserMinus className="h-4 w-4" />
+                    </Button>
+                  )}
 
-                {/* Leave board button */}
-                {isSelf && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={`h-8 px-2.5 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 rounded-lg font-bold gap-1 cursor-pointer ${
-                      isSoleOwner ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
-                    title={
-                      isSoleOwner
-                        ? "The last Owner cannot leave the board. Transfer ownership or delete the board."
-                        : "Leave this board"
-                    }
-                    onClick={() => {
-                      if (isSoleOwner) {
-                        toast.error(
-                          "A board must always have at least one Owner. Transfer ownership before leaving."
-                        );
-                        return;
+                  {/* Leave board button */}
+                  {isSelf && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`h-8 px-2.5 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 rounded-lg font-bold gap-1 cursor-pointer shrink-0 ${
+                        isSoleOwner ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                      title={
+                        isSoleOwner
+                          ? "The last Owner cannot leave the board. Transfer ownership or delete the board."
+                          : "Leave this board"
                       }
-                      if (confirm(`Are you sure you want to leave "${currentBoard?.name || "this board"}"?`)) {
-                        removeMutation.mutate(member.userId);
-                      }
-                    }}
-                    disabled={removeMutation.isPending || isSoleOwner}
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                    <span>Leave</span>
-                  </Button>
-                )}
+                      onClick={() => {
+                        if (isSoleOwner) {
+                          toast.error(
+                            "A board must always have at least one Owner. Transfer ownership before leaving."
+                          );
+                          return;
+                        }
+                        if (confirm(`Are you sure you want to leave "${currentBoard?.name || "this board"}"?`)) {
+                          removeMutation.mutate(member.userId);
+                        }
+                      }}
+                      disabled={removeMutation.isPending || isSoleOwner}
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      <span>Leave</span>
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -435,9 +439,9 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
             return (
               <div
                 key={member.id}
-                className="flex items-center justify-between p-3 rounded-xl bg-card/60 border border-border/60 hover:border-border transition-all shadow-sm gap-3"
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-card/60 border border-border/60 hover:border-border transition-all shadow-sm gap-2.5 sm:gap-3"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
                   <Avatar className="h-9 w-9 border border-border/80 shrink-0">
                     <AvatarImage
                       src={isSelf ? (currentUser?.avatarUrl ?? member.user?.avatarUrl) : member.user?.avatarUrl}
@@ -451,12 +455,12 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                     <span className="text-xs md:text-sm font-bold text-foreground truncate flex items-center gap-1.5">
                       {displayName}
                       {member.status === "pending" && (
-                        <span className="text-[9px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider">
+                        <span className="text-[9px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider shrink-0">
                           Pending
                         </span>
                       )}
                       {member.status === "expired" && (
-                        <span className="text-[9px] bg-destructive/15 text-destructive border border-destructive/30 px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider">
+                        <span className="text-[9px] bg-destructive/15 text-destructive border border-destructive/30 px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider shrink-0">
                           Expired
                         </span>
                       )}
@@ -467,10 +471,10 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto pt-2.5 sm:pt-0 border-t border-border/40 sm:border-0 shrink-0">
                   <Badge
                     variant="outline"
-                    className={`capitalize text-[11px] font-bold py-1 px-2.5 flex items-center ${getRoleColor(
+                    className={`capitalize text-[11px] font-bold py-1 px-2.5 flex items-center shrink-0 ${getRoleColor(
                       member.role
                     )}`}
                   >
@@ -478,38 +482,40 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                     {member.role === "member" ? "editor" : member.role}
                   </Badge>
 
-                  {/* Resend invite for pending or expired members */}
-                  {canManage && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-primary rounded-lg cursor-pointer"
-                      title="Resend invitation"
-                      onClick={() => resendInviteMutation.mutate(member.userId || member.id)}
-                      disabled={resendInviteMutation.isPending}
-                    >
-                      <Send className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                    {/* Resend invite for pending or expired members */}
+                    {canManage && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-primary rounded-lg cursor-pointer shrink-0"
+                        title="Resend invitation"
+                        onClick={() => resendInviteMutation.mutate(member.userId || member.id)}
+                        disabled={resendInviteMutation.isPending}
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
 
-                  {/* Revoke invite for pending or expired members */}
-                  {canManage && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
-                      title="Revoke invitation"
-                      onClick={() => {
-                        const promptMsg = `Revoke invitation for ${displayName}?`;
-                        if (confirm(promptMsg)) {
-                          revokeInviteMutation.mutate(member.userId || member.id);
-                        }
-                      }}
-                      disabled={revokeInviteMutation.isPending}
-                    >
-                      <UserMinus className="h-4 w-4" />
-                    </Button>
-                  )}
+                    {/* Revoke invite for pending or expired members */}
+                    {canManage && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer shrink-0"
+                        title="Revoke invitation"
+                        onClick={() => {
+                          const promptMsg = `Revoke invitation for ${displayName}?`;
+                          if (confirm(promptMsg)) {
+                            revokeInviteMutation.mutate(member.userId || member.id);
+                          }
+                        }}
+                        disabled={revokeInviteMutation.isPending}
+                      >
+                        <UserMinus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             );

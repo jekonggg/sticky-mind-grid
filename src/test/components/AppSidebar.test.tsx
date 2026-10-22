@@ -104,14 +104,14 @@ describe("AppSidebar Component", () => {
     });
   });
 
-  it("renders FILES section with Board Files and Personal Files", () => {
+  it("renders FILES section with Board Files and Scratchpad", () => {
     renderWithProviders(
       <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />
     );
 
     expect(screen.getByText("FILES")).toBeInTheDocument();
     expect(screen.getByText("Board Files")).toBeInTheDocument();
-    expect(screen.getByText("Personal Files")).toBeInTheDocument();
+    expect(screen.getByText("Scratchpad")).toBeInTheDocument();
   });
 
   it("renders bottom 3-way theme selector (Light, Dark, Auto) and collapse sidebar button", () => {
@@ -148,9 +148,9 @@ describe("AppSidebar Component", () => {
       <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />
     );
 
-    // Expand Personal Files section if collapsed
-    const personalFilesHeader = screen.getByText("Personal Files");
-    fireEvent.click(personalFilesHeader);
+    // Expand Scratchpad section if collapsed
+    const scratchpadSection = screen.getByText("Scratchpad");
+    fireEvent.click(scratchpadSection);
 
     await waitFor(() => {
       const scratchpadBtn = screen.getByText("Open Scratchpad");
@@ -159,7 +159,7 @@ describe("AppSidebar Component", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Personal Files & Scratchpad")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Scratchpad" })).toBeInTheDocument();
     });
   });
 
@@ -190,7 +190,7 @@ describe("AppSidebar Component", () => {
     expect(screen.getByText(/Task Files \(2\)/)).toBeInTheDocument();
   });
 
-  it("renders numerical notification badges for Boards, Tasks, Messages, and Personal Files", async () => {
+  it("renders numerical notification badges for Boards, Tasks, Messages, and Scratchpad", async () => {
     renderWithProviders(
       <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />
     );

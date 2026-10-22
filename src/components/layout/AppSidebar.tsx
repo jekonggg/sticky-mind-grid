@@ -832,7 +832,7 @@ export function AppSidebar({
               )}
             </div>
 
-            {/* Personal Files */}
+            {/* Scratchpad */}
             <div>
               <Tooltip delayDuration={isCollapsed ? 100 : 1000}>
                 <TooltipTrigger asChild>
@@ -844,7 +844,7 @@ export function AppSidebar({
                   >
                     <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5 min-w-0"}`}>
                       <FolderLock className="h-4 w-4 shrink-0 text-amber-500/80" />
-                      {!isCollapsed && <span className="truncate">Personal Files</span>}
+                      {!isCollapsed && <span className="truncate">Scratchpad</span>}
                     </div>
 
                     {!isCollapsed && (
@@ -858,8 +858,8 @@ export function AppSidebar({
                               setIsScratchpadOpen(true);
                             }}
                             className="h-5 w-5 flex items-center justify-center rounded bg-amber-500/10 hover:bg-amber-500 text-amber-600 dark:text-amber-400 hover:text-white transition-colors cursor-pointer shadow-2xs shrink-0"
-                            title="New Personal Scratchpad Note"
-                            aria-label="New Personal Scratchpad Note"
+                            title="New Scratchpad Note"
+                            aria-label="New Scratchpad Note"
                           >
                             <Plus className="h-3 w-3" />
                           </button>
@@ -876,7 +876,7 @@ export function AppSidebar({
                     )}
                   </div>
                 </TooltipTrigger>
-                {isCollapsed && <TooltipContent side="right">Personal Files ({personalNotesCount})</TooltipContent>}
+                {isCollapsed && <TooltipContent side="right">Scratchpad ({personalNotesCount})</TooltipContent>}
               </Tooltip>
 
               {!isCollapsed && isPersonalFilesExpanded && (

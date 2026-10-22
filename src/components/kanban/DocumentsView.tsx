@@ -333,7 +333,7 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           {filteredDocs.length === 0 ? (
             <div className="col-span-full flex flex-col items-center justify-center py-16 text-center bg-muted/10 border border-dashed border-border/50 rounded-3xl">
               <div className="w-14 h-14 rounded-full bg-background flex items-center justify-center mb-3 shadow-sm">
@@ -355,7 +355,7 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
                   className="group border-border/40 bg-card/40 backdrop-blur-sm hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 hover:-translate-y-1.5 hover:border-primary/30 overflow-hidden rounded-2xl"
                 >
                   <CardContent className="p-0">
-                    <div className="aspect-video bg-muted/30 relative flex items-center justify-center overflow-hidden border-b border-border/10">
+                    <div className="hidden sm:flex aspect-video bg-muted/30 relative items-center justify-center overflow-hidden border-b border-border/10">
                       {isImage ? (
                         <img
                           src={getMediaUrl(doc.url)}

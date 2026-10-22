@@ -156,6 +156,68 @@ test.describe("Mobile dashboard bento layout", () => {
     await expectNoHorizontalOverflow(page);
   });
 
+  test("opens New Board as a compact popup instead of a full-screen page", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 900 });
+    await page.getByRole("button", { name: "New Board", exact: true }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Create Board" });
+    await expect(dialog).toBeVisible();
+
+    const bounds = await dialog.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.width).toBeLessThan(375 - 16);
+    expect(bounds!.height).toBeLessThan(900 - 16);
+    expect(bounds!.x).toBeGreaterThan(0);
+    expect(bounds!.y).toBeGreaterThan(0);
+    await expect(dialog.getByRole("button", { name: "Cancel" })).toBeVisible();
+  });
+
+  test("uses separate scratchpad list and editor pages on mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 900 });
+    await page.getByRole("button", { name: "Scratchpad", exact: true }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Scratchpad" });
+    const noteList = dialog.getByTestId("scratchpad-note-list");
+    const editor = dialog.getByTestId("scratchpad-note-editor");
+
+    await expect(dialog.getByRole("heading", { name: "Scratchpad" })).toBeVisible();
+    await expect(noteList).toBeVisible();
+    await expect(editor).toBeHidden();
+    await expect(dialog.getByPlaceholder("Search notes...")).toBeVisible();
+
+    await noteList.getByRole("button").first().click();
+
+    await expect(editor).toBeVisible();
+    await expect(noteList).toBeHidden();
+    await expect(dialog.getByPlaceholder("Note Title...")).toBeVisible();
+
+    const toolbar = dialog.getByTestId("scratchpad-format-toolbar");
+    await expect(toolbar).toHaveAttribute("data-placement", "bottom");
+    for (const name of [
+      "Bold",
+      "Italic",
+      "Underline",
+      "Strikethrough",
+      "Bulleted list",
+      "Numbered list",
+      "Checklist",
+      "Align left",
+      "Align center",
+      "Align right",
+      "Justify",
+    ]) {
+      await expect(toolbar.getByRole("button", { name })).toBeVisible();
+    }
+    await expect(toolbar.getByLabel("Font size")).toBeVisible();
+    await expect(toolbar.getByLabel("Text color")).toBeVisible();
+    await expect(dialog.getByTestId("scratchpad-content-editor")).toBeVisible();
+
+    await dialog.getByRole("button", { name: "Back to notes" }).click();
+
+    await expect(noteList).toBeVisible();
+    await expect(editor).toBeHidden();
+  });
+
   test("preserves the desktop 7/5 dashboard arrangement", async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 900 });
     await page.waitForTimeout(250);
