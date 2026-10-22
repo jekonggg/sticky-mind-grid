@@ -24,6 +24,7 @@ import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { AuthContext } from "@/contexts/AuthContext";
 import { getProgressColor } from "@/utils/taskUtils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export interface CalendarViewProps {
   tasks: Task[];
@@ -52,6 +53,7 @@ export function CalendarView({
 }: CalendarViewProps) {
   const { devSettings } = useDevMode();
   const { settings } = useSettings();
+  const isMobile = useIsMobile();
   const authContext = useContext(AuthContext);
   const currentUser = authContext?.user;
   const isCompact = settings.uiDensity === "compact";
@@ -240,32 +242,66 @@ export function CalendarView({
     return format(currentDate, "MMMM d, yyyy");
   };
 
+  const getCompactTitle = () => {
+    if (viewMode === 'month') return format(currentDate, "MMM yyyy");
+    if (viewMode === 'week') {
+      return isSameMonth(startDate, endDate)
+        ? `${format(startDate, "MMM d")} - ${format(endDate, "d")}`
+        : `${format(startDate, "MMM d")} - ${format(endDate, "MMM d")}`;
+    }
+    return format(currentDate, "MMM d");
+  };
+
   // Hours for Day View
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
   return (
-    <div className="p-4 md:p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-[1600px] mx-auto">
+    <div
+      data-testid="calendar-view"
+      className={`p-3 md:p-8 space-y-4 md:space-y-6 max-w-[1600px] mx-auto min-w-0 ${
+        scope === "board" ? "animate-in fade-in slide-in-from-bottom-4 duration-500" : ""
+      }`}
+    >
+      {title && isMobile && (
+        <header data-testid="calendar-mobile-page-header" className="min-w-0">
+          <h1 className="text-2xl lg:text-3xl font-black leading-tight tracking-tight text-foreground">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+          )}
+        </header>
+      )}
+
       {/* Header with Navigation and View Switcher */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 gap-4 min-w-0">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0">
-            <CalendarIcon className="h-5 w-5" />
-          </div>
+      <div
+        data-testid="calendar-toolbar"
+        className="flex flex-nowrap md:flex-wrap items-center justify-between gap-2 md:gap-3 xl:gap-4 min-w-0"
+      >
+        <div className="flex min-w-0 flex-none items-center gap-2 md:min-w-[12rem] md:flex-1 md:gap-3 xl:gap-4">
+          {!title && (
+            <div
+              data-testid="calendar-toolbar-icon"
+              className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center bg-primary/10 rounded-lg text-primary shrink-0"
+            >
+              <CalendarIcon className="h-4 w-4 md:h-5 md:w-5" />
+            </div>
+          )}
           <div className="flex flex-col min-w-0">
-            {title && (
+            {title && !isMobile && (
               <div className="mb-0.5 min-w-0">
                 <h1
-                  className="text-xl md:text-2xl font-black text-foreground tracking-tight leading-tight truncate"
+                  className="text-2xl lg:text-3xl font-black text-foreground tracking-tight leading-tight truncate"
                   title={title}
                 >
                   {title}
                 </h1>
                 {subtitle && (
-                  <p className="text-xs text-muted-foreground line-clamp-1">{subtitle}</p>
+                  <p className="hidden md:block text-xs text-muted-foreground truncate">{subtitle}</p>
                 )}
               </div>
             )}
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="hidden md:flex items-center gap-2 min-w-0">
               <div className="overflow-hidden min-w-0">
                 <AnimatePresence mode="popLayout" custom={slideDirection} initial={false}>
                   <motion.h2
@@ -284,45 +320,53 @@ export function CalendarView({
                       duration: devSettings.forceReducedMotion ? 0 : 0.16,
                       ease: "easeOut",
                     }}
-                    className={`font-black text-foreground leading-tight whitespace-nowrap ${title ? "text-sm text-primary font-bold" : "text-xl"}`}
+                    aria-label={getTitle()}
+                    className={`font-black text-foreground leading-tight whitespace-nowrap ${title ? "text-base md:text-sm text-primary font-bold" : "text-base md:text-xl"}`}
                   >
-                    {getTitle()}
+                    <span aria-hidden="true" className="md:hidden">{getCompactTitle()}</span>
+                    <span aria-hidden="true" className="hidden md:inline">{getTitle()}</span>
                   </motion.h2>
                 </AnimatePresence>
               </div>
-              <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground whitespace-nowrap">
+              <span className="hidden md:inline text-[10px] uppercase font-black tracking-widest text-muted-foreground whitespace-nowrap">
                 {title ? `• ${viewMode} View` : `${viewMode} View`}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex bg-muted/30 p-1 rounded-lg border border-border/50">
-            {[
-              { id: 'month', icon: LayoutGrid, label: 'Month' },
-              { id: 'week', icon: Columns, label: 'Week' },
-              { id: 'day', icon: Square, label: 'Day' }
-            ].map((mode) => (
-              <button
-                key={mode.id}
-                onClick={() => setViewMode(mode.id as ViewMode)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all
-                  ${viewMode === mode.id 
-                    ? "bg-background text-primary shadow-sm ring-1 ring-border/50" 
-                    : "text-muted-foreground hover:text-foreground"
-                  }
-                `}
-              >
-                <mode.icon className="h-3 w-3" />
-                <span className="hidden sm:inline">{mode.label}</span>
-              </button>
-            ))}
+        <div className="contents md:flex md:min-w-0 md:shrink-0 md:items-center md:gap-2 md:ml-auto xl:gap-3">
+          <div
+            data-testid="calendar-view-switcher"
+            className="order-4 hidden w-full min-w-0 items-center gap-3 md:order-none md:flex md:w-auto md:shrink-0"
+          >
+            <div className="flex w-full md:w-auto bg-muted/30 p-0.5 md:p-1 rounded-lg border border-border/50">
+              {[
+                { id: 'month', icon: LayoutGrid, label: 'Month' },
+                { id: 'week', icon: Columns, label: 'Week' },
+                { id: 'day', icon: Square, label: 'Day' }
+              ].map((mode) => (
+                <button
+                  key={mode.id}
+                  onClick={() => setViewMode(mode.id as ViewMode)}
+                  aria-label={mode.label}
+                  className={`flex flex-1 md:flex-none items-center justify-center gap-1.5 md:gap-2 px-2 md:px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all
+                    ${viewMode === mode.id
+                      ? "bg-background text-primary shadow-sm ring-1 ring-border/50"
+                      : "text-muted-foreground hover:text-foreground"
+                    }
+                  `}
+                >
+                  <mode.icon className="h-3 w-3" />
+                  <span className="hidden xl:inline">{mode.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="h-8 w-px bg-border/50 mx-1 hidden md:block" />
           </div>
 
-          <div className="h-8 w-px bg-border/50 mx-1 hidden sm:block" />
-
-          <div className="flex items-center gap-2">
+          <div className="order-2 flex flex-1 shrink-0 items-center justify-center gap-1 md:order-none md:flex-none md:shrink-0 md:justify-start md:gap-2">
             <Button
               variant="outline"
               size="icon"
@@ -335,7 +379,7 @@ export function CalendarView({
             <Button
               variant="outline"
               size="sm"
-              className="font-bold px-4 whitespace-nowrap"
+              className="h-9 px-3 text-xs font-bold whitespace-nowrap md:px-4 md:text-sm"
               onClick={handleToday}
             >
               Today
@@ -354,24 +398,60 @@ export function CalendarView({
           {onAddTask && (
             <Button
               onClick={() => onAddTask(selectedDay)}
-              className="gap-1.5 font-semibold text-xs h-9 shadow-xs whitespace-nowrap"
+              aria-label="Schedule Task"
+              className="order-3 h-9 w-9 shrink-0 gap-1.5 p-0 text-xs font-semibold shadow-xs md:order-none md:h-9 md:w-auto md:px-4"
             >
               <Plus className="h-4 w-4" />
-              Schedule Task
+              <span className="hidden xl:inline">Schedule Task</span>
             </Button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch h-full">
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-6 lg:items-stretch h-full min-w-0">
         {/* Calendar Grid Side */}
         <div
           ref={calendarGridRef}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           data-testid="calendar-grid-container"
-          className="flex-1 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden shadow-sm flex flex-col relative"
+          className="w-full min-w-0 shrink-0 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden shadow-sm flex flex-col relative touch-pan-y h-[clamp(300px,40dvh,370px)] md:h-auto md:flex-1 md:shrink"
         >
+          <div
+            data-testid="calendar-mobile-header"
+            className="flex shrink-0 items-center justify-between gap-2 border-b border-border/50 px-3 py-2 md:hidden"
+          >
+            <h2
+              aria-label={getTitle()}
+              className="min-w-0 truncate text-[13px] font-black leading-tight text-foreground"
+            >
+              {getTitle()}
+            </h2>
+            <div
+              data-testid="calendar-view-switcher-mobile"
+              className="flex shrink-0 items-center rounded-lg border border-border/50 bg-muted/30 p-0.5"
+            >
+              {[
+                { id: 'month', icon: LayoutGrid, label: 'Month' },
+                { id: 'week', icon: Columns, label: 'Week' },
+                { id: 'day', icon: Square, label: 'Day' }
+              ].map((mode) => (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setViewMode(mode.id as ViewMode)}
+                  aria-label={mode.label}
+                  className={`flex h-7 w-7 items-center justify-center rounded-md transition-all ${
+                    viewMode === mode.id
+                      ? "bg-background text-primary shadow-sm ring-1 ring-border/50"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <mode.icon className="h-3.5 w-3.5" />
+                </button>
+              ))}
+            </div>
+          </div>
           <AnimatePresence mode="popLayout" custom={slideDirection} initial={false}>
             <motion.div
               key={`${viewMode}-${format(currentDate, viewMode === 'month' ? 'yyyy-MM' : viewMode === 'week' ? 'yyyy-MM-dd' : 'yyyy-MM-dd-HH')}`}
@@ -388,11 +468,11 @@ export function CalendarView({
                   ? { duration: 0 }
                   : { duration: 0.16 },
               }}
-              className="flex-1 flex flex-col w-full h-full"
+              className="flex min-h-0 w-full flex-1 flex-col"
             >
               {viewMode === 'week' ? (
-            <div className="flex flex-col h-full overflow-x-auto custom-scrollbar">
-              <div className="min-w-[700px] flex flex-col h-full">
+            <div className="flex flex-col h-full w-full min-w-0 overflow-hidden md:overflow-x-auto custom-scrollbar">
+              <div className="w-full min-w-0 flex flex-col h-full md:min-w-[700px]">
                 {/* Week Day Header */}
               <div className="grid grid-cols-7 bg-muted/20 border-b border-border/50 divide-x divide-border/30 shrink-0">
                 {calendarDays.map((day) => {
@@ -401,16 +481,16 @@ export function CalendarView({
                   return (
                     <div
                       key={day.toISOString()}
-                      className={`py-3 px-2 flex flex-col items-center justify-center gap-1 transition-colors ${
+                      className={`py-2 px-1 md:py-3 md:px-2 flex flex-col items-center justify-center gap-1 transition-colors ${
                         isToday ? "bg-primary/10" : ""
                       }`}
                     >
-                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wide md:tracking-widest text-muted-foreground">
                         {format(day, "EEE")}
                       </span>
                       <div className="flex items-center gap-1.5">
                         <span
-                          className={`text-sm font-black flex items-center justify-center w-7 h-7 rounded-full transition-transform ${
+                          className={`text-[10px] md:text-sm font-black flex items-center justify-center w-5 h-5 md:w-7 md:h-7 rounded-full transition-transform ${
                             isToday
                               ? "bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30 font-bold"
                               : "text-foreground hover:bg-muted"
@@ -424,7 +504,7 @@ export function CalendarView({
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] font-semibold text-muted-foreground/70">
+                      <span className="text-[9px] md:text-[10px] font-semibold text-muted-foreground/70">
                         {dayTasks.length === 0
                           ? "No tasks"
                           : `${dayTasks.length} ${dayTasks.length === 1 ? "task" : "tasks"}`}
@@ -435,7 +515,7 @@ export function CalendarView({
               </div>
 
               {/* Week Columns Lane Grid */}
-              <div className="grid grid-cols-7 divide-x divide-border/30 min-h-[580px] flex-1 bg-muted/5">
+              <div className="grid grid-cols-7 divide-x divide-border/30 min-h-0 md:min-h-[580px] flex-1 bg-muted/5">
                 {calendarDays.map((day) => {
                   const dayTasks = getTasksForDay(day);
                   const isToday = isSameDay(day, new Date());
@@ -443,13 +523,13 @@ export function CalendarView({
                   return (
                     <div
                       key={day.toISOString()}
-                      className={`p-2 flex flex-col gap-2.5 transition-colors ${
+                      className={`min-w-0 p-1 md:p-2 flex flex-col gap-1 md:gap-2.5 transition-colors ${
                         isToday ? "bg-primary/[0.02]" : ""
                       }`}
                     >
-                      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-2.5">
+                      <div className="flex-1 min-h-0 min-w-0 overflow-y-auto custom-scrollbar flex flex-col gap-1 md:gap-2.5">
                         {dayTasks.length === 0 ? (
-                          <div className="h-28 rounded-xl border border-dashed border-border/40 flex flex-col items-center justify-center text-center p-2 text-muted-foreground/40 text-[11px] gap-1 select-none">
+                          <div className="h-16 md:h-28 rounded-md md:rounded-xl border border-dashed border-border/40 flex flex-col items-center justify-center text-center p-1 md:p-2 text-muted-foreground/40 text-[9px] md:text-[11px] gap-0.5 md:gap-1 select-none">
                             <span>No tasks</span>
                           </div>
                         ) : (
@@ -474,10 +554,11 @@ export function CalendarView({
                               <div
                                 key={task.id}
                                 onClick={() => onTaskClick(task)}
-                                className={`p-3 rounded-xl bg-card border border-border/70 border-l-[4px] ${priorityBorderColor} hover:border-primary/50 hover:border-l-[4px] ${priorityBorderColor} shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group/card flex flex-col gap-2`}
+                                title={task.title}
+                                className={`min-w-0 shrink-0 md:shrink p-1.5 md:p-3 rounded-md md:rounded-xl bg-card border border-border/70 border-l-2 md:border-l-[4px] ${priorityBorderColor} hover:border-primary/50 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group/card flex flex-col gap-1 md:gap-2 overflow-hidden`}
                               >
                                 {/* Status & Priority Row */}
-                                <div className="flex items-center justify-between gap-1.5">
+                                <div className="hidden md:flex items-center justify-between gap-1.5">
                                   <span
                                     className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground border border-border/50 flex items-center gap-1 truncate max-w-[125px]"
                                     title={statusTitle}
@@ -509,27 +590,27 @@ export function CalendarView({
                                 </div>
 
                                 {/* Task Emoji & Title */}
-                                <div className="flex items-start gap-2">
+                                <div className="flex items-start gap-1 md:gap-2 min-w-0">
                                   {!devSettings.disableEmojiCustomization && task.emoji ? (
-                                    <span className="text-sm shrink-0 mt-0.5">{task.emoji}</span>
+                                    <span className="hidden md:inline text-sm shrink-0 mt-0.5">{task.emoji}</span>
                                   ) : (
-                                    <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 mt-0.5 group-hover/card:text-primary transition-colors" />
+                                    <FileText className="hidden md:block h-3.5 w-3.5 text-muted-foreground/60 shrink-0 mt-0.5 group-hover/card:text-primary transition-colors" />
                                   )}
-                                  <span className="font-bold text-xs text-foreground group-hover/card:text-primary transition-colors line-clamp-2 leading-snug">
+                                  <span className="font-bold text-[9px] md:text-xs text-foreground group-hover/card:text-primary transition-colors line-clamp-2 leading-[1.1] md:leading-snug break-words">
                                     {task.title}
                                   </span>
                                 </div>
 
                                 {/* Task Description snippet */}
                                 {task.description && (
-                                  <p className="text-[10px] text-muted-foreground line-clamp-1 italic">
+                                  <p className="hidden md:block text-[10px] text-muted-foreground line-clamp-1 italic">
                                     {task.description}
                                   </p>
                                 )}
 
                                 {/* Tags */}
                                 {task.tags && task.tags.length > 0 && (
-                                  <div className="flex flex-wrap gap-1">
+                                  <div className="hidden md:flex flex-wrap gap-1">
                                     {task.tags.slice(0, 2).map((t) => (
                                       <span
                                         key={t.id}
@@ -552,7 +633,7 @@ export function CalendarView({
                                 )}
 
                                 {/* Progress bar */}
-                                <div className="space-y-1 pt-0.5">
+                                <div className="hidden md:block space-y-1 pt-0.5">
                                   <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                                     <div
                                       className={`h-full transition-all duration-300 ${getProgressColor(
@@ -568,7 +649,7 @@ export function CalendarView({
                                 </div>
 
                                 {/* Card Footer: Metadata & Assignee */}
-                                <div className="pt-1.5 border-t border-border/40 flex items-center justify-between gap-1 text-[10px] text-muted-foreground">
+                                <div className="hidden md:flex pt-1.5 border-t border-border/40 items-center justify-between gap-1 text-[10px] text-muted-foreground">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     {task.checklist && task.checklist.length > 0 && (
                                       <span className="flex items-center gap-1 font-semibold" title="Checklist progress">
@@ -621,17 +702,17 @@ export function CalendarView({
             </div>
           </div>
         ) : viewMode === 'month' ? (
-          <div className="overflow-x-auto custom-scrollbar">
-              <div className="min-w-[700px]">
-                <div className="grid grid-cols-7 bg-muted/30 border-b border-border/50">
+          <div className="flex h-full w-full min-w-0 flex-col overflow-hidden md:block md:overflow-x-auto custom-scrollbar">
+              <div className="flex h-full w-full min-w-0 flex-col md:block md:min-w-[700px]">
+                <div data-testid="calendar-weekdays" className="grid shrink-0 grid-cols-7 bg-muted/30 border-b border-border/50">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                  <div key={day} className="py-2 text-[10px] font-black uppercase tracking-widest text-center text-muted-foreground">
+                  <div key={day} className="py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wide md:tracking-widest text-center text-muted-foreground">
                     {day}
                   </div>
                 ))}
               </div>
               
-              <div className={`grid grid-cols-7 ${isCompact ? "auto-rows-[80px] md:auto-rows-[95px]" : "auto-rows-[100px] md:auto-rows-[120px]"}`}>
+              <div data-testid="calendar-month-grid" className={`grid min-h-0 flex-1 grid-cols-7 auto-rows-fr ${isCompact ? "md:auto-rows-[95px]" : "md:auto-rows-[120px]"}`}>
                 {calendarDays.map((day) => {
                   const dayTasks = getTasksForDay(day);
                   const isToday = isSameDay(day, new Date());
@@ -642,34 +723,35 @@ export function CalendarView({
                     <div 
                       key={day.toISOString()} 
                       onClick={() => setSelectedDay(day)}
-                      className={`p-1.5 border-r border-b border-border/30 last:border-r-0 flex flex-col gap-1 transition-colors cursor-pointer
+                      className={`min-w-0 overflow-hidden md:overflow-visible p-1 md:p-1.5 border-r border-b border-border/30 last:border-r-0 flex flex-col gap-0.5 md:gap-1 transition-colors cursor-pointer
                         ${(!isCurrentMonth) ? "opacity-30 bg-muted/5" : "bg-card/20 hover:bg-muted/30"}
                         ${isToday ? "bg-primary/5" : ""}
                         ${isSelected ? "ring-2 ring-primary ring-inset bg-primary/[0.04]" : ""}
                       `}
                     >
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className={`text-[10px] font-black flex items-center justify-center w-5 h-5 rounded-full transition-colors
+                      <div className="flex items-center justify-between mb-0.5 min-w-0">
+                        <span className={`text-[9px] md:text-[10px] font-black flex items-center justify-center w-[18px] h-[18px] md:w-5 md:h-5 rounded-full transition-colors
                           ${isToday ? "bg-primary text-white" : isSelected ? "bg-primary/20 text-primary font-bold" : "text-muted-foreground"}
                         `}>
                           {format(day, "d")}
                         </span>
                         {dayTasks.length > 0 && (
-                          <span className="text-[9px] font-mono text-muted-foreground/70 font-bold hidden sm:inline">
+                          <span className="text-[9px] font-mono text-muted-foreground/70 font-bold hidden md:inline">
                             {dayTasks.length}
                           </span>
                         )}
                       </div>
                       
-                      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1">
+                      <div className="flex-1 min-h-0 min-w-0 overflow-y-auto custom-scrollbar flex flex-col gap-0.5 md:gap-1">
                         {dayTasks.map((task) => (
                           <div
                             key={task.id}
+                            title={task.title}
                             onClick={(e) => {
                               e.stopPropagation();
                               onTaskClick(task);
                             }}
-                            className="px-1.5 py-1 rounded-md border border-border/50 bg-card hover:bg-card/90 shadow-2xs cursor-pointer transition-all hover:scale-[1.02] flex items-center justify-between gap-1 text-[10px] group/m-task"
+                            className="min-w-0 shrink-0 md:shrink overflow-hidden px-1 py-0 md:px-1.5 md:py-1 rounded md:rounded-md border border-border/50 bg-card hover:bg-card/90 md:hover:scale-[1.02] shadow-2xs cursor-pointer transition-all flex items-start md:items-center justify-between gap-0.5 md:gap-1 text-[9px] leading-[1.1] md:text-[10px] md:leading-normal group/m-task"
                             style={{ 
                               borderLeft: `3px solid ${
                               task.priority === 'urgent' ? 'rgb(244, 63, 94)' :
@@ -678,9 +760,9 @@ export function CalendarView({
                             }`
                           }}
                           >
-                            <div className="flex items-center gap-1 min-w-0 flex-1">
-                              {!devSettings.disableEmojiCustomization && task.emoji && <span className="text-xs shrink-0">{task.emoji}</span>}
-                              <span className="font-bold truncate group-hover/m-task:text-primary">{task.title}</span>
+                            <div className="flex items-start md:items-center gap-0.5 md:gap-1 min-w-0 flex-1">
+                              {!devSettings.disableEmojiCustomization && task.emoji && <span className="hidden md:inline text-xs shrink-0">{task.emoji}</span>}
+                              <span className="font-bold line-clamp-1 break-words group-hover/m-task:text-primary">{task.title}</span>
                               {scope === "global" && task.boardName && (
                                 <span className="text-[8px] font-semibold text-muted-foreground bg-muted/60 px-1 py-0.2 rounded truncate max-w-[65px] ml-auto shrink-0 hidden md:inline">
                                   {task.boardName}
@@ -688,7 +770,7 @@ export function CalendarView({
                               )}
                             </div>
                             {task.progress === 100 && (
-                              <span className="text-[9px] text-emerald-500 font-bold shrink-0">✓</span>
+                              <span className="hidden md:inline text-[9px] text-emerald-500 font-bold shrink-0">✓</span>
                             )}
                           </div>
                         ))}
@@ -717,7 +799,7 @@ export function CalendarView({
                           isCurrentHour ? "bg-primary/[0.03] ring-1 ring-inset ring-primary/20" : ""
                         }`}
                       >
-                        <div className="w-20 flex-shrink-0 flex items-center justify-center gap-1 border-r border-border/25 bg-muted/5 py-1 select-none">
+                        <div className="w-16 md:w-20 flex-shrink-0 flex items-center justify-center gap-1 border-r border-border/25 bg-muted/5 py-1 select-none">
                           <span
                             className={`text-[10px] font-medium tracking-tight ${
                               isCurrentHour ? "text-primary font-bold" : "text-muted-foreground/40 group-hover/hour:text-muted-foreground/70"
@@ -746,7 +828,7 @@ export function CalendarView({
                         isCurrentHour ? "bg-primary/[0.04]" : "bg-card/10"
                       }`}
                     >
-                      <div className="w-20 flex-shrink-0 flex flex-col items-center justify-start pt-3 pb-2 border-r border-border/30 bg-muted/10 select-none">
+                      <div className="w-16 md:w-20 flex-shrink-0 flex flex-col items-center justify-start pt-3 pb-2 border-r border-border/30 bg-muted/10 select-none">
                         <span
                           className={`text-xs font-black tracking-tight ${
                             isCurrentHour ? "text-primary" : "text-foreground"
@@ -769,7 +851,7 @@ export function CalendarView({
                           <div
                             key={task.id}
                             onClick={() => onTaskClick(task)}
-                            className="group bg-card border border-border/50 p-3 rounded-xl shadow-sm cursor-pointer hover:border-primary/50 transition-all hover:shadow-md max-w-[350px] flex-1 min-w-[240px] relative overflow-hidden"
+                            className="group bg-card border border-border/50 p-3 rounded-xl shadow-sm cursor-pointer hover:border-primary/50 transition-all hover:shadow-md max-w-[350px] flex-1 min-w-0 md:min-w-[240px] relative overflow-hidden"
                             style={{
                               borderLeft: `4px solid ${
                                 task.priority === "high"
@@ -827,9 +909,12 @@ export function CalendarView({
         </div>
 
         {/* Sidebar Side */}
-        <div className="w-full lg:w-80 flex flex-col gap-6">
+        <div className="grid w-full shrink-0 grid-cols-2 gap-3 md:flex md:shrink md:flex-col md:gap-6 lg:w-80">
           {/* Section 1: Selected Day Agenda */}
-          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 flex flex-col flex-[1.4] min-h-[300px]">
+          <div
+            data-testid="calendar-selected-day-agenda"
+            className="col-span-2 flex h-[clamp(200px,28dvh,260px)] flex-col rounded-xl border border-border/50 bg-card/50 p-3 backdrop-blur-sm md:col-span-1 md:h-auto md:min-h-[300px] md:flex-[1.4] md:p-4"
+          >
             <div className="flex items-center justify-between mb-3 border-b border-border/50 pb-2.5">
               <div>
                 <h3 className="font-black text-sm uppercase tracking-wider text-foreground">
@@ -892,63 +977,80 @@ export function CalendarView({
           </div>
 
           {/* Section 2: Overdue Tasks Alert */}
-          {overdueTasks.length > 0 && (
-            <div className="bg-card/50 backdrop-blur-sm border border-rose-500/30 rounded-xl p-4 flex flex-col min-h-[170px] max-h-[250px]">
-              <div className="flex items-center gap-2 mb-3 border-b border-border/50 pb-2">
-                <AlertCircle className="h-4 w-4 text-rose-500" />
-                <h3 className="font-black text-xs uppercase tracking-wider text-rose-500">
-                  Overdue Tasks ({overdueTasks.length})
-                </h3>
-              </div>
+          <div
+            data-testid="calendar-overdue-card"
+            className={`${overdueTasks.length === 0 ? "flex md:hidden" : "flex"} bg-card/50 backdrop-blur-sm border border-rose-500/30 rounded-xl p-3 md:p-4 flex-col h-[clamp(190px,26dvh,240px)] min-h-0 md:h-auto md:min-h-[170px] md:max-h-[250px] min-w-0`}
+          >
+            <div className="flex items-center gap-1.5 md:gap-2 mb-3 border-b border-border/50 pb-2 min-w-0">
+              <AlertCircle className="h-3.5 w-3.5 md:h-4 md:w-4 text-rose-500 shrink-0" />
+              <h3
+                aria-label={`Overdue Tasks (${overdueTasks.length})`}
+                className="font-black text-[10px] md:text-xs uppercase tracking-wide md:tracking-wider text-rose-500 truncate"
+              >
+                <span className="md:hidden">Overdue ({overdueTasks.length})</span>
+                <span className="hidden md:inline">Overdue Tasks ({overdueTasks.length})</span>
+              </h3>
+            </div>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2">
+            {overdueTasks.length > 0 ? (
+              <div className="flex-1 overflow-y-auto custom-scrollbar pr-0.5 md:pr-1 space-y-1.5 md:space-y-2">
                 {overdueTasks.slice(0, 8).map((task) => (
                   <div
                     key={task.id}
                     onClick={() => onTaskClick(task)}
-                    className="p-2 rounded-lg bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/20 transition-all cursor-pointer text-xs"
+                    title={task.title}
+                    className="min-w-0 p-1.5 md:p-2 rounded-md md:rounded-lg bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/20 transition-all cursor-pointer text-xs"
                   >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="font-bold text-rose-600 dark:text-rose-400 truncate">
+                    <div className="flex items-center justify-between gap-1 min-w-0">
+                      <span className="min-w-0 font-bold text-rose-600 dark:text-rose-400 truncate text-[10px] md:text-xs">
                         {!devSettings.disableEmojiCustomization && task.emoji && <span className="mr-1">{task.emoji}</span>}
                         {task.title}
                       </span>
-                      <span className="text-[9px] font-mono text-rose-500 font-bold shrink-0">
+                      <span className="text-[8px] md:text-[9px] font-mono text-rose-500 font-bold shrink-0">
                         {formatSafe(task.dueDate, "MMM d")}
                       </span>
                     </div>
                     {task.boardName && (
-                      <span className="text-[9px] text-muted-foreground block truncate mt-0.5">
+                      <span className="hidden md:block text-[9px] text-muted-foreground truncate mt-0.5">
                         {task.boardEmoji ? `${task.boardEmoji} ` : ""}{task.boardName}
                       </span>
                     )}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center gap-1.5 text-center py-2 opacity-60">
+                <AlertCircle className="h-4 w-4 text-rose-400" />
+                <p className="text-[9px] md:text-[10px] font-black uppercase tracking-wide">No overdue tasks</p>
+              </div>
+            )}
+          </div>
 
           {/* Section 3: Completed Tasks */}
-          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 flex flex-col flex-1 min-h-[150px] max-h-[200px]">
-            <div className="flex items-center gap-2 mb-3 border-b border-border/50 pb-2">
-              <div className="h-6 w-1 bg-green-500 rounded-full" />
-              <h3 className="font-black text-xs uppercase tracking-wider text-green-500/80">
+          <div
+            data-testid="calendar-completed-card"
+            className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-3 md:p-4 flex flex-col h-[clamp(190px,26dvh,240px)] min-h-0 md:h-auto md:flex-1 md:min-h-[150px] md:max-h-[200px] min-w-0"
+          >
+            <div className="flex items-center gap-1.5 md:gap-2 mb-3 border-b border-border/50 pb-2 min-w-0">
+              <div className="h-5 w-1 md:h-6 bg-green-500 rounded-full shrink-0" />
+              <h3 className="font-black text-[10px] md:text-xs uppercase tracking-wide md:tracking-wider text-green-500/80 truncate">
                 Completed ({completedTasks.length})
               </h3>
             </div>
             
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-1.5">
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-0.5 md:pr-1 space-y-1.5">
               {completedTasks.length > 0 ? (
                 completedTasks.map((task) => (
                   <div
                     key={task.id}
                     onClick={() => onTaskClick(task)}
-                    className="p-2 rounded-lg border border-border/30 bg-green-500/5 hover:bg-green-500/10 transition-all cursor-pointer flex items-center gap-2 group"
+                    title={task.title}
+                    className="min-w-0 p-1.5 md:p-2 rounded-md md:rounded-lg border border-border/30 bg-green-500/5 hover:bg-green-500/10 transition-all cursor-pointer flex items-center gap-1.5 md:gap-2 group"
                   >
-                    <div className="h-4 w-4 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 shrink-0">
+                    <div className="h-3.5 w-3.5 md:h-4 md:w-4 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 shrink-0">
                       <span className="text-[8px]">✓</span>
                     </div>
-                    <h4 className="text-[10px] font-bold text-foreground/70 line-through truncate">{task.title}</h4>
+                    <h4 className="min-w-0 text-[9px] md:text-[10px] font-bold text-foreground/70 line-through truncate">{task.title}</h4>
                   </div>
                 ))
               ) : (

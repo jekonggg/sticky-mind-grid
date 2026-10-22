@@ -1,8 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
-import { screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent, within } from "@testing-library/react";
 import { CalendarView } from "@/components/kanban/CalendarView";
 import { renderWithProviders } from "@/test/test-utils";
 import { Task } from "@/types/task";
+
+const expectMonthHeading = (name: string) => {
+  expect(screen.getAllByRole("heading", { name }).length).toBeGreaterThan(0);
+};
 
 describe("CalendarView Component", () => {
   const todayAt10AM = new Date();
@@ -25,6 +29,15 @@ describe("CalendarView Component", () => {
     },
   ];
 
+  it("renders the global calendar header without a card container", () => {
+    renderWithProviders(
+      <CalendarView tasks={mockTasks} onTaskClick={vi.fn()} scope="global" />
+    );
+
+    expect(screen.getByTestId("calendar-view")).not.toHaveClass("animate-in");
+    expect(screen.getByTestId("calendar-toolbar")).not.toHaveClass("border");
+  });
+
   it("renders view mode switcher and defaults to Month view", () => {
     renderWithProviders(
       <CalendarView tasks={mockTasks} onTaskClick={vi.fn()} />
@@ -43,7 +56,10 @@ describe("CalendarView Component", () => {
     );
 
     // Switch to Day view
-    const dayBtn = screen.getByRole("button", { name: "Day" });
+    const dayBtn = within(screen.getByTestId("calendar-view-switcher")).getByRole(
+      "button",
+      { name: "Day" }
+    );
     fireEvent.click(dayBtn);
 
     expect(screen.getByText(/day view/i)).toBeInTheDocument();
@@ -74,7 +90,10 @@ describe("CalendarView Component", () => {
     );
 
     // Switch to Week view
-    const weekBtn = screen.getByRole("button", { name: "Week" });
+    const weekBtn = within(screen.getByTestId("calendar-view-switcher")).getByRole(
+      "button",
+      { name: "Week" }
+    );
     fireEvent.click(weekBtn);
 
     expect(screen.getByText(/week view/i)).toBeInTheDocument();
@@ -99,24 +118,24 @@ describe("CalendarView Component", () => {
     const prevMonthLabel = prevMonth.toLocaleString("default", { month: "long", year: "numeric" });
 
     // Initially in current month
-    expect(screen.getByRole("heading", { name: currentMonthLabel })).toBeInTheDocument();
+    expectMonthHeading(currentMonthLabel);
 
     // Click Next
     const nextBtn = screen.getByRole("button", { name: /next/i });
     fireEvent.click(nextBtn);
-    expect(screen.getByRole("heading", { name: nextMonthLabel })).toBeInTheDocument();
+    expectMonthHeading(nextMonthLabel);
 
     // Click Prev twice to reach previous month
     const prevBtn = screen.getByRole("button", { name: /previous/i });
     fireEvent.click(prevBtn);
-    expect(screen.getByRole("heading", { name: currentMonthLabel })).toBeInTheDocument();
+    expectMonthHeading(currentMonthLabel);
     fireEvent.click(prevBtn);
-    expect(screen.getByRole("heading", { name: prevMonthLabel })).toBeInTheDocument();
+    expectMonthHeading(prevMonthLabel);
 
     // Click Today to return
     const todayBtn = screen.getByRole("button", { name: "Today" });
     fireEvent.click(todayBtn);
-    expect(screen.getByRole("heading", { name: currentMonthLabel })).toBeInTheDocument();
+    expectMonthHeading(currentMonthLabel);
   });
 
   it("shifts months when scrolling (wheel down/up) over the calendar grid", () => {
@@ -138,7 +157,7 @@ describe("CalendarView Component", () => {
       gridContainer,
       new WheelEvent("wheel", { deltaY: 100, bubbles: true, cancelable: true })
     );
-    expect(screen.getByRole("heading", { name: nextMonthLabel })).toBeInTheDocument();
+    expectMonthHeading(nextMonthLabel);
 
     // Advancing system time to bypass the 400ms throttle
     vi.spyOn(Date, "now").mockReturnValue(Date.now() + 500);
@@ -148,7 +167,7 @@ describe("CalendarView Component", () => {
       gridContainer,
       new WheelEvent("wheel", { deltaY: -100, bubbles: true, cancelable: true })
     );
-    expect(screen.getByRole("heading", { name: currentMonthLabel })).toBeInTheDocument();
+    expectMonthHeading(currentMonthLabel);
 
     // Advancing system time again
     vi.spyOn(Date, "now").mockReturnValue(Date.now() + 1000);
@@ -158,7 +177,7 @@ describe("CalendarView Component", () => {
       gridContainer,
       new WheelEvent("wheel", { deltaY: -100, bubbles: true, cancelable: true })
     );
-    expect(screen.getByRole("heading", { name: prevMonthLabel })).toBeInTheDocument();
+    expectMonthHeading(prevMonthLabel);
 
     vi.restoreAllMocks();
   });
@@ -182,7 +201,20 @@ describe("CalendarView Component", () => {
       changedTouches: [{ clientX: 100, clientY: 150 }],
     });
 
-    expect(screen.getByRole("heading", { name: nextMonthLabel })).toBeInTheDocument();
+    expectMonthHeading(nextMonthLabel);
+  });
+
+  it("keeps overdue and completed summary cards visible when they are empty", () => {
+    renderWithProviders(
+      <CalendarView tasks={mockTasks} onTaskClick={vi.fn()} />
+    );
+
+    expect(screen.getByTestId("calendar-overdue-card")).toBeInTheDocument();
+    expect(screen.getByTestId("calendar-completed-card")).toBeInTheDocument();
+    expect(screen.getByText("Overdue Tasks (0)")).toBeInTheDocument();
+    expect(screen.getByText("No overdue tasks")).toBeInTheDocument();
+    expect(screen.getByText("Completed (0)")).toBeInTheDocument();
+    expect(screen.getByText("None finished yet")).toBeInTheDocument();
   });
 
   it("renders global scope with custom title, schedule task button, and overdue tasks", () => {

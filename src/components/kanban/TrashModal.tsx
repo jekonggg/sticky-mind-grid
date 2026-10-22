@@ -83,7 +83,7 @@ export function TrashModal({ open, onClose, boardId, canManage }: TrashModalProp
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="w-full max-w-none sm:max-w-xl h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[85vh] rounded-none sm:rounded-lg flex flex-col">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-xl h-auto max-h-[calc(100dvh-2rem)] rounded-lg flex flex-col overflow-hidden sm:max-h-[85vh]">
         <DialogHeader>
           <div className="flex items-center justify-between pr-4">
             <DialogTitle className="text-xl font-bold flex items-center gap-2 text-destructive">

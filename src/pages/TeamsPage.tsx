@@ -229,14 +229,9 @@ export default function TeamsPage() {
           {/* Top Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-                <Users className="h-4 w-4" />
-              </div>
-              <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">
-                Teams & Collaborators
-              </h1>
-            </div>
+            <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">
+              Teams & Collaborators
+            </h1>
             <p className="text-xs text-muted-foreground">
               Manage workspace members, pending invitations, and board permissions
             </p>
@@ -468,24 +463,27 @@ export default function TeamsPage() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div
+            data-testid="workspace-boards-grid"
+            className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
+          >
             {boards.map((b) => (
               <div
                 key={b.id}
                 onClick={() => navigate(`/boards/${b.id}`)}
-                className="p-4 rounded-2xl bg-card border border-border/60 hover:border-primary/40 shadow-xs hover:shadow-sm transition-all flex items-center justify-between gap-3 cursor-pointer group"
+                className="min-w-0 p-3 sm:p-4 rounded-2xl bg-card border border-border/60 hover:border-primary/40 shadow-xs hover:shadow-sm transition-all flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between cursor-pointer group"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   {!devSettings.disableEmojiCustomization && b.emoji && (
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg shrink-0 border border-primary/20 text-primary">
+                    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl bg-primary/10 flex items-center justify-center text-base sm:text-lg shrink-0 border border-primary/20 text-primary">
                       {b.emoji}
                     </div>
                   )}
                   <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate" title={b.name}>
+                    <span className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate" title={b.name}>
                       {b.name}
                     </span>
-                    <span className="text-[11px] text-muted-foreground whitespace-nowrap truncate">
+                    <span className="text-[10px] sm:text-[11px] text-muted-foreground whitespace-nowrap truncate">
                       {b.taskCount || 0} tasks • Role: {b.role || "member"}
                     </span>
                   </div>
@@ -499,7 +497,8 @@ export default function TeamsPage() {
                       e.stopPropagation();
                       handleOpenInvite(b.id);
                     }}
-                    className="h-7 px-2 text-xs font-semibold text-primary hover:bg-primary/10 whitespace-nowrap shrink-0"
+                    aria-label={`Invite collaborators to ${b.name}`}
+                    className="h-7 w-full justify-center px-2 text-[11px] font-semibold text-primary hover:bg-primary/10 whitespace-nowrap shrink-0 sm:w-auto sm:text-xs"
                   >
                     <Plus className="h-3 w-3 mr-1 shrink-0" /> Invite
                   </Button>

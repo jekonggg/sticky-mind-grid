@@ -312,17 +312,12 @@ export default function TasksPage() {
                 <span className="truncate">Back to {currentScopedBoard.name} Board</span>
               </Button>
             )}
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shrink-0">
-                <CheckSquare className="h-4 w-4" />
-              </div>
-              <h1
-                className="text-2xl lg:text-3xl font-black text-foreground tracking-tight truncate"
-                title={pageTitle}
-              >
-                {pageTitle}
-              </h1>
-            </div>
+            <h1
+              className="text-2xl lg:text-3xl font-black text-foreground tracking-tight truncate"
+              title={pageTitle}
+            >
+              {pageTitle}
+            </h1>
             <p className="text-xs text-muted-foreground line-clamp-1" title={pageDescription}>
               {pageDescription}
             </p>
@@ -379,7 +374,10 @@ export default function TasksPage() {
         )}
 
         {/* Tab Filters */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
+        <div
+          data-testid="tasks-filter-tabs"
+          className="-mx-4 flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto border-b border-border/60 px-4 pb-3 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden"
+        >
           {[
             { id: "all", label: "All Tasks", count: tasks.length },
             {
@@ -408,7 +406,7 @@ export default function TasksPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as FilterTab)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex shrink-0 items-center gap-2 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === tab.id
                   ? "bg-primary text-primary-foreground shadow-xs"
                   : "bg-muted/40 text-muted-foreground hover:bg-muted/80 hover:text-foreground"
@@ -430,10 +428,14 @@ export default function TasksPage() {
         </div>
 
         {/* Search & Select Filters */}
-        <div className="flex flex-wrap items-center gap-3 bg-card p-3.5 rounded-2xl border border-border/60 shadow-xs">
-          <div className="relative flex-1 min-w-[200px]">
+        <div
+          data-testid="tasks-filter-bar"
+          className="grid grid-cols-1 items-stretch gap-2.5 bg-card p-2.5 rounded-2xl border border-border/60 shadow-xs min-[360px]:p-3 lg:flex lg:flex-wrap lg:items-center lg:gap-3 lg:p-3.5"
+        >
+          <div className="relative w-full min-w-0 lg:flex-1 lg:min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+              data-testid="tasks-search-input"
               placeholder="Filter tasks by name, description, board..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -441,43 +443,54 @@ export default function TasksPage() {
             />
           </div>
 
-          <Select value={selectedBoardId} onValueChange={handleBoardChange}>
-            <SelectTrigger className="w-[160px] h-9 text-xs bg-background/60 border-border/60">
-              <SelectValue placeholder="All Boards" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Boards</SelectItem>
-              {boards.map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {!devSettings.disableEmojiCustomization && (b.emoji ? `${b.emoji} ` : "📋 ")}{b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-3 gap-2 min-w-0 lg:contents">
+            <Select value={selectedBoardId} onValueChange={handleBoardChange}>
+              <SelectTrigger
+                data-testid="tasks-filter-board"
+                className="h-9 w-full min-w-0 px-1.5 text-[10px] min-[360px]:text-[11px] bg-background/60 border-border/60 [&>svg]:h-3.5 [&>svg]:w-3.5 sm:text-xs lg:w-[160px] lg:px-3 lg:text-xs lg:[&>svg]:h-4 lg:[&>svg]:w-4"
+              >
+                <SelectValue placeholder="All Boards" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Boards</SelectItem>
+                {boards.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {!devSettings.disableEmojiCustomization && (b.emoji ? `${b.emoji} ` : "📋 ")}{b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={selectedPriority} onValueChange={setSelectedPriority}>
-            <SelectTrigger className="w-[130px] h-9 text-xs bg-background/60 border-border/60">
-              <SelectValue placeholder="All Priorities" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priorities</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+              <SelectTrigger
+                data-testid="tasks-filter-priority"
+                className="h-9 w-full min-w-0 px-1.5 text-[10px] min-[360px]:text-[11px] bg-background/60 border-border/60 [&>svg]:h-3.5 [&>svg]:w-3.5 sm:text-xs lg:w-[130px] lg:px-3 lg:text-xs lg:[&>svg]:h-4 lg:[&>svg]:w-4"
+              >
+                <SelectValue placeholder="All Priorities" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Priorities</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-            <SelectTrigger className="w-[140px] h-9 text-xs bg-background/60 border-border/60">
-              <SelectValue placeholder="Sort By" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="dueDate">Due Date</SelectItem>
-              <SelectItem value="priority">Priority</SelectItem>
-              <SelectItem value="title">Title (A-Z)</SelectItem>
-              <SelectItem value="created">Created Date</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+              <SelectTrigger
+                data-testid="tasks-filter-sort"
+                className="h-9 w-full min-w-0 px-1.5 text-[10px] min-[360px]:text-[11px] bg-background/60 border-border/60 [&>svg]:h-3.5 [&>svg]:w-3.5 sm:text-xs lg:w-[140px] lg:px-3 lg:text-xs lg:[&>svg]:h-4 lg:[&>svg]:w-4"
+              >
+                <SelectValue placeholder="Sort By" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="dueDate">Due Date</SelectItem>
+                <SelectItem value="priority">Priority</SelectItem>
+                <SelectItem value="title">Title (A-Z)</SelectItem>
+                <SelectItem value="created">Created Date</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Task List / Grid Display */}

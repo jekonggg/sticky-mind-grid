@@ -70,9 +70,18 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(screen.getByText(/workspace dashboard/i)).toBeInTheDocument();
       expect(screen.getByText(/welcome back/i)).toBeInTheDocument();
+      expect(screen.queryByText(/daily workspace pulse/i)).not.toBeInTheDocument();
       expect(screen.getByText("Total Boards")).toBeInTheDocument();
       expect(screen.getByText("Active Tasks")).toBeInTheDocument();
       expect(screen.getByText("Completed")).toBeInTheDocument();
+      expect(screen.getByText("Overdue")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-active-tasks")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-summary-completed")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-summary-overdue")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-summary-boards")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-priority-tasks")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-upcoming-deadlines")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-audit-stream")).toBeInTheDocument();
     });
   });
 

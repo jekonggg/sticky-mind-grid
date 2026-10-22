@@ -318,6 +318,12 @@ export default function BoardsOverview() {
     { id: "shared", label: "Shared with me" },
   ];
 
+  const sortOptions: { id: SortOption; label: string }[] = [
+    { id: "updated", label: "Last Updated" },
+    { id: "name", label: "Name (A–Z)" },
+    { id: "created", label: "Created Date" },
+  ];
+
   const hasSearchQuery = search.trim().length > 0;
   const isFilterEmpty =
     boards.length === 0 && !hasSearchQuery && (activeFilter !== "all" || allBoards.length > 0);
@@ -346,7 +352,7 @@ export default function BoardsOverview() {
       {/* Toolbox */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 -mt-8 md:-mt-12 relative z-10 w-full shrink-0">
         <div className="bg-card/80 backdrop-blur-md border border-border/50 rounded-xl shadow-xl p-4 md:p-6 mb-8 space-y-4">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
             <div className="flex items-center gap-2.5">
               <LayoutGrid className="h-5 w-5 text-primary" />
               <h2 className="text-xl md:text-2xl font-black text-foreground tracking-tight uppercase italic underline-offset-4 decoration-primary/30">
@@ -354,8 +360,8 @@ export default function BoardsOverview() {
               </h2>
             </div>
 
-            <div className="flex w-full md:w-auto gap-3 items-center">
-              <div className="relative flex-1 md:w-64">
+            <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,1fr)] w-full gap-2 md:flex md:w-auto md:items-center md:gap-3">
+              <div className="relative min-w-0 md:w-64 md:flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search boards…"
@@ -367,54 +373,97 @@ export default function BoardsOverview() {
               <Select value={activeSort} onValueChange={(v) => handleSortChange(v as SortOption)}>
                 <SelectTrigger
                   aria-label="Sort boards"
-                  className="w-[140px] md:w-[160px] bg-background/50 border-border/50 min-h-[44px] sm:min-h-9"
+                  data-testid="boards-sort-select-desktop"
+                  className="hidden md:flex w-[140px] md:w-[160px] bg-background/50 border-border/50 min-h-[44px] sm:min-h-9"
                 >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="updated">Last Updated</SelectItem>
-                  <SelectItem value="name">Name (A–Z)</SelectItem>
-                  <SelectItem value="created">Created Date</SelectItem>
+                  {sortOptions.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Button
                 onClick={handleNew}
-                className="gap-1.5 font-semibold shrink-0 min-h-[44px] sm:min-h-9"
+                data-testid="boards-create-button"
+                className="col-span-1 min-w-0 gap-1.5 px-2 text-xs font-semibold min-h-[44px] sm:px-4 sm:text-sm sm:min-h-9"
               >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Create Board</span>
-                <span className="sm:hidden">New</span>
+                <Plus className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline">Create Board</span>
+                <span className="md:hidden">New</span>
               </Button>
             </div>
           </div>
 
-          {/* Filter Tabs: All, Owned by me, Shared with me */}
-          <div
-            role="tablist"
-            aria-label="Filter boards"
-            className="flex items-center gap-1.5 pt-2 border-t border-border/40 overflow-x-auto"
-          >
-            {filterTabs.map((tab) => {
-              const isActive = activeFilter === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  data-testid={`filter-tab-${tab.id}`}
-                  onClick={() => handleFilterChange(tab.id)}
-                  className={cn(
-                    "px-3.5 py-1.5 min-h-[44px] sm:min-h-8 inline-flex items-center rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                  )}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
+          {/* Mobile: consolidated Filter + Sort dropdowns. Desktop: original filter tabs. */}
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/40 md:flex md:items-center md:gap-1.5 md:overflow-x-auto">
+            <Select
+              value={activeFilter}
+              onValueChange={(v) => handleFilterChange(v as BoardFilterOption)}
+            >
+              <SelectTrigger
+                aria-label="Filter boards"
+                data-testid="boards-filter-select"
+                className="w-full bg-background/50 border-border/50 px-2.5 min-h-[44px] text-xs sm:min-h-9 min-[360px]:text-sm md:hidden"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {filterTabs.map((tab) => (
+                  <SelectItem key={tab.id} value={tab.id}>
+                    {tab.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={activeSort} onValueChange={(v) => handleSortChange(v as SortOption)}>
+              <SelectTrigger
+                aria-label="Sort boards"
+                data-testid="boards-sort-select-mobile"
+                className="w-full bg-background/50 border-border/50 px-2.5 min-h-[44px] text-xs sm:min-h-9 min-[360px]:text-sm md:hidden"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {sortOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div
+              role="tablist"
+              aria-label="Filter boards"
+              className="hidden md:flex items-center gap-1.5 overflow-x-auto"
+            >
+              {filterTabs.map((tab) => {
+                const isActive = activeFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    data-testid={`filter-tab-${tab.id}`}
+                    onClick={() => handleFilterChange(tab.id)}
+                    className={cn(
+                      "px-3.5 py-1.5 min-h-[44px] sm:min-h-8 inline-flex items-center rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap",
+                      isActive
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

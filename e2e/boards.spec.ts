@@ -1,5 +1,14 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { registerUser, createBoard, navigateToBoard, uniqueEmail } from "./helpers";
+
+async function loginSeededUser(page: Page) {
+  await page.goto("/login");
+  await page.getByLabel("Email", { exact: true }).fill("test@example.com");
+  await page.getByLabel("Password", { exact: true }).fill("password123");
+  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.waitForURL("/", { timeout: 30000 });
+  await expect(page.getByTestId("boards-create-button")).toBeVisible({ timeout: 15000 });
+}
 
 test.describe("Boards Overview", () => {
   test.beforeEach(async ({ page }) => {
@@ -143,5 +152,68 @@ test.describe("Boards Overview", () => {
       await page.getByRole("menuitem", { name: /log out/i }).click();
       await expect(page).toHaveURL("/login");
     });
+  });
+});
+
+test.describe("Boards mobile toolbox", () => {
+  test("uses the redesigned mobile search, create, filter, and sort layout", async ({ page }) => {
+    await loginSeededUser(page);
+    await expect(page.getByText("My Boards")).toBeVisible();
+
+    const searchInput = page.getByPlaceholder("Search boards…");
+    const createButton = page.getByTestId("boards-create-button");
+    const filterSelect = page.getByTestId("boards-filter-select");
+    const sortSelect = page.getByTestId("boards-sort-select-mobile");
+
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.waitForTimeout(250);
+
+      await expect(searchInput).toBeVisible();
+      await expect(createButton).toBeVisible();
+      await expect(filterSelect).toBeVisible();
+      await expect(sortSelect).toBeVisible();
+      await expect(page.getByTestId("boards-sort-select-desktop")).toBeHidden();
+      await expect(page.getByTestId("filter-tab-all")).toBeHidden();
+
+      const searchBox = await searchInput.boundingBox();
+      const createBox = await createButton.boundingBox();
+      const filterBox = await filterSelect.boundingBox();
+      const sortBox = await sortSelect.boundingBox();
+      expect(searchBox).not.toBeNull();
+      expect(createBox).not.toBeNull();
+      expect(filterBox).not.toBeNull();
+      expect(sortBox).not.toBeNull();
+      if (!searchBox || !createBox || !filterBox || !sortBox) return;
+
+      // Top row: search takes roughly 75%, with New completing the row.
+      expect(createBox.x).toBeGreaterThanOrEqual(searchBox.x + searchBox.width - 1);
+      const rowWidth = createBox.x + createBox.width - searchBox.x;
+      expect(searchBox.width / rowWidth).toBeGreaterThan(0.68);
+      expect(searchBox.width / rowWidth).toBeLessThan(0.8);
+
+      // Bottom row: filter and sort split the width evenly.
+      expect(Math.abs(filterBox.width - sortBox.width)).toBeLessThanOrEqual(2);
+      expect(Math.abs(filterBox.y - sortBox.y)).toBeLessThanOrEqual(4);
+      expect(filterBox.x).toBeLessThan(sortBox.x);
+      expect(filterBox.y).toBeGreaterThanOrEqual(searchBox.y + searchBox.height);
+
+      const pageOverflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth
+      );
+      expect(pageOverflow).toBeLessThanOrEqual(1);
+    }
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(filterSelect).toContainText("All");
+    await expect(sortSelect).toContainText("Last Updated");
+
+    await filterSelect.click();
+    await page.getByRole("option", { name: "Owned by me" }).click();
+    await expect(filterSelect).toContainText("Owned by me");
+
+    await sortSelect.click();
+    await page.getByRole("option", { name: "Name (A–Z)" }).click();
+    await expect(sortSelect).toContainText("Name (A–Z)");
   });
 });

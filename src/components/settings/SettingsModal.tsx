@@ -14,7 +14,6 @@ import {
   Globe01 as Globe,
   Shield01 as Shield,
   InfoCircle as Info,
-  Settings01 as Settings,
   ArrowLeft,
   ChevronRight,
 } from "@untitledui/icons";
@@ -153,10 +152,7 @@ export function SettingsModal({
           mobileView === "list" ? (
             /* Mobile: settings section index */
             <div className="flex h-full min-h-0 w-full flex-col bg-card">
-              <header className="flex shrink-0 items-center gap-2.5 border-b border-border/60 px-4 py-3 pr-12">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Settings className="h-4 w-4" />
-                </div>
+              <header className="flex shrink-0 items-center border-b border-border/60 px-4 py-3 pr-12">
                 <div className="min-w-0">
                   <h2 className="text-sm font-bold leading-tight text-foreground">
                     Settings
@@ -239,14 +235,9 @@ export function SettingsModal({
             {/* Desktop: persistent category sidebar */}
             <div className="w-60 shrink-0 bg-muted/30 border-r border-border/60 p-4 flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-2.5 px-3 py-2.5 mb-2">
-                  <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
-                    <Settings className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-foreground leading-tight">Settings</h2>
-                    <p className="text-[10px] text-muted-foreground">Sticky Mind Grid</p>
-                  </div>
+                <div className="px-3 py-2.5 mb-2">
+                  <h2 className="text-sm font-bold text-foreground leading-tight">Settings</h2>
+                  <p className="text-[10px] text-muted-foreground">Sticky Mind Grid</p>
                 </div>
 
                 <nav aria-label="Settings sections" className="flex flex-col gap-1">

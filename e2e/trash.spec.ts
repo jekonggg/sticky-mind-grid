@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import {
   registerUser,
   createBoard,
@@ -6,6 +6,14 @@ import {
   createTask,
   uniqueEmail,
 } from "./helpers";
+
+async function loginSeededUser(page: Page) {
+  await page.goto("/login");
+  await page.getByLabel("Email", { exact: true }).fill("test@example.com");
+  await page.getByLabel("Password", { exact: true }).fill("password123");
+  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.waitForURL("/", { timeout: 30000 });
+}
 
 test.describe("Trash & Restore", () => {
   test.beforeEach(async ({ page }) => {
@@ -67,5 +75,50 @@ test.describe("Trash & Restore", () => {
     await page.getByRole("menuitem", { name: "Move to Trash" }).click();
     await page.locator('button[title="View Trash Bin"]').click();
     await expect(page.getByPlaceholder("Search deleted tasks...")).toBeVisible({ timeout: 10000 });
+  });
+});
+
+test.describe("Mobile trash access", () => {
+  test("moves trash into board actions and opens a mobile popup", async ({ page }) => {
+    await loginSeededUser(page);
+    const boardLink = page.getByRole("link", {
+      name: "Open board Platform Engine - Road Map",
+    });
+    await expect(boardLink).toBeVisible({ timeout: 15000 });
+    await boardLink.click();
+    await page.waitForURL(/\/boards\/[^?]+$/, { timeout: 15000 });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(300);
+    await expect(page.getByTestId("board-mobile-actions")).toBeVisible();
+
+    await expect(page.locator('button[title="View Trash Bin"]')).toBeHidden();
+    await page.getByTestId("board-mobile-actions").click();
+    const trashItem = page.getByTestId("board-mobile-trash");
+    await expect(trashItem).toBeVisible();
+    await expect(trashItem).toContainText("Trash");
+    await trashItem.click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: /Trash Bin/ })).toBeVisible();
+    await page.waitForTimeout(250);
+
+    const box = await dialog.boundingBox();
+    expect(box).not.toBeNull();
+    if (box) {
+      expect(box.x).toBeGreaterThan(0);
+      expect(box.y).toBeGreaterThan(0);
+      expect(box.width).toBeLessThanOrEqual(390 - 16);
+      expect(box.height).toBeLessThan(844 - 8);
+    }
+
+    await dialog.getByRole("button", { name: "Close" }).first().click();
+    await expect(dialog).not.toBeVisible();
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.waitForTimeout(250);
+    await expect(page.locator('button[title="View Trash Bin"]')).toBeVisible();
+    await expect(page.getByTestId("board-mobile-actions")).toBeHidden();
   });
 });

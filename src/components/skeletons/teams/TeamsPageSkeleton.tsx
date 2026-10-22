@@ -11,10 +11,7 @@ export function TeamsPageSkeleton() {
       {/* 1. Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-8 rounded-xl shrink-0" />
-            <Skeleton className="h-8 w-56 rounded-lg" />
-          </div>
+          <Skeleton className="h-8 w-56 rounded-lg" />
           <Skeleton className="h-3.5 w-80 max-w-full rounded-sm" />
         </div>
 
@@ -25,20 +22,20 @@ export function TeamsPageSkeleton() {
       <div className="space-y-4">
         <Skeleton className="h-5 w-44 rounded-sm" />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="p-4 rounded-2xl bg-card border border-border/60 shadow-xs flex items-center justify-between gap-3"
+              className="min-w-0 p-3 sm:p-4 rounded-2xl bg-card border border-border/60 shadow-xs flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                <Skeleton className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl shrink-0" />
                 <div className="space-y-1.5 flex-1 min-w-0">
-                  <Skeleton className="h-4 w-32 rounded-sm" />
-                  <Skeleton className="h-3 w-24 rounded-sm" />
+                  <Skeleton className="h-4 w-32 max-w-full rounded-sm" />
+                  <Skeleton className="h-3 w-24 max-w-full rounded-sm" />
                 </div>
               </div>
-              <Skeleton className="h-7 w-16 rounded-lg shrink-0" />
+              <Skeleton className="h-7 w-full sm:w-16 rounded-lg shrink-0" />
             </div>
           ))}
         </div>

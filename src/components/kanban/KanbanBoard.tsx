@@ -1207,6 +1207,19 @@ export function KanbanBoard() {
                         </DropdownMenuItem>
                       </>
                     )}
+                    {permissions.canViewTrash && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setIsTrashOpen(true)}
+                          className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                          data-testid="board-mobile-trash"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Trash</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -1388,7 +1401,7 @@ export function KanbanBoard() {
                 {permissions.canViewTrash && (
                   <button
                     onClick={() => setIsTrashOpen(true)}
-                    className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border border-border/50 bg-background/80 text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 shrink-0 cursor-pointer"
+                    className="ml-auto hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border border-border/50 bg-background/80 text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 shrink-0 cursor-pointer"
                     title="View Trash Bin"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
