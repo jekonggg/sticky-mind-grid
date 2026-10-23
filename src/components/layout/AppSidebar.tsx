@@ -9,7 +9,7 @@ import { boardApi } from "@/services/boardApi";
 import { noteApi } from "@/services/noteApi";
 import { taskApi } from "@/services/api";
 import { Board, CreateBoardData } from "@/types/board";
-import { Note, CreateNoteData } from "@/types/note";
+import { Note, CreateNoteData, UpdateNoteData } from "@/types/note";
 import { Task } from "@/types/task";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -219,6 +219,36 @@ export function AppSidebar({
     },
     onError: (err: any) => {
       toast.error(err.message || "Failed to create document");
+    },
+  });
+
+  // Note update mutation
+  const updateNoteMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateNoteData }) => noteApi.updateNote(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["boardNotes", activeBoardId] });
+      queryClient.invalidateQueries({ queryKey: ["notes", activeBoardId] });
+      toast.success("Document updated successfully");
+      setIsNoteModalOpen(false);
+      setSelectedNote(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to update document");
+    },
+  });
+
+  // Note deletion mutation
+  const deleteNoteMutation = useMutation({
+    mutationFn: (id: string) => noteApi.deleteNote(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["boardNotes", activeBoardId] });
+      queryClient.invalidateQueries({ queryKey: ["notes", activeBoardId] });
+      toast.success("Document deleted");
+      setIsNoteModalOpen(false);
+      setSelectedNote(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to delete document");
     },
   });
 
@@ -1084,7 +1114,14 @@ export function AppSidebar({
           setSelectedNote(null);
         }}
         note={selectedNote}
-        onSubmit={(data) => createNoteMutation.mutate(data as CreateNoteData)}
+        onSubmit={(data) => {
+          if (selectedNote) {
+            updateNoteMutation.mutate({ id: selectedNote.id, data });
+          } else {
+            createNoteMutation.mutate(data as CreateNoteData);
+          }
+        }}
+        onDelete={(id) => deleteNoteMutation.mutate(id)}
       />
 
       <PersonalScratchpadModal

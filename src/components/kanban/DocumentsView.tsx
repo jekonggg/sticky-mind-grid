@@ -32,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, getMediaUrl } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { htmlToPlainText } from "@/utils/scratchpadHtml";
 
 interface DocumentsViewProps {
   tasks: Task[];

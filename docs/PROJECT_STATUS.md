@@ -122,9 +122,10 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 - **Documents view** — aggregated file browser across all tasks
 
 ### Project Notes
-- **CRUD for notes** — title, content, color (6 preset colors)
+- **CRUD for notes** — title, rich-text content, color (6 preset colors)
 - **Board-scoped** — notes belong to a board
-- **Documents view** — note cards with edit/delete
+- **Rich-text formatting** — shares the Scratchpad text formatter (FormattingToolbar, NoteContentEditor, useRichTextFormatter) supporting bold, italic, underline, strikethrough, bulleted/numbered/checklists, text color, font size, and text alignment with sanitized HTML persistence
+- **Documents view** — note cards with plain-text preview (htmlToPlainText), plain-text search, and edit/delete modals
 
 ### In-App Messaging & Team Chat
 - **Sidebar Integration** — "Messages" entry in sidebar with dynamic unread count badge & collapsed rail tooltip; Boards entry with consistent right-aligned count badge and slide-in Add Board button on click

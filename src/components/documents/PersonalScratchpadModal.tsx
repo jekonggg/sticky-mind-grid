@@ -1,19 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlignCenter,
-  AlignJustify,
-  AlignLeft,
-  AlignRight,
-  Bold,
-  Italic,
-  List,
-  ListChecks,
-  ListOrdered,
-  Palette,
-  Strikethrough,
-  Type,
-  Underline,
-} from "lucide-react";
+  FormattingToolbar,
+  NoteContentEditor as ScratchpadContentEditor,
+  useRichTextFormatter,
+} from "./RichTextEditor";
 import {
   Dialog,
   DialogContent,
@@ -56,372 +46,6 @@ const COLOR_PRESETS = [
   { name: "Rose", bg: "#ffe4e6", border: "#fecdd3", text: "#9f1239" },
   { name: "Slate", bg: "#f1f5f9", border: "#e2e8f0", text: "#334155" },
 ];
-
-type FormatCommand =
-  | "bold"
-  | "italic"
-  | "underline"
-  | "strikeThrough"
-  | "insertUnorderedList"
-  | "insertOrderedList"
-  | "insertChecklist"
-  | "fontSize"
-  | "foreColor"
-  | "justifyLeft"
-  | "justifyCenter"
-  | "justifyRight"
-  | "justifyFull";
-
-const FORMAT_BUTTON_CLASS =
-  "inline-flex shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1";
-
-function createChecklistInput(): HTMLInputElement {
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.setAttribute("contenteditable", "false");
-  checkbox.setAttribute("aria-label", "Toggle checklist item");
-  return checkbox;
-}
-
-function ensureChecklistInputs(root: ParentNode) {
-  root
-    .querySelectorAll<HTMLElement>(
-      "ul[data-checklist] > li, ol[data-checklist] > li"
-    )
-    .forEach((item) => {
-      let checkbox = item.querySelector<HTMLInputElement>(
-        ":scope > input[type='checkbox']"
-      );
-
-      if (!checkbox) {
-        checkbox = createChecklistInput();
-        item.insertBefore(checkbox, item.firstChild);
-        item.insertBefore(document.createTextNode(" "), checkbox.nextSibling);
-      }
-
-      item.setAttribute("data-checked", checkbox.checked ? "true" : "false");
-    });
-}
-
-function isListElement(node: Node | null): node is HTMLElement {
-  return (
-    node instanceof HTMLElement && (node.tagName === "UL" || node.tagName === "OL")
-  );
-}
-
-function firstMeaningfulChild(node: Node): Node | null {
-  let child = node.firstChild;
-  while (
-    child &&
-    child.nodeType === Node.TEXT_NODE &&
-    !child.textContent?.trim()
-  ) {
-    child = child.nextSibling;
-  }
-  return child;
-}
-
-function lastMeaningfulChild(node: Node): Node | null {
-  let child = node.lastChild;
-  while (
-    child &&
-    child.nodeType === Node.TEXT_NODE &&
-    !child.textContent?.trim()
-  ) {
-    child = child.previousSibling;
-  }
-  return child;
-}
-
-function hasListAtStart(node: Node | null): boolean {
-  if (!node) return false;
-  if (isListElement(node)) return true;
-  if (node.nodeType !== Node.ELEMENT_NODE) return false;
-  return hasListAtStart(firstMeaningfulChild(node));
-}
-
-function hasListAtEnd(node: Node | null): boolean {
-  if (!node) return false;
-  if (isListElement(node)) return true;
-  if (node.nodeType !== Node.ELEMENT_NODE) return false;
-  return hasListAtEnd(lastMeaningfulChild(node));
-}
-
-function previousMeaningfulSibling(node: Node | null): Node | null {
-  let sibling = node?.previousSibling ?? null;
-  while (
-    sibling &&
-    sibling.nodeType === Node.TEXT_NODE &&
-    !sibling.textContent?.trim()
-  ) {
-    sibling = sibling.previousSibling;
-  }
-  return sibling;
-}
-
-function nextMeaningfulSibling(node: Node | null): Node | null {
-  let sibling = node?.nextSibling ?? null;
-  while (
-    sibling &&
-    sibling.nodeType === Node.TEXT_NODE &&
-    !sibling.textContent?.trim()
-  ) {
-    sibling = sibling.nextSibling;
-  }
-  return sibling;
-}
-
-function createChecklistSeparators(
-  editor: HTMLElement,
-  range: Range
-): HTMLElement[] {
-  const separators: HTMLElement[] = [];
-
-  const createSeparator = () => {
-    const separator = document.createElement("div");
-    separator.setAttribute("data-checklist-separator", "true");
-    separator.appendChild(document.createElement("br"));
-    return separator;
-  };
-
-  const insertBeforeAdjacentList = (node: Node | null) => {
-    let current = node;
-    while (current && current !== editor) {
-      if (hasListAtEnd(previousMeaningfulSibling(current))) {
-        const separator = createSeparator();
-        current.parentNode?.insertBefore(separator, current);
-        separators.push(separator);
-        return;
-      }
-      current = current.parentNode;
-    }
-  };
-
-  const insertAfterAdjacentList = (node: Node | null) => {
-    let current = node;
-    while (current && current !== editor) {
-      if (hasListAtStart(nextMeaningfulSibling(current))) {
-        const separator = createSeparator();
-        current.parentNode?.insertBefore(separator, current.nextSibling);
-        separators.push(separator);
-        return;
-      }
-      current = current.parentNode;
-    }
-  };
-
-  insertBeforeAdjacentList(range.startContainer);
-  insertAfterAdjacentList(range.endContainer);
-
-  return separators;
-}
-
-interface ScratchpadContentEditorProps {
-  initialContent: string;
-  onChange: (html: string) => void;
-  editorRef: React.MutableRefObject<HTMLDivElement | null>;
-}
-
-function ScratchpadContentEditor({
-  initialContent,
-  onChange,
-  editorRef,
-}: ScratchpadContentEditorProps) {
-  const initializedRef = useRef(false);
-
-  useEffect(() => {
-    if (initializedRef.current || !editorRef.current) return;
-    editorRef.current.innerHTML = toEditorHtml(initialContent);
-    initializedRef.current = true;
-  }, [editorRef, initialContent]);
-
-  useEffect(() => {
-    const editor = editorRef.current;
-    if (!editor) return;
-
-    const syncChecklistState = () => {
-      ensureChecklistInputs(editor);
-    };
-    const handleCheckboxChange = (event: Event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLInputElement) || target.type !== "checkbox") {
-        return;
-      }
-
-      target.toggleAttribute("checked", target.checked);
-      syncChecklistState();
-      onChange(editor.innerHTML);
-    };
-
-    syncChecklistState();
-    editor.addEventListener("change", handleCheckboxChange);
-    return () => editor.removeEventListener("change", handleCheckboxChange);
-  }, [editorRef, onChange]);
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (
-      event.key !== "Enter" ||
-      event.shiftKey ||
-      event.nativeEvent.isComposing
-    ) {
-      return;
-    }
-
-    const editor = editorRef.current;
-    const selection = window.getSelection();
-    const node = selection?.anchorNode;
-    const element =
-      node?.nodeType === Node.ELEMENT_NODE
-        ? (node as HTMLElement)
-        : node?.parentElement;
-    const listItem = element?.closest("li");
-
-    if (
-      !editor ||
-      !selection ||
-      selection.rangeCount === 0 ||
-      !listItem ||
-      !listItem.closest("ul[data-checklist], ol[data-checklist]")
-    ) {
-      return;
-    }
-
-    const range = selection.getRangeAt(0);
-    if (!listItem.contains(range.endContainer)) return;
-
-    event.preventDefault();
-
-    if (!range.collapsed) {
-      range.deleteContents();
-      range.collapse(true);
-    }
-
-    const trailingRange = document.createRange();
-    trailingRange.selectNodeContents(listItem);
-    trailingRange.setStart(range.endContainer, range.endOffset);
-    const trailingContent = trailingRange.extractContents();
-    trailingContent
-      .querySelectorAll("input[type='checkbox']")
-      .forEach((checkbox) => checkbox.remove());
-
-    const newItem = document.createElement("li");
-    newItem.setAttribute("data-checked", "false");
-    const checkbox = createChecklistInput();
-    const spacer = document.createTextNode(" ");
-    newItem.append(checkbox, spacer);
-
-    const hasTrailingContent =
-      Boolean(trailingContent.textContent?.trim()) ||
-      Boolean(trailingContent.querySelector("br, img"));
-
-    if (hasTrailingContent) {
-      newItem.appendChild(trailingContent);
-    } else {
-      newItem.appendChild(document.createElement("br"));
-    }
-
-    listItem.after(newItem);
-
-    const caretRange = document.createRange();
-    if (hasTrailingContent) {
-      caretRange.selectNodeContents(newItem);
-      caretRange.collapse(false);
-    } else {
-      caretRange.setStartAfter(spacer);
-      caretRange.collapse(true);
-    }
-    selection.removeAllRanges();
-    selection.addRange(caretRange);
-
-    onChange(editor.innerHTML);
-  };
-
-  const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const text = event.clipboardData.getData("text/plain");
-
-    if (typeof document.execCommand === "function") {
-      document.execCommand("insertText", false, text);
-    } else {
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) return;
-      const range = selection.getRangeAt(0);
-      range.deleteContents();
-      const fragment = document.createDocumentFragment();
-      text.split("\n").forEach((line, index) => {
-        if (index > 0) fragment.appendChild(document.createElement("br"));
-        fragment.appendChild(document.createTextNode(line));
-      });
-      range.insertNode(fragment);
-      range.collapse(false);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    }
-
-    onChange(event.currentTarget.innerHTML);
-  };
-
-  return (
-    <div
-      ref={editorRef}
-      contentEditable
-      suppressContentEditableWarning
-      role="textbox"
-      aria-multiline="true"
-      aria-label="Note content"
-      data-testid="scratchpad-content-editor"
-      spellCheck
-      onInput={(event) => onChange(event.currentTarget.innerHTML)}
-      onPaste={handlePaste}
-      onKeyDown={handleKeyDown}
-      className="scratchpad-editor custom-scrollbar h-full w-full overflow-y-auto break-words text-sm leading-relaxed text-foreground outline-none [&_div]:min-h-[1.25em] [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
-    />
-  );
-}
-
-interface FormatButtonProps {
-  label: string;
-  compact?: boolean;
-  onClick: () => void;
-  onSaveSelection: () => void;
-  children: React.ReactNode;
-}
-
-function FormatButton({
-  label,
-  compact = false,
-  onClick,
-  onSaveSelection,
-  children,
-}: FormatButtonProps) {
-  return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      className={cn(
-        FORMAT_BUTTON_CLASS,
-        compact ? "h-7 w-7" : "h-8 w-8"
-      )}
-      onMouseDown={(event) => {
-        event.preventDefault();
-        onSaveSelection();
-      }}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-}
-
-function ToolbarDivider() {
-  return (
-    <span
-      aria-hidden="true"
-      className="mx-0.5 h-4 w-px shrink-0 bg-border/70"
-    />
-  );
-}
 
 interface NoteActionButtonsProps {
   note: PersonalNote;
@@ -486,211 +110,6 @@ function NoteActionButtons({
   );
 }
 
-interface FormattingToolbarProps {
-  placement: "inline" | "bottom";
-  onSaveSelection: () => void;
-  onFormat: (command: FormatCommand, value?: string) => void;
-}
-
-function FormattingToolbar({
-  placement,
-  onSaveSelection,
-  onFormat,
-}: FormattingToolbarProps) {
-  const [textColor, setTextColor] = useState("#b45309");
-
-  const textStyleButtons = (
-    <div className="flex items-center gap-0.5">
-      <FormatButton
-        compact={placement === "inline"}
-        label="Bold"
-        onSaveSelection={onSaveSelection}
-        onClick={() => onFormat("bold")}
-      >
-        <Bold className="h-4 w-4" />
-      </FormatButton>
-      <FormatButton
-        compact={placement === "inline"}
-        label="Italic"
-        onSaveSelection={onSaveSelection}
-        onClick={() => onFormat("italic")}
-      >
-        <Italic className="h-4 w-4" />
-      </FormatButton>
-      <FormatButton
-        compact={placement === "inline"}
-        label="Underline"
-        onSaveSelection={onSaveSelection}
-        onClick={() => onFormat("underline")}
-      >
-        <Underline className="h-4 w-4" />
-      </FormatButton>
-      <FormatButton
-        compact={placement === "inline"}
-        label="Strikethrough"
-        onSaveSelection={onSaveSelection}
-        onClick={() => onFormat("strikeThrough")}
-      >
-        <Strikethrough className="h-4 w-4" />
-      </FormatButton>
-    </div>
-  );
-
-  const listButtons = (
-    <div className="flex items-center gap-0.5">
-      <FormatButton
-        compact={placement === "inline"}
-        label="Bulleted list"
-        onSaveSelection={onSaveSelection}
-        onClick={() => onFormat("insertUnorderedList")}
-      >
-        <List className="h-4 w-4" />
-      </FormatButton>
-      <FormatButton
-        compact={placement === "inline"}
-        label="Numbered list"
-        onSaveSelection={onSaveSelection}
-        onClick={() => onFormat("insertOrderedList")}
-      >
-        <ListOrdered className="h-4 w-4" />
-      </FormatButton>
-      <FormatButton
-        compact={placement === "inline"}
-        label="Checklist"
-        onSaveSelection={onSaveSelection}
-        onClick={() => onFormat("insertChecklist")}
-      >
-        <ListChecks className="h-4 w-4" />
-      </FormatButton>
-    </div>
-  );
-
-  const alignmentButtons = (
-    <div className="flex items-center gap-0.5">
-      <FormatButton
-        compact={placement === "inline"}
-        label="Align left"
-        onSaveSelection={onSaveSelection}
-        onClick={() => onFormat("justifyLeft")}
-      >
-        <AlignLeft className="h-4 w-4" />
-      </FormatButton>
-      <FormatButton
-        compact={placement === "inline"}
-        label="Align center"
-        onSaveSelection={onSaveSelection}
-        onClick={() => onFormat("justifyCenter")}
-      >
-        <AlignCenter className="h-4 w-4" />
-      </FormatButton>
-      <FormatButton
-        compact={placement === "inline"}
-        label="Align right"
-        onSaveSelection={onSaveSelection}
-        onClick={() => onFormat("justifyRight")}
-      >
-        <AlignRight className="h-4 w-4" />
-      </FormatButton>
-      <FormatButton
-        compact={placement === "inline"}
-        label="Justify"
-        onSaveSelection={onSaveSelection}
-        onClick={() => onFormat("justifyFull")}
-      >
-        <AlignJustify className="h-4 w-4" />
-      </FormatButton>
-    </div>
-  );
-
-  const sizeAndColorControls = (
-    <div className="flex items-center gap-1.5">
-      <div className="flex items-center gap-1">
-        <Type
-          className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-          aria-hidden="true"
-        />
-        <select
-          aria-label="Font size"
-          title="Font size"
-          defaultValue="3"
-          onMouseDown={onSaveSelection}
-          onChange={(event) => onFormat("fontSize", event.target.value)}
-          className={cn(
-            "rounded-md border border-border/60 bg-transparent px-1.5 text-[11px] font-medium text-foreground outline-none focus:ring-2 focus:ring-ring",
-            placement === "inline" ? "h-7" : "h-8"
-          )}
-        >
-          <option value="2">Small</option>
-          <option value="3">Normal</option>
-          <option value="5">Large</option>
-          <option value="6">X-Large</option>
-        </select>
-      </div>
-
-      <label
-        title="Text color"
-        className={cn(
-          FORMAT_BUTTON_CLASS,
-          placement === "inline" ? "h-7 w-7" : "h-8 w-8",
-          "relative cursor-pointer overflow-hidden"
-        )}
-        onMouseDown={onSaveSelection}
-      >
-        <Palette className="h-4 w-4" style={{ color: textColor }} />
-        <input
-          type="color"
-          aria-label="Text color"
-          value={textColor}
-          onChange={(event) => {
-            setTextColor(event.target.value);
-            onFormat("foreColor", event.target.value);
-          }}
-          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-        />
-      </label>
-    </div>
-  );
-
-  if (placement === "bottom") {
-    return (
-      <div
-        data-testid="scratchpad-format-toolbar"
-        data-placement={placement}
-        role="toolbar"
-        aria-label="Text formatting"
-        className="flex w-full flex-col gap-2"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          {textStyleButtons}
-          {listButtons}
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          {alignmentButtons}
-          {sizeAndColorControls}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      data-testid="scratchpad-format-toolbar"
-      data-placement={placement}
-      role="toolbar"
-      aria-label="Text formatting"
-      className="flex flex-wrap items-center gap-1"
-    >
-      {textStyleButtons}
-      <ToolbarDivider />
-      {listButtons}
-      <ToolbarDivider />
-      {alignmentButtons}
-      <ToolbarDivider />
-      {sizeAndColorControls}
-    </div>
-  );
-}
-
 interface PersonalScratchpadModalProps {
   open: boolean;
   onClose: () => void;
@@ -720,7 +139,6 @@ export function PersonalScratchpadModal({
   const saveTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
   const pendingUpdatesRef = useRef<Record<string, Partial<PersonalNote>>>({});
   const contentEditorRef = useRef<HTMLDivElement | null>(null);
-  const savedSelectionRef = useRef<Range | null>(null);
   const notesRef = useRef(notes);
 
   const updateNotes = useCallback(
@@ -912,193 +330,48 @@ export function PersonalScratchpadModal({
     }
   };
 
-  const handleUpdateActiveNote = (updates: Partial<PersonalNote>, immediateSync: boolean = false) => {
-    if (!activeNote) return;
-    const updatedDate = new Date().toISOString();
+  const handleUpdateActiveNote = useCallback(
+    (updates: Partial<PersonalNote>, immediateSync: boolean = false) => {
+      if (!activeNote) return;
+      const updatedDate = new Date().toISOString();
 
-    updateNotes((prev) =>
-      prev.map((n) =>
-        n.id === activeNote.id
-          ? { ...n, ...updates, updatedAt: updatedDate }
-          : n
-      )
-    );
-
-    // If updating pinned, re-order so pinned notes stay on top
-    if ("pinned" in updates) {
-      updateNotes((prev) => {
-        const updatedList = prev.map((n) =>
-          n.id === activeNote.id ? { ...n, ...updates, updatedAt: updatedDate } : n
-        );
-        return [...updatedList].sort((a, b) => {
-          if (a.pinned === b.pinned) {
-            return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-          }
-          return a.pinned ? -1 : 1;
-        });
-      });
-    }
-
-    queueServerUpdate(activeNote.id, updates, immediateSync);
-  };
-
-  const saveEditorSelection = () => {
-    const editor = contentEditorRef.current;
-    const selection = window.getSelection();
-    if (!editor || !selection || selection.rangeCount === 0) return;
-
-    const range = selection.getRangeAt(0);
-    if (editor.contains(range.commonAncestorContainer)) {
-      savedSelectionRef.current = range.cloneRange();
-    }
-  };
-
-  const restoreEditorSelection = () => {
-    const editor = contentEditorRef.current;
-    if (!editor) return;
-
-    editor.focus();
-    const range = savedSelectionRef.current;
-    const selection = window.getSelection();
-    if (!range || !selection) return;
-
-    try {
-      selection.removeAllRanges();
-      selection.addRange(range);
-    } catch {
-      // The saved range can become detached after a note switch.
-    }
-  };
-
-  const handleContentChange = (html: string) => {
-    handleUpdateActiveNote({ content: sanitizeNoteHtml(html) });
-  };
-
-  const getClosestEditorList = (): HTMLElement | null => {
-    const editor = contentEditorRef.current;
-    const selection = window.getSelection();
-    if (!editor || !selection || selection.rangeCount === 0) return null;
-
-    const node = selection.anchorNode;
-    const element =
-      node?.nodeType === Node.ELEMENT_NODE
-        ? (node as HTMLElement)
-        : node?.parentElement;
-    const list = element?.closest("ul, ol");
-
-    return list && editor.contains(list) ? (list as HTMLElement) : null;
-  };
-
-  const detachChecklistFormatting = (list: HTMLElement) => {
-    list.removeAttribute("data-checklist");
-    Array.from(list.children).forEach((child) => {
-      if (child.tagName !== "LI") return;
-
-      const item = child as HTMLElement;
-      item.removeAttribute("data-checked");
-      const checkbox = item.querySelector<HTMLInputElement>(
-        ":scope > input[type='checkbox']"
+      updateNotes((prev) =>
+        prev.map((n) =>
+          n.id === activeNote.id
+            ? { ...n, ...updates, updatedAt: updatedDate }
+            : n
+        )
       );
-      if (!checkbox) return;
 
-      const spacer = checkbox.nextSibling;
-      checkbox.remove();
-      if (spacer?.nodeType === Node.TEXT_NODE && spacer.textContent === " ") {
-        spacer.textContent = "";
+      // If updating pinned, re-order so pinned notes stay on top
+      if ("pinned" in updates) {
+        updateNotes((prev) => {
+          const updatedList = prev.map((n) =>
+            n.id === activeNote.id ? { ...n, ...updates, updatedAt: updatedDate } : n
+          );
+          return [...updatedList].sort((a, b) => {
+            if (a.pinned === b.pinned) {
+              return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+            }
+            return a.pinned ? -1 : 1;
+          });
+        });
       }
-    });
-  };
 
-  const replaceListTag = (list: HTMLElement, tagName: "UL" | "OL") => {
-    const replacement = document.createElement(tagName);
-    Array.from(list.attributes).forEach((attribute) => {
-      if (attribute.name !== "data-checklist") {
-        replacement.setAttribute(attribute.name, attribute.value);
-      }
-    });
-    while (list.firstChild) {
-      replacement.appendChild(list.firstChild);
-    }
-    list.replaceWith(replacement);
-    return replacement;
-  };
+      queueServerUpdate(activeNote.id, updates, immediateSync);
+    },
+    [activeNote, updateNotes]
+  );
 
-  const applyChecklistFormatting = () => {
-    const list = getClosestEditorList();
+  const handleContentChange = useCallback(
+    (html: string) => {
+      handleUpdateActiveNote({ content: sanitizeNoteHtml(html) });
+    },
+    [handleUpdateActiveNote]
+  );
 
-    if (list?.hasAttribute("data-checklist")) {
-      detachChecklistFormatting(list);
-      return;
-    }
-
-    if (list) {
-      list.setAttribute("data-checklist", "true");
-      ensureChecklistInputs(list);
-      return;
-    }
-
-    if (typeof document.execCommand !== "function") return;
-
-    const editor = contentEditorRef.current;
-    const selection = window.getSelection();
-    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
-    const separators =
-      editor && range && !range.collapsed
-        ? createChecklistSeparators(editor, range)
-        : [];
-
-    try {
-      document.execCommand("styleWithCSS", false, "true");
-      document.execCommand("insertUnorderedList", false, undefined);
-    } finally {
-      separators.forEach((separator) => separator.remove());
-    }
-
-    const createdList = getClosestEditorList();
-    if (createdList) {
-      createdList.setAttribute("data-checklist", "true");
-      ensureChecklistInputs(createdList);
-    }
-  };
-
-  const handleFormat = (command: FormatCommand, value?: string) => {
-    const editor = contentEditorRef.current;
-    if (!editor || !activeNote) return;
-
-    restoreEditorSelection();
-
-    try {
-      if (command === "insertChecklist") {
-        applyChecklistFormatting();
-      } else if (
-        command === "insertUnorderedList" ||
-        command === "insertOrderedList"
-      ) {
-        const list = getClosestEditorList();
-
-        if (list?.hasAttribute("data-checklist")) {
-          detachChecklistFormatting(list);
-          const targetTag = command === "insertUnorderedList" ? "UL" : "OL";
-          if (list.tagName !== targetTag) {
-            replaceListTag(list, targetTag);
-          }
-        } else {
-          if (typeof document.execCommand !== "function") return;
-          document.execCommand("styleWithCSS", false, "true");
-          document.execCommand(command, false, value);
-        }
-      } else {
-        if (typeof document.execCommand !== "function") return;
-        document.execCommand("styleWithCSS", false, "true");
-        document.execCommand(command, false, value);
-      }
-    } catch (error) {
-      console.warn("Unable to apply scratchpad formatting:", error);
-      return;
-    }
-
-    handleContentChange(editor.innerHTML);
-  };
+  const { saveEditorSelection, restoreEditorSelection, handleFormat } =
+    useRichTextFormatter(contentEditorRef, handleContentChange);
 
   const handleDeleteNote = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -1288,6 +561,7 @@ export function PersonalScratchpadModal({
                         placement="inline"
                         onSaveSelection={saveEditorSelection}
                         onFormat={handleFormat}
+                        onRestoreSelection={restoreEditorSelection}
                       />
                     </>
                   )}
@@ -1385,6 +659,7 @@ export function PersonalScratchpadModal({
                     placement="bottom"
                     onSaveSelection={saveEditorSelection}
                     onFormat={handleFormat}
+                    onRestoreSelection={restoreEditorSelection}
                   />
                 </div>
               )}

@@ -120,10 +120,12 @@ describe("PersonalScratchpadModal", () => {
       undefined
     );
 
-    fireEvent.change(within(toolbar).getByLabelText("Font size"), {
-      target: { value: "5" },
+    const fontTrigger = within(toolbar).getByLabelText("Font size");
+    fireEvent.keyDown(fontTrigger, { key: "ArrowDown" });
+    fireEvent.click(await screen.findByRole("option", { name: "Large" }));
+    await waitFor(() => {
+      expect(document.execCommand).toHaveBeenCalledWith("fontSize", false, "5");
     });
-    expect(document.execCommand).toHaveBeenCalledWith("fontSize", false, "5");
 
     fireEvent.change(within(toolbar).getByLabelText("Text color"), {
       target: { value: "#ff0000" },

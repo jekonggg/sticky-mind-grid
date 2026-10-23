@@ -315,32 +315,41 @@ All colors MUST be HSL.
     @apply bg-muted-foreground/25 rounded-full hover:bg-muted-foreground/50 transition-colors;
   }
 
-  /* Scratchpad rich text checklists */
+  /* Rich text checklists (Scratchpad and Board Notes) */
   .scratchpad-editor ul[data-checklist],
-  .scratchpad-editor ol[data-checklist] {
+  .scratchpad-editor ol[data-checklist],
+  .note-editor ul[data-checklist],
+  .note-editor ol[data-checklist] {
     list-style: none;
     padding-left: 0;
   }
 
   .scratchpad-editor ul[data-checklist] > li,
-  .scratchpad-editor ol[data-checklist] > li {
+  .scratchpad-editor ol[data-checklist] > li,
+  .note-editor ul[data-checklist] > li,
+  .note-editor ol[data-checklist] > li {
     display: flex;
     align-items: flex-start;
     gap: 0.5rem;
   }
 
   .scratchpad-editor ul[data-checklist] > li::marker,
-  .scratchpad-editor ol[data-checklist] > li::marker {
+  .scratchpad-editor ol[data-checklist] > li::marker,
+  .note-editor ul[data-checklist] > li::marker,
+  .note-editor ol[data-checklist] > li::marker {
     content: "";
   }
 
   .scratchpad-editor ul[data-checklist] > li[data-checked="true"],
-  .scratchpad-editor ol[data-checklist] > li[data-checked="true"] {
+  .scratchpad-editor ol[data-checklist] > li[data-checked="true"],
+  .note-editor ul[data-checklist] > li[data-checked="true"],
+  .note-editor ol[data-checklist] > li[data-checked="true"] {
     text-decoration: line-through;
     opacity: 0.6;
   }
 
-  .scratchpad-editor input[type="checkbox"] {
+  .scratchpad-editor input[type="checkbox"],
+  .note-editor input[type="checkbox"] {
     width: 0.95rem;
     height: 0.95rem;
     margin-top: 0.2rem;
