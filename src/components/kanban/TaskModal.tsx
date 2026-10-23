@@ -865,11 +865,8 @@ export function TaskModal({
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
                   {displayBoards.map((b) => (
-                    <SelectItem key={b.id} value={b.id} className="cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <span>{b.emoji || "📋"}</span>
-                        <span className="font-medium truncate">{b.name}</span>
-                      </div>
+                    <SelectItem key={b.id} value={b.id} className="cursor-pointer font-medium">
+                      {b.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -894,17 +891,7 @@ export function TaskModal({
                   <SelectContent className="max-h-60">
                     {activeColumns.map((c) => (
                       <SelectItem key={c.id} value={c.id} className="cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          {!devSettings.disableEmojiCustomization && c.emoji ? (
-                            <span className="text-sm shrink-0 leading-none">{c.emoji}</span>
-                          ) : (
-                            <span
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{ backgroundColor: c.color || "var(--primary)" }}
-                            />
-                          )}
-                          <span>{c.title}</span>
-                        </div>
+                        {c.title}
                       </SelectItem>
                     ))}
                   </SelectContent>

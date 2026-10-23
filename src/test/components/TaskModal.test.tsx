@@ -375,6 +375,8 @@ describe("TaskModal Component", () => {
 
     const boardSelectTrigger = screen.getByTestId("task-modal-board-select");
     expect(boardSelectTrigger).toBeDisabled();
+    expect(boardSelectTrigger).toHaveTextContent("Engineering Sprint");
+    expect(boardSelectTrigger).not.toHaveTextContent("🚀");
     expect(screen.getByText(/Current Board/i)).toBeInTheDocument();
   });
 
