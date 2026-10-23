@@ -23,6 +23,8 @@ export const defaultDevSettings: DevSettings = {
   customInnerRadius: null,
   customOuterRadius: null,
   columnColorStyle: "theme",
+  taskModalHideLabelIcons: false,
+  taskModalLabelCase: "uppercase",
 };
 
 export const prodSettings: DevSettings = {
@@ -40,6 +42,8 @@ export const prodSettings: DevSettings = {
   customInnerRadius: 8,
   customOuterRadius: 12,
   columnColorStyle: "theme",
+  taskModalHideLabelIcons: false,
+  taskModalLabelCase: "uppercase",
 };
 
 // Global synchronous getter for API services & non-React files
@@ -243,7 +247,9 @@ export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     (devSettings.customPadding !== null && devSettings.customPadding !== undefined ? 1 : 0) +
     (devSettings.customInnerRadius !== null && devSettings.customInnerRadius !== undefined ? 1 : 0) +
     (devSettings.customOuterRadius !== null && devSettings.customOuterRadius !== undefined ? 1 : 0) +
-    (devSettings.columnColorStyle && devSettings.columnColorStyle !== "theme" ? 1 : 0);
+    (devSettings.columnColorStyle && devSettings.columnColorStyle !== "theme" ? 1 : 0) +
+    (devSettings.taskModalHideLabelIcons ? 1 : 0) +
+    (devSettings.taskModalLabelCase && devSettings.taskModalLabelCase !== "uppercase" ? 1 : 0);
 
   return (
     <DevModeContext.Provider

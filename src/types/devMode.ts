@@ -13,6 +13,8 @@ export type DevFontFamily =
   | "inter_tight"
   | "satoshi";
 
+export type TaskModalLabelCase = "uppercase" | "capitalize";
+
 export interface SseLogEntry {
   id: string;
   timestamp: string;
@@ -37,4 +39,6 @@ export interface DevSettings {
   customInnerRadius?: number | null;
   customOuterRadius?: number | null;
   columnColorStyle?: import("@/constants/columnColors").DevColumnColorStyle;
+  taskModalHideLabelIcons?: boolean;
+  taskModalLabelCase?: TaskModalLabelCase;
 }

@@ -22,7 +22,7 @@ import {
 import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { getContainerGeometry } from "@/utils/geometryUtils";
-import { ChaosErrorMode, SimulatedRole, DevFontFamily, SeedTakeoverPreset } from "@/types/devMode";
+import { ChaosErrorMode, SimulatedRole, DevFontFamily, SeedTakeoverPreset, TaskModalLabelCase } from "@/types/devMode";
 import { DEV_FONT_OPTIONS } from "@/constants/fonts";
 import { COLUMN_COLOR_STYLES } from "@/constants/columnColors";
 import { SEED_PRESET_OPTIONS, SEED_AVATARS } from "@/data/devSeedDataset";
@@ -32,6 +32,9 @@ import { Tag } from "@/types/task";
 import { toast } from "sonner";
 import {
   Stars01 as Sparkles,
+  Tag01 as TagIcon,
+  Calendar,
+  AlertCircle,
   Wifi,
   WifiOff,
   Shield01 as Shield,
@@ -897,6 +900,344 @@ export function DevSuiteModal() {
                           );
                         }}
                       />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Task Modal Label Variants (New Task Modal) */}
+              <Card className="border-border/60 bg-muted/20">
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <TagIcon className="h-4 w-4 text-primary" />
+                        <h4 className="text-sm font-bold text-foreground">
+                          Task Modal Label Styles (New Task Modal)
+                        </h4>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Toggle label favicons/icons and casing between ALL CAPS and Capital First Letter Each Word.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-bold bg-primary/10 text-primary border-primary/30"
+                      >
+                        {devSettings.taskModalHideLabelIcons ? "No Favicons" : "With Favicons"} •{" "}
+                        {devSettings.taskModalLabelCase === "capitalize"
+                          ? "Capital First Letter"
+                          : "ALL CAPS"}
+                      </Badge>
+                      {(devSettings.taskModalHideLabelIcons ||
+                        devSettings.taskModalLabelCase === "capitalize") && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            updateDevSetting("taskModalHideLabelIcons", false);
+                            updateDevSetting("taskModalLabelCase", "uppercase");
+                            toast.success("Task modal labels reset to default (With Favicons + ALL CAPS)");
+                          }}
+                          className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          <span>Reset Default</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 4 Version Switcher Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {/* Version 1: Default (Icons + ALL CAPS) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateDevSetting("taskModalHideLabelIcons", false);
+                        updateDevSetting("taskModalLabelCase", "uppercase");
+                        toast.success("Applied Version: Default (Favicons + ALL CAPS)");
+                      }}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                        !devSettings.taskModalHideLabelIcons &&
+                        devSettings.taskModalLabelCase !== "capitalize"
+                          ? "bg-card border-primary shadow-sm ring-2 ring-primary/20"
+                          : "bg-card/50 border-border/70 hover:border-border hover:bg-card/80"
+                      }`}
+                    >
+                      <div className="space-y-1 w-full">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-xs font-bold text-foreground">
+                            Default Version
+                          </span>
+                          {!devSettings.taskModalHideLabelIcons &&
+                          devSettings.taskModalLabelCase !== "capitalize" ? (
+                            <Badge className="text-[9px] py-0 px-1 bg-primary text-primary-foreground">
+                              Active
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] py-0 px-1 border-primary/40 text-primary"
+                            >
+                              Default
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Category icons on labels with standard ALL CAPS styling.
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-lg border border-border/40 bg-background/80 flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        <TagIcon className="h-3 w-3 text-primary shrink-0" />
+                        <span>Labels / Tags</span>
+                      </div>
+                    </button>
+
+                    {/* Version 2: No Favicon / Icons (ALL CAPS) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateDevSetting("taskModalHideLabelIcons", true);
+                        updateDevSetting("taskModalLabelCase", "uppercase");
+                        toast.success("Applied Version: No Favicons (ALL CAPS)");
+                      }}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                        devSettings.taskModalHideLabelIcons &&
+                        devSettings.taskModalLabelCase !== "capitalize"
+                          ? "bg-card border-primary shadow-sm ring-2 ring-primary/20"
+                          : "bg-card/50 border-border/70 hover:border-border hover:bg-card/80"
+                      }`}
+                    >
+                      <div className="space-y-1 w-full">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-xs font-bold text-foreground">
+                            Version A: No Favicons
+                          </span>
+                          {devSettings.taskModalHideLabelIcons &&
+                          devSettings.taskModalLabelCase !== "capitalize" ? (
+                            <Badge className="text-[9px] py-0 px-1 bg-primary text-primary-foreground">
+                              Active
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] py-0 px-1 border-border/60 text-muted-foreground"
+                            >
+                              Clean Labels
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Removes label favicon icons, keeping ALL CAPS uppercase.
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-lg border border-border/40 bg-background/80 flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        <span>Labels / Tags</span>
+                      </div>
+                    </button>
+
+                    {/* Version 3: Capital First Letter Each Word (With Icons) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateDevSetting("taskModalHideLabelIcons", false);
+                        updateDevSetting("taskModalLabelCase", "capitalize");
+                        toast.success("Applied Version: Capital First Letter (With Favicons)");
+                      }}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                        !devSettings.taskModalHideLabelIcons &&
+                        devSettings.taskModalLabelCase === "capitalize"
+                          ? "bg-card border-primary shadow-sm ring-2 ring-primary/20"
+                          : "bg-card/50 border-border/70 hover:border-border hover:bg-card/80"
+                      }`}
+                    >
+                      <div className="space-y-1 w-full">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-xs font-bold text-foreground">
+                            Version B: Capital First Letter
+                          </span>
+                          {!devSettings.taskModalHideLabelIcons &&
+                          devSettings.taskModalLabelCase === "capitalize" ? (
+                            <Badge className="text-[9px] py-0 px-1 bg-primary text-primary-foreground">
+                              Active
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] py-0 px-1 border-border/60 text-muted-foreground"
+                            >
+                              Title Case
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Capital First Letter Each Word with original category favicons.
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-lg border border-border/40 bg-background/80 flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground capitalize tracking-normal">
+                        <TagIcon className="h-3 w-3 text-primary shrink-0" />
+                        <span>Labels / Tags</span>
+                      </div>
+                    </button>
+
+                    {/* Version 4: Minimalist (No Icons + Capital First Letter) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateDevSetting("taskModalHideLabelIcons", true);
+                        updateDevSetting("taskModalLabelCase", "capitalize");
+                        toast.success("Applied Version: Minimalist (No Favicons + Capital First Letter)");
+                      }}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                        devSettings.taskModalHideLabelIcons &&
+                        devSettings.taskModalLabelCase === "capitalize"
+                          ? "bg-card border-primary shadow-sm ring-2 ring-primary/20"
+                          : "bg-card/50 border-border/70 hover:border-border hover:bg-card/80"
+                      }`}
+                    >
+                      <div className="space-y-1 w-full">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-xs font-bold text-foreground">
+                            Version C: Minimalist Clean
+                          </span>
+                          {devSettings.taskModalHideLabelIcons &&
+                          devSettings.taskModalLabelCase === "capitalize" ? (
+                            <Badge className="text-[9px] py-0 px-1 bg-primary text-primary-foreground">
+                              Active
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] py-0 px-1 border-border/60 text-muted-foreground"
+                            >
+                              Ultra Clean
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          No label icons and Capital First Letter Each Word styling.
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-lg border border-border/40 bg-background/80 flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground capitalize tracking-normal">
+                        <span>Labels / Tags</span>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Granular Toggles */}
+                  <div className="pt-2 border-t border-border/50 space-y-2.5">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/60">
+                      <div className="space-y-0.5 pr-4">
+                        <span className="text-xs font-bold text-foreground">
+                          Remove Label Favicons / Icons
+                        </span>
+                        <p className="text-[11px] text-muted-foreground">
+                          Hides the colored category icons beside form labels in the New Task modal.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={!!devSettings.taskModalHideLabelIcons}
+                        onCheckedChange={(checked) => {
+                          updateDevSetting("taskModalHideLabelIcons", checked);
+                          toast.success(
+                            checked
+                              ? "Label favicons hidden in New Task modal"
+                              : "Label favicons enabled in New Task modal"
+                          );
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/60">
+                      <div className="space-y-0.5 pr-4">
+                        <span className="text-xs font-bold text-foreground">
+                          Capital First Letter Each Word (Title Case)
+                        </span>
+                        <p className="text-[11px] text-muted-foreground">
+                          Format labels with capital first letter each word instead of standard ALL CAPS.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={devSettings.taskModalLabelCase === "capitalize"}
+                        onCheckedChange={(checked) => {
+                          updateDevSetting(
+                            "taskModalLabelCase",
+                            checked ? "capitalize" : "uppercase"
+                          );
+                          toast.success(
+                            checked
+                              ? "Labels formatted to Capital First Letter Each Word"
+                              : "Labels formatted to ALL CAPS"
+                          );
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Live Interactive Specimen */}
+                  <div className="pt-2 border-t border-border/50 space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Live Task Modal Field Specimen:
+                    </span>
+                    <div className="p-3.5 rounded-xl bg-background border border-border/60 space-y-2.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <div
+                            className={`flex items-center gap-1.5 text-xs font-bold text-muted-foreground ${
+                              devSettings.taskModalLabelCase === "capitalize"
+                                ? "capitalize tracking-normal"
+                                : "uppercase tracking-wider"
+                            }`}
+                          >
+                            {!devSettings.taskModalHideLabelIcons && (
+                              <TagIcon className="h-3.5 w-3.5 text-primary shrink-0" />
+                            )}
+                            <span>Labels / Tags</span>
+                          </div>
+                          <div className="h-7 rounded-md border border-border/60 bg-muted/30 px-2 flex items-center text-[11px] text-muted-foreground">
+                            + Add label...
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div
+                            className={`flex items-center gap-1.5 text-xs font-bold text-muted-foreground ${
+                              devSettings.taskModalLabelCase === "capitalize"
+                                ? "capitalize tracking-normal"
+                                : "uppercase tracking-wider"
+                            }`}
+                          >
+                            {!devSettings.taskModalHideLabelIcons && (
+                              <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
+                            )}
+                            <span>Due Date & Time</span>
+                          </div>
+                          <div className="h-7 rounded-md border border-border/60 bg-muted/30 px-2 flex items-center text-[11px] text-muted-foreground">
+                            Select date...
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div
+                            className={`flex items-center gap-1.5 text-xs font-bold text-muted-foreground ${
+                              devSettings.taskModalLabelCase === "capitalize"
+                                ? "capitalize tracking-normal"
+                                : "uppercase tracking-wider"
+                            }`}
+                          >
+                            {!devSettings.taskModalHideLabelIcons && (
+                              <AlertCircle className="h-3.5 w-3.5 text-primary shrink-0" />
+                            )}
+                            <span>Priority</span>
+                          </div>
+                          <div className="h-7 rounded-md border border-border/60 bg-muted/30 px-2 flex items-center text-[11px] text-muted-foreground">
+                            Medium
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

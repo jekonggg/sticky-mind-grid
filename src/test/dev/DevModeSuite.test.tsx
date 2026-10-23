@@ -124,6 +124,16 @@ describe("Developer Mode Suite", () => {
           >
             Reset Geometry
           </button>
+                    <button
+            onClick={() => updateDevSetting("taskModalHideLabelIcons", true)}
+          >
+            Set No Label Icons
+          </button>
+          <button
+            onClick={() => updateDevSetting("taskModalLabelCase", "capitalize")}
+          >
+            Set Title Case Labels
+          </button>
           <button onClick={() => setIsDevModalOpen(true)}>Open Modal</button>
           <DevSkeletonToolbar />
         </div>
@@ -156,6 +166,14 @@ describe("Developer Mode Suite", () => {
       // Trigger No Emojis
       fireEvent.click(screen.getByText("Set No Emojis"));
       expect(screen.getByText(/🚫 No Emojis/i)).toBeInTheDocument();
+
+      // Trigger No Label Icons
+      fireEvent.click(screen.getByText("Set No Label Icons"));
+      expect(screen.getByText(/🏷️ No Label Icons/i)).toBeInTheDocument();
+
+      // Trigger Title Case Labels
+      fireEvent.click(screen.getByText("Set Title Case Labels"));
+      expect(screen.getByText(/🔤 Title Case Labels/i)).toBeInTheDocument();
 
       // Trigger Geometry
       fireEvent.click(screen.getByText("Set Geometry 16p 14r"));
@@ -325,6 +343,8 @@ describe("Developer Mode Suite", () => {
       expect(prodSettings.customInnerRadius).toBe(8);
       expect(prodSettings.customPadding).toBe(12);
       expect(prodSettings.columnColorStyle).toBe("theme");
+      expect(prodSettings.taskModalHideLabelIcons).toBe(false);
+      expect(prodSettings.taskModalLabelCase).toBe("uppercase");
     });
 
     it("allows applying the production preset via dev settings", () => {

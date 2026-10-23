@@ -116,6 +116,18 @@ export function DevSkeletonToolbar() {
                   </Badge>
                 )}
 
+                {devSettings.taskModalHideLabelIcons && (
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30 font-bold">
+                    🏷️ No Label Icons
+                  </Badge>
+                )}
+
+                {devSettings.taskModalLabelCase === "capitalize" && (
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/30 font-bold">
+                    🔤 Title Case Labels
+                  </Badge>
+                )}
+
                 {(devSettings.customPadding !== null && devSettings.customPadding !== undefined ||
                   devSettings.customInnerRadius !== null && devSettings.customInnerRadius !== undefined ||
                   devSettings.customOuterRadius !== null && devSettings.customOuterRadius !== undefined) && (

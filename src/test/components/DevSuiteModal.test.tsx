@@ -127,4 +127,51 @@ describe("DevSuiteModal & Predefined Seed Takeover", () => {
     const stored = JSON.parse(localStorage.getItem(DEV_SETTINGS_STORAGE_KEY) || "{}");
     expect(stored.columnColorStyle).toBe("glass");
   });
+
+  it("allows switching Task Modal Label variants in Typography tab", async () => {
+    renderWithProviders(<DevSkeletonToolbar />, { user: mockUser });
+
+    fireEvent.click(screen.getByRole("button", { name: /open developer suite/i }));
+
+    const typographyTab = await screen.findByRole("tab", { name: /typography/i });
+    fireEvent.mouseDown(typographyTab, { button: 0 });
+    fireEvent.click(typographyTab);
+
+    expect(await screen.findByText("Task Modal Label Styles (New Task Modal)")).toBeInTheDocument();
+    expect(screen.getByText("Version A: No Favicons")).toBeInTheDocument();
+    expect(screen.getByText("Version B: Capital First Letter")).toBeInTheDocument();
+    expect(screen.getByText("Version C: Minimalist Clean")).toBeInTheDocument();
+
+    // 1. Click Version A: No Favicons
+    const versionABtn = screen.getByRole("button", { name: /version a: no favicons/i });
+    fireEvent.click(versionABtn);
+
+    let stored = JSON.parse(localStorage.getItem(DEV_SETTINGS_STORAGE_KEY) || "{}");
+    expect(stored.taskModalHideLabelIcons).toBe(true);
+    expect(stored.taskModalLabelCase).toBe("uppercase");
+
+    // 2. Click Version B: Capital First Letter
+    const versionBBtn = screen.getByRole("button", { name: /version b: capital first letter/i });
+    fireEvent.click(versionBBtn);
+
+    stored = JSON.parse(localStorage.getItem(DEV_SETTINGS_STORAGE_KEY) || "{}");
+    expect(stored.taskModalHideLabelIcons).toBe(false);
+    expect(stored.taskModalLabelCase).toBe("capitalize");
+
+    // 3. Click Version C: Minimalist Clean
+    const versionCBtn = screen.getByRole("button", { name: /version c: minimalist clean/i });
+    fireEvent.click(versionCBtn);
+
+    stored = JSON.parse(localStorage.getItem(DEV_SETTINGS_STORAGE_KEY) || "{}");
+    expect(stored.taskModalHideLabelIcons).toBe(true);
+    expect(stored.taskModalLabelCase).toBe("capitalize");
+
+    // 4. Click Default Version
+    const defaultBtn = screen.getByRole("button", { name: /default version/i });
+    fireEvent.click(defaultBtn);
+
+    stored = JSON.parse(localStorage.getItem(DEV_SETTINGS_STORAGE_KEY) || "{}");
+    expect(stored.taskModalHideLabelIcons).toBe(false);
+    expect(stored.taskModalLabelCase).toBe("uppercase");
+  });
 });

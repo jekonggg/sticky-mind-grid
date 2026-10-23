@@ -111,6 +111,11 @@ export function TaskModal({
   onDelete,
 }: TaskModalProps) {
   const { devSettings } = useDevMode();
+  const hideLabelIcons = Boolean(devSettings.taskModalHideLabelIcons);
+  const isCapitalizeLabels = devSettings.taskModalLabelCase === "capitalize";
+  const labelCasingClass = isCapitalizeLabels
+    ? "capitalize tracking-normal"
+    : "uppercase tracking-wider";
   const { user: currentUser } = useAuth();
   const isModalOpen = open ?? isOpen ?? false;
   const [boardMembers, setBoardMembers] = useState<BoardMember[]>(members);
@@ -554,7 +559,7 @@ export function TaskModal({
           <div className="space-y-1.5">
             <Label
               htmlFor="title"
-              className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+              className={cn("text-xs font-bold text-muted-foreground", labelCasingClass)}
             >
               Task Title <span className="text-destructive">*</span>
             </Label>
@@ -583,8 +588,9 @@ export function TaskModal({
           {/* Labels & Tags Section */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                <TagIcon className="h-3.5 w-3.5 text-primary" /> Labels / Tags ({tags.length})
+              <Label className={cn("text-xs font-bold text-muted-foreground flex items-center gap-1", labelCasingClass)}>
+                {!hideLabelIcons && <TagIcon className="h-3.5 w-3.5 text-primary shrink-0" />}
+                <span>Labels / Tags ({tags.length})</span>
               </Label>
               {!readOnly && !isAddingTag && (
                 <button
@@ -737,7 +743,7 @@ export function TaskModal({
           <div className="space-y-1.5">
             <Label
               htmlFor="description"
-              className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+              className={cn("text-xs font-bold text-muted-foreground", labelCasingClass)}
             >
               Description
             </Label>
@@ -758,8 +764,9 @@ export function TaskModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Priority Section with Color Indicators */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5 text-primary" /> Priority
+              <Label className={cn("text-xs font-bold text-muted-foreground flex items-center gap-1.5", labelCasingClass)}>
+                {!hideLabelIcons && <AlertCircle className="h-3.5 w-3.5 text-primary shrink-0" />}
+                <span>Priority</span>
               </Label>
               <div className="flex gap-1.5 p-1 bg-muted/60 rounded-lg border border-border/40 h-10 items-center">
                 {(["low", "medium", "high"] as Priority[]).map((p) => {
@@ -809,9 +816,10 @@ export function TaskModal({
             <div className="space-y-1.5">
               <Label
                 htmlFor="due-date"
-                className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
+                className={cn("text-xs font-bold text-muted-foreground flex items-center gap-1.5", labelCasingClass)}
               >
-                <Calendar className="h-3.5 w-3.5 text-primary" /> Due Date & Time
+                {!hideLabelIcons && <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />}
+                <span>Due Date & Time</span>
               </Label>
               <DateTimePicker
                 id="due-date"
@@ -829,8 +837,9 @@ export function TaskModal({
             {/* Target Board Selector */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <FolderKanban className="h-3.5 w-3.5 text-primary" /> Target Board
+                <Label className={cn("text-xs font-bold text-muted-foreground flex items-center gap-1.5", labelCasingClass)}>
+                  {!hideLabelIcons && <FolderKanban className="h-3.5 w-3.5 text-primary shrink-0" />}
+                  <span>Target Board</span>
                 </Label>
                 {!allowBoardChange ? (
                   <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1 bg-muted/60 px-1.5 py-0.5 rounded">
@@ -870,8 +879,9 @@ export function TaskModal({
             {/* Stage / Column */}
             {activeColumns && activeColumns.length > 0 && (
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <LayoutGrid className="h-3.5 w-3.5 text-primary" /> Stage / Column
+                <Label className={cn("text-xs font-bold text-muted-foreground flex items-center gap-1.5", labelCasingClass)}>
+                  {!hideLabelIcons && <LayoutGrid className="h-3.5 w-3.5 text-primary shrink-0" />}
+                  <span>Stage / Column</span>
                 </Label>
                 <Select value={status} onValueChange={handleStatusChange} disabled={readOnly}>
                   <SelectTrigger
@@ -905,8 +915,9 @@ export function TaskModal({
 
           {/* Assignee Selection */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-primary" /> Assignee
+            <Label className={cn("text-xs font-bold text-muted-foreground flex items-center gap-1.5", labelCasingClass)}>
+              {!hideLabelIcons && <Users className="h-3.5 w-3.5 text-primary shrink-0" />}
+              <span>Assignee</span>
             </Label>
             <Select value={assignedTo} onValueChange={setAssignedTo} disabled={readOnly}>
               <SelectTrigger
@@ -959,8 +970,9 @@ export function TaskModal({
             return (
               <div className="space-y-1.5 pt-0.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Sliders className="h-3.5 w-3.5 text-primary" /> Progress
+                  <Label className={cn("text-xs font-bold text-muted-foreground flex items-center gap-1.5", labelCasingClass)}>
+                    {!hideLabelIcons && <Sliders className="h-3.5 w-3.5 text-primary shrink-0" />}
+                    <span>Progress</span>
                   </Label>
                   <div className="flex items-center gap-2">
                     <span
@@ -1000,9 +1012,9 @@ export function TaskModal({
           {/* Subtasks / Checklist Section */}
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <CheckSquare className="h-3.5 w-3.5 text-primary" />
-                Checklist ({checklist.filter((i) => i.completed).length}/{checklist.length})
+              <Label className={cn("text-xs font-bold text-muted-foreground flex items-center gap-1.5", labelCasingClass)}>
+                {!hideLabelIcons && <CheckSquare className="h-3.5 w-3.5 text-primary shrink-0" />}
+                <span>Checklist ({checklist.filter((i) => i.completed).length}/{checklist.length})</span>
               </Label>
               {checklist.length > 0 && (
                 <span className="text-[10px] font-bold text-muted-foreground">
@@ -1116,7 +1128,7 @@ export function TaskModal({
 
           {/* Attachments Section */}
           <div className="space-y-2 pt-2 border-t border-border/40">
-            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <Label className={cn("text-xs font-bold text-muted-foreground", labelCasingClass)}>
               Attachments ({attachments.length})
             </Label>
             <div className="grid grid-cols-4 gap-2">

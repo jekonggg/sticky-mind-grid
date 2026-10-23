@@ -4,6 +4,7 @@ import { TaskModal } from "@/components/kanban/TaskModal";
 import { renderWithProviders, mockUser } from "@/test/test-utils";
 import { Task } from "@/types/task";
 import { BoardMember } from "@/types/board";
+import { DEV_SETTINGS_STORAGE_KEY } from "@/contexts/DevModeContext";
 
 const mockTask: Task = {
   id: "task-1",
@@ -432,5 +433,84 @@ describe("TaskModal Component", () => {
         boardId: "board-1",
       })
     );
+  });
+
+  it("renders labels with default ALL CAPS and category icons", () => {
+    localStorage.removeItem(DEV_SETTINGS_STORAGE_KEY);
+    renderWithProviders(
+      <TaskModal
+        open={true}
+        onClose={vi.fn()}
+        task={mockTask}
+        members={mockMembers}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    const labelsLabel = screen.getByText(/Labels \/ Tags/i).closest("label");
+    expect(labelsLabel).toBeInTheDocument();
+    expect(labelsLabel).toHaveClass("uppercase", "tracking-wider");
+    expect(labelsLabel?.querySelector("svg")).not.toBeNull();
+
+    const priorityLabel = screen.getByText("Priority").closest("label");
+    expect(priorityLabel).toHaveClass("uppercase", "tracking-wider");
+    expect(priorityLabel?.querySelector("svg")).not.toBeNull();
+  });
+
+  it("removes category icons from labels when taskModalHideLabelIcons dev setting is enabled", () => {
+    localStorage.setItem(
+      DEV_SETTINGS_STORAGE_KEY,
+      JSON.stringify({ taskModalHideLabelIcons: true })
+    );
+
+    renderWithProviders(
+      <TaskModal
+        open={true}
+        onClose={vi.fn()}
+        task={mockTask}
+        members={mockMembers}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    const labelsLabel = screen.getByText(/Labels \/ Tags/i).closest("label");
+    expect(labelsLabel).toBeInTheDocument();
+    expect(labelsLabel?.querySelector("svg")).toBeNull();
+
+    const priorityLabel = screen.getByText("Priority").closest("label");
+    expect(priorityLabel?.querySelector("svg")).toBeNull();
+
+    const dueDateLabel = screen.getByText("Due Date & Time").closest("label");
+    expect(dueDateLabel?.querySelector("svg")).toBeNull();
+
+    localStorage.removeItem(DEV_SETTINGS_STORAGE_KEY);
+  });
+
+  it("formats labels with Capital First Letter Each Word when taskModalLabelCase is capitalize", () => {
+    localStorage.setItem(
+      DEV_SETTINGS_STORAGE_KEY,
+      JSON.stringify({ taskModalLabelCase: "capitalize" })
+    );
+
+    renderWithProviders(
+      <TaskModal
+        open={true}
+        onClose={vi.fn()}
+        task={mockTask}
+        members={mockMembers}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    const labelsLabel = screen.getByText(/Labels \/ Tags/i).closest("label");
+    expect(labelsLabel).toBeInTheDocument();
+    expect(labelsLabel).toHaveClass("capitalize", "tracking-normal");
+    expect(labelsLabel).not.toHaveClass("uppercase");
+
+    const titleLabel = screen.getByText(/Task Title/i).closest("label");
+    expect(titleLabel).toHaveClass("capitalize", "tracking-normal");
+    expect(titleLabel).not.toHaveClass("uppercase");
+
+    localStorage.removeItem(DEV_SETTINGS_STORAGE_KEY);
   });
 });
