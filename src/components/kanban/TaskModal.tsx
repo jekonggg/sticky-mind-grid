@@ -893,7 +893,7 @@ export function TaskModal({
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
                     {activeColumns.map((c) => (
-                      <SelectItem key={c.id} value={c.id} hideIndicator className="cursor-pointer">
+                      <SelectItem key={c.id} value={c.id} className="cursor-pointer">
                         <div className="flex items-center gap-2">
                           {!devSettings.disableEmojiCustomization && c.emoji ? (
                             <span className="text-sm shrink-0 leading-none">{c.emoji}</span>

@@ -94,7 +94,9 @@ describe("NoteModal Component", () => {
 
     const fontTrigger = within(toolbar).getByLabelText("Font size");
     fireEvent.keyDown(fontTrigger, { key: "ArrowDown" });
-    fireEvent.click(await screen.findByRole("option", { name: "Large" }));
+    const normalOption = await screen.findByRole("option", { name: "Normal" });
+    expect(normalOption.querySelector("svg.lucide-check")).toBeNull();
+    fireEvent.click(screen.getByRole("option", { name: "Large" }));
     await waitFor(() => {
       expect(document.execCommand).toHaveBeenCalledWith("fontSize", false, "5");
     });

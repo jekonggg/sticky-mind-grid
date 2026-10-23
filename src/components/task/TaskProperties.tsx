@@ -195,7 +195,7 @@ export function TaskProperties({
                 </SelectTrigger>
                 <SelectContent>
                   {columns.map((col) => (
-                    <SelectItem key={col.id} value={col.id} hideIndicator className="text-xs">
+                    <SelectItem key={col.id} value={col.id} className="text-xs">
                       <div className="flex items-center gap-2">
                         {col.color && (
                           <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: col.color }} />

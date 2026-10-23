@@ -22,7 +22,6 @@ import {
   SearchLg as Search,
   LayoutGrid01 as LayoutGrid,
   ChevronDown,
-  Check,
   ClockRewind as History,
   Menu01 as Menu,
   Pin01 as Pin,
@@ -149,7 +148,6 @@ export function BoardHeader({
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0 ml-2">
                           <Pin className="h-3 w-3 text-primary fill-current opacity-80" />
-                          {isCurrent && <Check className="h-4 w-4 text-primary" />}
                         </div>
                       </DropdownMenuItem>
                     );
@@ -186,7 +184,6 @@ export function BoardHeader({
                         )}
                         <span className="truncate">{b.name}</span>
                       </div>
-                      {isCurrent && <Check className="h-4 w-4 text-primary shrink-0 ml-2" />}
                     </DropdownMenuItem>
                   );
                 })

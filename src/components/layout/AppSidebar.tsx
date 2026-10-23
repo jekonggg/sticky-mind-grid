@@ -44,7 +44,6 @@ import {
   LayoutLeft as PanelLeftClose,
   Stars01 as Sparkles,
   SearchLg as Search,
-  CheckCircle as CheckCircle2,
   File02 as FileSpreadsheet,
   File06 as StickyNote,
   Image01 as ImageIcon,
@@ -1032,7 +1031,6 @@ export function AppSidebar({
                     <Sun className="h-3.5 w-3.5 text-amber-500" />
                     <span>Light</span>
                   </div>
-                  {settings.theme === "light" && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
@@ -1047,7 +1045,6 @@ export function AppSidebar({
                     <Moon className="h-3.5 w-3.5 text-amber-400" />
                     <span>Dark</span>
                   </div>
-                  {settings.theme === "dark" && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
@@ -1062,7 +1059,6 @@ export function AppSidebar({
                     <Laptop className="h-3.5 w-3.5" />
                     <span>Auto</span>
                   </div>
-                  {settings.theme === "system" && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
