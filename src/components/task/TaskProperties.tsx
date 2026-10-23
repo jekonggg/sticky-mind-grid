@@ -487,11 +487,11 @@ export function TaskProperties({
         </div>
       </div>
 
-      {/* Tags / Labels Row */}
+      {/* Labels Row */}
       <div className="pt-3 border-t border-border/30 flex items-start gap-2.5">
         <div className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 pt-1 select-none">
           <TagIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span>Tags</span>
+          <span>Labels</span>
         </div>
         <div className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
           {tags.map((tag) => (
@@ -510,7 +510,7 @@ export function TaskProperties({
                   type="button"
                   onClick={() => handleRemoveTag(tag.id)}
                   className="hover:opacity-75 transition-opacity cursor-pointer ml-0.5"
-                  title="Remove tag"
+                  title="Remove label"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -523,7 +523,7 @@ export function TaskProperties({
               <div className="flex items-center gap-1.5 bg-card border border-border rounded-lg p-1 shadow-sm">
                 <input
                   type="text"
-                  placeholder="Tag name"
+                  placeholder="Label name"
                   value={newTagName}
                   onChange={(e) => setNewTagName(e.target.value)}
                   onKeyDown={(e) => {
@@ -561,7 +561,7 @@ export function TaskProperties({
                 className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1 border-dashed border-border/80 shadow-2xs"
               >
                 <Plus className="h-3 w-3" />
-                <span>Add Tag</span>
+                <span>Add Label</span>
               </Button>
             )
           )}

@@ -149,7 +149,7 @@ Requires **Editor**, **Admin**, or **Owner** role (`src/hooks/useBoardPermission
 1. Click **+ Add Task** in the bottom floating dock (`src/components/kanban/KanbanBoard.tsx:L1103-L1119`) or click `+` in any column header (`src/components/kanban/KanbanColumn.tsx:L196-L209`).
 2. Fill in the task details (`TaskModal.tsx:L492-L915`):
    - **Icon & Title (`L494-L512`):** Pick an emoji and enter a required **Task Title**.
-   - **Labels / Tags (`L515-L598`):** Click **+ Label** to create color-coded tags (8 color presets).
+   - **Labels (`L515-L598`):** Click **+ Label** to create color-coded labels (8 color presets).
    - **Description (`L601-L614`):** Add task notes or instructions.
    - **Priority (`L619-L654`):** Choose `Low`, `Medium` (default), or `High`.
    - **Due Date & Time (`L657-L685`):** Pick a date and time (or click `X` to clear).

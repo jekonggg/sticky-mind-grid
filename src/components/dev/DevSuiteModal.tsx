@@ -992,7 +992,7 @@ export function DevSuiteModal() {
                       </div>
                       <div className="p-2 rounded-lg border border-border/40 bg-background/80 flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                         <TagIcon className="h-3 w-3 text-primary shrink-0" />
-                        <span>Labels / Tags</span>
+                        <span>Labels</span>
                       </div>
                     </button>
 
@@ -1035,7 +1035,7 @@ export function DevSuiteModal() {
                         </p>
                       </div>
                       <div className="p-2 rounded-lg border border-border/40 bg-background/80 flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                        <span>Labels / Tags</span>
+                        <span>Labels</span>
                       </div>
                     </button>
 
@@ -1079,7 +1079,7 @@ export function DevSuiteModal() {
                       </div>
                       <div className="p-2 rounded-lg border border-border/40 bg-background/80 flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground capitalize tracking-normal">
                         <TagIcon className="h-3 w-3 text-primary shrink-0" />
-                        <span>Labels / Tags</span>
+                        <span>Labels</span>
                       </div>
                     </button>
 
@@ -1122,7 +1122,7 @@ export function DevSuiteModal() {
                         </p>
                       </div>
                       <div className="p-2 rounded-lg border border-border/40 bg-background/80 flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground capitalize tracking-normal">
-                        <span>Labels / Tags</span>
+                        <span>Labels</span>
                       </div>
                     </button>
                   </div>
@@ -1195,7 +1195,7 @@ export function DevSuiteModal() {
                             {!devSettings.taskModalHideLabelIcons && (
                               <TagIcon className="h-3.5 w-3.5 text-primary shrink-0" />
                             )}
-                            <span>Labels / Tags</span>
+                            <span>Labels</span>
                           </div>
                           <div className="h-7 rounded-md border border-border/60 bg-muted/30 px-2 flex items-center text-[11px] text-muted-foreground">
                             + Add label...

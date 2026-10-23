@@ -449,7 +449,7 @@ describe("TaskModal Component", () => {
       />
     );
 
-    const labelsLabel = screen.getByText(/Labels \/ Tags/i).closest("label");
+    const labelsLabel = screen.getByText(/^Labels \(\d+\)$/i).closest("label");
     expect(labelsLabel).toBeInTheDocument();
     expect(labelsLabel).toHaveClass("uppercase", "tracking-wider");
     expect(labelsLabel?.querySelector("svg")).not.toBeNull();
@@ -475,7 +475,7 @@ describe("TaskModal Component", () => {
       />
     );
 
-    const labelsLabel = screen.getByText(/Labels \/ Tags/i).closest("label");
+    const labelsLabel = screen.getByText(/^Labels \(\d+\)$/i).closest("label");
     expect(labelsLabel).toBeInTheDocument();
     expect(labelsLabel?.querySelector("svg")).toBeNull();
 
@@ -504,7 +504,7 @@ describe("TaskModal Component", () => {
       />
     );
 
-    const labelsLabel = screen.getByText(/Labels \/ Tags/i).closest("label");
+    const labelsLabel = screen.getByText(/^Labels \(\d+\)$/i).closest("label");
     expect(labelsLabel).toBeInTheDocument();
     expect(labelsLabel).toHaveClass("capitalize", "tracking-normal");
     expect(labelsLabel).not.toHaveClass("uppercase");

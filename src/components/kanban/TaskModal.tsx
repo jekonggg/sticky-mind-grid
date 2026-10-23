@@ -585,12 +585,12 @@ export function TaskModal({
             </div>
           </div>
 
-          {/* Labels & Tags Section */}
+          {/* Labels Section */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className={cn("text-xs font-bold text-muted-foreground flex items-center gap-1", labelCasingClass)}>
                 {!hideLabelIcons && <TagIcon className="h-3.5 w-3.5 text-primary shrink-0" />}
-                <span>Labels / Tags ({tags.length})</span>
+                <span>Labels ({tags.length})</span>
               </Label>
               {!readOnly && !isAddingTag && (
                 <button

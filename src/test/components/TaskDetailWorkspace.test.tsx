@@ -67,7 +67,7 @@ describe("TaskDetailWorkspace Component", () => {
     expect(screen.getByText("Due Date")).toBeInTheDocument();
     expect(screen.getByText("Progress")).toBeInTheDocument();
     expect(screen.getByText("Updated")).toBeInTheDocument();
-    expect(screen.getByText("Tags")).toBeInTheDocument();
+    expect(screen.getByText("Labels")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Create TaskDetailWorkspace")).toBeInTheDocument();
   });
 

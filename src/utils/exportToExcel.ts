@@ -93,7 +93,7 @@ export function getDefaultTaskColumns(includeBoardName = false): ExportColumn[] 
       accessor: (t) => formatTaskDueDate(t.dueDate),
     },
     {
-      header: "Tags",
+      header: "Labels",
       key: "tags",
       accessor: (t) => formatTaskTags(t.tags),
     },
