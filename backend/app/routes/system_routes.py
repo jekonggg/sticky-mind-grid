@@ -36,7 +36,7 @@ def health_check():
         'database': 'connected' if db_healthy else 'disconnected',
         'version': '1.3.0',
         'commit': get_git_commit(),
-        'environment': os.getenv('FLASK_ENV', 'development'),
+        'environment': (os.getenv('APP_ENV') or os.getenv('FLASK_ENV') or current_app.config.get('APP_ENV') or 'local').strip().lower(),
         'timestamp': datetime.utcnow().isoformat() + 'Z'
     }), 200 if db_healthy else 503
 

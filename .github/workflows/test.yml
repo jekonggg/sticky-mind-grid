@@ -2,9 +2,9 @@ name: Automated Testing Suite
 
 on:
   push:
-    branches: [ main, MultiUserCollab ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main, MultiUserCollab ]
+    branches: [ main, develop ]
   workflow_dispatch:
 
 jobs:
@@ -65,6 +65,7 @@ jobs:
           --health-retries 5
     env:
       TEST_DATABASE_URL: postgresql+psycopg2://postgres:postgrespassword@127.0.0.1:5432/sticky_mind_grid_test
+      DB_SSL_MODE: disable
     defaults:
       run:
         working-directory: backend

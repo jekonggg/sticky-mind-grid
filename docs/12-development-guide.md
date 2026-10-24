@@ -83,16 +83,22 @@ In compliance with security rules, only variable names and configuration purpose
 | Variable Name | Purpose | Default / Fallback |
 |---|---|---|
 | `VITE_API_BASE_URL` | Base URL for Flask REST API endpoints | `http://127.0.0.1:5000/api` |
+| `VITE_APP_ENV` | Environment label (`dev` shows amber `DEV ENVIRONMENT` ribbon and `[DEV]` title; `production`/unset hides it) | Unset |
+| `VITE_OAUTH_ENABLED` | Set to `false` on Deployed Dev to hide OAuth social login buttons | `true` (unset) |
 
-*Source:* [`src/config/api.ts:5-6`](file:///c:/Users/ramos/sticky-mind-grid/src/config/api.ts#L5-L6), [`.env.example:3`](file:///c:/Users/ramos/sticky-mind-grid/.env.example#L3)
+*Source:* [`src/config/api.ts:5-6`](file:///c:/Users/ramos/sticky-mind-grid/src/config/api.ts#L5-L6), [`src/components/common/EnvironmentBanner.tsx`](file:///c:/Users/ramos/sticky-mind-grid/src/components/common/EnvironmentBanner.tsx), [`.env.example`](file:///c:/Users/ramos/sticky-mind-grid/.env.example)
 
 ### Backend (`backend/.env`)
 | Variable Name | Purpose | Default / Fallback in Code |
 |---|---|---|
+| `APP_ENV` | Canonical environment name (`local`, `dev`, `production`) reported by `/api/health` and checked by `seed.py` | `'local'` (or `FLASK_ENV`) |
 | `SECRET_KEY` | Flask application secret key for session signatures | `'dev-secret-key'` |
 | `DATABASE_URL` | SQLAlchemy database connection string | `'mysql+pymysql://root@localhost/sticky_mind_grid'` |
 | `JWT_SECRET_KEY` | Secret key for signing Flask-JWT-Extended tokens | Dev placeholder (32+ chars) |
-| `CORS_ORIGINS` | Comma-delimited list of permitted browser origins | `localhost:8080, 5173, 3000, *.vercel.app` |
+| `CORS_ORIGINS` | Comma-delimited list of permitted browser origins | `localhost:8080, 5173, 3000, sticky-mind-grid(-*)?.vercel.app` |
+| `OAUTH_ENABLED` | Enables/disables OAuth endpoints and provider listing (`false` on Deployed Dev) | `'true'` |
+| `EMAIL_SUBJECT_PREFIX` | Prefix prepended to outbound email subjects (e.g. `[DEV]` on Deployed Dev) | `''` |
+| `ALLOW_DESTRUCTIVE_SEED` | Explicit opt-in (`true`) required to run `seed.py` against a non-local database host | `''` (`false`) |
 | `MAX_UPLOAD_MB` | Maximum single file upload limit in megabytes | `25` (10 in `.env.example`) |
 | `MAX_BOARD_STORAGE_MB` | Cumulative storage quota per board in megabytes | `100` |
 | `MAX_OWNER_STORAGE_MB` | Cumulative storage quota across all owned boards in megabytes | `500` |
@@ -100,7 +106,7 @@ In compliance with security rules, only variable names and configuration purpose
 | `ALLOWED_UPLOAD_EXTENSIONS` | Comma-delimited whitelist of file extensions | Whitelist of images, docs, archives, media |
 | `FLASK_DEBUG` | Enables hot reloading and debug exception tracing | `'true'` in local dev |
 | `RENDER_API_KEY` | Optional Render API token used by diagnostic log scripts | Unset |
-| `RENDER_SERVICE_ID` | Optional Render backend service ID for log fetching | Unset |
+| `RENDER_SERVICE_ID_PROD` / `RENDER_SERVICE_ID_DEV` | Optional Render backend service IDs for `--env prod` / `--env dev` log fetching | Unset (matches by exact service name) |
 
 *Sources:*
 - Backend configuration: [`backend/config.py:5-74`](file:///c:/Users/ramos/sticky-mind-grid/backend/config.py#L5-L74)
@@ -265,9 +271,10 @@ sticky-mind-grid/
 
 ## 7. Branching, PR & Review Process
 
-### Git Branching
-- **Default Branch:** `main`.
-- **Feature Branches:** Create focused feature branches named by domain and ticket:
+### Git Branching & Promotion Workflow
+- **Production Branch:** `main` (auto-deploys to Prod Vercel `sticky-mind-grid.vercel.app` and Prod Render `sticky-mind-grid-api`).
+- **Integration / Dev Branch:** `develop` (auto-deploys to Dev Vercel `sticky-mind-grid-dev.vercel.app` and Dev Render `sticky-mind-grid-api-dev`).
+- **Feature Branches:** Branch from `develop`, open a PR into `develop`, verify on the Deployed Dev environment, and promote via PR from `develop` → `main`:
   - `feat/task-modal-attachments`
   - `fix/sse-reconnect-backoff`
   - `refactor/board-permissions-hook`

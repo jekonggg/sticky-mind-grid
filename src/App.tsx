@@ -14,6 +14,7 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AppLayout } from "./components/layout/AppLayout";
 import { AuthPageSkeleton } from "./components/skeletons";
 import { DevSkeletonToolbar } from "./components/common/DevSkeletonToolbar";
+import { EnvironmentBanner } from "./components/common/EnvironmentBanner";
 
 // Lazy-loaded route pages for on-demand bundle splitting
 const BoardsOverview = lazy(() => import("./pages/BoardsOverview"));
@@ -72,6 +73,7 @@ const App = () => (
                 <ActivityProvider>
                 <Toaster />
                 <Sonner />
+                <EnvironmentBanner />
                 <Routes>
                   <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
                   <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />

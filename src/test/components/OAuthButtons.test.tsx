@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/test-utils";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
@@ -21,6 +21,10 @@ describe("OAuthButtons Component", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("renders Google, GitHub, and Microsoft sign-in buttons", () => {
@@ -165,5 +169,38 @@ describe("OAuthButtons Component", () => {
     });
 
     openPopupSpy.mockRestore();
+  });
+
+  it("hides OAuth buttons and divider when all providers return enabled: false from backend", async () => {
+    (authApi.getOAuthProviders as any).mockResolvedValueOnce({
+      google: { name: "Google", enabled: false, configured: false, clientId: null },
+      github: { name: "GitHub", enabled: false, configured: false, clientId: null },
+      microsoft: { name: "Microsoft", enabled: false, configured: false, clientId: null },
+    });
+
+    renderWithProviders(<OAuthButtons mode="login" />, {
+      authOverrides: { login: mockLogin },
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTitle("Continue with Google")).toBeNull();
+    });
+
+    expect(screen.queryByTitle("Continue with GitHub")).toBeNull();
+    expect(screen.queryByTitle("Continue with Microsoft")).toBeNull();
+    expect(screen.queryByText(/Or sign in with/i)).toBeNull();
+  });
+
+  it("renders nothing when VITE_OAUTH_ENABLED is set to false", () => {
+    vi.stubEnv("VITE_OAUTH_ENABLED", "false");
+
+    renderWithProviders(<OAuthButtons mode="login" />, {
+      authOverrides: { login: mockLogin },
+    });
+
+    expect(screen.queryByTitle("Continue with Google")).toBeNull();
+    expect(screen.queryByTitle("Continue with GitHub")).toBeNull();
+    expect(screen.queryByTitle("Continue with Microsoft")).toBeNull();
+    expect(screen.queryByText(/Or sign in with/i)).toBeNull();
   });
 });

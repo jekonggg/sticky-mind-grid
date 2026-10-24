@@ -6,6 +6,7 @@ import urllib.request
 import urllib.error
 from email.message import EmailMessage
 from abc import ABC, abstractmethod
+from flask import current_app, has_app_context
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +154,13 @@ class EmailService:
 
     @classmethod
     def send_email(cls, to_email: str, subject: str, text_body: str, html_body: str = None, **kwargs) -> bool:
+        raw_prefix = (
+            (current_app.config.get("EMAIL_SUBJECT_PREFIX") if has_app_context() else None)
+            or os.environ.get("EMAIL_SUBJECT_PREFIX", "")
+        )
+        prefix = (raw_prefix or "").strip()
+        if prefix and not subject.startswith(prefix):
+            subject = f"{prefix} {subject}"
         print(f"\n======== [CONSOLE EMAIL DISPATCH] ========\nTo: {to_email}\nSubject: {subject}\n\n{text_body}\n==========================================\n", flush=True)
         return cls.get_provider().send_email(to_email, subject, text_body, html_body, **kwargs)
 

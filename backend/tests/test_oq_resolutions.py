@@ -812,9 +812,12 @@ def test_oq_21_mysql_service_configuration_and_engine_parity(app, monkeypatch):
     from tests.conftest import TestConfig
     from migrations.versions import a1b2c3d4e5f6_microsecond_message_timestamps as mig
 
-    # 1. Verify TestConfig engine options for MySQL vs SQLite
+    # 1. Verify TestConfig engine options for MySQL / PostgreSQL vs SQLite
     if db.engine.dialect.name == 'mysql':
         assert 'mysql' in TestConfig.SQLALCHEMY_DATABASE_URI
+        assert TestConfig.SQLALCHEMY_ENGINE_OPTIONS.get("pool_pre_ping") is True
+    elif db.engine.dialect.name == 'postgresql':
+        assert 'postgres' in TestConfig.SQLALCHEMY_DATABASE_URI
         assert TestConfig.SQLALCHEMY_ENGINE_OPTIONS.get("pool_pre_ping") is True
     else:
         assert 'sqlite' in TestConfig.SQLALCHEMY_DATABASE_URI
