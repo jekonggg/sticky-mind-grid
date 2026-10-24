@@ -438,9 +438,14 @@ def test_auto_sync_schema_adds_missing_columns(app):
 
     with app.app_context():
         # Simulate a legacy boards table without workspace_id, is_deleted, deleted_at
-        if db.engine.dialect.name == 'mysql':
+        dialect = db.engine.dialect.name
+        if dialect == 'mysql':
             db.session.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
-        db.session.execute(text("DROP TABLE IF EXISTS boards"))
+        if dialect == 'postgresql':
+            db.session.execute(text("DROP TABLE IF EXISTS boards CASCADE"))
+        else:
+            db.session.execute(text("DROP TABLE IF EXISTS boards"))
+        ts_type = "TIMESTAMP" if dialect == "postgresql" else "DATETIME"
         db.session.execute(
             text(
                 "CREATE TABLE boards ("
@@ -451,11 +456,11 @@ def test_auto_sync_schema_adds_missing_columns(app):
                 "color VARCHAR(50) NOT NULL, "
                 "hero_image_url TEXT, "
                 "columns JSON, "
-                "created_at DATETIME, "
-                "updated_at DATETIME)"
+                f"created_at {ts_type}, "
+                f"updated_at {ts_type})"
             )
         )
-        if db.engine.dialect.name == 'mysql':
+        if dialect == 'mysql':
             db.session.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
         db.session.commit()
 

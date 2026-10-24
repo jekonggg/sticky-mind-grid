@@ -41,6 +41,22 @@ def parse_args(argv=None):
     return parser.parse_args(argv)
 
 
+def resolve_api_key(env: str = "prod", environ: dict = None) -> str:
+    """Resolve the Render API key for the target environment, supporting separate Render accounts."""
+    if environ is None:
+        environ = os.environ
+    env_key = normalize_env(env)
+    if env_key == "dev":
+        return (
+            (environ.get("RENDER_API_KEY_DEV") or "").strip()
+            or (environ.get("RENDER_API_KEY") or "").strip()
+        )
+    return (
+        (environ.get("RENDER_API_KEY_PROD") or "").strip()
+        or (environ.get("RENDER_API_KEY") or "").strip()
+    )
+
+
 def resolve_target_service(
     services: list[dict],
     env: str = "prod",
@@ -68,8 +84,13 @@ def resolve_target_service(
     if target_id:
         matched = next((s for s in services if s.get("id") == target_id), None)
         if not matched:
+            key_hint = (
+                " If your Dev service is in a separate Render account/workspace, also set RENDER_API_KEY_DEV=rnd_... in .env."
+                if env_key == "dev" and not (environ.get("RENDER_API_KEY_DEV") or "").strip()
+                else ""
+            )
             raise LookupError(
-                f"Render service ID '{target_id}' (for env='{env_key}') was not found in your Render account."
+                f"Render service ID '{target_id}' (for env='{env_key}') was not found in your Render account.{key_hint}"
             )
         return matched
 
@@ -136,10 +157,10 @@ def main():
     env_key = normalize_env(args.env)
 
     load_env_files()
-    api_key = os.getenv("RENDER_API_KEY")
+    api_key = resolve_api_key(env_key, os.environ)
     if not api_key:
         print("ERROR: RENDER_API_KEY is not set.")
-        print("Please add 'RENDER_API_KEY=rnd_...' to your .env file.")
+        print("Please add 'RENDER_API_KEY=rnd_...' (or RENDER_API_KEY_DEV / RENDER_API_KEY_PROD) to your .env file.")
         sys.exit(1)
 
     # Fetch services to get ownerId and confirm service_id

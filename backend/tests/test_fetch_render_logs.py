@@ -7,7 +7,7 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-from scripts.fetch_render_logs import parse_args, resolve_target_service
+from scripts.fetch_render_logs import parse_args, resolve_api_key, resolve_target_service
 
 
 SAMPLE_SERVICES = [
@@ -120,3 +120,17 @@ def test_parse_args_backward_compatible_and_env_flags():
     assert args_with_service_id.env == "development"
     assert args_with_service_id.service_id == "srv-xyz"
     assert args_with_service_id.limit == 25
+
+
+def test_resolve_api_key_supports_separate_render_workspaces():
+    """Prefers RENDER_API_KEY_DEV / RENDER_API_KEY_PROD and falls back to RENDER_API_KEY."""
+    env_both = {
+        "RENDER_API_KEY": "rnd_default",
+        "RENDER_API_KEY_DEV": "rnd_dev_workspace",
+        "RENDER_API_KEY_PROD": "rnd_prod_workspace",
+    }
+    assert resolve_api_key("dev", env_both) == "rnd_dev_workspace"
+    assert resolve_api_key("prod", env_both) == "rnd_prod_workspace"
+    assert resolve_api_key("dev", {"RENDER_API_KEY": "rnd_shared"}) == "rnd_shared"
+    assert resolve_api_key("prod", {"RENDER_API_KEY": "rnd_shared"}) == "rnd_shared"
+

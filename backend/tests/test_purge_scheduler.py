@@ -89,11 +89,16 @@ def test_cli_purge_script_runs_successfully():
     script_path = os.path.join(scripts_dir, "purge_expired_boards.py")
     assert os.path.exists(script_path), f"Script {script_path} must exist"
 
+    env = os.environ.copy()
+    env["DATABASE_URL"] = env.get("TEST_DATABASE_URL") or "sqlite:///:memory:"
+    env["SCHEDULER_ENABLED"] = "false"
+
     result = subprocess.run(
         [sys.executable, script_path, "--dry-run"],
         capture_output=True,
         text=True,
-        check=False
+        check=False,
+        env=env,
     )
     assert result.returncode == 0
     assert "Purge" in result.stdout or "expired" in result.stdout
@@ -177,11 +182,16 @@ def test_cli_purge_expired_data_script_runs_successfully():
     script_path = os.path.join(scripts_dir, "purge_expired_data.py")
     assert os.path.exists(script_path), f"Script {script_path} must exist"
 
+    env = os.environ.copy()
+    env["DATABASE_URL"] = env.get("TEST_DATABASE_URL") or "sqlite:///:memory:"
+    env["SCHEDULER_ENABLED"] = "false"
+
     result = subprocess.run(
         [sys.executable, script_path, "--dry-run"],
         capture_output=True,
         text=True,
-        check=False
+        check=False,
+        env=env,
     )
     assert result.returncode == 0
     assert "Purge scan completed" in result.stdout
