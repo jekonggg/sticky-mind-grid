@@ -118,6 +118,8 @@ elif parsed_db_url and parsed_db_url.scheme.startswith('postgres'):
     engine_options["pool_size"] = 5
     engine_options["max_overflow"] = 10
     engine_options["pool_recycle"] = 300
+elif parsed_db_url and parsed_db_url.scheme.startswith('sqlite'):
+    engine_options = {}
 
 
 class Config:
