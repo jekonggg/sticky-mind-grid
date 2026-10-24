@@ -44,6 +44,7 @@ Sticky Mind Grid is a full-stack task management application modeled after Trell
 |-------|-----------|------|
 | `/login` | `Login.tsx` | No |
 | `/register` | `Register.tsx` | No |
+| `/verify-email` | `VerifyEmail.tsx` | No |
 | `/` | `BoardsOverview.tsx` | Yes (ProtectedRoute + AppLayout) |
 | `/dashboard` | `DashboardPage.tsx` | Yes (ProtectedRoute + AppLayout) |
 | `/tasks` | `TasksPage.tsx` | Yes (ProtectedRoute + AppLayout) |
@@ -165,12 +166,13 @@ All routes are prefixed with `/api/`.
 #### Auth Routes (`/api/auth`)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/register` | No | Create user with verification token, return `{user, token}` (rate limited) |
-| POST | `/login` | No | Validate credentials, return `{user, token}` (rate limited) |
+| POST | `/register` | No | Create user with verification token (rate limited: 10/min) |
+| POST | `/login` | No | Validate credentials with granular error guidance, return `{user, token}` (rate limited: 10/min) |
+| GET | `/verification-status?email=` | No | Check if email is verified for live polling on pending screen (rate limited: 60/min) |
 | GET | `/me` | JWT | Get current user profile |
 | PATCH | `/me` | JWT | Update profile (name/password) |
 | POST | `/verify-email` | No | Verify email address with token, attach pending invitations |
-| POST | `/resend-verification` | JWT | Resend email verification token (rate limited) |
+| POST | `/resend-verification` | Optional JWT | Resend email verification token (rate limited: 5/min) |
 | GET | `/users/search?q=` | JWT | Search users by email/name |
 
 #### Board Routes (`/api/boards`)

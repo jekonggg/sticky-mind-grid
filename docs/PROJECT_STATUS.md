@@ -17,7 +17,8 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 ## Implemented Features
 
 ### Authentication & Account Identity
-- **Registration** with email/password — fully connected (UI → API → backend → DB)
+- **Registration & Verification Pending Journey** — Creating an account seamlessly navigates users to a dedicated Verification Pending screen (`/verify-email?pending=true`) that auto-polls verification status in real-time, transitions to a success state with "Continue to Sign In" upon verification, and offers resend cooldown capabilities without dumping users unverified into login error banners.
+- **In-Modal Guided Login Errors & Input Guidance** — Contextual, field-level inline error guidance directly inside the login card/modal for missing inputs, invalid email syntax, non-existent accounts (with registration shortcut), incorrect passwords, and OAuth registered collisions (guiding users to sign in with their social provider), accompanied by real-time Caps Lock warnings and native Edge duplicate eye icon suppression.
 - **Verified Badges on Avatar & Settings** — First-class verified identity system displaying scalloped verified badge overlays on user avatars (`AppSidebar`, `SettingsModal`, `ProfileModal`, `BoardMembers`) and verified badge status chips in settings and user profiles for accounts with verified email addresses. Unverified accounts receive clear inline status indicators and one-click access to link or verify contact emails.
 - **OAuth 2.0 / Social Login** — Live Google Identity, GitHub OAuth, and Microsoft Graph / Entra ID Authorization Code flow with CSRF state protection, centered popup window handoff, full-page redirect fallback, zero-dependency standard library backend exchange, and seamless Developer Sandbox mode when credentials are unconfigured
 - **Login** with JWT tokens — 24h expiry, persisted in localStorage
