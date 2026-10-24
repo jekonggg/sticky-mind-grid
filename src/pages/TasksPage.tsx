@@ -6,6 +6,7 @@ import { boardApi } from "@/services/boardApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { BoardHeader } from "@/components/kanban/BoardHeader";
 import { Task, Priority, CreateTaskData } from "@/types/task";
 import { Board } from "@/types/board";
@@ -77,7 +78,17 @@ export default function TasksPage() {
   const [selectedBoardId, setSelectedBoardId] = useState<string>(boardIdParam || "all");
   const [selectedPriority, setSelectedPriority] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("dueDate");
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+
+  // Force grid view on mobile and disable list view
+  useEffect(() => {
+    if (isMobile && viewMode !== "grid") {
+      setViewMode("grid");
+    }
+  }, [isMobile, viewMode]);
+
+  const effectiveViewMode = isMobile ? "grid" : viewMode;
 
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [targetBoardForNewTask, setTargetBoardForNewTask] = useState<string>("");
@@ -340,11 +351,25 @@ export default function TasksPage() {
 
             <PillNavBar
               items={[
-                { id: "list", label: "List", icon: ListIcon },
-                { id: "grid", label: "Grid", icon: LayoutGrid },
+                {
+                  id: "list",
+                  label: "List",
+                  icon: ListIcon,
+                  disabled: isMobile,
+                  title: isMobile ? "List view is disabled on mobile" : "List view",
+                },
+                {
+                  id: "grid",
+                  label: "Grid",
+                  icon: LayoutGrid,
+                  title: "Grid view",
+                },
               ]}
-              activeId={viewMode}
-              onChange={(id) => setViewMode(id as "list" | "grid")}
+              activeId={effectiveViewMode}
+              onChange={(id) => {
+                if (isMobile && id === "list") return;
+                setViewMode(id as "list" | "grid");
+              }}
               accentColor="primary"
               size="sm"
               layoutId="tasksViewActivePill"
@@ -495,27 +520,27 @@ export default function TasksPage() {
 
         {/* Task List / Grid Display */}
         {isLoading || settings.simulateSkeletonLoading ? (
-          viewMode === "list" ? (
+          effectiveViewMode === "list" ? (
             <div className="bg-card rounded-2xl border border-border/60 overflow-hidden shadow-xs">
-              <Table className="min-w-[760px] w-full">
+              <Table className="w-full xl:min-w-[760px]">
                 <TableHeader className="bg-muted/40">
                   <TableRow className="border-border/50 hover:bg-transparent">
-                    <TableHead className="w-[24%] py-3.5 pl-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                    <TableHead className="w-[36%] xl:w-[24%] py-3.5 pl-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                       Task
                     </TableHead>
-                    <TableHead className="w-[26%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                    <TableHead className="hidden xl:table-cell xl:w-[26%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                       Description
                     </TableHead>
-                    <TableHead className="w-[14%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                    <TableHead className="w-[18%] xl:w-[14%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                       Board
                     </TableHead>
-                    <TableHead className="w-[10%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                    <TableHead className="w-[14%] xl:w-[10%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                       Priority
                     </TableHead>
-                    <TableHead className="w-[14%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                    <TableHead className="w-[18%] xl:w-[14%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                       Assigned
                     </TableHead>
-                    <TableHead className="w-[12%] py-3.5 pr-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                    <TableHead className="w-[14%] xl:w-[12%] py-3.5 pr-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                       Due Date
                     </TableHead>
                   </TableRow>
@@ -546,29 +571,29 @@ export default function TasksPage() {
               Create Task
             </Button>
           </div>
-        ) : viewMode === "list" ? (
+        ) : effectiveViewMode === "list" ? (
           /* Structured Table View */
           <div className="bg-card rounded-2xl border border-border/60 overflow-hidden shadow-xs">
             <div className="overflow-x-auto hidden sm:block">
-              <Table className="min-w-[760px] w-full">
+              <Table className="w-full xl:min-w-[760px]">
                 <TableHeader className="bg-muted/40">
                   <TableRow className="border-border/50 hover:bg-transparent">
-                    <TableHead className={`w-[24%] ${isCompact ? "py-2 pl-3 text-[10px]" : "py-3.5 pl-4 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
+                    <TableHead className={`w-[36%] xl:w-[24%] ${isCompact ? "py-2 pl-3 text-[10px]" : "py-3.5 pl-4 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Task
                     </TableHead>
-                    <TableHead className={`w-[26%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
+                    <TableHead className={`hidden xl:table-cell xl:w-[26%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Description
                     </TableHead>
-                    <TableHead className={`w-[14%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
+                    <TableHead className={`w-[18%] xl:w-[14%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Board
                     </TableHead>
-                    <TableHead className={`w-[10%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
+                    <TableHead className={`w-[14%] xl:w-[10%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Priority
                     </TableHead>
-                    <TableHead className={`w-[14%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
+                    <TableHead className={`w-[18%] xl:w-[14%] ${isCompact ? "py-2 text-[10px]" : "py-3.5 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Assigned
                     </TableHead>
-                    <TableHead className={`w-[12%] ${isCompact ? "py-2 pr-3 text-[10px]" : "py-3.5 pr-4 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
+                    <TableHead className={`w-[14%] xl:w-[12%] ${isCompact ? "py-2 pr-3 text-[10px]" : "py-3.5 pr-4 text-[11px]"} font-bold tracking-wider uppercase text-muted-foreground`}>
                       Due Date
                     </TableHead>
                   </TableRow>
@@ -591,11 +616,11 @@ export default function TasksPage() {
                       >
                         {/* Task Column */}
                         <TableCell className={`${isCompact ? "py-2 pl-3" : "py-3.5 pl-4"}`}>
-                          <div className={`flex items-center ${isCompact ? "gap-2" : "gap-3"} min-w-0`}>
+                          <div className={`flex items-start ${isCompact ? "gap-2" : "gap-3"} min-w-0`}>
                             <button
                               type="button"
                               onClick={(e) => handleToggleComplete(task, e)}
-                              className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
+                              className={`h-5 w-5 mt-0.5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
                                 isDone
                                   ? "bg-emerald-500 border-emerald-500 text-white"
                                   : "border-border/80 hover:border-primary bg-background"
@@ -605,27 +630,40 @@ export default function TasksPage() {
                               {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
                             </button>
 
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              {!devSettings.disableEmojiCustomization && task.emoji && (
-                                <span className="text-sm shrink-0 leading-none">
-                                  {task.emoji}
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {!devSettings.disableEmojiCustomization && task.emoji && (
+                                  <span className="text-sm shrink-0 leading-none">
+                                    {task.emoji}
+                                  </span>
+                                )}
+                                <span
+                                  className={`text-sm font-semibold truncate ${
+                                    isDone
+                                      ? "line-through text-muted-foreground"
+                                      : "text-foreground group-hover/row:text-primary transition-colors"
+                                  }`}
+                                >
+                                  {task.title}
                                 </span>
+                              </div>
+
+                              {/* Description as Subheader on iPad / tablet */}
+                              {task.description && (
+                                <p
+                                  data-testid="task-description-subheader"
+                                  className="text-xs text-muted-foreground line-clamp-1 truncate mt-0.5 font-normal xl:hidden"
+                                  title={task.description}
+                                >
+                                  {task.description}
+                                </p>
                               )}
-                              <span
-                                className={`text-sm font-semibold truncate ${
-                                  isDone
-                                    ? "line-through text-muted-foreground"
-                                    : "text-foreground group-hover/row:text-primary transition-colors"
-                                }`}
-                              >
-                                {task.title}
-                              </span>
                             </div>
                           </div>
                         </TableCell>
 
                         {/* Description Column */}
-                        <TableCell className={`${isCompact ? "py-2 px-3" : "py-3.5"}`}>
+                        <TableCell className={`hidden xl:table-cell ${isCompact ? "py-2 px-3" : "py-3.5"}`}>
                           {task.description ? (
                             <p
                               className="text-xs text-muted-foreground line-clamp-1 max-w-[260px] truncate"
@@ -747,8 +785,8 @@ export default function TasksPage() {
               </Table>
             </div>
             
-            {/* Mobile List View */}
-            <div className="block sm:hidden divide-y divide-border/50">
+            {/* Mobile List View - adopts grid card layout */}
+            <div className={`block sm:hidden grid grid-cols-1 ${isCompact ? "gap-2.5 p-2.5" : "gap-3 p-3"}`}>
               {filteredTasks.map((task) => {
                 const isDone = task.status === "done" || task.progress === 100;
                 const isOverdue = task.dueDate && !isDone && new Date(task.dueDate) < now;
@@ -757,64 +795,109 @@ export default function TasksPage() {
                   <div
                     key={task.id}
                     onClick={() => setSelectedTaskId(task.id)}
-                    className={`p-4 flex flex-col gap-3 transition-colors cursor-pointer group/mobile-row ${
-                      selectedTaskId === task.id ? "bg-primary/10" : "hover:bg-muted/30"
+                    className={`${isCompact ? "p-3.5 rounded-xl gap-2.5" : "p-4 rounded-xl gap-3"} bg-card border shadow-xs hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group ${
+                      selectedTaskId === task.id
+                        ? "border-primary/60 ring-2 ring-primary/20"
+                        : "border-border/60 hover:border-primary/40"
                     }`}
                   >
-                    <div className="flex items-start gap-3 min-w-0">
-                      <button
-                        type="button"
-                        onClick={(e) => handleToggleComplete(task, e)}
-                        className={`h-6 w-6 mt-0.5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
-                          isDone
-                            ? "bg-emerald-500 border-emerald-500 text-white"
-                            : "border-border/80 hover:border-primary bg-background"
-                        }`}
-                      >
-                        {isDone && <CheckCircle2 className="h-4 w-4" />}
-                      </button>
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <span className={`text-sm font-semibold truncate ${
-                          isDone ? "line-through text-muted-foreground" : "text-foreground group-hover/mobile-row:text-primary"
-                        }`}>
-                          {!devSettings.disableEmojiCustomization && task.emoji && <span className="mr-1.5">{task.emoji}</span>}
-                          {task.title}
-                        </span>
-                        {task.description && (
-                          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                            {task.description}
-                          </p>
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        {task.boardName && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0 bg-primary/5 text-primary border-primary/20 inline-flex items-center gap-1"
+                          >
+                            {!devSettings.disableEmojiCustomization && (
+                              <span>{task.boardEmoji || "📋"}</span>
+                            )}
+                            <span>{task.boardName}</span>
+                          </Badge>
                         )}
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] uppercase font-mono px-1.5 py-0 ${
+                            task.priority === "high" || task.priority === "urgent"
+                              ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
+                              : task.priority === "medium"
+                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                              : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                          }`}
+                        >
+                          {task.priority}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-start gap-2.5">
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleComplete(task, e)}
+                          className={`h-5 w-5 mt-0.5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
+                            isDone
+                              ? "bg-emerald-500 border-emerald-500 text-white"
+                              : "border-border/80 hover:border-primary bg-background"
+                          }`}
+                        >
+                          {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
+                        </button>
+
+                        <div className="min-w-0 flex-1">
+                          <h4
+                            className={`text-sm font-bold truncate ${
+                              isDone
+                                ? "line-through text-muted-foreground"
+                                : "text-foreground group-hover:text-primary transition-colors"
+                            }`}
+                          >
+                            {!devSettings.disableEmojiCustomization && task.emoji && <span className="mr-1.5">{task.emoji}</span>}
+                            {task.title}
+                          </h4>
+                          {task.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                              {task.description}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="pl-9 flex flex-wrap items-center gap-2">
-                      {task.boardName && (
-                        <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20 px-1.5 py-0 inline-flex items-center gap-1">
-                          {!devSettings.disableEmojiCustomization && (
-                            <span>{task.boardEmoji || "📋"}</span>
-                          )}
-                          <span>{task.boardName}</span>
-                        </Badge>
+                    <div className="pt-3 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground">
+                      {task.assignee ? (() => {
+                        const isCurrentUser =
+                          task.assignee.id === user?.id ||
+                          (user?.email && task.assignee.email === user.email);
+                        const avatarUrl = isCurrentUser
+                          ? (user?.avatarUrl ?? task.assignee.avatarUrl)
+                          : task.assignee.avatarUrl;
+
+                        return (
+                          <div className="flex items-center gap-1.5">
+                            <Avatar className="h-5 w-5 border border-border/50">
+                              <AvatarImage src={avatarUrl} />
+                              <AvatarFallback className="text-[9px] font-bold">
+                                {task.assignee.fullName?.charAt(0) || "U"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-[11px] font-medium truncate max-w-[100px]">
+                              {task.assignee.fullName || task.assignee.email}
+                            </span>
+                          </div>
+                        );
+                      })() : (
+                        <span className="italic text-[11px]">Unassigned</span>
                       )}
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] uppercase font-mono px-1.5 py-0 ${
-                          task.priority === "urgent" || task.priority === "high"
-                            ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
-                            : task.priority === "medium"
-                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
-                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
-                        }`}
-                      >
-                        {task.priority || "none"}
-                      </Badge>
+
                       {task.dueDate && (
-                        <span className={`text-[10px] font-medium flex items-center gap-1 ${
-                          isOverdue ? "text-rose-500" : "text-muted-foreground"
-                        }`}>
+                        <span
+                          className={`font-semibold flex items-center gap-1 ${
+                            isOverdue ? "text-rose-500" : ""
+                          }`}
+                        >
                           <Clock className="h-3 w-3" />
-                          {new Date(task.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          {new Date(task.dueDate).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                          })}
                         </span>
                       )}
                     </div>

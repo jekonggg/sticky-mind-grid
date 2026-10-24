@@ -49,22 +49,25 @@ export function TasksPageSkeleton({ viewMode = "list" }: TasksPageSkeletonProps)
       {/* 4. Content: Table or Grid */}
       {viewMode === "list" ? (
         <div className="bg-card rounded-2xl border border-border/60 overflow-hidden shadow-xs">
-          <Table className="min-w-[760px] w-full">
+          <Table className="w-full xl:min-w-[760px]">
             <TableHeader className="bg-muted/40">
               <TableRow className="border-border/50">
-                <TableHead className="w-[38%] py-3.5 pl-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                <TableHead className="w-[36%] xl:w-[24%] py-3.5 pl-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                   Task
                 </TableHead>
-                <TableHead className="w-[18%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                <TableHead className="hidden xl:table-cell xl:w-[26%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                  Description
+                </TableHead>
+                <TableHead className="w-[18%] xl:w-[14%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                   Board
                 </TableHead>
-                <TableHead className="w-[14%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                <TableHead className="w-[14%] xl:w-[10%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                   Priority
                 </TableHead>
-                <TableHead className="w-[18%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                <TableHead className="w-[18%] xl:w-[14%] py-3.5 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                   Assigned
                 </TableHead>
-                <TableHead className="w-[12%] py-3.5 pr-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
+                <TableHead className="w-[14%] xl:w-[12%] py-3.5 pr-4 font-bold text-[11px] tracking-wider uppercase text-muted-foreground">
                   Due Date
                 </TableHead>
               </TableRow>

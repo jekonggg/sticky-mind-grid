@@ -224,4 +224,19 @@ describe("TasksPage", () => {
       expect(screen.getAllByText("—").length).toBeGreaterThan(0);
     });
   });
+
+  it("renders task description as a subheader beneath the task title for iPad view", async () => {
+    renderWithProviders(<TasksPage />);
+
+    const descriptionHeader = screen.getByRole("columnheader", { name: /description/i });
+    expect(descriptionHeader.className).toContain("hidden");
+    expect(descriptionHeader.className).toContain("xl:table-cell");
+
+    await waitFor(() => {
+      const subheader = screen.getByTestId("task-description-subheader");
+      expect(subheader).toBeInTheDocument();
+      expect(subheader).toHaveTextContent("Ensure comprehensive test suite coverage");
+      expect(subheader.className).toContain("xl:hidden");
+    });
+  });
 });
