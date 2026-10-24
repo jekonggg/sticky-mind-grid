@@ -21,16 +21,16 @@ flowchart LR
         SSE["In-Memory EventBroadcaster\n(event_broadcaster.py)"]
         Disk["Local File Storage\n(backend/uploads/)"]
     end
-    subgraph Aiven["Managed MySQL (Aiven / Local)"]
-        MySQL[("MySQL 8.0\n(PyMySQL + SSL)")]
+    subgraph DB["Supabase Postgres (pooler) / Local MySQL"]
+        Postgres[("PostgreSQL\n(psycopg2, sslmode=verify-full)")]
     end
 
     Browser -- "HTTPS /*" --> SPA
     Browser -- "REST & SSE /api/*" --> Gunicorn
     Gunicorn --> SSE
     Gunicorn --> Disk
-    Gunicorn -- "pool_pre_ping=True\npool_recycle=280s" --> MySQL
-``` | 1. **Frontend (Vercel)**: Built via `npm run build` (`vite build`, `package.json:L7`) into `dist/` (`vercel.json:L2-L4`). All non-asset paths rewrite to `/index.html` (`vercel.json:L5-L10`), while `/assets/*` are cached for 1 year (`max-age=31536000, immutable`, `vercel.json:L11-L21`).<br>2. **Backend (Render)**: Runs Flask (`backend/run.py:L4`, `gunicorn>=21.2.0` in `backend/requirements.txt:L10`). **Not found in code**: No `render.yaml`, `Procfile`, or `Dockerfile` exists in the repository; Render build/start settings are configured externally in the Render dashboard (`scripts/fetch_render_logs.py:L1-L134`).<br>3. **Database (MySQL / SQLite)**: Production connects to Aiven/cloud MySQL over TLS (`backend/config.py:L17-L29`); local dev uses `sticky_mind_grid` (`config.py:L33`); Playwright E2E uses `sticky_mind_grid_test` (`e2e/run.mjs:L6`); Pytest uses `sqlite:///:memory:` (`backend/tests/conftest.py:L19`). |
+    Gunicorn -- "pool_pre_ping=True\npool_recycle=300s" --> Postgres
+``` | 1. **Frontend (Vercel)**: Built via `npm run build` (`vite build`, `package.json:L7`) into `dist/` (`vercel.json:L2-L4`). All non-asset paths rewrite to `/index.html` (`vercel.json:L5-L10`), while `/assets/*` are cached for 1 year (`max-age=31536000, immutable`, `vercel.json:L11-L21`).<br>2. **Backend (Render)**: Runs Flask (`backend/run.py:L4`, `gunicorn>=21.2.0` in `backend/requirements.txt:L10`) on the native Python service `sticky-mind-grid-api` (rootDir `backend/`, runtime `python`, health check `/api/health`, auto-deploy from `main`). A `Procfile` exists at the repository root; `render.yaml` and `Dockerfile` do not. Render build/start settings are configured externally in the Render dashboard (`scripts/fetch_render_logs.py:L1-L137`).<br>3. **Database (PostgreSQL / MySQL / SQLite)**: Production uses Supabase Postgres through the shared pooler on port 6543 with `sslmode=verify-full` and the bundled Supabase root CA (`backend/config.py`, `backend/certs/supabase-prod-ca-2021.crt`); local dev defaults to MySQL `sticky_mind_grid`; Playwright E2E uses MySQL `sticky_mind_grid_test` (`e2e/run.mjs:L6`); Pytest uses `sqlite:///:memory:` (`backend/tests/conftest.py:L19`). |
 
 ### Environment Summary Matrix
 
@@ -39,7 +39,7 @@ flowchart LR
 | **Local Dev** | `http://localhost:8080` (Vite proxy `/api` -> `127.0.0.1:5000`) | `http://127.0.0.1:5000` | `mysql+pymysql://root@localhost/sticky_mind_grid` | `vite.config.ts:L8-L18`, `backend/config.py:L33` |
 | **Playwright E2E** | `http://localhost:5173` (or `127.0.0.1:5173` in CI) | `http://127.0.0.1:5000` | `mysql+pymysql://root@localhost/sticky_mind_grid_test` | `playwright.config.ts:L11, L26`, `e2e/run.mjs:L6-L10`, `.github/workflows/test.yml:L60-L134` |
 | **Backend Pytest** | N/A (Flask test client) | In-process | `sqlite:///:memory:` | `backend/tests/conftest.py:L17-L36` |
-| **Production** | `https://sticky-mind-grid.vercel.app` (`*.vercel.app`) | Render Web Service (`/api`) | Managed MySQL (`aivencloud.com` / `DATABASE_URL`) | `backend/config.py:L12-L29, L46`, `backend/app/__init__.py:L29-L30` |
+| **Production** | `https://sticky-mind-grid.vercel.app` (`*.vercel.app`) | Render Web Service (`/api`) | Supabase Postgres (`*.pooler.supabase.com:6543` / `DATABASE_URL`) | `backend/config.py`, `backend/app/__init__.py:L29-L30` |
 
 ---
 
@@ -50,7 +50,9 @@ Never commit real secrets to `.env` or `backend/.env` (both are gitignored in `.
 | Variable | Layer | Default Value in Code | Citation | Description |
 |---|---|---|---|---|
 | `VITE_API_BASE_URL` | Frontend | `` `http://${window.location.hostname \|\| "127.0.0.1"}:5000/api` `` | `src/config/api.ts:L3-L6`, `.env.example:L3` | Base URL for all REST and SSE requests. |
-| `DATABASE_URL` | Backend | `'mysql+pymysql://root@localhost/sticky_mind_grid'` | `backend/config.py:L12-L34` | SQLAlchemy URI. Rewrites `mysql://` to `mysql+pymysql://` (`L13-L14`) and converts `ssl-mode`/`ssl_mode`/`aivencloud.com` into `connect_args={"ssl": {"check_hostname": False}}` (`L17-L29`). |
+| `DATABASE_URL` | Backend | `'mysql+pymysql://root@localhost/sticky_mind_grid'` | `backend/config.py` | SQLAlchemy URI. Normalizes `mysql://`/`postgres://` schemes. PostgreSQL TLS defaults to `require`; Supabase hosts auto-upgrade to `verify-full` with the bundled CA. MySQL Aiven URLs are converted to a verified TLS `connect_args` block. |
+| `DB_SSL_MODE` | Backend | `require` (Postgres); `verify-full` for Supabase | `backend/config.py` | libpq SSL mode (`disable`, `allow`, `prefer`, `require`, `verify-ca`, `verify-full`). Production should use `verify-full`. |
+| `DB_SSL_CA` | Backend | `backend/certs/supabase-prod-ca-2021.crt` for Postgres verify modes | `backend/config.py` | CA bundle path. For MySQL it is passed as the PyMySQL `ca` file. |
 | `SECRET_KEY` | Backend | `'dev-secret-key'` | `backend/config.py:L32` | Flask secret key (`<PLACEHOLDER_SECRET_KEY>` in prod). |
 | `JWT_SECRET_KEY` | Backend | `'super-secret-jwt-key-for-development-32-chars-long'` | `backend/config.py:L39` | Signing key for 24h JWT Bearer tokens (`JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)`, `L41`). |
 | `CORS_ORIGINS` | Backend | `'http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,https://sticky-mind-grid.vercel.app'` | `backend/config.py:L44-L52`, `backend/app/__init__.py:L22-L33` | Comma-separated allowed origins, merged with `base_origins` and regex `r"https:\/\/.*\.vercel\.app"`. |
@@ -164,8 +166,8 @@ sequenceDiagram
 - **Root Cause in Code**: `GET /api/health` (`system_routes.py:L10-L22`) returns `503` when `SELECT 1` fails, and unhandled SQLAlchemy errors trigger `@app.errorhandler(500)` (`backend/app/__init__.py:L52-L56`). Cloud MySQL providers (such as Aiven) require SSL and drop idle connections.
 - **Resolution**:
   1. Run `python scripts/fetch_render_logs.py 150` to inspect the SQLAlchemy traceback.
-  2. Ensure `DATABASE_URL` contains `ssl-mode=REQUIRED` or `aivencloud.com` so `backend/config.py:L17-L29` injects `connect_args={"ssl": {"check_hostname": False}}`.
-  3. Confirm Gunicorn worker count does not exceed your MySQL instance's `max_connections` limit.
+  2. For MySQL deployments, ensure `DATABASE_URL` contains `ssl-mode=REQUIRED` or `aivencloud.com` so `backend/config.py` enables TLS. For PostgreSQL/Supabase, confirm `DB_SSL_MODE=verify-full` and the bundled CA are in use.
+  3. Confirm Gunicorn worker count does not exceed your database instance's `max_connections` limit.
 
 ### Runbook 4: Real-Time SSE Events Not Delivering Across Clients
 - **Root Cause in Code**: `EventBroadcaster` (`backend/app/utils/event_broadcaster.py:L7-L120`) stores subscriber queues (`queue.Queue(maxsize=100)`) in **process-local memory**.
@@ -182,3 +184,29 @@ sequenceDiagram
 - **Resolution**:
   1. If a board hits the 100 MB quota (`Board storage quota (100 MB) exceeded`), have a board `admin` or `owner` empty the board's Trash Bin (`DELETE /api/boards/<board_id>/trash`, `task_routes.py:L39-L47`) to purge soft-deleted task files.
   2. Mount a persistent volume at `backend/uploads/` in production so uploaded files and `.uploaders.json` survive container restarts.
+
+### Runbook 6: Runtime & Certificate Security Patching (October 2026 Advisory)
+
+**Trigger:** Render advisory covering the eMudhra intermediate-CA compromise, the October 2026 Node.js security release, and PHP2Shell.
+
+**Applicability (verified 2026-10-24):**
+- **eMudhra CA — applies.** The native Python backend makes outbound HTTPS requests to EmailJS, Google/GitHub/Microsoft OAuth, Supabase, and remote attachment/avatar URLs through `urllib`, which uses the system CA store. Rebuilding the Render service refreshes that store.
+- **Node.js — build-time only.** No Node.js process runs in production: the Render service runtime is `python` and the frontend is static on Vercel. CI is pinned to **24.22.1** through `.nvmrc`; `package.json` requires Node **24.x**. Update Vercel's Node.js version to 24.x as well.
+- **PHP2Shell — not applicable.** No PHP runtime or Docker image is deployed. The only PHP file is vendored under `node_modules/` and is never executed.
+
+**Procedure:**
+1. Confirm the backend is the native Python service `sticky-mind-grid-api` (rootDir `backend/`, runtime `python`). Do not use a Docker rebuild path.
+2. In Render, choose **Clear build cache & deploy**. This refreshes system packages and the system certificate store.
+3. Confirm the deploy reaches `live` and `GET /api/health` returns `200`.
+4. Smoke-test outbound HTTPS: OAuth start for each configured provider, invitation email, Supabase upload/avatar, and external image attachment.
+5. Confirm CI used Node **24.22.1** from `.nvmrc`, and that Vercel built with Node 24.x.
+6. Record the deploy ID, date, and verification result below.
+
+**Production database TLS:**
+- Supabase Postgres is reached through the shared pooler on port 6543.
+- `DATABASE_URL` has no `sslmode`; `backend/config.py` auto-selects `verify-full` for Supabase hosts and uses `backend/certs/supabase-prod-ca-2021.crt`.
+- Root CA SHA-256: `807025ad50d4ed219d2c9c7d299c004f824eb00cf7f65afef607d07b72e6cafa` (Supabase Root 2021 CA, valid to 2031-04-26).
+- `psycopg2`/libpq verification was validated against the live pooler on 2026-10-24. Note: Supabase's shared-pooler intermediate CA lacks a Key Usage extension, which fails Python 3.13 native `ssl` strict verification; re-test if the driver changes from psycopg2.
+
+**Verification log:**
+- 2026-10-24: Pre-redeploy health check `200` on commit `c8b552c`.

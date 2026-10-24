@@ -17,7 +17,48 @@ except ImportError:
                         if k not in os.environ:
                             os.environ[k] = v
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_SUPABASE_CA = os.path.join(BASE_DIR, 'certs', 'supabase-prod-ca-2021.crt')
+POSTGRES_SSL_MODES = {'disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full'}
+
+
+def _resolve_postgres_ssl(host, query):
+    """Resolve libpq TLS options for a PostgreSQL connection.
+
+    Explicit ``DB_SSL_MODE`` takes precedence over ``sslmode`` in DATABASE_URL.
+    When neither is supplied, Supabase hosts default to ``verify-full`` using the
+    bundled Supabase root CA; other PostgreSQL hosts default to ``require``.
+    """
+    query_params = parse_qs(query)
+    explicit_mode = (query_params.get('sslmode') or [None])[0]
+    explicit_ca = (query_params.get('sslrootcert') or [None])[0]
+
+    mode = (os.environ.get('DB_SSL_MODE') or explicit_mode or '').strip().lower()
+    if not mode:
+        is_supabase = host.endswith('.supabase.co') or host.endswith('.supabase.com')
+        mode = 'verify-full' if is_supabase and os.path.isfile(DEFAULT_SUPABASE_CA) else 'require'
+
+    if mode not in POSTGRES_SSL_MODES:
+        raise ValueError(
+            f"Invalid DB_SSL_MODE '{mode}'. Expected one of: {', '.join(sorted(POSTGRES_SSL_MODES))}"
+        )
+
+    ssl_options = {'sslmode': mode}
+    if mode in ('verify-ca', 'verify-full'):
+        ca_path = os.environ.get('DB_SSL_CA', '').strip() or explicit_ca
+        if not ca_path and os.path.isfile(DEFAULT_SUPABASE_CA):
+            ca_path = DEFAULT_SUPABASE_CA
+        if not ca_path:
+            raise ValueError(f"DB_SSL_MODE={mode} requires DB_SSL_CA to point to a trusted CA bundle")
+        if not os.path.isfile(ca_path):
+            raise ValueError(f"DB_SSL_CA file not found: {ca_path}")
+        ssl_options['sslrootcert'] = ca_path
+
+    return ssl_options
+
+
 raw_db_url = os.environ.get('DATABASE_URL')
+parsed_db_url = None
 connect_args = {
     "connect_timeout": 30,
     "read_timeout": 30,
@@ -39,24 +80,41 @@ if raw_db_url:
         raw_db_url = raw_db_url.replace('postgres://', 'postgresql+psycopg2://', 1)
     elif raw_db_url.startswith('postgresql://') and not raw_db_url.startswith('postgresql+'):
         raw_db_url = raw_db_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
-    
+
+    parsed_db_url = urlparse(raw_db_url)
+
     # If Aiven or SSL query parameters are provided, strip non-standard query params and configure PyMySQL SSL
     if 'ssl-mode' in raw_db_url or 'ssl_mode' in raw_db_url or 'aivencloud.com' in raw_db_url:
-        parsed = urlparse(raw_db_url)
-        q_params = parse_qs(parsed.query)
+        q_params = parse_qs(parsed_db_url.query)
         q_params.pop('ssl-mode', None)
         q_params.pop('ssl_mode', None)
         new_query = urlencode(q_params, doseq=True)
-        raw_db_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
-        
-        connect_args["ssl"] = {
-            "check_hostname": False
-        }
+        raw_db_url = urlunparse((
+            parsed_db_url.scheme,
+            parsed_db_url.netloc,
+            parsed_db_url.path,
+            parsed_db_url.params,
+            new_query,
+            parsed_db_url.fragment,
+        ))
+        parsed_db_url = urlparse(raw_db_url)
 
-if raw_db_url and 'mysql' in raw_db_url:
+        connect_args["ssl"] = {
+            "check_hostname": True
+        }
+        mysql_ca = os.environ.get('DB_SSL_CA', '').strip()
+        if mysql_ca:
+            if not os.path.isfile(mysql_ca):
+                raise ValueError(f"DB_SSL_CA file not found: {mysql_ca}")
+            connect_args["ssl"]["ca"] = mysql_ca
+
+if parsed_db_url and parsed_db_url.scheme.startswith('mysql'):
     engine_options["connect_args"] = connect_args
-elif raw_db_url and 'postgres' in raw_db_url:
-    engine_options["connect_args"] = {"connect_timeout": 30}
+elif parsed_db_url and parsed_db_url.scheme.startswith('postgres'):
+    engine_options["connect_args"] = {
+        "connect_timeout": 30,
+        **_resolve_postgres_ssl(parsed_db_url.hostname or '', parsed_db_url.query),
+    }
     engine_options["pool_size"] = 5
     engine_options["max_overflow"] = 10
     engine_options["pool_recycle"] = 300

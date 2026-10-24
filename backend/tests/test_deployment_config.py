@@ -1,6 +1,11 @@
 import os
 import importlib.util
+import subprocess
+import sys
+
 import pytest
+
+from config import DEFAULT_SUPABASE_CA, _resolve_postgres_ssl
 
 def test_gunicorn_config_pins_single_process_multithreaded_sse():
     """
@@ -28,3 +33,83 @@ def test_gunicorn_config_pins_single_process_multithreaded_sse():
         content = f.read()
     assert "gunicorn" in content
     assert "gunicorn.conf.py" in content
+
+
+def test_postgres_ssl_defaults_to_verify_full_for_supabase(monkeypatch):
+    monkeypatch.delenv("DB_SSL_MODE", raising=False)
+    monkeypatch.delenv("DB_SSL_CA", raising=False)
+
+    options = _resolve_postgres_ssl("aws-1-us-east-1.pooler.supabase.com", "")
+
+    assert options["sslmode"] == "verify-full"
+    assert options["sslrootcert"] == DEFAULT_SUPABASE_CA
+
+
+def test_postgres_ssl_defaults_to_require_for_non_supabase_hosts(monkeypatch):
+    monkeypatch.delenv("DB_SSL_MODE", raising=False)
+    monkeypatch.delenv("DB_SSL_CA", raising=False)
+
+    options = _resolve_postgres_ssl("db.internal.example.com", "")
+
+    assert options["sslmode"] == "require"
+    assert "sslrootcert" not in options
+
+
+def test_postgres_ssl_honors_explicit_url_mode(monkeypatch):
+    monkeypatch.delenv("DB_SSL_MODE", raising=False)
+    monkeypatch.delenv("DB_SSL_CA", raising=False)
+
+    options = _resolve_postgres_ssl("db.internal.example.com", "sslmode=verify-full")
+
+    assert options["sslmode"] == "verify-full"
+    assert options["sslrootcert"] == DEFAULT_SUPABASE_CA
+
+
+def test_postgres_ssl_env_override_wins_over_url(monkeypatch):
+    monkeypatch.setenv("DB_SSL_MODE", "require")
+
+    options = _resolve_postgres_ssl(
+        "aws-1-us-east-1.pooler.supabase.com",
+        "sslmode=verify-full&sslrootcert=ignored.crt",
+    )
+
+    assert options == {"sslmode": "require"}
+
+
+def test_postgres_ssl_rejects_invalid_mode(monkeypatch):
+    monkeypatch.setenv("DB_SSL_MODE", "bogus")
+
+    with pytest.raises(ValueError, match="Invalid DB_SSL_MODE"):
+        _resolve_postgres_ssl("db.internal.example.com", "")
+
+
+def test_postgres_ssl_rejects_missing_ca(monkeypatch, tmp_path):
+    monkeypatch.setenv("DB_SSL_MODE", "verify-full")
+    monkeypatch.setenv("DB_SSL_CA", str(tmp_path / "missing-ca.crt"))
+
+    with pytest.raises(ValueError, match="DB_SSL_CA file not found"):
+        _resolve_postgres_ssl("db.internal.example.com", "")
+
+
+def test_config_wires_postgres_ssl_into_engine_options(monkeypatch):
+    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env = os.environ.copy()
+    env["DATABASE_URL"] = "postgresql://user:pass@db.internal.example.com:5432/app"
+    env.pop("DB_SSL_MODE", None)
+    env.pop("DB_SSL_CA", None)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from config import Config; print(Config.SQLALCHEMY_ENGINE_OPTIONS['connect_args']['sslmode'])",
+        ],
+        cwd=backend_dir,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "require"

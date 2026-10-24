@@ -7,7 +7,7 @@ Status: Verified | Last scanned: 2026-10-13 | Audience: Contributors
 ## 1. Prerequisites & Environment Setup
 
 ### Required Tooling
-- **Node.js:** v18.x or v20.x (supports `npm` or `bun`)
+- **Node.js:** v24.22.1+ (LTS security baseline; pinned in `.nvmrc`, supports `npm` or `bun`)
 - **Python:** 3.10+ (with `venv` and `pip`)
 - **Database Server:** MySQL 8.0+ or compatible (PostgreSQL supported via SQLAlchemy `DATABASE_URL`)
 - **Browser Automation (Optional for E2E):** Chromium (via Playwright)
