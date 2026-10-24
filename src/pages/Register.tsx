@@ -13,6 +13,7 @@ import {
   EyeOff,
   Check,
   XClose as X,
+  AlertCircle,
 } from "@untitledui/icons";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -43,6 +44,10 @@ export default function Register() {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [registerError, setRegisterError] = useState<{
+    message: string;
+    field?: "email" | "password" | "confirmPassword";
+  } | null>(null);
 
   // Warm the login chunk so "Sign in" navigates without a fallback flash.
   useEffect(() => {
@@ -74,31 +79,48 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setRegisterError(null);
 
     if (!isAllPasswordCriteriaMet) {
+      setRegisterError({
+        message: "Please satisfy all password complexity requirements.",
+        field: "password",
+      });
       toast.error("Please satisfy all password complexity requirements.");
       return;
     }
 
     if (password !== confirmPassword) {
+      setRegisterError({
+        message: "Passwords do not match.",
+        field: "confirmPassword",
+      });
       toast.error("Passwords do not match.");
       return;
     }
 
     setLoading(true);
     try {
-      const response = await authApi.register(email, password, fullName);
+      const cleanEmail = email.trim().toLowerCase();
+      const response = await authApi.register(cleanEmail, password, fullName);
       toast.success(
-        response.message || "Account created successfully! Please sign in with your credentials."
+        response.message || "Account created successfully! Please verify your email."
       );
-      // Requirement 5 & 7: Store pre-fill email in sessionStorage (never password)
-      sessionStorage.setItem("login_prefill_email", email.trim().toLowerCase());
-      const nextLoginUrl = redirectParam ? `/login?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirectParam)}` : "/login";
+      sessionStorage.setItem("login_prefill_email", cleanEmail);
+      const nextPendingUrl = redirectParam
+        ? `/verify-email?email=${encodeURIComponent(cleanEmail)}&pending=true&redirect=${encodeURIComponent(redirectParam)}`
+        : `/verify-email?email=${encodeURIComponent(cleanEmail)}&pending=true`;
 
-
-      navigate(nextLoginUrl, { state: { email } });
+      navigate(nextPendingUrl, {
+        state: { email: cleanEmail, pending: true, redirect: redirectParam },
+      });
     } catch (error: any) {
-      toast.error(error.message || "Failed to register");
+      const msg = error.message || "Failed to register";
+      setRegisterError({
+        message: msg,
+        field: msg.toLowerCase().includes("email") ? "email" : undefined,
+      });
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -130,6 +152,28 @@ export default function Register() {
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
+              {registerError && (
+                <div
+                  data-testid="register-error-alert"
+                  className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/25 text-destructive text-xs flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200"
+                >
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-destructive" />
+                  <div className="space-y-1">
+                    <p className="font-semibold">{registerError.message}</p>
+                    {registerError.field === "email" && registerError.message.toLowerCase().includes("already exists") && (
+                      <p className="text-muted-foreground text-[11px]">
+                        Already registered?{" "}
+                        <Link
+                          to={redirectParam ? `/login?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirectParam)}` : `/login?email=${encodeURIComponent(email)}`}
+                          className="text-primary underline font-bold"
+                        >
+                          Sign in here
+                        </Link>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
                 <Input 

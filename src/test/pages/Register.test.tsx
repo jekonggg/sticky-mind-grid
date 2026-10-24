@@ -94,10 +94,10 @@ describe("Register Component", () => {
     expect(submitBtn).toBeEnabled();
   });
 
-  it("submits the form successfully and redirects to /login with state email", async () => {
+  it("submits the form successfully and redirects to /verify-email in pending mode", async () => {
     (authApi.register as any).mockResolvedValueOnce({
       user: { id: "1", email: "test@example.com", fullName: "Test User" },
-      message: "Account created successfully. Please sign in to continue.",
+      message: "Account created successfully. Please verify your email.",
     });
 
     renderWithProviders(<Register />, { user: null });
@@ -119,15 +119,16 @@ describe("Register Component", () => {
         "Test User"
       );
       expect(toast.success).toHaveBeenCalledWith(
-        "Account created successfully. Please sign in to continue."
+        "Account created successfully. Please verify your email."
       );
-      expect(mockNavigate).toHaveBeenCalledWith("/login", {
-        state: { email: "test@example.com" },
-      });
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/verify-email?email=test%40example.com&pending=true",
+        { state: { email: "test@example.com", pending: true, redirect: null } }
+      );
     });
   });
 
-  it("pre-fills email and forwards redirect param to /login", async () => {
+  it("pre-fills email and forwards redirect param to /verify-email", async () => {
     mockSearchParams = new URLSearchParams("email=invitee@example.com&redirect=/invite/invite-123");
     (authApi.register as any).mockResolvedValueOnce({
       user: { id: "2", email: "invitee@example.com", fullName: "Invitee" },
@@ -147,9 +148,30 @@ describe("Register Component", () => {
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(
-        "/login?email=invitee%40example.com&redirect=%2Finvite%2Finvite-123",
-        { state: { email: "invitee@example.com" } }
+        "/verify-email?email=invitee%40example.com&pending=true&redirect=%2Finvite%2Finvite-123",
+        { state: { email: "invitee@example.com", pending: true, redirect: "/invite/invite-123" } }
       );
+    });
+  });
+
+  it("renders inline guided error when registration fails with duplicate email", async () => {
+    (authApi.register as any).mockRejectedValueOnce(
+      new Error("An account with this email already exists. Please sign in.")
+    );
+
+    renderWithProviders(<Register />, { user: null });
+
+    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Dup User" } });
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "dup@example.com" } });
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: "Password123!" } });
+    fireEvent.change(screen.getByLabelText(/^confirm password$/i), { target: { value: "Password123!" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("register-error-alert")).toBeInTheDocument();
+      expect(screen.getByText(/An account with this email already exists/i)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /sign in here/i })).toBeInTheDocument();
     });
   });
 });

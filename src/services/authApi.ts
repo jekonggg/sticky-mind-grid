@@ -13,6 +13,9 @@ export const authApi = {
       const err: any = new Error(error.message || "Failed to login");
       err.status = res.status;
       err.data = error;
+      err.field = error.field;
+      err.code = error.code;
+      err.provider = error.provider;
       throw err;
     }
     return res.json();
@@ -132,6 +135,17 @@ async resendVerification(email?: string): Promise<{ message: string }> {
     if (!res.ok) {
       const error = await res.json().catch(() => ({ message: "Email verification failed" }));
       throw new Error(error.message || "Email verification failed");
+    }
+    return res.json();
+  },
+
+  async getVerificationStatus(email: string): Promise<{ verified: boolean; exists: boolean; email?: string }> {
+    const res = await fetch(`${API_AUTH_BASE}/verification-status?email=${encodeURIComponent(email)}`);
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ message: "Failed to fetch verification status" }));
+      const err: any = new Error(error.message || "Failed to fetch verification status");
+      err.status = res.status;
+      throw err;
     }
     return res.json();
   },
