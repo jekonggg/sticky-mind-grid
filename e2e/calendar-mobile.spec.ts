@@ -335,6 +335,52 @@ test.describe("Global calendar mobile layout", () => {
       expect(pageOverflow).toBeLessThanOrEqual(1);
     }
   });
+
+  test("fits all seven weekdays on iPad portrait viewports without horizontal cutoff", async ({
+    page,
+    request,
+  }) => {
+    await seedCalendarTasks(request);
+    await loginSeededUser(page);
+
+    await page.getByRole("button", { name: "Calendar", exact: true }).click();
+    await page.waitForURL("/calendar");
+
+    // Test standard iPad portrait widths: 768 (Mini/standard), 810 (10th gen), 820 (Air), 834 (Pro 11")
+    for (const width of [768, 810, 820, 834]) {
+      await page.setViewportSize({ width, height: 1024 });
+      await page.waitForTimeout(300);
+
+      const calendar = page.getByTestId("calendar-grid-container");
+      await expect(calendar).toBeVisible();
+
+      // Ensure all 7 weekday column headers (Sun through Sat) are visible and within viewport
+      const weekdays = page.getByTestId("calendar-weekdays").locator(":scope > div");
+      const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      for (let index = 0; index < weekdayLabels.length; index += 1) {
+        const weekday = weekdays.nth(index);
+        await expect(weekday).toHaveText(weekdayLabels[index]);
+        const box = await weekday.boundingBox();
+        expect(box).not.toBeNull();
+        if (!box) continue;
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
+      }
+
+      // Check that the calendar grid does not horizontally overflow
+      const gridMetrics = await calendar.evaluate((element) => ({
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+      }));
+      expect(gridMetrics.scrollWidth).toBeLessThanOrEqual(gridMetrics.clientWidth + 1);
+
+      // Check that the page itself does not horizontally overflow
+      const pageOverflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth
+      );
+      expect(pageOverflow).toBeLessThanOrEqual(1);
+    }
+  });
 });
 
 test.describe("Board calendar mobile layout", () => {

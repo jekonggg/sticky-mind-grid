@@ -47,6 +47,12 @@ describe("CalendarView Component", () => {
     expect(screen.getByText("Week")).toBeInTheDocument();
     expect(screen.getByText("Day")).toBeInTheDocument();
     expect(screen.getByText(/month view/i)).toBeInTheDocument();
+
+    const weekdays = screen.getByTestId("calendar-weekdays");
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    dayNames.forEach((day) => {
+      expect(within(weekdays).getByText(day)).toBeInTheDocument();
+    });
   });
 
   it("switches to Day view and displays dynamic compact hourly rows", () => {

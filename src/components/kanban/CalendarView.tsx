@@ -258,7 +258,7 @@ export function CalendarView({
   return (
     <div
       data-testid="calendar-view"
-      className={`p-3 md:p-8 space-y-4 md:space-y-6 max-w-[1600px] mx-auto min-w-0 ${
+      className={`p-3 md:p-4 lg:p-8 space-y-4 md:space-y-6 max-w-[1600px] mx-auto min-w-0 ${
         scope === "board" ? "animate-in fade-in slide-in-from-bottom-4 duration-500" : ""
       }`}
     >
@@ -471,8 +471,8 @@ export function CalendarView({
               className="flex min-h-0 w-full flex-1 flex-col"
             >
               {viewMode === 'week' ? (
-            <div className="flex flex-col h-full w-full min-w-0 overflow-hidden md:overflow-x-auto custom-scrollbar">
-              <div className="w-full min-w-0 flex flex-col h-full md:min-w-[700px]">
+            <div className="flex flex-col h-full w-full min-w-0 overflow-hidden">
+              <div className="w-full min-w-0 flex flex-col h-full">
                 {/* Week Day Header */}
               <div className="grid grid-cols-7 bg-muted/20 border-b border-border/50 divide-x divide-border/30 shrink-0">
                 {calendarDays.map((day) => {
@@ -702,8 +702,8 @@ export function CalendarView({
             </div>
           </div>
         ) : viewMode === 'month' ? (
-          <div className="flex h-full w-full min-w-0 flex-col overflow-hidden md:block md:overflow-x-auto custom-scrollbar">
-              <div className="flex h-full w-full min-w-0 flex-col md:block md:min-w-[700px]">
+          <div className="flex h-full w-full min-w-0 flex-col overflow-hidden">
+              <div className="flex h-full w-full min-w-0 flex-col">
                 <div data-testid="calendar-weekdays" className="grid shrink-0 grid-cols-7 bg-muted/30 border-b border-border/50">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                   <div key={day} className="py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wide md:tracking-widest text-center text-muted-foreground">

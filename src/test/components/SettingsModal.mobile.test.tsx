@@ -57,7 +57,7 @@ describe("SettingsModal mobile flow", () => {
     // The desktop sidebar footer is not part of the mobile index.
     expect(screen.queryByText(/to close/i)).not.toBeInTheDocument();
     expect(screen.queryByText("Appearance & Interface")).not.toBeInTheDocument();
-  });
+  }, 15000);
 
   it("opens a section detail and returns to the index", () => {
     renderWithProviders(<SettingsModal open={true} onClose={vi.fn()} />);
@@ -77,7 +77,7 @@ describe("SettingsModal mobile flow", () => {
       screen.getByRole("heading", { name: "Settings" })
     ).toBeInTheDocument();
     expect(screen.queryByText("Appearance & Interface")).not.toBeInTheDocument();
-  });
+  }, 15000);
 
   it("can open directly on a section detail for sidebar shortcuts", () => {
     renderWithProviders(

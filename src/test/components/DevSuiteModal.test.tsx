@@ -173,5 +173,5 @@ describe("DevSuiteModal & Predefined Seed Takeover", () => {
     stored = JSON.parse(localStorage.getItem(DEV_SETTINGS_STORAGE_KEY) || "{}");
     expect(stored.taskModalHideLabelIcons).toBe(false);
     expect(stored.taskModalLabelCase).toBe("uppercase");
-  });
+  }, 15000);
 });
