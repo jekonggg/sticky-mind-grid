@@ -148,7 +148,7 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                           {task.title}
                         </h4>
                         {task.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                          <p className="text-xs text-muted-foreground whitespace-normal break-words line-clamp-3 mt-1 leading-relaxed">
                             {task.description}
                           </p>
                         )}
@@ -289,10 +289,10 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                     onClick={() => onTaskClick(task)}
                   >
                     <TableCell className={`${isCompact ? "py-2 px-3" : "py-4 px-4"}`}>
-                      <div className={`flex items-center ${!devSettings.disableEmojiCustomization ? (isCompact ? "gap-2" : "gap-3") : ""}`}>
+                      <div className={`flex items-start ${!devSettings.disableEmojiCustomization ? (isCompact ? "gap-2" : "gap-3") : ""}`}>
                         {/* Uniform leading icon container: hidden completely when Clean UI is active */}
                         {!devSettings.disableEmojiCustomization && (
-                          <div className={`${isCompact ? "h-6 w-6 rounded-md" : "h-7 w-7 rounded-lg"} flex items-center justify-center shrink-0 border transition-all duration-200 select-none bg-muted/20 border-border/40 group-hover:border-primary/30 group-hover:bg-primary/5`}>
+                          <div className={`${isCompact ? "h-6 w-6 rounded-md mt-0.5" : "h-7 w-7 rounded-lg mt-0.5"} flex items-center justify-center shrink-0 border transition-all duration-200 select-none bg-muted/20 border-border/40 group-hover:border-primary/30 group-hover:bg-primary/5`}>
                             {task.emoji ? (
                               <span className={`${isCompact ? "text-sm" : "text-base"} leading-none`}>{task.emoji}</span>
                             ) : (
@@ -301,12 +301,15 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
                           </div>
                         )}
 
-                        <div className="flex flex-col gap-0.5 min-w-0">
+                        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                           <span className={`font-bold text-foreground ${isCompact ? "text-xs" : "text-sm"} group-hover:text-primary transition-colors truncate`}>
                             {task.title}
                           </span>
                           {task.description && (
-                            <span className="text-[11px] text-muted-foreground line-clamp-1 italic">
+                            <span
+                              className="text-[11px] text-muted-foreground whitespace-normal break-words line-clamp-3 italic leading-relaxed"
+                              title={task.description}
+                            >
                               {task.description}
                             </span>
                           )}

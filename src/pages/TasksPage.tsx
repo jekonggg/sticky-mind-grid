@@ -652,7 +652,7 @@ export default function TasksPage() {
                               {task.description && (
                                 <p
                                   data-testid="task-description-subheader"
-                                  className="text-xs text-muted-foreground line-clamp-1 truncate mt-0.5 font-normal xl:hidden"
+                                  className="text-xs text-muted-foreground whitespace-normal break-words line-clamp-3 mt-0.5 font-normal xl:hidden leading-relaxed"
                                   title={task.description}
                                 >
                                   {task.description}
@@ -666,7 +666,7 @@ export default function TasksPage() {
                         <TableCell className={`hidden xl:table-cell ${isCompact ? "py-2 px-3" : "py-3.5"}`}>
                           {task.description ? (
                             <p
-                              className="text-xs text-muted-foreground line-clamp-1 max-w-[260px] truncate"
+                              className="text-xs text-muted-foreground whitespace-normal break-words line-clamp-3 max-w-[280px] leading-relaxed"
                               title={task.description}
                             >
                               {task.description}
@@ -853,7 +853,7 @@ export default function TasksPage() {
                             {task.title}
                           </h4>
                           {task.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                            <p className="text-xs text-muted-foreground whitespace-normal break-words line-clamp-3 mt-1 leading-relaxed">
                               {task.description}
                             </p>
                           )}

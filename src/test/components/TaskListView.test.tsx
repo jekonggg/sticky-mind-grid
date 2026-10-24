@@ -116,4 +116,34 @@ describe("TaskListView Component", () => {
     expect(screen.queryByText("🧪")).not.toBeInTheDocument();
     expect(screen.queryByText("🚀")).not.toBeInTheDocument();
   });
+
+  it("renders wrapped description with line-clamp-3 exception in table view", () => {
+    const taskWithDesc: Task[] = [
+      {
+        id: "task-desc-1",
+        title: "Task with detailed multiline description",
+        description:
+          "This is a comprehensive task description that should wrap naturally across lines without ellipsis truncation.",
+        boardId: "board-1",
+        status: "todo",
+        priority: "medium",
+        progress: 0,
+        attachments: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    renderWithProviders(
+      <TaskListView tasks={taskWithDesc} onTaskClick={vi.fn()} />
+    );
+
+    const descElement = screen.getByText(
+      "This is a comprehensive task description that should wrap naturally across lines without ellipsis truncation."
+    );
+    expect(descElement).toBeInTheDocument();
+    expect(descElement.className).toContain("whitespace-normal");
+    expect(descElement.className).toContain("break-words");
+    expect(descElement.className).toContain("line-clamp-3");
+  });
 });

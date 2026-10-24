@@ -237,6 +237,9 @@ describe("TasksPage", () => {
       expect(subheader).toBeInTheDocument();
       expect(subheader).toHaveTextContent("Ensure comprehensive test suite coverage");
       expect(subheader.className).toContain("xl:hidden");
+      expect(subheader.className).toContain("whitespace-normal");
+      expect(subheader.className).toContain("break-words");
+      expect(subheader.className).toContain("line-clamp-3");
     });
   });
 });
