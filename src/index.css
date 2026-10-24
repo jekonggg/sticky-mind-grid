@@ -444,4 +444,12 @@ All colors MUST be HSL.
       -webkit-user-select: text;
     }
   }
+
+  /* Disable browser-native password reveal & clear icons (Edge/Windows Chromium) to prevent duplicate eye buttons */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
 }
