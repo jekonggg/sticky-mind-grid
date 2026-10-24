@@ -55,6 +55,7 @@ import {
 } from "@untitledui/icons";
 import { fileApi } from "@/services/fileApi";
 import { SettingsModal } from "@/components/settings/SettingsModal";
+import { VerifiedBadge } from "@/components/common/VerifiedBadge";
 import { BoardModal } from "@/components/boards/BoardModal";
 import { NoteModal } from "@/components/documents/NoteModal";
 import { PersonalScratchpadModal } from "@/components/documents/PersonalScratchpadModal";
@@ -302,7 +303,17 @@ export function AppSidebar({
                         {userInitial}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+                    {user?.emailVerified ? (
+                      <VerifiedBadge
+                        variant="avatar-badge"
+                        size="xs"
+                        className="-bottom-0.5 -right-0.5 bg-card ring-2 ring-card shadow-xs"
+                        tooltipText="Verified Sticky Mind Grid Account"
+                        dataTestId="sidebar-avatar-verified-badge"
+                      />
+                    ) : (
+                      <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+                    )}
                   </div>
 
                   {!isCollapsed && (
@@ -311,6 +322,14 @@ export function AppSidebar({
                         <span className="text-xs font-bold text-foreground truncate max-w-[110px]">
                           {userName}
                         </span>
+                        {user?.emailVerified && (
+                          <VerifiedBadge
+                            variant="icon"
+                            size="xs"
+                            tooltipText="Verified Account"
+                            dataTestId="sidebar-user-verified-badge"
+                          />
+                        )}
                         <Badge
                           variant="outline"
                           className="text-[9px] px-1 py-0 h-3.5 bg-primary/5 text-primary border-primary/20 font-semibold"

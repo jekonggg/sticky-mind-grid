@@ -77,7 +77,8 @@ class Task(db.Model):
         creator_data = self.creator.to_dict() if (self.creator and creator_active) else {
             'id': self.created_by,
             'fullName': 'Former member',
-            'avatarUrl': None
+            'avatarUrl': None,
+            'emailVerified': False
         }
         board_data = self.board
         return {

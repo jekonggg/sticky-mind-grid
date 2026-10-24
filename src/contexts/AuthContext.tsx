@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { User } from "@/types/user";
 import { TOKEN_STORAGE_KEY } from "@/config/api";
 import { isJwtExpired } from "@/utils/authUtils";
+import { authApi } from "@/services/authApi";
 import { toast } from "sonner";
 
 export interface AuthContextType {

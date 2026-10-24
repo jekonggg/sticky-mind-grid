@@ -327,4 +327,25 @@ describe("AppSidebar Component", () => {
       screen.queryByRole("button", { name: /close/i })
     ).not.toBeInTheDocument();
   });
+  it("renders verified badge on user avatar and next to username when emailVerified is true", () => {
+    const verifiedUser = {
+      ...mockUser,
+      emailVerified: true,
+    };
+    renderWithProviders(<AppSidebar />, { user: verifiedUser });
+
+    expect(screen.getByTestId("sidebar-avatar-verified-badge")).toBeInTheDocument();
+    expect(screen.getByTestId("sidebar-user-verified-badge")).toBeInTheDocument();
+  });
+
+  it("does not render verified badge on avatar or next to username when emailVerified is false", () => {
+    const unverifiedUser = {
+      ...mockUser,
+      emailVerified: false,
+    };
+    renderWithProviders(<AppSidebar />, { user: unverifiedUser });
+
+    expect(screen.queryByTestId("sidebar-avatar-verified-badge")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("sidebar-user-verified-badge")).not.toBeInTheDocument();
+  });
 });

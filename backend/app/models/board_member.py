@@ -40,6 +40,7 @@ class BoardMember(db.Model):
                      'id': self.user.id,
                      'fullName': self.user.full_name,
                      'avatarUrl': self.user.avatar_url,
+                     'emailVerified': bool(getattr(self.user, 'email_verified', False)),
                  }
              else:
                  user_data = self.user.to_dict()

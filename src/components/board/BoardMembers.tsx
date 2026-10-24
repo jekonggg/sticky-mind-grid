@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { boardApi } from "@/services/boardApi";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { VerifiedBadge } from "@/components/common/VerifiedBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -258,18 +259,35 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
               className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-card/60 border border-border/60 hover:border-border transition-all shadow-sm gap-2.5 sm:gap-3"
             >
               <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
-                <Avatar className="h-9 w-9 border border-border/80 shrink-0">
-                  <AvatarImage
-                    src={isSelf ? (currentUser?.avatarUrl ?? member.user?.avatarUrl) : member.user?.avatarUrl}
-                    alt={member.user?.fullName || member.user?.email}
-                  />
-                  <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
-                    {member.user?.fullName?.charAt(0).toUpperCase() || member.user?.email?.charAt(0).toUpperCase() || "M"}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative shrink-0">
+                  <Avatar className="h-9 w-9 border border-border/80 shrink-0">
+                    <AvatarImage
+                      src={isSelf ? (currentUser?.avatarUrl ?? member.user?.avatarUrl) : member.user?.avatarUrl}
+                      alt={member.user?.fullName || member.user?.email}
+                    />
+                    <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
+                      {member.user?.fullName?.charAt(0).toUpperCase() || member.user?.email?.charAt(0).toUpperCase() || "M"}
+                    </AvatarFallback>
+                  </Avatar>
+                  {(isSelf ? currentUser?.emailVerified : member.user?.emailVerified) && (
+                    <VerifiedBadge
+                      variant="avatar-badge"
+                      size="xs"
+                      className="-bottom-0.5 -right-0.5 bg-card ring-2 ring-card shadow-xs"
+                      tooltipText="Verified Member"
+                    />
+                  )}
+                </div>
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs md:text-sm font-bold text-foreground truncate flex items-center gap-1.5">
                     {member.user?.fullName || member.user?.email || "Member"}
+                    {(isSelf ? currentUser?.emailVerified : member.user?.emailVerified) && (
+                      <VerifiedBadge
+                        variant="icon"
+                        size="xs"
+                        tooltipText="Verified Account"
+                      />
+                    )}
                     {isSelf && (
                       <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.2 rounded font-black shrink-0">
                         You

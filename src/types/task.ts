@@ -49,12 +49,14 @@ export interface Task {
     email: string;
     fullName?: string;
     avatarUrl?: string;
+    emailVerified?: boolean;
   } | null;
   assignee?: {
     id: string;
     email: string;
     fullName?: string;
     avatarUrl?: string;
+    emailVerified?: boolean;
   } | null;
   dueDate?: Date | null;
   progress: number;

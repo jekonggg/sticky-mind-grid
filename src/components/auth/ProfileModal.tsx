@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { VerifiedBadge } from "@/components/common/VerifiedBadge";
 import { toast } from "sonner";
 import {
   User01 as User,
@@ -178,11 +179,30 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 </div>
               )}
+              {user?.emailVerified && (
+                <VerifiedBadge
+                  variant="avatar-badge"
+                  size="sm"
+                  className="-bottom-0.5 -right-0.5 bg-card ring-2 ring-card shadow-xs"
+                  tooltipText="Verified Account"
+                  dataTestId="profile-modal-avatar-verified-badge"
+                />
+              )}
             </div>
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="font-bold text-sm text-foreground truncate">
-                {fullName || "Anonymous User"}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-sm text-foreground truncate">
+                  {fullName || "Anonymous User"}
+                </span>
+                {user?.emailVerified && (
+                  <VerifiedBadge
+                    variant="chip"
+                    size="xs"
+                    tooltipText="Verified Account"
+                    dataTestId="profile-modal-verified-badge"
+                  />
+                )}
+              </div>
               <span className="text-xs text-muted-foreground truncate flex items-center gap-1 mb-2">
                 <Mail className="h-3 w-3 inline" />
                 {user?.email}

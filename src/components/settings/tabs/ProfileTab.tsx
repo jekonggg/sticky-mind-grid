@@ -16,7 +16,11 @@ import {
   Camera01 as Camera,
   Trash01 as Trash2,
   CheckCircle as CheckCircle2,
+  CheckVerified01,
+  AlertTriangle,
 } from "@untitledui/icons";
+import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { LinkEmailModal } from "@/components/auth/LinkEmailModal";
 
 export function ProfileTab({ onClose }: { onClose?: () => void }) {
   const { user, updateUser } = useAuth();
@@ -27,6 +31,7 @@ export function ProfileTab({ onClose }: { onClose?: () => void }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -189,6 +194,15 @@ export function ProfileTab({ onClose }: { onClose?: () => void }) {
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
             </div>
           )}
+          {user?.emailVerified && (
+            <VerifiedBadge
+              variant="avatar-badge"
+              size="md"
+              className="-bottom-0.5 -right-0.5 bg-card ring-2 ring-card shadow-sm"
+              tooltipText="Verified Sticky Mind Grid Account"
+              dataTestId="profile-avatar-verified-badge"
+            />
+          )}
         </div>
 
         <div className="space-y-1.5 flex-1 min-w-0">
@@ -196,6 +210,23 @@ export function ProfileTab({ onClose }: { onClose?: () => void }) {
             <span className="font-bold text-sm text-foreground truncate">
               {fullName || "User"}
             </span>
+            {user?.emailVerified ? (
+              <VerifiedBadge
+                variant="chip"
+                size="sm"
+                tooltipText="Verified email address"
+                dataTestId="profile-verified-badge"
+              />
+            ) : (
+              <span
+                data-testid="profile-unverified-badge"
+                className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1 border border-amber-500/20"
+                title="Account email is unverified"
+              >
+                <AlertTriangle className="h-3 w-3 inline text-amber-500" />
+                Unverified
+              </span>
+            )}
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 border border-emerald-500/20">
               <CheckCircle2 className="h-3 w-3 inline" />
               Active
@@ -263,7 +294,37 @@ export function ProfileTab({ onClose }: { onClose?: () => void }) {
             <Label htmlFor="email" className="text-xs font-bold text-foreground">
               Email Address
             </Label>
-            <span className="text-[11px] text-muted-foreground">Primary Login</span>
+            <div className="flex items-center gap-2">
+              {user?.emailVerified ? (
+                <span
+                  data-testid="email-verified-status"
+                  className="text-[11px] text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1"
+                >
+                  <CheckVerified01 className="h-3.5 w-3.5 text-blue-500" />
+                  Verified
+                </span>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <span
+                    data-testid="email-unverified-status"
+                    className="text-[11px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1"
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                    Unverified
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsLinkModalOpen(true)}
+                    className="h-5 text-[10px] px-1.5 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/10"
+                  >
+                    Verify Email
+                  </Button>
+                </div>
+              )}
+              <span className="text-[11px] text-muted-foreground">• Primary Login</span>
+            </div>
           </div>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -274,6 +335,11 @@ export function ProfileTab({ onClose }: { onClose?: () => void }) {
               className="h-9 pl-9 text-xs bg-muted/50 cursor-not-allowed opacity-75"
             />
           </div>
+          {!user?.emailVerified && (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1 pt-0.5">
+              <span>Your account email is unverified. Verify or link a contact address to secure your account.</span>
+            </p>
+          )}
         </div>
       </div>
 
@@ -342,6 +408,7 @@ export function ProfileTab({ onClose }: { onClose?: () => void }) {
           Save Profile Changes
         </Button>
       </div>
+          <LinkEmailModal open={isLinkModalOpen} onClose={() => setIsLinkModalOpen(false)} />
     </form>
   );
 }
