@@ -46,6 +46,15 @@ export default function Login() {
     legacyExpired?: boolean;
   } | null>(null);
 
+  const [loginError, setLoginError] = useState<{
+    message: string;
+    field?: "email" | "password" | "oauth" | "general";
+    code?: string;
+    provider?: string;
+  } | null>(null);
+
+  const [isCapsLockOn, setIsCapsLockOn] = useState(false);
+
   const [resendCooldown, setResendCooldown] = useState(0);
   const [isResending, setIsResending] = useState(false);
 
@@ -69,11 +78,31 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setLoginError(null);
     setUnverifiedState(null);
+
+    // Immediate client-side validation
+    if (!email.trim()) {
+      setLoginError({
+        message: "Email address is required.",
+        field: "email",
+        code: "MISSING_EMAIL",
+      });
+      return;
+    }
+
+    if (!password) {
+      setLoginError({
+        message: "Password is required.",
+        field: "password",
+        code: "MISSING_PASSWORD",
+      });
+      return;
+    }
+
+    setLoading(true);
     try {
-      const response = await authApi.login(email, password);
-      // Clear pre-fill email upon successful sign in (Requirement 7)
+      const response = await authApi.login(email.trim().toLowerCase(), password);
       sessionStorage.removeItem("login_prefill_email");
       login(response.user, response.token!);
       toast.success(`Welcome back, ${response.user.fullName || response.user.email}!`);
@@ -88,11 +117,28 @@ export default function Login() {
           canSignUpAgain: Boolean(error.data?.canSignUpAgain),
           legacyExpired: Boolean(error.data?.legacyExpired),
         });
+        setLoginError(null);
       } else {
-        toast.error(error.message || "Failed to login");
+        const errorField = error.field || error.data?.field;
+        const errorCode = error.code || error.data?.code;
+        const errorProvider = error.provider || error.data?.provider;
+        const msg = error.message || error.data?.message || "Failed to sign in. Please check your credentials.";
+
+        setLoginError({
+          message: msg,
+          field: errorField || "general",
+          code: errorCode,
+          provider: errorProvider,
+        });
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePasswordKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.getModifierState) {
+      setIsCapsLockOn(e.getModifierState("CapsLock"));
     }
   };
 
@@ -166,11 +212,12 @@ export default function Login() {
               Enter your email and password or use social account to sign in
             </CardDescription>
           </CardHeader>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <CardContent className="space-y-4">
+              {/* Unverified / Blocked State Banner */}
               {unverifiedState && (
-                <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive space-y-3 text-sm">
-                  <div className="flex items-start gap-2">
+                <div data-testid="unverified-state-banner" className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive space-y-3 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-start gap-2.5">
                     <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
                     <div>
                       <p className="font-semibold text-foreground">Verification Required</p>
@@ -221,31 +268,101 @@ export default function Login() {
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+              {/* Guided In-Modal Error Alert */}
+              {loginError && (
+                <div
+                  data-testid="login-error-alert"
+                  className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200 ${
+                    loginError.field === "oauth"
+                      ? "bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200"
+                      : "bg-destructive/10 border-destructive/25 text-destructive"
+                  }`}
+                >
+                  <AlertCircle
+                    className={`h-4 w-4 shrink-0 mt-0.5 ${
+                      loginError.field === "oauth"
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-destructive"
+                    }`}
+                  />
+                  <div className="space-y-1 flex-1">
+                    <p className="font-semibold">{loginError.message}</p>
+                    {loginError.field === "email" && loginError.code === "USER_NOT_FOUND" && (
+                      <p className="text-muted-foreground text-[11px]">
+                        Don't have an account yet?{" "}
+                        <Link
+                          to={redirectParam ? `/register?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirectParam)}` : `/register?email=${encodeURIComponent(email)}`}
+                          className="text-primary underline font-bold"
+                        >
+                          Create one here
+                        </Link>
+                      </p>
+                    )}
+                    {loginError.field === "oauth" && loginError.provider && (
+                      <p className="text-muted-foreground text-[11px]">
+                        Please click the <strong className="uppercase">{loginError.provider}</strong> button below to sign in with your social account.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className={loginError?.field === "email" ? "text-destructive" : ""}>
+                  Email
+                </Label>
                 <Input 
                   id="email" 
                   type="email" 
                   placeholder="name@example.com" 
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (loginError?.field === "email" || loginError?.field === "oauth") {
+                      setLoginError(null);
+                    }
+                  }}
                   required
-                  className="bg-muted/50 border-border/50 focus:bg-background transition-colors"
+                  className={`bg-muted/50 border-border/50 focus:bg-background transition-colors ${
+                    loginError?.field === "email"
+                      ? "border-destructive focus-visible:ring-destructive ring-1 ring-destructive/40"
+                      : ""
+                  }`}
                 />
+                {loginError?.field === "email" && (
+                  <p data-testid="email-helper-error" className="text-[11px] text-destructive font-medium flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3 shrink-0" />
+                    <span>{loginError.message}</span>
+                  </p>
+                )}
               </div>
-              <div className="space-y-2">
+
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className={loginError?.field === "password" ? "text-destructive" : ""}>
+                    Password
+                  </Label>
                 </div>
                 <div className="relative">
                   <Input 
                     id="password" 
                     type={showPassword ? "text" : "password"} 
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (loginError?.field === "password") {
+                        setLoginError(null);
+                      }
+                    }}
+                    onKeyDown={handlePasswordKey}
+                    onKeyUp={handlePasswordKey}
                     required
                     placeholder="••••••••"
-                    className="bg-muted/50 border-border/50 focus:bg-background transition-colors pr-10"
+                    className={`bg-muted/50 border-border/50 focus:bg-background transition-colors pr-10 ${
+                      loginError?.field === "password"
+                        ? "border-destructive focus-visible:ring-destructive ring-1 ring-destructive/40"
+                        : ""
+                    }`}
                   />
                   <button
                     type="button"
@@ -261,6 +378,17 @@ export default function Login() {
                     )}
                   </button>
                 </div>
+                {loginError?.field === "password" && (
+                  <p data-testid="password-helper-error" className="text-[11px] text-destructive font-medium flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3 shrink-0" />
+                    <span>{loginError.message}</span>
+                  </p>
+                )}
+                {isCapsLockOn && (
+                  <p data-testid="caps-lock-warning" className="text-[11px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1 mt-1">
+                    <span>⇪ Caps Lock is ON</span>
+                  </p>
+                )}
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
