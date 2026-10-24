@@ -121,6 +121,7 @@ elif parsed_db_url and parsed_db_url.scheme.startswith('postgres'):
 
 
 class Config:
+    APP_ENV = (os.environ.get('APP_ENV') or os.environ.get('FLASK_ENV') or 'local').strip().lower()
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key'
     SQLALCHEMY_DATABASE_URI = raw_db_url or \
         'mysql+pymysql://root@localhost/sticky_mind_grid'
@@ -174,6 +175,7 @@ class Config:
     SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
     SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
     EMAIL_FROM = os.environ.get('EMAIL_FROM', 'noreply@stickymindgrid.com')
+    EMAIL_SUBJECT_PREFIX = os.environ.get('EMAIL_SUBJECT_PREFIX', '').strip()
     FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:8080').rstrip('/')
 
     # EmailJS Configuration (HTTPS Port 443 - Cloud & Render Free Tier Compatible)
@@ -198,6 +200,7 @@ class Config:
     SUPABASE_STORAGE_ATTACHMENTS_BUCKET = os.environ.get('SUPABASE_STORAGE_ATTACHMENTS_BUCKET', 'attachments')
 
     # OAuth Provider Configuration (Google, GitHub, Microsoft)
+    OAUTH_ENABLED = os.environ.get('OAUTH_ENABLED', 'true').strip().lower() in ('true', '1', 'yes')
     GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '').strip()
     GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '').strip()
 

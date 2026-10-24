@@ -2,9 +2,9 @@ name: Automated Testing Suite
 
 on:
   push:
-    branches: [ main, MultiUserCollab ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main, MultiUserCollab ]
+    branches: [ main, develop ]
   workflow_dispatch:
 
 jobs:

@@ -281,11 +281,12 @@ CORS_ORIGINS includes multiple localhost variants. Acceptable for development bu
 **Severity:** Low (performance)
 Large base64 strings stored in LONGTEXT columns can cause database bloat and slow queries.
 
-### Cloud Infrastructure & Decoupled Maintenance (Phases 1-3)
+### Cloud Infrastructure & Decoupled Maintenance (Phases 1-4)
 - **Supabase Cloud Storage (Phase 1):** Avatars (public bucket with instant CDN resolution) and Task/Message Attachments (private bucket with 15-minute signed URL tokens). Built-in fallback to local disk storage for local offline development.
 - **Supabase Managed PostgreSQL Migration (Phase 2):** Migrated from MySQL to high-availability Supabase PostgreSQL with pooler port `6543` (Supavisor transaction mode) and direct port `5432` for migrations. Fully cross-compatible JSON/JSONB schemas across 14 tables. PostgREST RLS locked down (HTTP 401 for anon queries).
 - **Decoupled Background Purge & Webhook (Phase 3):** Background maintenance decoupled from in-process Flask/APScheduler (`SCHEDULER_ENABLED=false` on web instances). Dedicated maintenance endpoint `POST /api/internal/jobs/purge` secured via `X-Internal-Secret` and `hmac.compare_digest`. Cleans up boards and tasks soft-deleted > 30 days ago and deletes associated attachment files from storage.
-- **External Keep-Alive & Daily Cron Monitor:** Setup via free external monitoring (cron-job.org / UptimeRobot) pinging `GET /api/health` every 10 minutes to eliminate 50s cold starts on Render free tier, and triggering `POST /api/internal/jobs/purge` daily at midnight UTC.
+- **External Keep-Alive & Daily Cron Monitor:** Setup via free external monitoring (cron-job.org / UptimeRobot) pinging `GET /api/health` every 10 minutes on **Production** (`sticky-mind-grid-api`) to keep it open 24/7 (~744h/month on Render Free tier), and triggering `POST /api/internal/jobs/purge` daily at midnight UTC.
+- **Isolated Deployed Dev (Staging) Environment (Phase 4):** Dedicated staging topology auto-deployed from the `develop` branch across a separate Vercel project (`sticky-mind-grid-dev`), a separate Render service (`sticky-mind-grid-api-dev`, idle-sleeping when not under active test), and a separate Supabase project (`sticky-mind-grid-dev`). Includes a non-dismissable frontend `EnvironmentBanner` (`DEV ENVIRONMENT` + `[DEV]` title prefix), `APP_ENV` reporting on `GET /api/health`, `[DEV]` EmailJS subject prefixing (`EMAIL_SUBJECT_PREFIX`), `OAUTH_ENABLED=false` / `VITE_OAUTH_ENABLED=false` on Dev, a project-scoped Vercel CORS regex (`r"https:\/\/sticky-mind-grid(-[a-z0-9-]+)?\.vercel\.app"`), a destructive-op guard in `backend/seed.py`, and `--env dev|prod` targeting in `scripts/fetch_render_logs.py`.
 
 ---
 

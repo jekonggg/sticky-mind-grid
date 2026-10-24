@@ -79,6 +79,8 @@ def attach_pending_invitations(user):
 from app.services.oauth_service import OAuthService, SUPPORTED_OAUTH_PROVIDERS
 
 def handle_oauth_flow(provider: str, data: dict):
+    if not OAuthService.is_oauth_enabled():
+        return jsonify({'message': 'OAuth authentication is disabled in this environment.'}), 403
     try:
         provider = provider.lower().strip()
         if provider not in SUPPORTED_OAUTH_PROVIDERS:

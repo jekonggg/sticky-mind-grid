@@ -13,12 +13,66 @@ from app.models.user import User
 from app.models.activity import Activity
 from app.models.board_member import BoardMember
 
+from urllib.parse import urlparse
+
 def generate_id():
     return str(uuid.uuid4())
 
+def validate_seed_safety(app_env: str = None, db_uri: str = None, allow_destructive: str = None):
+    raw_env = (
+        app_env
+        if (app_env is not None and str(app_env).strip() != '')
+        else (os.environ.get('APP_ENV') or os.environ.get('FLASK_ENV') or 'local')
+    )
+    env_name = str(raw_env).strip().lower()
+
+    uri = (
+        db_uri
+        if db_uri is not None
+        else (os.environ.get('DATABASE_URL') or '')
+    ).strip()
+
+    raw_allow = (
+        allow_destructive
+        if allow_destructive is not None
+        else os.environ.get('ALLOW_DESTRUCTIVE_SEED', '')
+    )
+    allow_flag = (
+        raw_allow
+        if isinstance(raw_allow, bool)
+        else str(raw_allow).strip().lower() in ('true', '1', 'yes')
+    )
+
+    if env_name in ('production', 'prod'):
+        raise RuntimeError(
+            "REFUSING TO SEED: seed.py cannot be executed when APP_ENV is 'production'."
+        )
+
+    parsed = urlparse(uri) if uri else None
+    hostname = parsed.hostname if parsed else None
+    is_local_db = (
+        not uri
+        or uri.startswith('sqlite')
+        or hostname in (None, '', 'localhost', '127.0.0.1', '::1')
+    )
+
+    if not is_local_db and not allow_flag:
+        raise RuntimeError(
+            f"REFUSING TO SEED non-local database host '{hostname}' (APP_ENV='{env_name}'). "
+            "Set ALLOW_DESTRUCTIVE_SEED=true to confirm destructive drop_all()/seed."
+        )
+
+    return env_name, (hostname or 'localhost')
+
 def seed_database():
+    env_name, db_host = validate_seed_safety(db_uri=os.environ.get('DATABASE_URL'))
     app = create_app()
     with app.app_context():
+        env_name, db_host = validate_seed_safety(
+            app.config.get('APP_ENV'),
+            app.config.get('SQLALCHEMY_DATABASE_URI')
+        )
+        print(f"[seed.py] Target environment: {env_name} | Target DB host: {db_host}")
         print("Clearing database...")
         db.drop_all()
         db.create_all()

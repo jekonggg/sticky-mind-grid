@@ -1,3 +1,4 @@
+import os
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -31,6 +32,18 @@ bcrypt = Bcrypt()
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    if config_class is not Config and 'APP_ENV' in getattr(config_class, '__dict__', {}):
+        app_env = (app.config.get('APP_ENV') or 'local').strip().lower()
+    else:
+        app_env = (os.environ.get('APP_ENV') or os.environ.get('FLASK_ENV') or app.config.get('APP_ENV') or 'local').strip().lower()
+    app.config['APP_ENV'] = app_env
+
+    if app_env != 'local' and not app.config.get('TESTING', False):
+        if app.config.get('SECRET_KEY') in (None, '', 'dev-secret-key', 'change-this-in-production-to-a-random-secret'):
+            app.logger.warning(f"SECURITY WARNING: Default or empty SECRET_KEY is in use with APP_ENV='{app_env}'.")
+        if app.config.get('JWT_SECRET_KEY') in (None, '', 'super-secret-jwt-key-for-development-32-chars-long'):
+            app.logger.warning(f"SECURITY WARNING: Default or empty JWT_SECRET_KEY is in use with APP_ENV='{app_env}'.")
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -67,7 +80,7 @@ def create_app(config_class=Config):
         "http://127.0.0.1:5173",
         "http://localhost:3000",
         "https://sticky-mind-grid.vercel.app",
-        r"https:\/\/.*\.vercel\.app",
+        r"https:\/\/sticky-mind-grid(-[a-z0-9-]+)?\.vercel\.app",
     ]
     # Merge unique origins preserving string and regex types
     all_origins = list(dict.fromkeys(configured_origins + base_origins))

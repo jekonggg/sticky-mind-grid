@@ -1,4 +1,4 @@
-**Status:** Verified | **Last scanned:** 2026-10-13 | **Audience:** DevOps, Admins
+**Status:** Verified | **Last scanned:** 2026-10-24 | **Audience:** DevOps, Admins
 
 # 14 — Operations, Deployment & Incident Runbooks (`14-operations.md`)
 
@@ -13,33 +13,39 @@ This document covers deployment topology, environment variables, database initia
 | ```mermaid
 flowchart LR
     Browser["User Browser"]
-    subgraph Vercel["Vercel CDN (Frontend)"]
-        SPA["Vite React SPA\n(vercel.json -> dist/)"]
+    subgraph Vercel["Vercel CDN (Prod & Dev Projects)"]
+        SPA_Prod["Prod SPA (main)\nsticky-mind-grid.vercel.app"]
+        SPA_Dev["Dev SPA (develop)\nsticky-mind-grid-dev.vercel.app"]
     end
-    subgraph Render["Render Web Service (Backend)"]
-        Gunicorn["Gunicorn / Flask 3.0\n(backend/run.py -> create_app)"]
-        SSE["In-Memory EventBroadcaster\n(event_broadcaster.py)"]
-        Disk["Local File Storage\n(backend/uploads/)"]
+    subgraph Render["Render Web Services (Free Tier)"]
+        Gunicorn_Prod["Prod API (main, 24/7 keep-alive)\nsticky-mind-grid-api"]
+        Gunicorn_Dev["Dev API (develop, idle-sleep)\nsticky-mind-grid-api-dev"]
     end
-    subgraph DB["Supabase Postgres (pooler) / Local MySQL"]
-        Postgres[("PostgreSQL\n(psycopg2, sslmode=verify-full)")]
+    subgraph DB["Supabase Postgres (pooler :6543, verify-full)"]
+        PG_Prod[("Prod Supabase\nPostgres + Storage")]
+        PG_Dev[("Dev Supabase (sticky-mind-grid-dev)\nPostgres + Storage")]
     end
 
-    Browser -- "HTTPS /*" --> SPA
-    Browser -- "REST & SSE /api/*" --> Gunicorn
-    Gunicorn --> SSE
-    Gunicorn --> Disk
-    Gunicorn -- "pool_pre_ping=True\npool_recycle=300s" --> Postgres
-``` | 1. **Frontend (Vercel)**: Built via `npm run build` (`vite build`, `package.json:L7`) into `dist/` (`vercel.json:L2-L4`). All non-asset paths rewrite to `/index.html` (`vercel.json:L5-L10`), while `/assets/*` are cached for 1 year (`max-age=31536000, immutable`, `vercel.json:L11-L21`).<br>2. **Backend (Render)**: Runs Flask (`backend/run.py:L4`, `gunicorn>=21.2.0` in `backend/requirements.txt:L10`) on the native Python service `sticky-mind-grid-api` (rootDir `backend/`, runtime `python`, health check `/api/health`, auto-deploy from `main`). A `Procfile` exists at the repository root; `render.yaml` and `Dockerfile` do not. Render build/start settings are configured externally in the Render dashboard (`scripts/fetch_render_logs.py:L1-L137`).<br>3. **Database (PostgreSQL / MySQL / SQLite)**: Production uses Supabase Postgres through the shared pooler on port 6543 with `sslmode=verify-full` and the bundled Supabase root CA (`backend/config.py`, `backend/certs/supabase-prod-ca-2021.crt`); local dev defaults to MySQL `sticky_mind_grid`; Playwright E2E uses MySQL `sticky_mind_grid_test` (`e2e/run.mjs:L6`); Pytest uses `sqlite:///:memory:` (`backend/tests/conftest.py:L19`). |
+    Browser -- "HTTPS" --> SPA_Prod & SPA_Dev
+    SPA_Prod -- "/api/*" --> Gunicorn_Prod --> PG_Prod
+    SPA_Dev -- "/api/*" --> Gunicorn_Dev --> PG_Dev
+``` | 1. **Frontend (Vercel — Separate Prod & Dev Projects)**: Built via `npm run build` (`vite build`, `package.json:L7`) into `dist/` (`vercel.json:L2-L4`). **Production** (`sticky-mind-grid.vercel.app`) deploys from `main`; **Deployed Dev** (`sticky-mind-grid-dev.vercel.app`) is a separate Vercel project whose production branch is `develop` (`VITE_APP_ENV=dev`, `VITE_OAUTH_ENABLED=false`).<br>2. **Backend (Render — Native Python Free Services)**: **Prod** runs on `sticky-mind-grid-api` (branch `main`, kept warm 24/7 via external `/api/health` pinger, consuming ~744 of 750 free workspace hours/month). **Dev** runs on `sticky-mind-grid-api-dev` (branch `develop`, `APP_ENV=dev`, `OAUTH_ENABLED=false`, `EMAIL_SUBJECT_PREFIX=[DEV]`, no keep-alive pinger so it sleeps after 15 min idle to stay within the 750h free budget, or hosted in a separate Render workspace).<br>3. **Database (Supabase PostgreSQL / Local MySQL / SQLite)**: Production and Deployed Dev use **separate Supabase projects** (`sslmode=verify-full` with `backend/certs/supabase-prod-ca-2021.crt` on port 6543) and separate `avatars` / `attachments` storage buckets. Local dev defaults to MySQL `sticky_mind_grid`; Playwright E2E uses `sticky_mind_grid_test`; Pytest uses `sqlite:///:memory:`. |
 
 ### Environment Summary Matrix
 
-| Environment | Frontend Origin | Backend URL | Database Target | Source Citations |
-|---|---|---|---|---|
-| **Local Dev** | `http://localhost:8080` (Vite proxy `/api` -> `127.0.0.1:5000`) | `http://127.0.0.1:5000` | `mysql+pymysql://root@localhost/sticky_mind_grid` | `vite.config.ts:L8-L18`, `backend/config.py:L33` |
-| **Playwright E2E** | `http://localhost:5173` (or `127.0.0.1:5173` in CI) | `http://127.0.0.1:5000` | `mysql+pymysql://root@localhost/sticky_mind_grid_test` | `playwright.config.ts:L11, L26`, `e2e/run.mjs:L6-L10`, `.github/workflows/test.yml:L60-L134` |
-| **Backend Pytest** | N/A (Flask test client) | In-process | `sqlite:///:memory:` | `backend/tests/conftest.py:L17-L36` |
-| **Production** | `https://sticky-mind-grid.vercel.app` (`*.vercel.app`) | Render Web Service (`/api`) | Supabase Postgres (`*.pooler.supabase.com:6543` / `DATABASE_URL`) | `backend/config.py`, `backend/app/__init__.py:L29-L30` |
+| Environment | Branch | Frontend Origin | Backend URL | Database Target | Source Citations |
+|---|---|---|---|---|---|
+| **Local Dev** | feature / `develop` | `http://localhost:8080` (Vite proxy `/api` -> `127.0.0.1:5000`) | `http://127.0.0.1:5000` (`APP_ENV=local`) | `mysql+pymysql://root@localhost/sticky_mind_grid` | `vite.config.ts:L26-L38`, `backend/config.py:L124-L128` |
+| **Playwright E2E** | PR / local | `http://localhost:5173` (or `127.0.0.1:5173` in CI) | `http://127.0.0.1:5000` | `mysql+pymysql://root@localhost/sticky_mind_grid_test` | `playwright.config.ts:L11, L26`, `e2e/run.mjs:L6-L10`, `.github/workflows/test.yml:L110-L221` |
+| **Backend Pytest** | PR / local | N/A (Flask test client) | In-process | `sqlite:///:memory:` | `backend/tests/conftest.py:L17-L36` |
+| **Deployed Dev (Staging)** | `develop` | `https://sticky-mind-grid-dev.vercel.app` (`VITE_APP_ENV=dev`) | `https://sticky-mind-grid-api-dev.onrender.com/api` (`APP_ENV=dev`) | Separate Supabase project `sticky-mind-grid-dev` (`:6543`, `verify-full`) | `backend/config.py`, `src/components/common/EnvironmentBanner.tsx` |
+| **Production** | `main` | `https://sticky-mind-grid.vercel.app` (`VITE_APP_ENV=production`) | `https://sticky-mind-grid-api.onrender.com/api` (`APP_ENV=production`) | Prod Supabase project (`:6543`, `verify-full`) | `backend/config.py`, `backend/app/__init__.py:L62-L88` |
+
+### Promotion & Branch Workflow
+1. **Feature work:** Branch from `develop` → open PR to `develop` → CI runs (`test.yml` triggers on `main` and `develop`) → merge auto-deploys to **Deployed Dev** (Vercel `sticky-mind-grid-dev` + Render `sticky-mind-grid-api-dev`).
+2. **Dev verification:** Verify on `https://sticky-mind-grid-dev.vercel.app` (amber `DEV ENVIRONMENT` ribbon visible, `[DEV]` tab title prefix, email/password auth with `[DEV]` EmailJS subject prefix, OAuth disabled).
+3. **Production promotion:** Open PR `develop` → `main` → CI passes → merge auto-deploys to **Production**.
+4. **Hotfixes:** Branch from `main`, merge to `main`, then immediately back-merge `main` into `develop`.
 
 ---
 
@@ -49,22 +55,27 @@ Never commit real secrets to `.env` or `backend/.env` (both are gitignored in `.
 
 | Variable | Layer | Default Value in Code | Citation | Description |
 |---|---|---|---|---|
-| `VITE_API_BASE_URL` | Frontend | `` `http://${window.location.hostname \|\| "127.0.0.1"}:5000/api` `` | `src/config/api.ts:L3-L6`, `.env.example:L3` | Base URL for all REST and SSE requests. |
-| `DATABASE_URL` | Backend | `'mysql+pymysql://root@localhost/sticky_mind_grid'` | `backend/config.py` | SQLAlchemy URI. Normalizes `mysql://`/`postgres://` schemes. PostgreSQL TLS defaults to `require`; Supabase hosts auto-upgrade to `verify-full` with the bundled CA. MySQL Aiven URLs are converted to a verified TLS `connect_args` block. |
-| `DB_SSL_MODE` | Backend | `require` (Postgres); `verify-full` for Supabase | `backend/config.py` | libpq SSL mode (`disable`, `allow`, `prefer`, `require`, `verify-ca`, `verify-full`). Production should use `verify-full`. |
+| `VITE_API_BASE_URL` | Frontend | `` `http://${window.location.hostname \|\| "127.0.0.1"}:5000/api` `` | `src/config/api.ts:L3-L6`, `.env.example` | Base URL for all REST and SSE requests. |
+| `VITE_APP_ENV` | Frontend | Unset (`""`) | `src/components/common/EnvironmentBanner.tsx`, `.env.example` | Set to `dev` on Dev Vercel project (shows non-dismissable amber `DEV ENVIRONMENT` banner and `[DEV]` title prefix) and `production` on Prod. |
+| `VITE_OAUTH_ENABLED` | Frontend | Unset (`true`) | `src/components/auth/OAuthButtons.tsx`, `.env.example` | Set to `false` on Dev Vercel project to hide OAuth buttons (Decision D5). |
+| `APP_ENV` | Backend | `'local'` (falls back to `FLASK_ENV`) | `backend/config.py:L125`, `system_routes.py:L39` | Environment identifier (`local`, `dev`, `production`). Reported by `GET /api/health` and enforced by `seed.py` safety guard. |
+| `DATABASE_URL` | Backend | `'mysql+pymysql://root@localhost/sticky_mind_grid'` | `backend/config.py` | SQLAlchemy URI. Normalizes `mysql://`/`postgres://` schemes. PostgreSQL TLS defaults to `require`; Supabase hosts auto-upgrade to `verify-full` with the bundled CA. |
+| `DB_SSL_MODE` | Backend | `require` (Postgres); `verify-full` for Supabase | `backend/config.py` | libpq SSL mode (`disable`, `allow`, `prefer`, `require`, `verify-ca`, `verify-full`). Production and Dev use `verify-full`. |
 | `DB_SSL_CA` | Backend | `backend/certs/supabase-prod-ca-2021.crt` for Postgres verify modes | `backend/config.py` | CA bundle path. For MySQL it is passed as the PyMySQL `ca` file. |
-| `SECRET_KEY` | Backend | `'dev-secret-key'` | `backend/config.py:L32` | Flask secret key (`<PLACEHOLDER_SECRET_KEY>` in prod). |
-| `JWT_SECRET_KEY` | Backend | `'super-secret-jwt-key-for-development-32-chars-long'` | `backend/config.py:L39` | Signing key for 24h JWT Bearer tokens (`JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)`, `L41`). |
-| `CORS_ORIGINS` | Backend | `'http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,https://sticky-mind-grid.vercel.app'` | `backend/config.py:L44-L52`, `backend/app/__init__.py:L22-L33` | Comma-separated allowed origins, merged with `base_origins` and regex `r"https:\/\/.*\.vercel\.app"`. |
-| `MAX_UPLOAD_MB` | Backend | `'25'` (25 MB) | `backend/config.py:L55` | Sets `MAX_CONTENT_LENGTH` (`26,214,400` bytes). *(Note: `backend/.env.example:L18` sets `10`).* |
-| `MAX_BOARD_STORAGE_MB` | Backend | `'100'` (100 MB) | `backend/config.py:L56` | Sets `MAX_BOARD_STORAGE_BYTES` per board (`FileService.check_board_and_owner_quota`, `file_service.py:L196-L199`). |
-| `MAX_OWNER_STORAGE_MB` | Backend | `'500'` (500 MB) | `backend/config.py:L57` | Sets `MAX_OWNER_STORAGE_BYTES` across all active boards owned by a user (`file_service.py:L201-L205`). |
-| `ACTIVITY_RETENTION_DAYS` | Backend | `'0'` (`0` = keep forever) | `backend/config.py:L59` | Filters out activity log rows older than `N` days on read (`activity_service.py:L9-L16`). |
-| `ALLOWED_UPLOAD_EXTENSIONS` | Backend | 37 file extensions (`png,jpg,...,flac`) | `backend/config.py:L60-L74` | Comma-separated upload extension allowlist. |
-| `FLASK_DEBUG` | Backend | `'true'` | `backend/run.py:L7` | Enables Flask debug mode when running `python run.py`. Set to `"false"` in CI/production. |
-| `FLASK_ENV` | Backend | `'development'` | `backend/app/routes/system_routes.py:L20` | Reported in `GET /api/health`. |
-| `RENDER_API_KEY` | CLI Script | `None` | `scripts/fetch_render_logs.py:L47-L51` | Render API Bearer token (`<PLACEHOLDER_RENDER_API_KEY>`) for pulling live deploy/runtime logs. |
-| `RENDER_SERVICE_ID` | CLI Script | Auto-detected | `scripts/fetch_render_logs.py:L53, L66-L71` | Optional Render service ID override. |
+| `SECRET_KEY` | Backend | `'dev-secret-key'` | `backend/config.py` | Flask secret key. Startup logs a security warning if default key is used when `APP_ENV != 'local'`. Must differ between Dev and Prod. |
+| `JWT_SECRET_KEY` | Backend | `'super-secret-jwt-key-for-development-32-chars-long'` | `backend/config.py` | Signing key for 24h JWT Bearer tokens. Must differ between Dev and Prod so tokens cannot cross environments. |
+| `CORS_ORIGINS` | Backend | `'http://localhost:8080,...,https://sticky-mind-grid.vercel.app'` | `backend/config.py`, `backend/app/__init__.py` | Comma-separated allowed origins, merged with `base_origins` and project-scoped regex `r"https:\/\/sticky-mind-grid(-[a-z0-9-]+)?\.vercel\.app"`. |
+| `OAUTH_ENABLED` | Backend | `'true'` | `backend/config.py`, `oauth_service.py`, `auth_routes.py` | Set to `false` on Dev Render service to disable OAuth endpoints (`403`) and mark providers `enabled: false` (Decision D5). |
+| `EMAIL_SUBJECT_PREFIX` | Backend | `''` | `backend/config.py`, `email_service.py` | Optional subject prefix (set to `[DEV]` on Dev Render service so real EmailJS messages are clearly tagged `[DEV] ...`, Decision D6). |
+| `ALLOW_DESTRUCTIVE_SEED` | Backend CLI | `''` (`false`) | `backend/seed.py:L21-L65` | Required (`true`) to run `python backend/seed.py` against any non-local DB host. `seed.py` unconditionally refuses when `APP_ENV=production`. |
+| `MAX_UPLOAD_MB` | Backend | `'25'` (25 MB) | `backend/config.py` | Sets `MAX_CONTENT_LENGTH` (`26,214,400` bytes). |
+| `MAX_BOARD_STORAGE_MB` | Backend | `'100'` (100 MB) | `backend/config.py` | Sets `MAX_BOARD_STORAGE_BYTES` per board (`FileService.check_board_and_owner_quota`). |
+| `MAX_OWNER_STORAGE_MB` | Backend | `'500'` (500 MB) | `backend/config.py` | Sets `MAX_OWNER_STORAGE_BYTES` across all active boards owned by a user. |
+| `ACTIVITY_RETENTION_DAYS` | Backend | `'0'` (`0` = keep forever) | `backend/config.py` | Filters out activity log rows older than `N` days on read (`activity_service.py`). |
+| `ALLOWED_UPLOAD_EXTENSIONS` | Backend | 37 file extensions (`png,jpg,...,flac`) | `backend/config.py` | Comma-separated upload extension allowlist. |
+| `FLASK_DEBUG` | Backend | `'true'` | `backend/run.py:L7` | Enables Flask debug mode when running `python run.py`. Set to `"false"` in CI, Dev, and Production. |
+| `RENDER_API_KEY` | CLI Script | `None` | `scripts/fetch_render_logs.py` | Render API Bearer token for pulling live deploy/runtime logs. |
+| `RENDER_SERVICE_ID_PROD` / `RENDER_SERVICE_ID_DEV` | CLI Script | Exact-name match (`sticky-mind-grid-api` / `sticky-mind-grid-api-dev`) | `scripts/fetch_render_logs.py` | Optional explicit Render service IDs for `--env prod` and `--env dev` (`RENDER_SERVICE_ID` is also supported as prod fallback). |
 
 ---
 
@@ -139,9 +150,10 @@ sequenceDiagram
 1. **Health Endpoint (`GET /api/health`, `backend/app/routes/system_routes.py:L8-L22`)**:
    - Executes `SELECT 1` (`L12`). Returns `200 OK` (`{"status": "healthy", "database": "connected", "version": "1.2.0", ...}`) or `503 Service Unavailable` (`{"status": "degraded", "database": "disconnected"}`).
    - Rendered in the UI under **Settings → About** (`src/components/settings/tabs/AboutTab.tsx:L29-L49`).
-2. **Render Log Fetcher (`scripts/fetch_render_logs.py:L1-L134`)**:
-   - Run `python scripts/fetch_render_logs.py [limit]` (requires `RENDER_API_KEY` in `.env` or `backend/.env`).
-   - Prints the 3 latest Render deployments (`L85-L92`) and tails the last `N` log lines (`L95-L130`), flagging lines containing `error`, `exception`, `traceback`, `500`, `critical`, or `fatal` with `!` (`L125-L128`).
+2. **Render Log Fetcher (`scripts/fetch_render_logs.py`)**:
+   - Run `python scripts/fetch_render_logs.py [--env prod|dev] [limit]` (requires `RENDER_API_KEY` in `.env` or `backend/.env`).
+   - Resolves the target service via `--service-id`, `RENDER_SERVICE_ID_PROD` / `RENDER_SERVICE_ID_DEV` (or fallback `RENDER_SERVICE_ID` for prod), or exact service name (`sticky-mind-grid-api` for prod, `sticky-mind-grid-api-dev` for dev). Never silently falls back to `services[0]`.
+   - Prints the 3 latest Render deployments and tails the last `N` log lines, flagging lines containing `error`, `exception`, `traceback`, `500`, `critical`, or `fatal` with `!`.
 3. **Client Polling & Reconnection Fallbacks**:
    - Board SSE (`src/hooks/useBoardRealtime.ts:L294-L298`) retries `EventSource` connections every `3000ms` and places the board UI into `"Read-only • Reconnecting..."` mode while disconnected.
    - HTTP polling fallbacks remain active while the browser tab is visible: Tasks (`4000ms`, `src/hooks/useTasks.ts:L51-L55`), Activities (`5000ms`, `src/hooks/useActivity.tsx:L46-L50`), Notifications (`6000ms`, `src/components/notifications/NotificationBell.tsx:L38, L54`), Boards (`8000ms`, `src/hooks/useBoards.ts:L154-L167`), and Messages (`10000ms`/`15000ms`, `src/hooks/useMessages.ts:L25, L48, L62`).

@@ -113,3 +113,31 @@ def test_config_wires_postgres_ssl_into_engine_options(monkeypatch):
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "require"
+
+
+def test_config_parses_app_env_email_prefix_and_oauth_enabled():
+    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env = os.environ.copy()
+    env["APP_ENV"] = "  DEV  "
+    env["EMAIL_SUBJECT_PREFIX"] = " [DEV] "
+    env["OAUTH_ENABLED"] = "false"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from config import Config; "
+                "print(f'{Config.APP_ENV}|{Config.EMAIL_SUBJECT_PREFIX}|{Config.OAUTH_ENABLED}')"
+            ),
+        ],
+        cwd=backend_dir,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "dev|[DEV]|False"
+

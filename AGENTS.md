@@ -423,16 +423,18 @@ Browser E2E:
 
 ## 13. Database Isolation Policy
 
-Strict separation between development and testing databases is mandatory:
+Strict separation between development, staging, production, and testing databases is mandatory:
 
 | Environment | Database Target | Purpose |
 |---|---|---|
-| **Development** | MySQL (`sticky_mind_grid`) | Manual interactive development & local dev server |
+| **Local Development** | MySQL (`sticky_mind_grid`) | Manual interactive development & local dev server |
+| **Deployed Dev (Staging)** | Supabase Postgres (`sticky-mind-grid-dev`) | Deployed integration testing from `develop` branch (`APP_ENV=dev`; manual testing only) |
+| **Production** | Supabase Postgres (prod project) | Live production environment from `main` branch (`APP_ENV=production`) |
 | **Playwright E2E** | MySQL (`sticky_mind_grid_test`) / Ephemeral | Automated browser journeys (seeded fresh before runs) |
 | **Pytest** | SQLite (`sqlite:///:memory:`) | In-memory ephemeral DB created and destroyed per test |
 
 > [!CAUTION]
-> Automated tests must NEVER execute against or mutate the primary development database (`sticky_mind_grid`).
+> Automated tests must NEVER execute against or mutate the primary local development database (`sticky_mind_grid`), the Deployed Dev database (`sticky-mind-grid-dev`), or the Production database. `backend/seed.py` enforces `APP_ENV != 'production'` and requires `ALLOW_DESTRUCTIVE_SEED=true` for any non-local host.
 
 ---
 
@@ -602,8 +604,8 @@ For each agent:
 ## 22. Deployed Environment Diagnostics & Render Logs
 
 When diagnosing issues on the deployed application (Render):
-1. **Never guess deployed runtime errors:** Use `python scripts/fetch_render_logs.py [limit]` to pull live server logs, build status, and unhandled exceptions from the Render API.
-2. **Configuration:** The script automatically reads `RENDER_API_KEY` and optional `RENDER_SERVICE_ID` from the local `.env` or `backend/.env` file.
+1. **Never guess deployed runtime errors:** Use `python scripts/fetch_render_logs.py --env prod [limit]` (for Production `sticky-mind-grid-api`) or `python scripts/fetch_render_logs.py --env dev [limit]` (for Deployed Dev `sticky-mind-grid-api-dev`) to pull live server logs, build status, and unhandled exceptions from the Render API.
+2. **Configuration:** The script reads `RENDER_API_KEY` and optional `RENDER_SERVICE_ID_PROD` / `RENDER_SERVICE_ID_DEV` (or fallback `RENDER_SERVICE_ID` for prod) from the local `.env` or `backend/.env` file, falling back to exact service name matching (`sticky-mind-grid-api` / `sticky-mind-grid-api-dev`). It never silently falls back to `services[0]`.
 3. **Log Analysis:** Inspect the output for HTTP 500 errors, database connection timeouts, CORS header mismatches, or unhandled tracebacks.
 
 ---

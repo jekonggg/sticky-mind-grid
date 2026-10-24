@@ -15,7 +15,8 @@
 - [ ] **Remove hardcoded secret fallbacks** — `config.py` should raise an error (not use defaults) when `SECRET_KEY` and `JWT_SECRET_KEY` env vars are missing in production
 - [ ] **Add Content-Security-Policy headers** — Configure CSP on the Flask app
 - [ ] **Add request validation** — Use marshmallow or pydantic for input validation on all routes (currently manual validation)
-- [ ] **Restrict CORS origins** — Ensure production `CORS_ORIGINS` only includes the actual frontend domain
+- [x] **Restrict CORS origins** — Tightened Vercel wildcard regex to project-scoped `r"https:\/\/sticky-mind-grid(-[a-z0-9-]+)?\.vercel\.app"` alongside explicit `CORS_ORIGINS`
+- [x] **Add Deployed Dev (staging) environment safeguards** — `APP_ENV` health reporting, `EnvironmentBanner` UI ribbon, `seed.py` production/remote guard (`ALLOW_DESTRUCTIVE_SEED`), `OAUTH_ENABLED` toggle, `EMAIL_SUBJECT_PREFIX`, and `--env dev|prod` log fetching
 - [ ] **Sanitize file upload content** — Add basic content-type validation beyond extension checking
 
 ### Dependencies

@@ -3,7 +3,8 @@ import logging
 import urllib.request
 import urllib.parse
 import urllib.error
-from flask import current_app
+import os
+from flask import current_app, has_app_context
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,16 @@ def _http_get(url: str, headers: dict = None):
 
 class OAuthService:
     @staticmethod
+    def is_oauth_enabled() -> bool:
+        """Returns True if OAuth authentication is enabled in the current environment."""
+        if has_app_context() and current_app.config.get('OAUTH_ENABLED') is False:
+            return False
+        if 'OAUTH_ENABLED' in os.environ:
+            return os.environ.get('OAUTH_ENABLED', 'true').strip().lower() in ('true', '1', 'yes')
+        if has_app_context():
+            return bool(current_app.config.get('OAUTH_ENABLED', True))
+        return True
+    @staticmethod
     def is_provider_configured(provider: str) -> bool:
         """Returns True if the provider has both client ID and client secret configured."""
         provider = (provider or '').lower().strip()
@@ -92,6 +103,7 @@ class OAuthService:
     @staticmethod
     def get_providers_status() -> dict:
         """Returns metadata and public client IDs for all supported OAuth providers."""
+        enabled = OAuthService.is_oauth_enabled()
         google_client_id = (current_app.config.get('GOOGLE_CLIENT_ID') or '').strip() if current_app else ''
         github_client_id = (current_app.config.get('GITHUB_CLIENT_ID') or '').strip() if current_app else ''
         ms_client_id = (current_app.config.get('MICROSOFT_CLIENT_ID') or '').strip() if current_app else ''
@@ -100,21 +112,21 @@ class OAuthService:
         return {
             'google': {
                 'name': 'Google',
-                'enabled': True,
-                'configured': OAuthService.is_provider_configured('google'),
-                'clientId': google_client_id or None,
+                'enabled': enabled,
+                'configured': OAuthService.is_provider_configured('google') if enabled else False,
+                'clientId': (google_client_id or None) if enabled else None,
             },
             'github': {
                 'name': 'GitHub',
-                'enabled': True,
-                'configured': OAuthService.is_provider_configured('github'),
-                'clientId': github_client_id or None,
+                'enabled': enabled,
+                'configured': OAuthService.is_provider_configured('github') if enabled else False,
+                'clientId': (github_client_id or None) if enabled else None,
             },
             'microsoft': {
                 'name': 'Microsoft',
-                'enabled': True,
-                'configured': OAuthService.is_provider_configured('microsoft'),
-                'clientId': ms_client_id or None,
+                'enabled': enabled,
+                'configured': OAuthService.is_provider_configured('microsoft') if enabled else False,
+                'clientId': (ms_client_id or None) if enabled else None,
                 'tenantId': ms_tenant,
             }
         }
