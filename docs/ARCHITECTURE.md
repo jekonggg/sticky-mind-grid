@@ -92,6 +92,7 @@ There is no single global store. State is managed through:
 | `useTasks` | `src/hooks/useTasks.ts` | Task CRUD + reorder/move + 4s polling + optimistic updates |
 | `useBoardPermissions` | `src/hooks/useBoardPermissions.ts` | Derives `BoardPermissions` from board + members + user |
 | `useBoardRealtime` | `src/hooks/useBoardRealtime.ts` | SSE `EventSource` connection for live board sync |
+| `usePresenceHeartbeat` | `src/hooks/usePresenceHeartbeat.ts` | 30s presence heartbeat + offline beacon while authenticated |
 | `useIsMobile` | `src/hooks/use-mobile.tsx` | Media query for `<768px` breakpoint |
 
 ### API Communication
@@ -259,6 +260,12 @@ All routes are prefixed with `/api/`.
 | PATCH | `/me/preferences` | JWT | Update user preferences |
 | GET | `/me/export` | JWT | Export personal user data JSON |
 | DELETE | `/me` | JWT | Delete user account (auto-promotes oldest admin/member on owned boards) |
+
+#### Presence Routes (`/api/presence`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/heartbeat` | JWT | Record the authenticated user's activity (30s client heartbeat) |
+| POST | `/offline` | JWT | Immediately clear the user's presence on explicit logout |
 
 #### Message Routes (`/api/messages`)
 | Method | Path | Auth | Description |
@@ -759,6 +766,16 @@ Sticky Mind Grid implements a strict "locked room" tenancy model ensuring privac
 - `disconnect_user(board_id, user_id)` → terminates active SSE connection on member removal or demotion
 - Queue maxsize=100; stale messages discarded silently
 - Keep-alive ping every 25 seconds
+
+### User Presence (Heartbeat)
+
+Presence is intentionally separate from the SSE broadcaster so it works on every authenticated page without consuming an extra long-lived Gunicorn thread:
+
+- `PresenceRegistry` (`backend/app/utils/presence.py`) stores `user_id → last heartbeat` in memory with a 90-second TTL.
+- `usePresenceHeartbeat` posts `POST /api/presence/heartbeat` every 30 seconds while the authenticated layout is mounted, and again when the tab becomes visible/focused.
+- `POST /api/presence/offline` is called on logout; closing the tab falls back to TTL expiry.
+- `User.to_dict()` exposes `isOnline`, which flows through `Conversation.to_dict()` as `otherUser.isOnline`. Message avatars render green when online and muted gray when offline.
+- The registry is process-local and resets on restart, consistent with the single-worker SSE architecture (`workers = 1`).
 
 ### Frontend (useBoardRealtime)
 

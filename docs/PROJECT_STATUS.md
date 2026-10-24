@@ -16,8 +16,9 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## Implemented Features
 
-### Authentication
+### Authentication & Account Identity
 - **Registration** with email/password — fully connected (UI → API → backend → DB)
+- **Verified Badges on Avatar & Settings** — First-class verified identity system displaying scalloped verified badge overlays on user avatars (`AppSidebar`, `SettingsModal`, `ProfileModal`, `BoardMembers`) and verified badge status chips in settings and user profiles for accounts with verified email addresses. Unverified accounts receive clear inline status indicators and one-click access to link or verify contact emails.
 - **OAuth 2.0 / Social Login** — Live Google Identity, GitHub OAuth, and Microsoft Graph / Entra ID Authorization Code flow with CSRF state protection, centered popup window handoff, full-page redirect fallback, zero-dependency standard library backend exchange, and seamless Developer Sandbox mode when credentials are unconfigured
 - **Login** with JWT tokens — 24h expiry, persisted in localStorage
 - **Profile management** — update name and password (requires current password)
@@ -137,6 +138,7 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 - **Scoped Hover Action Toolbar** — react button with multi-emoji picker, quick reply button, and 3-dot dropdown with Pin, Forward, and Unsend
 - **Pin & Reply Functionality** — pin/unpin messages with top pinned banner and jump-to highlights; quoted reply preview with composer banner and jump-to scroll
 - **Forward & Soft Unsend** — multi-chat message forwarding with preview; soft unsend with persistent unsent audit trail
+- **Presence Indicators** — heartbeat-based online/offline status for direct conversations, shown as green/gray avatar badges in the conversation list and chat header
 
 ### Global Workspace Hub & Navigation
 - **Workspace Dashboard (`/dashboard`)** — Welcome hero header, real-time KPI metric cards (Total Boards, Active Tasks, Completed Tasks, Overdue/Urgent Count), assigned priority tasks with quick completion checkboxes, upcoming deadlines agenda, and live workspace activity stream.
@@ -306,7 +308,7 @@ Large base64 strings stored in LONGTEXT columns can cause database bloat and slo
 | RBAC (role matrix) | pytest | 33 tests | Excellent — 5-role hierarchy + column deletion, member redaction, last owner guard, data export, task modal permissions |
 | Invitations (lifecycle, expiration, resend, revoke, rate limit, mismatch) | pytest | 11 tests | Excellent — 4-state lifecycle, 7-day expiration, signup auto-attachment, email security guard, duplicate updates, rate limiting |
 | Privacy & Tenancy (isolation, profile redaction, ownership auto-promote, former member, file auth, workspace) | pytest | 8 tests | Excellent — guest visibility, profile redaction, account deletion auto-promotion, former member attribution, attachment 403, workspace schema |
-| Messages & Conversations | pytest | 5 tests | Good — direct, group, reactions, forwarding, pin/unpin |
+| Messages & Conversations | pytest | 9 tests | Good — direct, group, reactions, forwarding, pin/unpin, presence |
 | System & User Preferences | pytest | 15 tests | Good — health check, preferences, export |
 | BoardCard component | Vitest | 3 tests | Partial — renders, owner vs non-owner menu |
 | BoardMembers component | Vitest | 3 tests | Good — renders members, leave action, pending badge |

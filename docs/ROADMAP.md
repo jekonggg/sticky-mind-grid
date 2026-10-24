@@ -105,7 +105,7 @@ Phase 2 should be completed first to ensure changes are tested.
 
 ### Tasks
 
-- [ ] **Add user presence indicators** — Show who is currently viewing a board (via SSE heartbeat)
+- [x] **Add user presence indicators** — Heartbeat-based online/offline presence system (`POST /api/presence/heartbeat` with 90s TTL) indicating active user status in direct messages, chat headers, and user profiles (board-level viewer presence can build on this registry)
 - [ ] **Add task locking** — Prevent concurrent edits on the same task (optimistic lock with version field)
 - [ ] **Persist SSE events** — Store events in a message queue (Redis) so events survive server restarts
 - [ ] **Add email notifications** — Send emails for assignments, mentions, and invitations (using Celery or similar)
