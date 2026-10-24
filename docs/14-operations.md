@@ -210,3 +210,5 @@ sequenceDiagram
 
 **Verification log:**
 - 2026-10-24: Pre-redeploy health check `200` on commit `c8b552c`.
+- 2026-10-24: Clear-build-cache deploy `dep-dbe2epk0a7sc7398u6v0` for commit `d6b2f11` reached `live`; `GET /api/health` returned `200` with `database: connected` under PostgreSQL `sslmode=verify-full`. The last 100 Render log lines contained no errors.
+- 2026-10-24: Vercel served the updated frontend (`200`, new `/assets/index-*.js` bundle). CI is pinned to Node `24.22.1` from `.nvmrc`.
