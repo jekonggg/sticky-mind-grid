@@ -83,7 +83,8 @@ def seed_database():
         test_user = User(
             id=generate_id(),
             email="test@example.com",
-            full_name="Test User"
+            full_name="Test User",
+            email_verified=True
         )
         test_user.set_password("password123")
         db.session.add(test_user)
