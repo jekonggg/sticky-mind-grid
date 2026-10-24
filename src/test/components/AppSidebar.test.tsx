@@ -327,15 +327,30 @@ describe("AppSidebar Component", () => {
       screen.queryByRole("button", { name: /close/i })
     ).not.toBeInTheDocument();
   });
-  it("renders verified badge on user avatar and next to username when emailVerified is true", () => {
+  it("renders verified badge next to username in full sidebar and on avatar when collapsed", () => {
     const verifiedUser = {
       ...mockUser,
       emailVerified: true,
     };
-    renderWithProviders(<AppSidebar />, { user: verifiedUser });
+    const { unmount } = renderWithProviders(
+      <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />,
+      { user: verifiedUser }
+    );
+
+    // In full sidebar mode: badge is on the name, not on the avatar (to avoid redundancy)
+    expect(screen.getByTestId("sidebar-user-verified-badge")).toBeInTheDocument();
+    expect(screen.queryByTestId("sidebar-avatar-verified-badge")).not.toBeInTheDocument();
+
+    unmount();
+
+    // In collapsed sidebar mode: badge is shown on the avatar, name is hidden
+    renderWithProviders(
+      <AppSidebar isCollapsed={true} onToggleCollapse={vi.fn()} />,
+      { user: verifiedUser }
+    );
 
     expect(screen.getByTestId("sidebar-avatar-verified-badge")).toBeInTheDocument();
-    expect(screen.getByTestId("sidebar-user-verified-badge")).toBeInTheDocument();
+    expect(screen.queryByTestId("sidebar-user-verified-badge")).not.toBeInTheDocument();
   });
 
   it("does not render verified badge on avatar or next to username when emailVerified is false", () => {
@@ -343,7 +358,10 @@ describe("AppSidebar Component", () => {
       ...mockUser,
       emailVerified: false,
     };
-    renderWithProviders(<AppSidebar />, { user: unverifiedUser });
+    renderWithProviders(
+      <AppSidebar isCollapsed={false} onToggleCollapse={vi.fn()} />,
+      { user: unverifiedUser }
+    );
 
     expect(screen.queryByTestId("sidebar-avatar-verified-badge")).not.toBeInTheDocument();
     expect(screen.queryByTestId("sidebar-user-verified-badge")).not.toBeInTheDocument();

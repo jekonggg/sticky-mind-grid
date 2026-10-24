@@ -303,7 +303,7 @@ export function AppSidebar({
                         {userInitial}
                       </AvatarFallback>
                     </Avatar>
-                    {user?.emailVerified ? (
+                    {isCollapsed && user?.emailVerified ? (
                       <VerifiedBadge
                         variant="avatar-badge"
                         size="xs"
