@@ -419,6 +419,23 @@ def resend_verification():
 
     return jsonify({'message': 'Verification email resent successfully'}), 200
 
+@bp.route('/verification-status', methods=['GET'])
+@limiter.limit("60 per minute")
+def get_verification_status():
+    email = request.args.get('email', '').strip().lower()
+    if not email:
+        return jsonify({'message': 'Missing email parameter'}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'verified': False, 'exists': False, 'message': 'User not found'}), 404
+
+    return jsonify({
+        'verified': bool(getattr(user, 'email_verified', False)),
+        'exists': True,
+        'email': user.email
+    }), 200
+
 @bp.route('/login', methods=['POST'])
 @limiter.limit("10 per minute")
 def login():
@@ -426,19 +443,49 @@ def login():
         data = request.get_json()
         
         if not data or not data.get('email') or not data.get('password'):
-            return jsonify({'message': 'Missing email or password'}), 400
+            missing = []
+            if not data or not data.get('email'):
+                missing.append('email')
+            if not data or not data.get('password'):
+                missing.append('password')
+            field = missing[0] if len(missing) == 1 else 'general'
+            return jsonify({
+                'message': 'Missing email or password' if len(missing) > 1 else f"{missing[0].capitalize()} is required",
+                'field': field,
+                'code': 'MISSING_FIELDS'
+            }), 400
             
         clean_email = (data.get('email') or '').strip().lower()
-        print(f"DEBUG: Login attempt for email: {clean_email}")
+        if '@' not in clean_email or '.' not in clean_email.split('@')[-1]:
+            return jsonify({
+                'message': 'Please enter a valid email address.',
+                'field': 'email',
+                'code': 'INVALID_EMAIL'
+            }), 400
+
         user = User.query.filter_by(email=clean_email).first()
         
         if not user:
-            print(f"DEBUG: User not found: {clean_email}")
-            return jsonify({'message': 'Invalid credentials'}), 401
+            return jsonify({
+                'message': 'No account found with this email address.',
+                'field': 'email',
+                'code': 'USER_NOT_FOUND'
+            }), 401
             
         if not user.check_password(data['password']):
-            print(f"DEBUG: Password mismatch for user: {clean_email}")
-            return jsonify({'message': 'Invalid credentials'}), 401
+            if user.auth_provider and user.auth_provider != 'local':
+                provider_title = user.auth_provider.title()
+                return jsonify({
+                    'message': f'This account was registered using {provider_title}. Please sign in with {provider_title}.',
+                    'field': 'oauth',
+                    'provider': user.auth_provider,
+                    'code': 'OAUTH_ACCOUNT'
+                }), 401
+            return jsonify({
+                'message': 'Incorrect password. Please try again.',
+                'field': 'password',
+                'code': 'INVALID_PASSWORD'
+            }), 401
 
         # Check verification status & legacy unverified grandfathering (Req 1, 2, 9)
         if not getattr(user, 'email_verified', False):

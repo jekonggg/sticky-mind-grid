@@ -1,4 +1,5 @@
 import json
+from app import db
 
 def test_register_success(client):
     response = client.post(
@@ -260,3 +261,72 @@ def test_oauth_unsupported_provider(client):
     )
     assert response.status_code == 400
 
+
+
+def test_login_user_not_found(client):
+    response = client.post(
+        "/api/auth/login",
+        data=json.dumps({
+            "email": "nonexistent@example.com",
+            "password": "Password123!"
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 401
+    data = response.get_json()
+    assert data["field"] == "email"
+    assert data["code"] == "USER_NOT_FOUND"
+    assert "no account found" in data["message"].lower()
+
+def test_login_oauth_account_guidance(client, create_test_user):
+    user = create_test_user(
+        email="google_user@example.com",
+        email_verified=True
+    )
+    user.auth_provider = "google"
+    db.session.commit()
+    response = client.post(
+        "/api/auth/login",
+        data=json.dumps({
+            "email": "google_user@example.com",
+            "password": "SomeLocalPassword123!"
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 401
+    data = response.get_json()
+    assert data["field"] == "oauth"
+    assert data["provider"] == "google"
+    assert data["code"] == "OAUTH_ACCOUNT"
+    assert "google" in data["message"].lower()
+
+def test_login_invalid_email_format(client):
+    response = client.post(
+        "/api/auth/login",
+        data=json.dumps({
+            "email": "invalid-email-without-at",
+            "password": "Password123!"
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 400
+    data = response.get_json()
+    assert data["field"] == "email"
+    assert data["code"] == "INVALID_EMAIL"
+
+def test_verification_status_endpoint(client, create_test_user):
+    # Nonexistent user -> 404
+    r_not_found = client.get("/api/auth/verification-status?email=ghost@example.com")
+    assert r_not_found.status_code == 404
+
+    # Unverified user -> verified: False
+    unverified = create_test_user(email="pending_verify@example.com", email_verified=False)
+    r_unverified = client.get("/api/auth/verification-status?email=pending_verify@example.com")
+    assert r_unverified.status_code == 200
+    assert r_unverified.get_json()["verified"] is False
+
+    # Verified user -> verified: True
+    verified = create_test_user(email="already_verified@example.com", email_verified=True)
+    r_verified = client.get("/api/auth/verification-status?email=already_verified@example.com")
+    assert r_verified.status_code == 200
+    assert r_verified.get_json()["verified"] is True
