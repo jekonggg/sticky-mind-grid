@@ -26,19 +26,26 @@ def get_git_commit():
 @bp.route('/health', methods=['GET'])
 def health_check():
     db_healthy = True
+    db_error = None
     try:
         db.session.execute(db.text("SELECT 1"))
-    except Exception:
+    except Exception as e:
         db_healthy = False
+        db_error = str(e)
+        current_app.logger.error(f"Database health check failed: {e}")
 
-    return jsonify({
+    payload = {
         'status': 'healthy' if db_healthy else 'degraded',
         'database': 'connected' if db_healthy else 'disconnected',
         'version': '1.3.0',
         'commit': get_git_commit(),
         'environment': (os.getenv('APP_ENV') or os.getenv('FLASK_ENV') or current_app.config.get('APP_ENV') or 'local').strip().lower(),
         'timestamp': datetime.utcnow().isoformat() + 'Z'
-    }), 200 if db_healthy else 503
+    }
+    if not db_healthy and db_error:
+        payload['database_error'] = db_error
+
+    return jsonify(payload), 200 if db_healthy else 503
 
 
 @bp.route('/internal/jobs/purge', methods=['POST'])
