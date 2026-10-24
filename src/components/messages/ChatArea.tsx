@@ -47,6 +47,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageComposer } from "./MessageComposer";
 import { ForwardMessageModal } from "./ForwardMessageModal";
+import { PresenceDot } from "./PresenceDot";
 import { fileApi } from "@/services/fileApi";
 import { toast } from "sonner";
 
@@ -219,7 +220,7 @@ export function ChatArea({
               </AvatarFallback>
             </Avatar>
             {conversation.type === "direct" && (
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+              <PresenceDot isOnline={conversation.otherUser?.isOnline} />
             )}
           </div>
 

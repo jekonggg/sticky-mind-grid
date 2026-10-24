@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/
 import { CommandSearchDialog } from "@/components/search/CommandSearchDialog";
 import { LayoutProvider, useLayout } from "@/contexts/LayoutContext";
 import { BoardsOverviewSkeleton, BoardViewSkeleton } from "@/components/skeletons";
+import { usePresenceHeartbeat } from "@/hooks/usePresenceHeartbeat";
 
 function AppLayoutFallback() {
   const location = useLocation();
@@ -22,6 +23,7 @@ function AppLayoutFallback() {
 function AppLayoutInner() {
   const location = useLocation();
   const { user } = useAuth();
+  usePresenceHeartbeat();
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [isBannerDismissed, setIsBannerDismissed] = useState(false);
 

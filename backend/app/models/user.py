@@ -1,6 +1,7 @@
 from datetime import datetime
 import uuid
 from app import db, bcrypt
+from app.utils.presence import presence
 
 def generate_uuid():
     return str(uuid.uuid4())
@@ -77,6 +78,7 @@ class User(db.Model):
             'email': self.email,
             'fullName': self.full_name,
             'avatarUrl': avatar,
+            'isOnline': presence.is_online(self.id),
             'authProvider': getattr(self, 'auth_provider', None) or 'local',
             'emailVerified': bool(getattr(self, 'email_verified', False)),
             'legacyUnverified': bool(getattr(self, 'legacy_unverified', False)),

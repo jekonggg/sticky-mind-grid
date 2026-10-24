@@ -17,6 +17,7 @@ import {
 import { format, isToday, isYesterday } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLayout } from "@/contexts/LayoutContext";
+import { PresenceDot } from "./PresenceDot";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -208,7 +209,7 @@ export function ConversationList({
                     </Avatar>
                   )}
                   {conv.type === "direct" && (
-                    <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+                    <PresenceDot isOnline={conv.otherUser?.isOnline} />
                   )}
                 </div>
 

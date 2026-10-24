@@ -3,7 +3,11 @@ import { getDevSettings } from "@/contexts/DevModeContext";
 import { isJwtExpired } from "@/utils/authUtils";
 import { handleSeedTakeoverRequest } from "@/data/devSeedDataset";
 
-export async function authenticatedFetch(endpoint: string, options: RequestInit = {}) {
+export async function authenticatedFetch(
+  endpoint: string,
+  options: RequestInit = {},
+  tokenOverride?: string | null
+) {
   // DEV Mode Interception
   if (import.meta.env.DEV) {
     const devSettings = getDevSettings();
@@ -67,7 +71,7 @@ export async function authenticatedFetch(endpoint: string, options: RequestInit 
     }
   }
 
-  const token = getStoredToken();
+  const token = tokenOverride !== undefined ? tokenOverride : getStoredToken();
 
   // Instant client-side check: if token has expired due to inactivity, clear and redirect immediately
   if (token && isJwtExpired(token)) {

@@ -1,4 +1,5 @@
 import { API_BASE, getStoredToken } from "@/config/api";
+import { authenticatedFetch } from "./apiUtils";
 import { UserSyncedPreferences } from "@/types/settings";
 
 export interface SystemHealth {
@@ -11,6 +12,28 @@ export interface SystemHealth {
 }
 
 export const userApi = {
+  async heartbeatPresence(): Promise<{ isOnline: boolean }> {
+    const res = await authenticatedFetch("/presence/heartbeat", { method: "POST" });
+    if (!res.ok) {
+      throw new Error("Failed to send presence heartbeat");
+    }
+    return res.json();
+  },
+
+  async markPresenceOffline(token: string): Promise<void> {
+    // Called from effect cleanup on logout, after the token has been removed
+    // from storage. Pass the captured token explicitly so the request can
+    // still authenticate without triggering the usual 401 redirect.
+    const res = await authenticatedFetch(
+      "/presence/offline",
+      { method: "POST", keepalive: true },
+      token
+    );
+    if (!res.ok) {
+      throw new Error("Failed to mark presence offline");
+    }
+  },
+
   async getPreferences(): Promise<UserSyncedPreferences> {
     const token = getStoredToken();
     const res = await fetch(`${API_BASE}/users/me/preferences`, {

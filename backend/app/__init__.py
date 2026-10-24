@@ -126,6 +126,7 @@ def create_app(config_class=Config):
     from app.routes import user_routes
     from app.routes import message_routes
     from app.routes import scratchpad_routes
+    from app.routes import presence_routes
 
     app.register_blueprint(board_routes.bp)
     app.register_blueprint(task_routes.bp)
@@ -139,6 +140,7 @@ def create_app(config_class=Config):
     app.register_blueprint(user_routes.bp)
     app.register_blueprint(message_routes.bp)
     app.register_blueprint(scratchpad_routes.bp)
+    app.register_blueprint(presence_routes.bp)
 
     # Automatically sync missing tables/columns in non-testing mode
     if not app.config.get('TESTING', False):
