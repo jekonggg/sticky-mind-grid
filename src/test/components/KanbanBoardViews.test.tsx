@@ -183,4 +183,64 @@ describe("KanbanBoard Views & In-Place List View", () => {
     expect(mockNavigate).not.toHaveBeenCalledWith(expect.stringContaining("/tasks"));
     expect(screen.queryByTestId("back-to-board-btn")).not.toBeInTheDocument();
   });
+
+  it("scrolls columns horizontally when wheel event is outside kanban columns", async () => {
+    mockSearchParams = new URLSearchParams("");
+    renderWithProviders(<KanbanBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "To Do" })).toBeInTheDocument();
+    });
+
+    const mainCanvas = screen.getByRole("main");
+    // Mock scrollWidth > clientWidth so horizontal overflow exists
+    Object.defineProperty(mainCanvas, "scrollWidth", { configurable: true, value: 2000 });
+    Object.defineProperty(mainCanvas, "clientWidth", { configurable: true, value: 1000 });
+    mainCanvas.scrollLeft = 100;
+
+    // Fire wheel event directly on mainCanvas (outside any column)
+    const wheelEvent = new WheelEvent("wheel", {
+      deltaY: 150,
+      deltaX: 0,
+      bubbles: true,
+      cancelable: true,
+    });
+    const prevented = !mainCanvas.dispatchEvent(wheelEvent);
+
+    expect(mainCanvas.scrollLeft).toBe(250);
+    expect(prevented).toBe(true);
+  });
+
+  it("scrolls tasks inside column and does not move columns horizontally when wheel event is on a column", async () => {
+    mockSearchParams = new URLSearchParams("");
+    renderWithProviders(<KanbanBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "To Do" })).toBeInTheDocument();
+    });
+
+    const mainCanvas = screen.getByRole("main");
+    Object.defineProperty(mainCanvas, "scrollWidth", { configurable: true, value: 2000 });
+    Object.defineProperty(mainCanvas, "clientWidth", { configurable: true, value: 1000 });
+    mainCanvas.scrollLeft = 100;
+
+    const tasksContainer = screen.getByTestId("kanban-column-tasks-todo");
+    tasksContainer.scrollTop = 50;
+
+    // Fire wheel event on the column header
+    const heading = screen.getByRole("heading", { name: "To Do" });
+    const wheelEvent = new WheelEvent("wheel", {
+      deltaY: 80,
+      deltaX: 0,
+      bubbles: true,
+      cancelable: true,
+    });
+    heading.dispatchEvent(wheelEvent);
+
+    // Columns must NOT move horizontally
+    expect(mainCanvas.scrollLeft).toBe(100);
+
+    // Tasks inside column received the vertical scroll
+    expect(tasksContainer.scrollTop).toBe(130);
+  });
 });

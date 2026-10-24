@@ -55,7 +55,12 @@ export function DocumentsView({ tasks, boardId, readOnly, onTaskClick }: Documen
     enabled: !!boardId,
   });
 
-  const currentMember = members.find((m) => String(m.userId) === String(user?.id));
+  const currentMember = members.find(
+    (m) =>
+      String(m.userId) === String(user?.id) &&
+      (!m.status || m.status === "accepted") &&
+      !m.isInvitation
+  );
   const isAdminOrOwner = currentMember?.role === "owner" || currentMember?.role === "admin";
   const canDeleteNote = (note: Note) => {
     if (readOnly) return false;

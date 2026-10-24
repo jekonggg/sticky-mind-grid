@@ -213,4 +213,83 @@ describe("KanbanBoard Backdrop & Task Detail Drawer", () => {
     const filterAvatar = screen.getByTestId("assignee-filter-avatar-user-123");
     expect(filterAvatar).toHaveAttribute("data-avatar-url", "https://new-live-avatar.png");
   }, 15000);
+
+  it("does not render pending invited users in the header toolbar assignee filter", async () => {
+    const mockMembers = [
+      {
+        id: "m-1",
+        boardId: "board-1",
+        userId: "u-1",
+        role: "owner",
+        status: "accepted",
+        user: { id: "u-1", email: "accepted@example.com", fullName: "Accepted User" },
+      },
+      {
+        id: "m-2",
+        boardId: "board-1",
+        userId: "u-2",
+        role: "editor",
+        status: "pending",
+        user: { id: "u-2", email: "pending@example.com", fullName: "Pending Invitee" },
+      },
+      {
+        id: "inv-3",
+        boardId: "board-1",
+        userId: "inv-3",
+        role: "viewer",
+        status: "pending",
+        isInvitation: true,
+        user: { id: null, email: "unregistered@example.com", fullName: "Unregistered Guest" },
+      },
+    ];
+    (boardApi.getMembers as any).mockResolvedValue(mockMembers);
+
+    renderWithProviders(<KanbanBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Sprint Engineering")).toBeInTheDocument();
+    });
+
+    // The accepted user should have their filter avatar rendered
+    expect(screen.getByRole("button", { name: "Filter by Accepted User" })).toBeInTheDocument();
+
+    // Pending invited users must NOT have their avatar buttons in the filter bar
+    expect(screen.queryByRole("button", { name: "Filter by Pending Invitee" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Filter by Unregistered Guest" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Filter by unregistered@example.com" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("assignee-filter-avatar-u-2")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("assignee-filter-avatar-inv-3")).not.toBeInTheDocument();
+  }, 15000);
+
+  it("filters tasks correctly when unassigned or assignee filter is selected", async () => {
+    const mockMembers = [
+      {
+        id: "m-1",
+        boardId: "board-1",
+        userId: "u-1",
+        role: "owner",
+        status: "accepted",
+        user: { id: "u-1", email: "accepted@example.com", fullName: "Accepted User" },
+      },
+    ];
+    (boardApi.getMembers as any).mockResolvedValue(mockMembers);
+
+    renderWithProviders(<KanbanBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Sprint Engineering")).toBeInTheDocument();
+    });
+
+    // Subsea Platform Installation is unassigned, so it should be visible under Unassigned
+    const unassignedBtn = screen.getByRole("button", { name: /Unassigned \(1\)/i });
+    expect(unassignedBtn).toBeInTheDocument();
+    fireEvent.click(unassignedBtn);
+
+    expect(screen.getByText("Subsea Platform Installation")).toBeInTheDocument();
+
+    // Clicking filter by Accepted User should filter out the unassigned task
+    const userFilterBtn = screen.getByRole("button", { name: "Filter by Accepted User" });
+    fireEvent.click(userFilterBtn);
+    expect(screen.queryByText("Subsea Platform Installation")).not.toBeInTheDocument();
+  }, 15000);
 });

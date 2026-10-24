@@ -165,6 +165,11 @@ export function KanbanBoard() {
     enabled: !!boardId,
   });
 
+  const activeMembers = useMemo(
+    () => members.filter((m) => (!m.status || m.status === "accepted") && !m.isInvitation),
+    [members]
+  );
+
   const {
     loading,
     tasks,
@@ -262,8 +267,19 @@ export function KanbanBoard() {
   
   const { addActivity, setBoardId, refreshActivities } = useActivity();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const permissions = useBoardPermissions(board, members);
+  const permissions = useBoardPermissions(board, activeMembers);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (
+      assigneeFilter !== "all" &&
+      assigneeFilter !== "me" &&
+      assigneeFilter !== "unassigned" &&
+      !activeMembers.some((m) => m.userId === assigneeFilter)
+    ) {
+      setAssigneeFilter("all");
+    }
+  }, [activeMembers, assigneeFilter]);
 
   const roleLabel = permissions.role
     ? permissions.role.charAt(0).toUpperCase() + permissions.role.slice(1)
@@ -457,31 +473,60 @@ export function KanbanBoard() {
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   );
 
-  // Enable smooth horizontal scrolling with mouse wheel over board canvas
+  // Scroll wheel navigation:
+  // - Outside kanban columns: scroll wheel moves columns left and right
+  // - On/inside kanban column: scroll wheel scrolls tasks vertically inside that column
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || activeView !== "board") return;
 
     const handleWheel = (e: WheelEvent) => {
-      // If user is scrolling mostly vertically on mouse wheel
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        // Check if the event target is inside an element that handles vertical scrolling
-        let target = e.target as HTMLElement | null;
-        let isInnerScrollable = false;
-        while (target && target !== el) {
-          if (
-            target.scrollHeight > target.clientHeight &&
-            (getComputedStyle(target).overflowY === "auto" || getComputedStyle(target).overflowY === "scroll")
-          ) {
-            isInnerScrollable = true;
-            break;
-          }
-          target = target.parentElement;
-        }
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
 
-        // If not inside an inner scrollable container and board has horizontal overflow
-        if (!isInnerScrollable && el.scrollWidth > el.clientWidth) {
-          el.scrollLeft += e.deltaY;
+      // Do not intercept if wheel event originated inside a modal, drawer, or dropdown portal
+      if (
+        target.closest('[role="dialog"]') ||
+        target.closest('[data-radix-portal]') ||
+        target.closest('aside')
+      ) {
+        return;
+      }
+
+      // Check if target is inside a Kanban column
+      const column = (target.closest('[data-kanban-column="true"]') ||
+        target.closest('[data-testid^="kanban-column-"]')) as HTMLElement | null;
+
+      // Normalize delta for different delta modes (pixels vs lines vs pages)
+      const multiplier = e.deltaMode === 1 ? 20 : e.deltaMode === 2 ? 100 : 1;
+      const deltaY = e.deltaY * multiplier;
+      const deltaX = e.deltaX * multiplier;
+
+      if (column) {
+        // User is ON the column: scroll wheel scrolls tasks inside the column
+        const tasksContainer =
+          column.querySelector<HTMLElement>('[data-column-tasks="true"]') ||
+          column.querySelector<HTMLElement>('.overflow-y-auto');
+
+        if (tasksContainer) {
+          // If the event target is on the column header/frame (not directly inside the tasks scroll area),
+          // forward the vertical scroll directly to the column tasks container
+          const isDirectlyInTasks = Boolean(target.closest('[data-column-tasks="true"]'));
+          if (!isDirectlyInTasks && Math.abs(deltaY) > 0) {
+            tasksContainer.scrollTop += deltaY;
+            e.preventDefault();
+          }
+        }
+        // When on the column, never move kanban columns left and right
+        return;
+      }
+
+      // User is OUTSIDE kanban column: move kanban columns left and right
+      if (el.scrollWidth > el.clientWidth) {
+        // Use deltaY for standard vertical scrollwheels, or deltaX if primarily horizontal
+        const scrollDelta = Math.abs(deltaY) >= Math.abs(deltaX) ? deltaY : deltaX;
+        if (scrollDelta !== 0) {
+          el.scrollLeft += scrollDelta;
           e.preventDefault();
         }
       }
@@ -792,6 +837,8 @@ export function KanbanBoard() {
       // Assignee filtering
       if (assigneeFilter === "me") {
         if (!currentUser || t.assignedTo !== currentUser.id) return false;
+      } else if (assigneeFilter === "unassigned") {
+        if (t.assignedTo) return false;
       } else if (assigneeFilter !== "all") {
         if (t.assignedTo !== assigneeFilter) return false;
       }
@@ -1276,11 +1323,11 @@ export function KanbanBoard() {
                     Unassigned ({tasks.filter((t) => !t.assignedTo).length})
                   </button>
 
-                  {members.length > 0 && (() => {
+                  {activeMembers.length > 0 && (() => {
                     const MAX_VISIBLE = 4;
-                    const hasOverflow = members.length > MAX_VISIBLE;
-                    const visibleMembers = hasOverflow ? members.slice(0, MAX_VISIBLE - 1) : members;
-                    const overflowMembers = hasOverflow ? members.slice(MAX_VISIBLE - 1) : [];
+                    const hasOverflow = activeMembers.length > MAX_VISIBLE;
+                    const visibleMembers = hasOverflow ? activeMembers.slice(0, MAX_VISIBLE - 1) : activeMembers;
+                    const overflowMembers = hasOverflow ? activeMembers.slice(MAX_VISIBLE - 1) : [];
                     const isOverflowSelected = overflowMembers.some((m) => m.userId === assigneeFilter);
 
                     return (
@@ -1505,7 +1552,7 @@ export function KanbanBoard() {
           boardId={board.id}
           boardTasks={tasks}
           columns={board.columns}
-          members={members}
+          members={activeMembers}
           availableBoards={[board]}
           allowBoardChange={false}
           canComment={permissions.canComment}

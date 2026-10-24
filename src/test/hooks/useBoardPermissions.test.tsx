@@ -389,4 +389,32 @@ describe("useBoardPermissions hook", () => {
     expect(result.current.canComment).toBe(false);
     expect(result.current.isReadOnly).toBe(true);
   });
+
+  it("does not grant member or editor permissions if invitation status is pending", () => {
+    const invitedUser: User = { ...testUser, id: "user-invited-pending" };
+    const members: BoardMember[] = [
+      {
+        id: "mem-pending",
+        boardId: "board-123",
+        userId: "user-invited-pending",
+        role: "admin",
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const { result } = renderHook(
+      () => useBoardPermissions(mockBoard, members),
+      { wrapper: createWrapper(invitedUser) }
+    );
+
+    // Should not be admin or editor since status is pending
+    expect(result.current.role).toBe("viewer");
+    expect(result.current.isAdmin).toBe(false);
+    expect(result.current.isEditor).toBe(false);
+    expect(result.current.isMember).toBe(false);
+    expect(result.current.canEditBoard).toBe(false);
+    expect(result.current.canCreateTask).toBe(false);
+    expect(result.current.isReadOnly).toBe(true);
+  });
 });

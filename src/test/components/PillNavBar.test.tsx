@@ -67,4 +67,27 @@ describe("PillNavBar Component", () => {
 
     expect(handleChange).toHaveBeenCalledWith("overview");
   });
+
+  it("does not call onChange and shows disabled state when a disabled tab is clicked", () => {
+    const handleChange = vi.fn();
+    const itemsWithDisabled: PillNavItem[] = [
+      { id: "grid", label: "Grid", icon: LayoutGrid },
+      { id: "list", label: "List", icon: List, disabled: true, title: "List view is disabled on mobile" },
+    ];
+    render(
+      <PillNavBar
+        items={itemsWithDisabled}
+        activeId="grid"
+        onChange={handleChange}
+      />
+    );
+
+    const listTab = screen.getByRole("tab", { name: /list/i });
+    expect(listTab).toBeDisabled();
+    expect(listTab).toHaveAttribute("aria-disabled", "true");
+    expect(listTab).toHaveAttribute("title", "List view is disabled on mobile");
+
+    fireEvent.click(listTab);
+    expect(handleChange).not.toHaveBeenCalled();
+  });
 });

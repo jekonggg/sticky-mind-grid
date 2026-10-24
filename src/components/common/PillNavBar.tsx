@@ -7,6 +7,8 @@ export interface PillNavItem<T extends string = string> {
   label: string;
   icon: React.ComponentType<{ className?: string; size?: number | string }>;
   badge?: number | string;
+  disabled?: boolean;
+  title?: string;
 }
 
 export interface PillNavBarProps<T extends string = string> {
@@ -62,6 +64,7 @@ export function PillNavBar<T extends string = string>({
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = activeId === item.id;
+        const isDisabled = item.disabled;
 
         return (
           <button
@@ -70,9 +73,17 @@ export function PillNavBar<T extends string = string>({
             type="button"
             aria-selected={isActive}
             tabIndex={isActive ? 0 : -1}
-            onClick={() => onChange(item.id)}
+            disabled={isDisabled}
+            aria-disabled={isDisabled}
+            title={item.title || item.label}
+            onClick={() => {
+              if (!isDisabled) {
+                onChange(item.id);
+              }
+            }}
             className={cn(
-              "relative z-10 flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full transition-colors cursor-pointer",
+              "relative z-10 flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full transition-colors",
+              isDisabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer",
               "outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
               isSmall ? "px-2.5 py-1 text-[11px]" : "px-3.5 py-1.5 text-xs",
               isActive

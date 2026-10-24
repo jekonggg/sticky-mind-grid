@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { AuthContext } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TaskListViewProps {
   tasks: Task[];
@@ -39,6 +40,7 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
   const { devSettings } = useDevMode();
   const { settings } = useSettings();
   const isCompact = settings.uiDensity === "compact";
+  const isMobile = useIsMobile();
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -52,6 +54,182 @@ export function TaskListView({ tasks, columns = [], selectedTaskId, onTaskClick 
         return "";
     }
   };
+
+  if (isMobile) {
+    return (
+      <div
+        data-testid="task-list-mobile-view"
+        className={`${isCompact ? "p-3 space-y-3" : "p-4 space-y-4"} animate-in fade-in slide-in-from-bottom-4 duration-500`}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" data-testid="task-list-mobile-grid">
+          {tasks.length === 0 ? (
+            <div className="py-12 text-center rounded-xl bg-card/50 border border-border/50 p-6 text-muted-foreground italic col-span-full">
+              No tasks found matching your criteria
+            </div>
+          ) : (
+            tasks.map((task) => {
+              const isSelected = selectedTaskId === task.id;
+              const column = columns.find((c) => c.id === task.status);
+              const statusTitle = column?.title || task.status.replace(/_/g, " ");
+              const statusEmoji = column?.emoji;
+              const statusColor = column?.color;
+              const isDone = task.status === "done" || task.progress === 100;
+              const now = new Date();
+              const isOverdue = task.dueDate && !isDone && new Date(task.dueDate) < now;
+
+              const assigneeName = task.assignee?.fullName || task.assignee?.email;
+              const assigneeInitial = (assigneeName || "U").charAt(0).toUpperCase();
+
+              const isCurrentUser =
+                task.assignee?.id === currentUser?.id ||
+                (currentUser?.email && task.assignee?.email === currentUser.email);
+              const assigneeAvatarUrl = isCurrentUser
+                ? (currentUser?.avatarUrl ?? task.assignee?.avatarUrl)
+                : task.assignee?.avatarUrl;
+
+              return (
+                <div
+                  key={task.id}
+                  onClick={() => onTaskClick(task)}
+                  className={`${isCompact ? "p-3.5 rounded-xl gap-2.5" : "p-4 rounded-xl gap-3"} bg-card border shadow-xs hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group ${
+                    isSelected
+                      ? "border-primary/60 ring-2 ring-primary/20"
+                      : "border-border/60 hover:border-primary/40"
+                  }`}
+                >
+                  <div className="space-y-2.5">
+                    {/* Status & Priority Badge Header */}
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] px-2 py-0.5 bg-muted/50 border-border/60 inline-flex items-center gap-1.5 font-bold"
+                      >
+                        {!devSettings.disableEmojiCustomization && statusEmoji ? (
+                          <span className="text-xs leading-none shrink-0">{statusEmoji}</span>
+                        ) : (
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0 shadow-2xs"
+                            style={{ backgroundColor: statusColor || "var(--primary)" }}
+                          />
+                        )}
+                        <span className="truncate">{statusTitle}</span>
+                      </Badge>
+
+                      <Badge
+                        variant="outline"
+                        className={`font-black uppercase text-[9px] tracking-tighter px-1.5 py-0 ${getPriorityColor(
+                          task.priority
+                        )}`}
+                      >
+                        {task.priority || "none"}
+                      </Badge>
+                    </div>
+
+                    {/* Task Title & Emoji */}
+                    <div className="flex items-start gap-2.5">
+                      {!devSettings.disableEmojiCustomization && (
+                        <div className={`${isCompact ? "h-6 w-6 rounded-md" : "h-7 w-7 rounded-lg"} flex items-center justify-center shrink-0 border transition-all duration-200 select-none bg-muted/20 border-border/40 group-hover:border-primary/30 group-hover:bg-primary/5 mt-0.5`}>
+                          {task.emoji ? (
+                            <span className={`${isCompact ? "text-sm" : "text-base"} leading-none`}>{task.emoji}</span>
+                          ) : (
+                            <FileText className={`${isCompact ? "h-3 w-3" : "h-3.5 w-3.5"} text-muted-foreground/60 group-hover:text-primary transition-colors`} />
+                          )}
+                        </div>
+                      )}
+
+                      <div className="min-w-0 flex-1">
+                        <h4
+                          className={`text-sm font-bold truncate ${
+                            isDone
+                              ? "line-through text-muted-foreground"
+                              : "text-foreground group-hover:text-primary transition-colors"
+                          }`}
+                        >
+                          {task.title}
+                        </h4>
+                        {task.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                            {task.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tags */}
+                    {task.tags && task.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {task.tags.map((t) => (
+                          <span
+                            key={t.id}
+                            style={{ backgroundColor: `${t.color}20`, color: t.color, borderColor: `${t.color}40` }}
+                            className="text-[9px] font-bold px-1.5 py-0.2 rounded-full border truncate max-w-[100px]"
+                          >
+                            {t.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Progress Bar */}
+                    {task.progress !== undefined && task.progress > 0 && (
+                      <div className="space-y-1 pt-1">
+                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${getProgressColor(task.progress)}`}
+                            style={{ width: `${task.progress}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] text-muted-foreground font-semibold">
+                          <span>Progress</span>
+                          <span>{task.progress}%</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer: Assignee & Due Date */}
+                  <div className="pt-2.5 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground">
+                    {task.assignee ? (
+                      <div className="flex items-center gap-1.5">
+                        <Avatar className="h-5 w-5 border border-primary/20">
+                          <AvatarImage src={assigneeAvatarUrl} alt={assigneeName} />
+                          <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">
+                            {assigneeInitial}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-[11px] font-medium text-foreground truncate max-w-[120px]">
+                          {assigneeName}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground/60 italic flex items-center gap-1">
+                        <User className="h-3 w-3" /> Unassigned
+                      </span>
+                    )}
+
+                    {task.dueDate ? (
+                      <span
+                        className={`text-[11px] font-semibold flex items-center gap-1 ${
+                          isOverdue ? "text-rose-500 font-bold" : "text-muted-foreground"
+                        }`}
+                      >
+                        <Clock className="h-3 w-3" />
+                        {formatSafe(task.dueDate, "MMM d, yyyy")}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground/40 italic">
+                        No due date
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`${isCompact ? "p-3 md:p-4 space-y-3" : "p-6 md:p-8 space-y-6"} animate-in fade-in slide-in-from-bottom-4 duration-500`}>

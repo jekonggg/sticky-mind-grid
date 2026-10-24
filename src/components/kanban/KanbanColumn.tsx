@@ -179,6 +179,7 @@ export function KanbanColumn({
   return (
     <div
       data-testid={`kanban-column-${id}`}
+      data-kanban-column="true"
       data-wip-status={isOverWipLimit ? "exceeded" : isAtWipLimit ? "reached" : "normal"}
       style={geom.isCustom ? { borderRadius: `${geom.outerRadius}px` } : undefined}
       className={`flex flex-col group/column density-kanban-column ${
@@ -285,6 +286,8 @@ export function KanbanColumn({
       {/* Pod Tasks Drop Area with Internal Scrolling */}
       <div
         ref={setNodeRef}
+        data-testid={`kanban-column-tasks-${id}`}
+        data-column-tasks="true"
         style={
           geom.isCustom
             ? {
@@ -293,7 +296,7 @@ export function KanbanColumn({
               }
             : undefined
         }
-        className="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col p-3 gap-3"
+        className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain custom-scrollbar flex flex-col p-3 gap-3"
       >
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.length === 0 ? (
