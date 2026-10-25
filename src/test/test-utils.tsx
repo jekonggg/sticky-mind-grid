@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { DevModeProvider } from "@/contexts/DevModeContext";
 import { ActivityProvider } from "@/hooks/useActivity";
+import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LayoutProvider } from "@/contexts/LayoutContext";
 import { User } from "@/types/user";
@@ -59,7 +60,9 @@ export function renderWithProviders(
                 <DevModeProvider>
                   <ActivityProvider>
                     <LayoutProvider>
-                      <BrowserRouter>{children}</BrowserRouter>
+                      <BrowserRouter>
+                        <OnboardingProvider>{children}</OnboardingProvider>
+                      </BrowserRouter>
                     </LayoutProvider>
                   </ActivityProvider>
                 </DevModeProvider>

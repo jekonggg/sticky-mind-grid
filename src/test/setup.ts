@@ -53,6 +53,59 @@ vi.mock("@/hooks/useActivity", () => ({
 global.fetch = vi.fn().mockImplementation((url: string | URL | Request) => {
   const urlStr = String(url);
 
+  if (urlStr.includes("/api/users/me/onboarding")) {
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          enabled: true,
+          status: "not_applicable",
+          template: null,
+          starterBoardId: null,
+          steps: [
+            { key: "board_created", title: "Create your first board", description: "Your starter board is ready to use.", completed: false, completedAt: null },
+            { key: "task_created", title: "Add your first task", description: "Capture something you want to get done.", completed: false, completedAt: null },
+            { key: "task_completed", title: "Complete your first task", description: "Move a card into your Done column.", completed: false, completedAt: null },
+          ],
+          progress: 0,
+          coachMarks: [
+            { id: "board-columns", seen: true },
+            { id: "add-task", seen: true },
+            { id: "status-done", seen: true },
+          ],
+          whatsNewSeenVersion: 1,
+          tourBannerDismissed: true,
+          startedAt: null,
+          completedAt: null,
+          skippedAt: null,
+          replayStartedAt: null,
+          createdAt: null,
+          updatedAt: null,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+  }
+
+  if (urlStr.includes("/role-tips")) {
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          role: "viewer",
+          roleLabel: "Viewer",
+          tip: null,
+          roleChange: null,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+  }
+
   if (urlStr.includes("/api/users/me/preferences")) {
     return Promise.resolve(
       new Response(JSON.stringify({}), {

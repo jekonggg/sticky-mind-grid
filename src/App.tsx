@@ -10,6 +10,8 @@ import { SettingsProvider } from "./contexts/SettingsContext";
 import { DevModeProvider } from "./contexts/DevModeContext";
 import { ActivityProvider } from "./hooks/useActivity";
 import { AuthProvider } from "./contexts/AuthContext";
+import { OnboardingProvider } from "./contexts/OnboardingContext";
+import { OnboardingTourDialog } from "./components/onboarding/OnboardingTourDialog";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AppLayout } from "./components/layout/AppLayout";
 import { AuthPageSkeleton } from "./components/skeletons";
@@ -71,6 +73,7 @@ const App = () => (
             <SettingsProvider>
               <DevModeProvider>
                 <ActivityProvider>
+                <OnboardingProvider>
                 <Toaster />
                 <Sonner />
                 <EnvironmentBanner />
@@ -108,6 +111,8 @@ const App = () => (
                 </Routes>
                 <Analytics />
                 <DevSkeletonToolbar />
+                <OnboardingTourDialog />
+                </OnboardingProvider>
               </ActivityProvider>
             </DevModeProvider>
           </SettingsProvider>
