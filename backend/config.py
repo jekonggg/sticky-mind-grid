@@ -135,6 +135,12 @@ class Config:
     from datetime import timedelta
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24) # Dev friendly expiry
 
+    # Feature flags
+    ONBOARDING_ENABLED = (
+        (os.environ.get('ONBOARDING_ENABLED') or 'true').strip().lower()
+        not in ('0', 'false', 'no', 'off')
+    )
+
     # CORS Origins
     default_cors = (
         'http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,'
