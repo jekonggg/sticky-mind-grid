@@ -4,6 +4,7 @@ import { taskApi } from "@/services/api";
 import { useActivity } from "./useActivity";
 import { AuthContext } from "@/contexts/AuthContext";
 import { isBoardRealtimeConnected } from "./useBoardRealtime";
+import { QueryClientContext } from "@tanstack/react-query";
 
 const DEFAULT_COLUMNS: Column[] = [
   { id: "todo", title: "To Do" },
@@ -42,7 +43,15 @@ if (typeof window !== "undefined") {
 
 export function useTasks(boardId: string, initialColumns: Column[] = []) {
   const authContext = useContext(AuthContext);
+  const queryClient = useContext(QueryClientContext);
   const user = authContext?.user;
+
+  const notifyOnboarding = useCallback(() => {
+    queryClient?.invalidateQueries({ queryKey: ["onboarding"] });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("onboarding:invalidate"));
+    }
+  }, [queryClient]);
   const cachedEntry = boardId ? tasksCache.get(boardId) : undefined;
   const isCacheValidForUser = cachedEntry && (!cachedEntry.userId || cachedEntry.userId === user?.id);
   const hasCachedData = Boolean(isCacheValidForUser && cachedEntry?.tasks);
@@ -196,12 +205,53 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
   }, [boardId, fetchTasks, setTasks, user?.id, user?.avatarUrl, user?.fullName, user?.email]);
 
   const addTask = useCallback(async (data: CreateTaskData) => {
-    const task = await taskApi.createTask({ ...data, boardId });
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const targetStatus: TaskStatus = data.status || "todo";
+    const optimisticTask: Task = {
+      id: tempId,
+      boardId,
+      title: data.title,
+      emoji: data.emoji,
+      description: data.description,
+      status: targetStatus,
+      priority: data.priority,
+      assignedTo: data.assignedTo ?? null,
+      createdBy: user?.id ?? null,
+      creator: user
+        ? {
+            id: user.id,
+            email: user.email,
+            fullName: user.fullName,
+            avatarUrl: user.avatarUrl,
+          }
+        : null,
+      assignee: null,
+      dueDate: data.dueDate ?? null,
+      progress: data.progress ?? 0,
+      position: data.position ?? tasks.length,
+      checklist: data.checklist || [],
+      tags: data.tags || [],
+      attachments: data.attachments || [],
+      followers: data.followers || [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
     markTasksMutated();
-    setTasks((prev) => [...prev, task]);
-    addActivity("create", task.title, `Created task "${task.title}"`, boardId);
-    return task;
-  }, [addActivity, boardId, setTasks]);
+    setTasks((prev) => [...prev, optimisticTask]);
+
+    try {
+      const task = await taskApi.createTask({ ...data, boardId });
+      setTasks((prev) => prev.map((t) => (t.id === tempId ? task : t)));
+      addActivity("create", task.title, `Created task "${task.title}"`, boardId);
+      notifyOnboarding();
+      return task;
+    } catch (err) {
+      setTasks((prev) => prev.filter((t) => t.id !== tempId));
+      fetchTasks();
+      throw err;
+    }
+  }, [addActivity, boardId, fetchTasks, notifyOnboarding, setTasks, tasks.length, user]);
 
   const updateTask = useCallback(async (id: string, data: UpdateTaskData) => {
     const task = tasks.find((t) => t.id === id);
@@ -216,6 +266,9 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     try {
       const updated = await taskApi.updateTask(id, data);
       setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      if (data.status) {
+        notifyOnboarding();
+      }
       return updated;
     } catch (err: any) {
       if (err?.status === 409) {
@@ -259,6 +312,9 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
           return prev.map((t) => updatedMap.get(t.id) || t);
         });
       }
+      if (items.some((i) => i.status)) {
+        notifyOnboarding();
+      }
     } catch {
       fetchTasks();
     }
@@ -276,10 +332,11 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
 
     try {
       await taskApi.updateTask(id, { status });
+      notifyOnboarding();
     } catch {
       fetchTasks();
     }
-  }, [fetchTasks, setTasks, tasks]);
+  }, [fetchTasks, notifyOnboarding, setTasks, tasks]);
 
   const deleteTask = useCallback(async (id: string) => {
     const task = tasks.find((t) => t.id === id);

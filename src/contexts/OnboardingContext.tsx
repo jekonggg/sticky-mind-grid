@@ -88,6 +88,14 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   });
 
   useEffect(() => {
+    const handleInvalidate = () => {
+      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+    };
+    window.addEventListener("onboarding:invalidate", handleInvalidate);
+    return () => window.removeEventListener("onboarding:invalidate", handleInvalidate);
+  }, [queryClient]);
+
+  useEffect(() => {
     if (typeof BroadcastChannel === "undefined") return;
     const channel = new BroadcastChannel("smg-onboarding");
     channelRef.current = channel;
