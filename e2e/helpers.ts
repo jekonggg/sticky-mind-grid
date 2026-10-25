@@ -23,6 +23,17 @@ export async function registerUser(
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign In" }).click();
   await page.waitForURL("/", { timeout: 30000 });
+
+  // If the first-run onboarding question appears, skip it by default for standard E2E specs
+  const skipBtn = page.locator('[data-testid="onboarding-skip-question"]');
+  try {
+    if (await skipBtn.isVisible({ timeout: 1500 })) {
+      await skipBtn.click();
+      await page.waitForTimeout(300);
+    }
+  } catch {
+    // Non-blocking if the banner/question is not rendered
+  }
 }
 
 export async function createBoard(page: Page, name: string, description = "") {
