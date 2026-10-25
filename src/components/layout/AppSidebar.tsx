@@ -88,6 +88,7 @@ export function AppSidebar({
   const { settings, updateLocalSetting } = useSettings();
   const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
+  const { openTour } = useOnboarding();
 
   // Local expandable state with localStorage persistence
   const [isBoardsExpanded, setIsBoardsExpanded] = useState(() => {
