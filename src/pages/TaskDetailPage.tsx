@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { taskApi } from "@/services/api";
+import { clearBoardsCache } from "@/hooks/useBoards";
 import { boardApi } from "@/services/boardApi";
 import { Task, Priority, ChecklistItem, Tag, Attachment, Column } from "@/types/task";
 import { Board, BoardMember } from "@/types/board";
@@ -126,6 +127,9 @@ export default function TaskDetailPage() {
         currentUser?.id !== undefined &&
         String(data?.userId) === String(currentUser.id)
       ) {
+        clearBoardsCache();
+        queryClient.invalidateQueries({ queryKey: ["boards"] });
+        queryClient.invalidateQueries({ queryKey: ["notifications"] });
         toast.error("You no longer have access to this board.");
         navigate("/");
         return;

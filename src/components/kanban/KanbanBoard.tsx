@@ -13,6 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { Task, TaskStatus, CreateTaskData, TaskFormData } from "@/types/task";
 import { useTasks, markTasksMutated, tasksMutationState } from "@/hooks/useTasks";
+import { clearBoardsCache } from "@/hooks/useBoards";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
 import { TrashModal } from "./TrashModal";
@@ -392,6 +393,9 @@ export function KanbanBoard() {
         currentUser?.id !== undefined &&
         String(data?.userId) === String(currentUser.id)
       ) {
+        clearBoardsCache();
+        queryClient?.invalidateQueries({ queryKey: ["boards"] });
+        queryClient?.invalidateQueries({ queryKey: ["notifications"] });
         toast.error("You no longer have access to this board.");
         navigate("/");
         return;

@@ -83,7 +83,14 @@ def is_done_column(columns, column_id):
     if not column_id:
         return False
     done_id = get_done_column_id(columns)
-    return done_id is not None and str(done_id) == str(column_id)
+    if done_id is not None and str(done_id) == str(column_id):
+        return True
+    # Fallback: normalize columns if explicit isDone was not stored on dict
+    normalized = normalize_columns(columns)
+    done_id = get_done_column_id(normalized)
+    if done_id is not None and str(done_id) == str(column_id):
+        return True
+    return str(column_id).lower().strip() in ('done', 'completed')
 
 
 def compute_column_progress(columns, column_id):

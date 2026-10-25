@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, XClose } from "@untitledui/icons";
 
@@ -23,6 +24,8 @@ export function RoleTipBanner({ boardId, isOwner }: RoleTipBannerProps) {
     retry: false,
   });
 
+  const [dismissed, setDismissed] = useState(false);
+
   const dismissMutation = useMutation({
     mutationFn: async (kind: "role-change" | "tip") => {
       if (kind === "role-change") {
@@ -36,7 +39,12 @@ export function RoleTipBanner({ boardId, isOwner }: RoleTipBannerProps) {
     },
   });
 
-  if (isOwner || !data) return null;
+  const handleDismiss = () => {
+    setDismissed(true);
+    dismissMutation.mutate(isNotice ? "role-change" : "tip");
+  };
+
+  if (isOwner || !data || dismissed) return null;
 
   const notice = data.roleChange;
   const tip = data.tip;
@@ -63,9 +71,7 @@ export function RoleTipBanner({ boardId, isOwner }: RoleTipBannerProps) {
         <button
           type="button"
           aria-label={isNotice ? "Dismiss role change notice" : "Dismiss role tip"}
-          onClick={() =>
-            dismissMutation.mutate(isNotice ? "role-change" : "tip")
-          }
+          onClick={handleDismiss}
           className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted min-h-8 min-w-8 flex items-center justify-center"
         >
           <XClose className="h-3.5 w-3.5" />
@@ -104,10 +110,9 @@ export function RoleTipBanner({ boardId, isOwner }: RoleTipBannerProps) {
         size="sm"
         variant="outline"
         className="mt-3 w-full h-8 text-xs font-bold"
-        disabled={dismissMutation.isPending}
-        onClick={() => dismissMutation.mutate(isNotice ? "role-change" : "tip")}
+        onClick={handleDismiss}
       >
-        {dismissMutation.isPending ? "Saving…" : "Got it"}
+        Got it
       </Button>
     </aside>
   );

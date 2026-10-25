@@ -99,6 +99,9 @@ describe("BoardMembers Component", () => {
 
     fireEvent.click(leaveBtn);
 
+    const confirmLeaveBtn = await screen.findByRole("button", { name: /leave board/i });
+    fireEvent.click(confirmLeaveBtn);
+
     await waitFor(() => {
       expect(boardApi.removeMember).toHaveBeenCalledWith("board-1", mockUser.id);
     });

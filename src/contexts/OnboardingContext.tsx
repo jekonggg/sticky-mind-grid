@@ -40,12 +40,15 @@ interface OnboardingContextValue {
 
 const OnboardingContext = createContext<OnboardingContextValue | undefined>(undefined);
 
+const isPendingOnboarding =
+  typeof window !== "undefined" && localStorage.getItem("smg_onboarding_pending") === "true";
+
 const defaultOnboardingValue: OnboardingContextValue = {
   state: null,
   loading: false,
   error: null,
-  enabled: false,
-  status: "not_applicable",
+  enabled: isPendingOnboarding,
+  status: isPendingOnboarding ? "not_started" : "not_applicable",
   refresh: async () => {},
   start: async () => null,
   skip: async () => {},
@@ -76,6 +79,17 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const query = useQuery<OnboardingState>({
     queryKey,
     queryFn: () => onboardingApi.getState(),
+    initialData: isPendingOnboarding
+      ? {
+          enabled: true,
+          status: "not_started",
+          starterBoardId: null,
+          steps: [],
+          coachMarks: {},
+          educationDismissed: false,
+          educationVersion: 0,
+        }
+      : undefined,
     enabled: Boolean(user?.id),
     staleTime: 0,
     refetchOnMount: "always",
@@ -124,6 +138,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const startMutation = useMutation({
     mutationFn: (template: StarterTemplate) => onboardingApi.start(template),
     onSuccess: (data) => {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("smg_onboarding_pending");
+      }
       applyState(data.onboarding);
       queryClient.invalidateQueries({ queryKey: ["boards"] });
       queryClient.invalidateQueries({ queryKey: ["pendingInvitations"] });
@@ -133,6 +150,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const skipMutation = useMutation({
     mutationFn: (reason: "question" | "checklist") => onboardingApi.skip(reason),
     onSuccess: (next) => {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("smg_onboarding_pending");
+      }
       applyState(next);
       queryClient.invalidateQueries({ queryKey: ["boards"] });
       queryClient.invalidateQueries({ queryKey: ["pendingInvitations"] });

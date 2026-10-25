@@ -107,6 +107,7 @@ export default function Register() {
         response.message || "Account created successfully! Please verify your email."
       );
       sessionStorage.setItem("login_prefill_email", cleanEmail);
+      localStorage.setItem("smg_onboarding_pending", "true");
       const nextPendingUrl = redirectParam
         ? `/verify-email?email=${encodeURIComponent(cleanEmail)}&pending=true&redirect=${encodeURIComponent(redirectParam)}`
         : `/verify-email?email=${encodeURIComponent(cleanEmail)}&pending=true`;

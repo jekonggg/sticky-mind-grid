@@ -364,8 +364,38 @@ export default function AcceptInvitePage() {
           </Card>
         )}
 
-        {/* 6. LOGGED IN AS MATCHING USER (USER A): EXPLICIT ACCEPT / DECLINE */}
-        {isEmailMatch && (
+        {/* 6. LOGGED IN AS MATCHING USER (USER A): ONBOARDING FIRST OR EXPLICIT ACCEPT */}
+        {isEmailMatch && onboardingEnabled && onboardingStatus === "not_started" ? (
+          <Card className="border-primary/40 bg-card shadow-2xl p-6 text-center space-y-4" data-testid="invite-onboarding-first-card">
+            <div className="mx-auto h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary text-2xl">
+              🚀
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold text-foreground">Welcome to Sticky Mind Grid!</h2>
+              <p className="text-sm text-muted-foreground">
+                Before joining <strong>{invitation.boardName}</strong>, let's take a quick 30-second tour to set up your workspace.
+              </p>
+            </div>
+            <div className="p-3 bg-muted/40 rounded-xl text-xs text-muted-foreground">
+              Your invitation from <strong>{invitation.inviterName}</strong> will remain saved and waiting for you on your dashboard.
+            </div>
+            <Button
+              className="w-full font-bold gap-2 py-5 text-base"
+              onClick={() => navigate("/")}
+              data-testid="start-onboarding-first-button"
+            >
+              Start Quick Tour First <ArrowRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => acceptMutation.mutate()}
+              disabled={acceptMutation.isPending}
+            >
+              Skip tour and accept invitation directly
+            </Button>
+          </Card>
+        ) : isEmailMatch && (
           <Card className="border-border/50 shadow-2xl bg-card overflow-hidden" data-testid="invite-matching-card">
             <CardHeader className="text-center pb-2">
               <div

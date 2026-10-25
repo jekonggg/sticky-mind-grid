@@ -1128,6 +1128,8 @@ class BoardService:
                 broadcaster.broadcast(board_id, "task:updated", t.to_dict())
                 broadcaster.broadcast(board_id, "activity:new", task_act.to_dict())
 
+        from app.models.user_onboarding import BoardRoleTip
+        BoardRoleTip.query.filter_by(board_id=str(board_id), user_id=str(user_id)).delete()
         db.session.delete(membership)
         db.session.commit()
 
@@ -1248,6 +1250,18 @@ class BoardService:
                 db.session.add(task_act)
                 broadcaster.broadcast(board_id, "task:updated", t.to_dict())
                 broadcaster.broadcast(board_id, "activity:new", task_act.to_dict())
+
+        if actor_id and str(user_id) != str(actor_id):
+            actor = db.session.get(User, actor_id)
+            actor_name = (actor.full_name or actor.email) if actor else "Board Admin"
+            role_notif = Notification(
+                user_id=user_id,
+                type='role_updated',
+                title='Role Updated',
+                message=f'{actor_name} updated your role on "{board.name}" to {new_role.capitalize()}.',
+                link=f'/boards/{board_id}'
+            )
+            db.session.add(role_notif)
 
         try:
             db.session.commit()

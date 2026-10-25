@@ -277,10 +277,55 @@ export function useBoards() {
 
   const createBoard = useCallback(
     async (data: CreateBoardData) => {
+      const tempId = `temp-board-${Date.now()}`;
+      const optimisticBoard: Board = {
+        id: tempId,
+        name: data.name,
+        emoji: data.emoji || "📋",
+        description: data.description,
+        color: data.color || "hsl(220, 80%, 56%)",
+        heroImageUrl: data.heroImageUrl,
+        columns: data.columns || [],
+        ownerId: user?.id,
+        role: "owner",
+        taskCount: 0,
+        openTaskCount: 0,
+        overdueCount: 0,
+        dueSoonCount: 0,
+        ownerCount: 1,
+        memberCount: 1,
+        isShared: false,
+        membersPreview: user
+          ? [
+              {
+                id: user.id,
+                fullName: user.fullName || user.email,
+                avatarUrl: user.avatarUrl,
+                role: "owner",
+              },
+            ]
+          : [],
+        isDeleted: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Reset in-flight background promise so it does not overwrite optimistic creation
+      inFlightBoardsPromise = null;
+      lastBoardsFetchTime = Date.now();
+
+      // Optimistic update immediately
+      setBoards((prev) => {
+        const next = [...prev.filter((b) => b.id !== tempId), optimisticBoard];
+        cachedBoards = next;
+        queryClient?.setQueryData(["boards"], next);
+        return next;
+      });
+
       try {
         const board = await boardApi.createBoard(data);
         setBoards((prev) => {
-          const next = [...prev, board];
+          const next = prev.map((b) => (b.id === tempId ? board : b));
           cachedBoards = next;
           queryClient?.setQueryData(["boards"], next);
           return next;
@@ -288,11 +333,13 @@ export function useBoards() {
         addActivity("create", board.name, `New board "${board.name}" created`);
         toast.success(`Board "${board.name}" created`);
         return board;
-      } catch {
+      } catch (err) {
+        setBoards((prev) => prev.filter((b) => b.id !== tempId));
         toast.error("Failed to create board");
+        throw err;
       }
     },
-    [addActivity, queryClient]
+    [addActivity, queryClient, user]
   );
 
   const updateBoard = useCallback(

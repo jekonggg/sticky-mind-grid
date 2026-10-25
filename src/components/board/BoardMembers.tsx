@@ -62,6 +62,12 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
     mode: "role_update" | "transfer_ownership";
   } | null>(null);
   const [confirmBoardName, setConfirmBoardName] = useState("");
+  const [memberToRemove, setMemberToRemove] = useState<{
+    id: string;
+    name: string;
+    isSelf?: boolean;
+    isInvite?: boolean;
+  } | null>(null);
 
   useEffect(() => {
     setConfirmBoardName("");
@@ -395,9 +401,10 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                       className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg shrink-0"
                       title="Remove member from board"
                       onClick={() => {
-                        if (confirm(`Remove ${member.user?.fullName || member.user?.email || "this member"} from this board?`)) {
-                          removeMutation.mutate(member.userId || member.id);
-                        }
+                        setMemberToRemove({
+                          id: member.userId || member.id,
+                          name: member.user?.fullName || member.user?.email || "this member",
+                        });
                       }}
                       disabled={removeMutation.isPending}
                     >
@@ -425,9 +432,11 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                           );
                           return;
                         }
-                        if (confirm(`Are you sure you want to leave "${currentBoard?.name || "this board"}"?`)) {
-                          removeMutation.mutate(member.userId);
-                        }
+                        setMemberToRemove({
+                          id: member.userId,
+                          name: currentBoard?.name || "this board",
+                          isSelf: true,
+                        });
                       }}
                       disabled={removeMutation.isPending || isSoleOwner}
                     >
@@ -523,10 +532,11 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
                         className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer shrink-0"
                         title="Revoke invitation"
                         onClick={() => {
-                          const promptMsg = `Revoke invitation for ${displayName}?`;
-                          if (confirm(promptMsg)) {
-                            revokeInviteMutation.mutate(member.userId || member.id);
-                          }
+                          setMemberToRemove({
+                            id: member.userId || member.id,
+                            name: displayName,
+                            isInvite: true,
+                          });
                         }}
                         disabled={revokeInviteMutation.isPending}
                       >
@@ -540,6 +550,52 @@ export function BoardMembers({ boardId }: BoardMembersProps) {
           })}
         </div>
       )}
+
+      {/* Styled Remove Member / Leave Board / Revoke Invite Dialog */}
+      <AlertDialog
+        open={!!memberToRemove}
+        onOpenChange={(open) => !open && setMemberToRemove(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {memberToRemove?.isSelf
+                ? `Leave "${memberToRemove?.name}"?`
+                : memberToRemove?.isInvite
+                ? `Revoke Invitation for "${memberToRemove?.name}"?`
+                : `Remove "${memberToRemove?.name}"?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {memberToRemove?.isSelf
+                ? "You will lose access to this board and its tasks. An owner or admin will need to invite you again to regain access."
+                : memberToRemove?.isInvite
+                ? "This invitation link will be invalidated immediately and cannot be used to join the board."
+                : `Are you sure you want to remove ${memberToRemove?.name} from this board? They will immediately lose access to board tasks and discussions.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold"
+              onClick={() => {
+                if (!memberToRemove) return;
+                if (memberToRemove.isInvite) {
+                  revokeInviteMutation.mutate(memberToRemove.id);
+                } else {
+                  removeMutation.mutate(memberToRemove.id);
+                }
+                setMemberToRemove(null);
+              }}
+            >
+              {memberToRemove?.isSelf
+                ? "Leave Board"
+                : memberToRemove?.isInvite
+                ? "Revoke Invite"
+                : "Remove Member"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Transfer Ownership Confirmation with Type-to-Confirm */}
       <AlertDialog

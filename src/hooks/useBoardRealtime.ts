@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { clearBoardsCache } from "./useBoards";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { toast } from "sonner";
@@ -319,8 +320,19 @@ export function useBoardRealtime({
               break;
 
             case "member:joined":
+              queryClient?.invalidateQueries({ queryKey: ["boardMembers", boardId] });
+              callbacksRef.current.onMemberChange?.({
+                ...(payload.data && typeof payload.data === "object" ? payload.data : {}),
+                eventType: payload.type,
+              });
+              break;
+
             case "member:role_updated":
               queryClient?.invalidateQueries({ queryKey: ["boardMembers", boardId] });
+              queryClient?.invalidateQueries({ queryKey: ["notifications"] });
+              queryClient?.invalidateQueries({ queryKey: ["roleTip", boardId] });
+              queryClient?.invalidateQueries({ queryKey: ["board", boardId] });
+              queryClient?.invalidateQueries({ queryKey: ["boards"] });
               callbacksRef.current.onMemberChange?.({
                 ...(payload.data && typeof payload.data === "object" ? payload.data : {}),
                 eventType: payload.type,
@@ -330,6 +342,9 @@ export function useBoardRealtime({
             case "member:removed":
               queryClient?.invalidateQueries({ queryKey: ["boardMembers", boardId] });
               if (payload.data?.userId && String(payload.data.userId) === String(userId)) {
+                clearBoardsCache();
+                queryClient?.invalidateQueries({ queryKey: ["boards"] });
+                queryClient?.invalidateQueries({ queryKey: ["notifications"] });
                 clearReconnectDebounce();
                 if (reconnectTimeoutRef.current) {
                   clearTimeout(reconnectTimeoutRef.current);

@@ -193,6 +193,7 @@ class OnboardingService:
             .filter(
                 BoardMember.user_id == str(user_id),
                 BoardMember.status == 'accepted',
+                Board.owner_id == str(user_id),
                 Board.is_deleted.is_(False),
             )
             .first()
@@ -440,10 +441,10 @@ class OnboardingService:
             return
 
         board = db.session.get(Board, task.board_id)
-        done = board is not None and any(
-            isinstance(col, dict) and col.get('isDone') and str(col.get('id')) == str(task.status)
-            for col in (board.columns or [])
-        )
+        if not board:
+            return
+        from app.utils.column_utils import is_done_column
+        done = is_done_column(board.columns, task.status) or str(task.status).lower().strip() in ('done', 'completed')
         if not done:
             return
 
