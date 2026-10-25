@@ -19,7 +19,7 @@ flowchart LR
     end
     subgraph Render["Render Web Services (Free Tier)"]
         Gunicorn_Prod["Prod API (main, 24/7 keep-alive)\nsticky-mind-grid-api"]
-        Gunicorn_Dev["Dev API (develop, idle-sleep)\nsticky-mind-grid-api-dev"]
+        Gunicorn_Dev["Dev API (develop, 24/7 keep-alive via separate workspace)\nsticky-mind-grid-api-dev"]
     end
     subgraph DB["Supabase Postgres (pooler :6543, verify-full)"]
         PG_Prod[("Prod Supabase\nPostgres + Storage")]
@@ -29,7 +29,7 @@ flowchart LR
     Browser -- "HTTPS" --> SPA_Prod & SPA_Dev
     SPA_Prod -- "/api/*" --> Gunicorn_Prod --> PG_Prod
     SPA_Dev -- "/api/*" --> Gunicorn_Dev --> PG_Dev
-``` | 1. **Frontend (Vercel — Separate Prod & Dev Projects)**: Built via `npm run build` (`vite build`, `package.json:L7`) into `dist/` (`vercel.json:L2-L4`). **Production** (`sticky-mind-grid.vercel.app`) deploys from `main`; **Deployed Dev** (`sticky-mind-grid-dev.vercel.app`) is a separate Vercel project whose production branch is `develop` (`VITE_APP_ENV=dev`, `VITE_OAUTH_ENABLED=false`).<br>2. **Backend (Render — Native Python Free Services)**: **Prod** runs on `sticky-mind-grid-api` (branch `main`, kept warm 24/7 via external `/api/health` pinger, consuming ~744 of 750 free workspace hours/month). **Dev** runs on `sticky-mind-grid-api-dev` (branch `develop`, `APP_ENV=dev`, `OAUTH_ENABLED=false`, `EMAIL_SUBJECT_PREFIX=[DEV]`, no keep-alive pinger so it sleeps after 15 min idle to stay within the 750h free budget, or hosted in a separate Render workspace).<br>3. **Database (Supabase PostgreSQL / Local MySQL / SQLite)**: Production and Deployed Dev use **separate Supabase projects** (`sslmode=verify-full` with `backend/certs/supabase-prod-ca-2021.crt` on port 6543) and separate `avatars` / `attachments` storage buckets. Local dev defaults to MySQL `sticky_mind_grid`; Playwright E2E uses `sticky_mind_grid_test`; Pytest uses `sqlite:///:memory:`. |
+``` | 1. **Frontend (Vercel — Separate Prod & Dev Projects)**: Built via `npm run build` (`vite build`, `package.json:L7`) into `dist/` (`vercel.json:L2-L4`). **Production** (`sticky-mind-grid.vercel.app`) deploys from `main`; **Deployed Dev** (`sticky-mind-grid-dev.vercel.app`) is a separate Vercel project whose production branch is `develop` (`VITE_APP_ENV=dev`, `VITE_OAUTH_ENABLED=false`).<br>2. **Backend (Render — Native Python Free Services)**: **Prod** runs on `sticky-mind-grid-api` (branch `main`, kept warm 24/7 via external `/api/health` pinger, consuming ~744 of 750 free workspace hours/month). **Dev** runs on `sticky-mind-grid-api-dev` (branch `develop`, `APP_ENV=dev`, `OAUTH_ENABLED=false`, `EMAIL_SUBJECT_PREFIX=[DEV]`, hosted in a dedicated Render workspace with its own 750h free tier, kept warm 24/7 via dedicated /api/health pinger).<br>3. **Database (Supabase PostgreSQL / Local MySQL / SQLite)**: Production and Deployed Dev use **separate Supabase projects** (`sslmode=verify-full` with `backend/certs/supabase-prod-ca-2021.crt` on port 6543) and separate `avatars` / `attachments` storage buckets. Local dev defaults to MySQL `sticky_mind_grid`; Playwright E2E uses `sticky_mind_grid_test`; Pytest uses `sqlite:///:memory:`. |
 
 ### Environment Summary Matrix
 
