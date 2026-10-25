@@ -419,5 +419,39 @@ describe("BoardsOverview Page", () => {
     const saved = JSON.parse(localStorage.getItem(prefsKey) || "{}");
     expect(saved.filter).toBe("shared");
   });
+
+  it("renders OnboardingQuestion when onboardingStatus is not_started", async () => {
+    const origFetch = global.fetch;
+    global.fetch = vi.fn().mockImplementation((url: string | URL | Request) => {
+      const urlStr = String(url);
+      if (urlStr.includes("/api/users/me/onboarding")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              enabled: true,
+              status: "not_started",
+              template: null,
+              starterBoardId: null,
+              steps: [
+                { key: "board_created", title: "Create your first board", description: "Your starter board is ready to use.", completed: false, completedAt: null },
+                { key: "task_created", title: "Add your first task", description: "Capture something you want to get done.", completed: false, completedAt: null },
+                { key: "task_completed", title: "Complete your first task", description: "Move a card into your Done column.", completed: false, completedAt: null },
+              ],
+              progress: 0,
+              coachMarks: [],
+              whatsNewSeenVersion: 1,
+              tourBannerDismissed: true,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      return origFetch(url);
+    });
+
+    renderWithProviders(<BoardsOverview />, { user: mockUser });
+    expect(await screen.findByTestId("onboarding-question")).toBeInTheDocument();
+    expect(screen.getByText("What are you here to do?")).toBeInTheDocument();
+  });
 });
 

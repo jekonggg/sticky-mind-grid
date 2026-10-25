@@ -71,6 +71,8 @@ class Conversation(db.Model):
                 unread_count = sum(
                     1 for m in self.messages
                     if m.sender_id != current_user_id
+                    and m.created_at is not None
+                    and current_participant.last_read_at is not None
                     and (m.created_at > current_participant.last_read_at)
                     and not m.is_deleted
                 )

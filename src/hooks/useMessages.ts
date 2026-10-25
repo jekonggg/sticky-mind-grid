@@ -122,6 +122,12 @@ export function useMarkAsRead() {
 
   return useMutation({
     mutationFn: (conversationId: string) => messageApi.markAsRead(conversationId),
+    onMutate: async (conversationId: string) => {
+      queryClient.setQueryData<Conversation[]>(CONVERSATIONS_QUERY_KEY, (old = []) =>
+        old.map((c) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c))
+      );
+      queryClient.setQueryData<number>(UNREAD_COUNT_QUERY_KEY, (old = 0) => Math.max(0, old - 1));
+    },
     onSuccess: (_, conversationId) => {
       queryClient.setQueryData<Conversation[]>(CONVERSATIONS_QUERY_KEY, (old = []) =>
         old.map((c) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c))
@@ -246,8 +252,16 @@ export function useMessageRealtime() {
           }
           queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY });
           queryClient.invalidateQueries({ queryKey: UNREAD_COUNT_QUERY_KEY });
-        } else if (payload.type === "conversation:created" || payload.type === "conversation:read") {
+        } else if (payload.type === "conversation:created") {
           queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY });
+          queryClient.invalidateQueries({ queryKey: UNREAD_COUNT_QUERY_KEY });
+        } else if (payload.type === "conversation:read") {
+          const convId = payload.data?.conversationId;
+          if (convId) {
+            queryClient.setQueryData<Conversation[]>(CONVERSATIONS_QUERY_KEY, (old = []) =>
+              old.map((c) => (c.id === convId ? { ...c, unreadCount: 0 } : c))
+            );
+          }
           queryClient.invalidateQueries({ queryKey: UNREAD_COUNT_QUERY_KEY });
         } else if (
           payload.type === "message:reaction_updated" ||

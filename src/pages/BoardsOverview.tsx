@@ -350,6 +350,10 @@ export default function BoardsOverview() {
       <BoardHeader showSearch={false} />
       {loading || settings.simulateSkeletonLoading ? (
         <BoardsOverviewSkeleton />
+      ) : onboardingEnabled && onboardingStatus === "not_started" ? (
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10 w-full flex-1">
+          <OnboardingQuestion onSkip={() => {}} />
+        </main>
       ) : (
         <>
           <HeroBannerComponent compact={isScrolled} />
@@ -795,6 +799,10 @@ export default function BoardsOverview() {
           </section>
         )}
       </main>
+
+      {onboardingEnabled && onboardingStatus === "in_progress" && (
+        <GettingStartedChecklist variant="floating" />
+      )}
 
       {/* Board Modal */}
       <BoardModal

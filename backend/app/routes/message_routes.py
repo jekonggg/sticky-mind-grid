@@ -10,8 +10,16 @@ bp = Blueprint('message_routes', __name__, url_prefix='/api/messages')
 @jwt_required()
 def get_conversations():
     user_id = get_jwt_identity()
-    conversations = MessageService.get_user_conversations(user_id)
-    return jsonify(conversations), 200
+    try:
+        conversations = MessageService.get_user_conversations(user_id)
+        return jsonify(conversations), 200
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to retrieve conversations', 'details': str(e)}), 500
+
+
 
 @bp.route('/conversations', methods=['POST'])
 @jwt_required()

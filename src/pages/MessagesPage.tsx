@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useConversations,
@@ -40,12 +40,31 @@ export default function MessagesPage() {
   const deleteMessageMutation = useDeleteMessage(selectedConvId || "");
   const togglePinMutation = useTogglePinMessage(selectedConvId || "");
 
-  // Auto-mark conversation as read when selected
+  // Auto-mark conversation as read when selected (guarded against re-trigger loops)
+  const markedConvIdRef = useRef<string | null>(null);
+  const isMarkingRef = useRef(false);
+
   useEffect(() => {
-    if (selectedConvId && activeConversation && (activeConversation.unreadCount || 0) > 0) {
-      markAsReadMutation.mutate(selectedConvId);
+    if (!selectedConvId) {
+      markedConvIdRef.current = null;
+      return;
     }
-  }, [selectedConvId, activeConversation, markAsReadMutation]);
+
+    if (
+      activeConversation &&
+      (activeConversation.unreadCount || 0) > 0 &&
+      markedConvIdRef.current !== selectedConvId &&
+      !isMarkingRef.current
+    ) {
+      markedConvIdRef.current = selectedConvId;
+      isMarkingRef.current = true;
+      markAsReadMutation.mutate(selectedConvId, {
+        onSettled: () => {
+          isMarkingRef.current = false;
+        },
+      });
+    }
+  }, [selectedConvId, activeConversation?.id, activeConversation?.unreadCount]);
 
   // Update mobile list visibility when route changes
   useEffect(() => {

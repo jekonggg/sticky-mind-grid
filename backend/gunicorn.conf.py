@@ -23,7 +23,7 @@ workers = 1
 
 # Threaded worker model to serve multiple concurrent SSE streaming requests
 worker_class = "gthread"
-threads = int(os.environ.get("GUNICORN_THREADS", "16"))
+threads = int(os.environ.get("GUNICORN_THREADS", "32"))
 
 # Long timeout for SSE stream connections (in seconds)
 timeout = int(os.environ.get("GUNICORN_TIMEOUT", "120"))
