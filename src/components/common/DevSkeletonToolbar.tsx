@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,29 @@ import {
   Stars01 as Sparkles,
   EyeOff,
   Sliders01 as Sliders,
+  ChevronDown,
 } from "@untitledui/icons";
 
 export function DevSkeletonToolbar() {
   const { settings, updateLocalSetting } = useSettings();
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("smg_dev_toolbar_collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("smg_dev_toolbar_collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   const {
     devSettings,
     updateDevSetting,
@@ -32,9 +51,11 @@ export function DevSkeletonToolbar() {
 
   return (
     <>
-      {hasActiveModes && (
+      {/* 1. When Active Modes Exist AND Toolbar is Expanded */}
+      {hasActiveModes && !isCollapsed && (
         <aside
           aria-label="Developer Mode Toolbar"
+          data-collapsed="false"
           className="fixed bottom-5 right-3.5 left-3.5 sm:left-auto sm:right-5 z-50 flex items-center gap-3 p-3 px-4 rounded-2xl bg-card/90 dark:bg-card/90 backdrop-blur-xl border border-amber-500/40 text-foreground shadow-2xl shadow-amber-500/10 animate-in fade-in slide-in-from-bottom-4 duration-300 select-none"
         >
           {/* Status Indicator & Badges */}
@@ -145,6 +166,18 @@ export function DevSkeletonToolbar() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1.5 pl-2 border-l border-border/60">
+            {/* Collapse Button */}
+            <button
+              type="button"
+              onClick={toggleCollapse}
+              aria-label="Collapse dev toolbar"
+              data-testid="dev-toolbar-collapse-btn"
+              title="Collapse dev toolbar"
+              className="h-7 w-7 rounded-lg hover:bg-muted/70 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+
             {/* Open Full Dev Suite */}
             <Button
               size="sm"
@@ -179,23 +212,42 @@ export function DevSkeletonToolbar() {
         </aside>
       )}
 
-      {/* Idle Quick-Access Floating Button */}
-      {!hasActiveModes && (
+      {/* 2. When Collapsed OR Idle: Floating "Dev Mode" Button */}
+      {(!hasActiveModes || isCollapsed) && (
         <div className="fixed bottom-5 right-3.5 md:right-5 z-40 animate-in fade-in duration-300">
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setIsDevModalOpen(true)}
-            aria-label="Open Developer Suite"
+            onClick={() => {
+              if (hasActiveModes && isCollapsed) {
+                // Expanding the active container
+                toggleCollapse();
+              } else {
+                // Opening the modal when idle
+                setIsDevModalOpen(true);
+              }
+            }}
+            data-testid="dev-mode-floating-btn"
+            aria-label={hasActiveModes && isCollapsed ? "Expand dev toolbar" : "Open Developer Suite"}
             className="h-8.5 px-3 text-xs font-bold bg-card/90 hover:bg-card border-border/80 shadow-lg hover:shadow-xl backdrop-blur-md text-foreground gap-1.5 rounded-full hover:border-amber-500/50 transition-all hover:scale-105 cursor-pointer group"
           >
             <div className="h-4 w-4 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-amber-950 transition-colors">
               <Sliders className="h-2.5 w-2.5" />
             </div>
-            <span className="text-[11px] font-bold">Dev Mode</span>
-            <kbd className="hidden sm:inline font-mono text-[9px] bg-muted/80 text-muted-foreground px-1 py-0.2 rounded border border-border/60">
-              Ctrl+Alt+D
-            </kbd>
+            <span className="text-[11px] font-bold">
+              {hasActiveModes ? `Dev Mode (${activeDevModesCount || 1})` : "Dev Mode"}
+            </span>
+            {hasActiveModes && (
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+              </span>
+            )}
+            {!hasActiveModes && (
+              <kbd className="hidden sm:inline font-mono text-[9px] bg-muted/80 text-muted-foreground px-1 py-0.2 rounded border border-border/60">
+                Ctrl+Alt+D
+              </kbd>
+            )}
           </Button>
         </div>
       )}
