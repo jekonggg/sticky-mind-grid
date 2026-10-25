@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity, decode_token
 from app import db, limiter
 from app.models.board import Board
 from app.services.board_service import BoardService
+from app.services.onboarding_service import OnboardingRequiredError
 from app.utils.decorators import require_board_access, get_effective_role, ROLE_HIERARCHY
 from app.utils.event_broadcaster import broadcaster
 
@@ -165,6 +166,8 @@ def create_board():
     try:
         board = BoardService.create_board(data, owner_id=user_id)
         return jsonify(board.to_dict(user_id=user_id)), 201
+    except OnboardingRequiredError as e:
+        return jsonify({'error': str(e)}), 409
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
 

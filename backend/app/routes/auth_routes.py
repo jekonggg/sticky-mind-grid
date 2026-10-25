@@ -136,6 +136,9 @@ def handle_oauth_flow(provider: str, data: dict):
                 user.verification_token = token
                 user.verification_token_expires_at = datetime.utcnow() + timedelta(hours=24)
             db.session.add(user)
+            from app.services.onboarding_service import OnboardingService
+            db.session.flush()
+            OnboardingService.create_for_new_user(user.id)
             db.session.commit()
             if provider_email_verified:
                 attach_pending_invitations(user)
@@ -311,6 +314,9 @@ def register():
     user.set_password(data['password'])
     
     db.session.add(user)
+    from app.services.onboarding_service import OnboardingService
+    db.session.flush()
+    OnboardingService.create_for_new_user(user.id)
     db.session.commit()
 
     # Dispatch verification email via EmailService
