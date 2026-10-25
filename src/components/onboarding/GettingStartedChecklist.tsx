@@ -34,7 +34,7 @@ export function GettingStartedChecklist({
 
   const wrapperClass =
     variant === "floating"
-      ? "w-full md:w-80 md:fixed md:left-4 md:bottom-24 md:z-20"
+      ? "fixed bottom-20 right-4 sm:right-6 z-40 w-[calc(100vw-2rem)] sm:w-80 shadow-2xl"
       : "w-full";
 
   return (
