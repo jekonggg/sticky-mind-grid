@@ -8,6 +8,7 @@ from app.models.activity import Activity
 from app.models.notification import Notification
 from app.utils.event_broadcaster import broadcaster
 from app.utils.decorators import get_effective_role, ROLE_HIERARCHY
+from app.utils.column_utils import normalize_columns
 
 class BoardService:
     @staticmethod
@@ -286,12 +287,19 @@ class BoardService:
                     raise ValueError("Column WIP limit must be a positive integer")
 
     @staticmethod
-    def create_board(data, owner_id):
+    def create_board(data, owner_id, commit=True, board_id=None, is_onboarding_starter=False):
+        if not is_onboarding_starter:
+            from app.services.onboarding_service import OnboardingRequiredError, OnboardingService
+            if OnboardingService.blocks_manual_board_creation(owner_id):
+                raise OnboardingRequiredError(
+                    "Finish or skip onboarding before creating another board"
+                )
+
         default_columns = [
-            {"id": "todo", "title": "To Do", "emoji": "📝"},
-            {"id": "in_progress", "title": "In Progress", "emoji": "⏳"},
-            {"id": "done", "title": "Done", "emoji": "✅"},
-            {"id": "archive", "title": "Archive", "emoji": "📦"}
+            {"id": "todo", "title": "To Do", "emoji": "📝", "isDone": False},
+            {"id": "in_progress", "title": "In Progress", "emoji": "⏳", "isDone": False},
+            {"id": "done", "title": "Done", "emoji": "✅", "isDone": True},
+            {"id": "archive", "title": "Archive", "emoji": "📦", "isDone": False}
         ]
         columns = data.get('columns', default_columns)
         if isinstance(columns, list):
@@ -299,9 +307,13 @@ class BoardService:
             if len(non_archive) < 1:
                 raise ValueError("Board must have at least 1 workflow column")
             BoardService._validate_columns_wip_limits(columns)
+            columns = normalize_columns(columns)
 
         validated_hero_url = BoardService.validate_hero_image_url(data.get('heroImageUrl'))
 
+        board_kwargs = {}
+        if board_id:
+            board_kwargs['id'] = board_id
         new_board = Board(
             name=data.get('name'),
             emoji=data.get('emoji'),
@@ -309,7 +321,8 @@ class BoardService:
             color=data.get('color') or 'hsl(220, 80%, 56%)',
             hero_image_url=validated_hero_url,
             columns=columns,
-            owner_id=owner_id
+            owner_id=owner_id,
+            **board_kwargs
         )
         db.session.add(new_board)
         db.session.flush()
@@ -333,7 +346,10 @@ class BoardService:
         )
         db.session.add(activity)
 
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         return new_board
 
     @staticmethod
@@ -372,6 +388,7 @@ class BoardService:
                 if len(non_archive) < 1:
                     raise ValueError("Board must have at least 1 workflow column")
                 BoardService._validate_columns_wip_limits(new_columns)
+                new_columns = normalize_columns(new_columns)
                 new_column_ids = {c.get('id') for c in new_columns if isinstance(c, dict) and 'id' in c}
                 old_columns = board.columns or []
                 for col in old_columns:

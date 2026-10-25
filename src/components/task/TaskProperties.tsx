@@ -175,7 +175,7 @@ export function TaskProperties({
               : ""
           }`}
         >
-          <div className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 select-none">
+          <div data-coach-target="status-done" className="w-[84px] sm:w-[90px] flex items-center gap-2 text-xs font-semibold text-muted-foreground shrink-0 select-none">
             <ListTodo className="h-4 w-4 text-muted-foreground shrink-0" />
             <span>Status</span>
           </div>

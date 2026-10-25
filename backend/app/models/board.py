@@ -7,6 +7,7 @@ def generate_uuid():
 
 from sqlalchemy.dialects.mysql import LONGTEXT
 from app.models.types import CompatibleJSON
+from app.utils.column_utils import is_done_column, normalize_columns
 
 class Board(db.Model):
     __tablename__ = 'boards'
@@ -36,7 +37,7 @@ class Board(db.Model):
         self.description = description
         self.color = color or 'hsl(220, 80%, 56%)'
         self.hero_image_url = hero_image_url
-        self.columns = columns if columns is not None else []
+        self.columns = normalize_columns(columns) if columns is not None else []
         self.owner_id = owner_id
         self.workspace_id = workspace_id
         if self.is_deleted is None:
@@ -78,7 +79,7 @@ class Board(db.Model):
         ]
         open_tasks = [
             t for t in active_tasks
-            if getattr(t, 'status', '') != 'done' and (getattr(t, 'progress', 0) or 0) < 100
+            if not is_done_column(self.columns, getattr(t, 'status', ''))
         ]
         now = datetime.utcnow()
         soon_threshold = now + timedelta(days=3)

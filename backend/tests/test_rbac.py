@@ -756,7 +756,8 @@ def test_task_modal_fields_and_actions_permissions(client, create_test_user, cre
     )
     assert r_ad.status_code == 200
     assert r_ad.get_json()["priority"] == "urgent"
-    assert r_ad.get_json()["progress"] == 90
+    # Progress is derived from the workflow stage; manual overrides are ignored.
+    assert r_ad.get_json()["progress"] == 0
 
     # Owner archives task
     r_ow = client.patch(

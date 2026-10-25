@@ -36,6 +36,23 @@ class Task(db.Model):
     creator = db.relationship('User', foreign_keys=[created_by], back_populates='created_tasks')
     assignee = db.relationship('User', foreign_keys=[assigned_to], back_populates='assigned_tasks')
 
+    @property
+    def is_done(self):
+        """Derived strictly from the board's explicit done column."""
+        from app.utils.column_utils import is_done_column
+        columns = self.board.columns if self.board else None
+        return is_done_column(columns, self.status)
+
+    def derived_progress(self):
+        from app.utils.column_utils import derive_task_progress
+        columns = self.board.columns if self.board else None
+        return derive_task_progress(columns, self.status, self.checklist)
+
+    def recompute_progress(self):
+        """Refresh the stored progress cache from the derived value."""
+        self.progress = self.derived_progress()
+        return self.progress
+
     def __init__(self, board_id: str, title: str, emoji: str = None, description: str = None, status: str = 'todo', priority: str = 'medium', progress: int = 0, due_date: datetime = None, assigned_to: str = None, created_by: str = None, position: float = 0.0, checklist: list = None, tags: list = None, attachments: list = None, followers: list = None, is_deleted: bool = False, deleted_at: datetime = None, **kwargs):
         super().__init__(**kwargs)
         self.board_id = board_id
@@ -92,7 +109,8 @@ class Task(db.Model):
             'description': self.description,
             'status': self.status,
             'priority': self.priority,
-            'progress': self.progress,
+            'progress': self.derived_progress(),
+            'isDone': self.is_done,
             'position': self.position,
             'checklist': self.checklist or [],
             'tags': self.tags or [],

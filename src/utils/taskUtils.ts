@@ -11,6 +11,17 @@ export const getProgressColor = (progress: number) => {
  */
 export function isDoneColumn(statusOrColumnId?: string, columns?: Column[]): boolean {
   if (!statusOrColumnId) return false;
+  if (columns && columns.length > 0) {
+    const explicitDone = columns.find(
+      (c) => c.id !== 'archive' && Boolean((c as unknown as { isDone?: boolean }).isDone)
+    );
+    if (explicitDone) {
+      return (
+        explicitDone.id === statusOrColumnId ||
+        explicitDone.id.toLowerCase() === statusOrColumnId.toLowerCase().trim()
+      );
+    }
+  }
   const norm = statusOrColumnId.toLowerCase().trim();
   if (
     norm === "done" ||

@@ -343,7 +343,8 @@ def test_oq_03_checklist_derives_progress_ignoring_manual_override(client, creat
     assert resp_create.status_code == 201
     assert resp_create.get_json()["progress"] == 100, "Progress should be derived as 100% (2/2), ignoring 10"
 
-    # If checklist is empty, manual progress is respected
+    # If checklist is empty, progress derives from the workflow stage only.
+    # Manual override values are never accepted.
     resp_empty = client.patch(
         f"/api/tasks/{task.id}",
         headers=auth_headers(user.id),
@@ -354,7 +355,7 @@ def test_oq_03_checklist_derives_progress_ignoring_manual_override(client, creat
         content_type="application/json"
     )
     assert resp_empty.status_code == 200
-    assert resp_empty.get_json()["progress"] == 42
+    assert resp_empty.get_json()["progress"] == 0
 
 def test_oq_04_transfer_ownership_demotes_former_owner_to_admin(client, create_test_user, auth_headers):
     """
@@ -728,6 +729,11 @@ def test_oq_09_email_normalization_and_validation(client, create_test_user, auth
     assert user_in_db.email == "alice.oq09@example.com"
     user_in_db.email_verified = True
     db.session.commit()
+
+    # This registered account now has first-run onboarding pending; mark it
+    # skipped so the test can exercise normal board creation.
+    from app.services.onboarding_service import OnboardingService
+    OnboardingService.skip(user_in_db.id, reason='question')
 
     # 3. Login with different casing and whitespace succeeds
     resp_login = client.post(

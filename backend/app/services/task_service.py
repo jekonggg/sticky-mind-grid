@@ -5,6 +5,7 @@ from app.models.activity import Activity
 from app.models.user import User
 from app.models.notification import Notification
 from app.utils.event_broadcaster import broadcaster
+from app.utils.column_utils import derive_task_progress, is_done_column
 from datetime import datetime
 
 def _get_column_name(board, column_id):
@@ -14,56 +15,6 @@ def _get_column_name(board, column_id):
         if isinstance(col, dict) and col.get('id') == column_id:
             return col.get('title', column_id)
     return column_id
-
-def _is_done_column(board, column_id):
-    if not column_id:
-        return False
-    norm = str(column_id).lower().strip()
-    if norm in ("done", "completed", "complete", "finished", "closed", "resolved"):
-        return True
-    if board and board.columns:
-        visible = [c for c in board.columns if isinstance(c, dict) and c.get('id') != 'archive']
-        if visible:
-            last_col = visible[-1]
-            if last_col.get('id') == column_id or str(last_col.get('id', '')).lower() == norm:
-                return True
-            for c in visible:
-                if c.get('id') == column_id or str(c.get('id', '')).lower() == norm:
-                    title_norm = str(c.get('title', '')).lower()
-                    if any(k in title_norm for k in ("done", "complete", "finish", "closed")):
-                        return True
-    return False
-
-def _compute_column_progress(board, column_id):
-    if not column_id:
-        return 0
-    if _is_done_column(board, column_id):
-        return 100
-    norm = str(column_id).lower().strip()
-    if norm in ("todo", "to_do", "to-do", "backlog", "new", "pending", "draft", "icebox"):
-        return 0
-    if board and board.columns:
-        visible = [c for c in board.columns if isinstance(c, dict) and c.get('id') != 'archive']
-        total = len(visible)
-        if total <= 1:
-            return 0
-        idx = -1
-        for i, c in enumerate(visible):
-            if c.get('id') == column_id or str(c.get('id', '')).lower() == norm:
-                idx = i
-                break
-        if idx == -1:
-            return 0
-        if idx == 0:
-            return 0
-        if idx == total - 1:
-            return 100
-        return int(round((idx / (total - 1)) * 100))
-    if "progress" in norm or "doing" in norm:
-        return 50
-    if "review" in norm or "qa" in norm or "test" in norm:
-        return 75
-    return 0
 
 def _normalize_and_deduplicate_tags(raw_tags):
     if not raw_tags or not isinstance(raw_tags, list):
@@ -241,15 +192,10 @@ class TaskService:
                 initial_followers.append(str(assigned_to))
 
         initial_checklist = data.get('checklist', [])
-        if isinstance(initial_checklist, list) and len(initial_checklist) > 0:
-            total_items = len(initial_checklist)
-            completed_items = sum(1 for item in initial_checklist if isinstance(item, dict) and item.get('completed'))
-            initial_progress = int(round((completed_items / total_items) * 100))
-        elif 'progress' in data and data['progress'] is not None:
-            initial_progress = max(0, min(100, int(data['progress'])))
-        else:
-            board = db.session.get(Board, board_id) if board_id else None
-            initial_progress = _compute_column_progress(board, status)
+        board = db.session.get(Board, board_id) if board_id else None
+        initial_progress = derive_task_progress(
+            board.columns if board else None, status, initial_checklist
+        )
 
         new_task = Task(
             board_id=board_id,
@@ -275,7 +221,11 @@ class TaskService:
 
         db.session.add(new_task)
         db.session.flush()
-        
+
+        # Onboarding latching is server-derived and participates in this transaction.
+        from app.services.onboarding_service import OnboardingService
+        OnboardingService.record_task_created(new_task, creator_id)
+
         # Automated backend audit log for task creation
         activity = Activity(
             type='create',
@@ -448,15 +398,6 @@ class TaskService:
         is_status_changed = (old_status != task.status) or bool(data.get('fromStatus') and data['fromStatus'] != task.status)
         if 'priority' in data: task.priority = data['priority']
         if 'checklist' in data: task.checklist = data['checklist']
-        active_checklist = task.checklist if isinstance(task.checklist, list) else []
-        if len(active_checklist) > 0:
-            total_items = len(active_checklist)
-            completed_items = sum(1 for item in active_checklist if isinstance(item, dict) and item.get('completed'))
-            task.progress = int(round((completed_items / total_items) * 100))
-        elif 'progress' in data and data['progress'] is not None:
-            task.progress = max(0, min(100, int(data['progress'])))
-        elif is_status_changed and task.board:
-            task.progress = _compute_column_progress(task.board, task.status)
         if 'position' in data and data['position'] is not None: task.position = float(data['position'])
         if 'tags' in data: task.tags = _normalize_and_deduplicate_tags(data['tags'])
         if 'attachments' in data: task.attachments = data['attachments']
@@ -489,6 +430,17 @@ class TaskService:
         is_assigned_changed = old_assigned_to != task.assigned_to
         is_title_changed = old_title != task.title
         is_description_changed = (old_description or "") != (task.description or "")
+
+        # Progress is always derived (checklist first, then the explicit done column).
+        effective_board = db.session.get(Board, task.board_id) if task.board_id else None
+        task.progress = derive_task_progress(
+            effective_board.columns if effective_board else None,
+            task.status,
+            task.checklist,
+        )
+        if is_status_changed and effective_board and is_done_column(effective_board.columns, task.status):
+            from app.services.onboarding_service import OnboardingService
+            OnboardingService.record_task_completed(task, user_id)
 
         # Generate automated audit log based on what changed
         activity = None
@@ -683,15 +635,14 @@ class TaskService:
                         task.position = float(item['position'])
                     except (ValueError, TypeError):
                         pass
-                if 'progress' in item and item['progress'] is not None:
-                    # Checklist-locked progress priority: only update if no checklist items exist
-                    if not (task.checklist and len(task.checklist) > 0):
-                        try:
-                            task.progress = max(0, min(100, int(item['progress'])))
-                        except (ValueError, TypeError):
-                            pass
-                elif 'status' in item and item['status'] and not (task.checklist and len(task.checklist) > 0):
-                    task.progress = _compute_column_progress(board, task.status)
+                task.progress = derive_task_progress(
+                    board.columns if board else None,
+                    task.status,
+                    task.checklist,
+                )
+                if old_status != task.status and board and is_done_column(board.columns, task.status):
+                    from app.services.onboarding_service import OnboardingService
+                    OnboardingService.record_task_completed(task, user_id)
                 updated_tasks.append(task)
 
         if updated_tasks:
