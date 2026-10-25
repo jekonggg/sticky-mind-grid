@@ -156,3 +156,15 @@ flowchart LR
 - **Reason**: Prevent destructive test seeding (`backend/seed.py:L23` `db.drop_all()`) from wiping the developer's interactive database (`AGENTS.md:L330-L342`).
 - **Alternatives**: Running E2E or integration tests against the default development database.
 - **Citations**: `backend/tests/conftest.py:L17-L23`, `e2e/run.mjs:L5-L8`, `AGENTS.md:L330-L342`.
+
+### DEC-17: First-Run Onboarding Lifecycle, Deterministic Starter Board & Explicit isDone Column
+- **Context:** New accounts required guidance to reach core value (creating a board, adding a task, completing a task). At the same time, the legacy 5-button BottomNavBar caused mobile crowding and accessibility issues, and task progress overrides allowed marking tasks 100% complete outside of the workflow's Done column.
+- **Decision:**
+  1. Implement a single-question starter flow (4 template presets: Personal tasks, Team project, Product sprint, Ideas) creating an idempotent starter board via deterministic UUID namespaces (uuid.uuid5).
+  2. Latch 3 checklist steps with server timestamps that never regress upon task or board deletion.
+  3. Retire manual progress overrides; derive task completion strictly from the explicit isDone column flag.
+  4. Isolate invited users so they onboard into their own space first; gate pending invitations until onboarding completion/skip, with an interstitial offered if an invitation URL is accessed mid-onboarding.
+  5. Provide server-checked role-aware tips on invited boards and one-time role-change notices.
+  6. Permanently retire the 5-button BottomNavBar in favor of the unified responsive sidebar with mobile Sheet drawer.
+- **Alternatives Considered:** Multi-step wizard asking for role/team size/workspace name, client-writable checklist steps, retaining the bottom navigation bar on mobile.
+- **Citations:** docs/17-onboarding.md, backend/app/services/onboarding_service.py:L1-L300, src/components/onboarding/OnboardingQuestion.tsx, src/components/layout/AppSidebar.tsx:L301-L329.

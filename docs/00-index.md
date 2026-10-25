@@ -54,6 +54,7 @@ flowchart TD
         D14["14-operations.md\n(Deployments, Runbooks & Retention)"]
         D15["15-decision-log.md\n(DEC-01 to DEC-16 Log)"]
         D16["16-changelog.md\n(Git Commits & Release History)"]
+        D17["17-onboarding.md\n(Onboarding, Coach Marks & QA Checklist)"]
     end
 
     subgraph AuditDocs["Audit, Issues & Scan Inventory"]
@@ -90,6 +91,7 @@ flowchart TD
      - `docs/14-operations.md`: Deployment topology, environment variables, lazy background cleanup, and runbooks.
      - `docs/15-decision-log.md`: Architectural decision records (`DEC-01` through `DEC-16`).
      - `docs/16-changelog.md`: Chronological release and feature changelog derived from Git history.
+     - `docs/17-onboarding.md`: First-run onboarding, 3-step latched checklist, coach marks, role tips, and manual QA checklist.
   4. **Audit, Findings & Archive**:
      - `docs/_scan-notes.md`: Ground-truth repository inventory, blueprint index, and enforcement mapping.
      - `docs/open-questions.md`: Unresolved edge cases, missing server-side checks, and unhandled events.
