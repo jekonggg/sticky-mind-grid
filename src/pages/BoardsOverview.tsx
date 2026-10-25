@@ -60,6 +60,10 @@ import { getPinnedBoardIds, togglePinnedBoardId, unpinBoardId } from "@/utils/pi
 import { cn } from "@/lib/utils";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useOnboarding } from "@/contexts/OnboardingContext";
+import { OnboardingQuestion } from "@/components/onboarding/OnboardingQuestion";
+import { GettingStartedChecklist } from "@/components/onboarding/GettingStartedChecklist";
+import { WhatsNewBanner } from "@/components/onboarding/WhatsNewBanner";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 
@@ -91,6 +95,7 @@ export default function BoardsOverview() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { status: onboardingStatus, state: onboardingState, enabled: onboardingEnabled } = useOnboarding();
   const { devSettings } = useDevMode();
   const { settings } = useSettings();
   const boardsState = useBoards();
@@ -468,10 +473,14 @@ export default function BoardsOverview() {
         </div>
       </div>
 
+      <div className="pt-4">
+        <WhatsNewBanner />
+      </div>
+
       {/* Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 w-full flex-1 shrink-0">
-        {/* Pending Invitations Section — always rendered above boards or empty state */}
-        {invitations.length > 0 && (
+        {/* Pending Invitations Section — hidden while user is actively onboarding */}
+        {invitations.length > 0 && (!onboardingEnabled || (onboardingStatus !== "not_started" && onboardingStatus !== "in_progress")) && (
           <div
             data-testid="pending-invitations-banner"
             className="mb-8 p-5 bg-gradient-to-r from-primary/10 via-primary/5 to-background border border-primary/20 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2 duration-300"

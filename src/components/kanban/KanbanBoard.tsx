@@ -61,6 +61,9 @@ import { useDevMode } from "@/contexts/DevModeContext";
 import { useBoardPermissions } from "@/hooks/useBoardPermissions";
 import { useBoardRealtime } from "@/hooks/useBoardRealtime";
 import { getContainerGeometry } from "@/utils/geometryUtils";
+import { GettingStartedChecklist } from "@/components/onboarding/GettingStartedChecklist";
+import { CoachMarks } from "@/components/onboarding/CoachMarks";
+import { RoleTipBanner } from "@/components/onboarding/RoleTipBanner";
 import { computeTaskProgress, isDoneColumn } from "@/utils/taskUtils";
 import { exportTasksToCSV, exportTasksToExcel } from "@/utils/exportToExcel";
 
@@ -959,7 +962,7 @@ export function KanbanBoard() {
             >
               <div
                 style={geom.isCustom ? { gap: `${geom.padding}px` } : undefined}
-                className={`flex ${isCompact ? "gap-2" : "gap-3"} h-full min-w-max pb-6 md:pb-24 items-stretch`}
+                data-coach-target="board-columns" className={`flex ${isCompact ? "gap-2" : "gap-3"} h-full min-w-max pb-6 md:pb-24 items-stretch`}
               >
                 {(() => {
                   const workflowCols = columns.filter((col) => col.id !== "archive");
@@ -1192,7 +1195,7 @@ export function KanbanBoard() {
                     onClick={() => openNewModal()}
                     title="Add task"
                     aria-label="Add task"
-                    data-testid="board-mobile-add-task"
+                    data-coach-target="add-task" data-testid="board-mobile-add-task"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -1485,6 +1488,7 @@ export function KanbanBoard() {
               type="button"
               onClick={() => openNewModal()}
               className="group/add relative h-11 w-11 hover:w-[124px] rounded-full bg-primary hover:bg-primary/95 text-primary-foreground shadow-xl shadow-primary/30 border border-white/20 dark:border-white/15 flex items-center overflow-hidden transition-all duration-300 ease-out cursor-pointer shrink-0 select-none pl-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              data-coach-target="add-task"
               title="Create New Task"
               aria-label="Create New Task"
             >
@@ -1573,6 +1577,14 @@ export function KanbanBoard() {
         boardId={board.id}
         canManage={permissions.canPurgeTask}
       />
+
+      {board && (
+        <>
+          <GettingStartedChecklist variant="floating" boardId={board.id} />
+          <CoachMarks />
+          <RoleTipBanner boardId={board.id} isOwner={permissions.role === "owner"} />
+        </>
+      )}
     </motion.div>
   );
 }

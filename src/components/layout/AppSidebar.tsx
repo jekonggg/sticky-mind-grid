@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useDevMode } from "@/contexts/DevModeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useTheme } from "next-themes";
@@ -381,6 +382,15 @@ export function AppSidebar({
               >
                 <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
                 <span>My Boards</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => openTour()}
+                data-testid="sidebar-getting-started-tour"
+                className="cursor-pointer text-xs font-semibold py-2 flex items-center gap-2"
+              >
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span>Getting started</span>
               </DropdownMenuItem>
 
               {import.meta.env.DEV && (
