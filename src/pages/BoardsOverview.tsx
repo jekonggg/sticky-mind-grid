@@ -95,7 +95,7 @@ export default function BoardsOverview() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { status: onboardingStatus, state: onboardingState, enabled: onboardingEnabled } = useOnboarding();
+  const { status: onboardingStatus, state: onboardingState, enabled: onboardingEnabled, loading: onboardingLoading } = useOnboarding();
   const { devSettings } = useDevMode();
   const { settings } = useSettings();
   const boardsState = useBoards();
@@ -348,12 +348,12 @@ export default function BoardsOverview() {
       className="h-full flex flex-col overflow-y-auto custom-scrollbar bg-background pb-20"
     >
       <BoardHeader showSearch={false} />
-      {loading || settings.simulateSkeletonLoading ? (
-        <BoardsOverviewSkeleton />
-      ) : onboardingEnabled && onboardingStatus === "not_started" ? (
+      {onboardingEnabled && onboardingStatus === "not_started" ? (
         <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10 w-full flex-1">
           <OnboardingQuestion onSkip={() => {}} />
         </main>
+      ) : loading || settings.simulateSkeletonLoading ? (
+        <BoardsOverviewSkeleton />
       ) : (
         <>
           <HeroBannerComponent compact={isScrolled} />
