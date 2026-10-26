@@ -91,4 +91,20 @@ export const onboardingApi = {
     );
     if (!res.ok) throw await parseError(res, "Failed to save role change notice");
   },
+
+  async resetState(options?: {
+    status?: "not_started" | "in_progress" | "completed" | "skipped";
+    cleanStarterBoard?: boolean;
+    cleanAllBoards?: boolean;
+    resetCoachMarks?: boolean;
+    resetWhatsNew?: boolean;
+  }): Promise<OnboardingState> {
+    const res = await authenticatedFetch("/users/me/onboarding/reset", {
+      method: "POST",
+      body: JSON.stringify(options || { status: "not_started" }),
+    });
+    if (!res.ok) throw await parseError(res, "Failed to reset onboarding");
+    const data = await res.json();
+    return data.onboarding;
+  },
 };

@@ -22,6 +22,10 @@ def normalize_and_validate_email(email_str):
     clean_email = email_str.strip().lower()
     if not clean_email:
         return None, "Email is required"
+    from flask import current_app, has_app_context
+    app_env = (current_app.config.get('APP_ENV') if has_app_context() else os.environ.get('APP_ENV', 'local')).strip().lower()
+    if app_env != 'production' and clean_email.endswith('@test.local'):
+        return clean_email, None
     if validate_email:
         try:
             valid = validate_email(clean_email, check_deliverability=False)
@@ -302,15 +306,22 @@ def register():
     token = secrets.token_urlsafe(32)
     expires_at = datetime.utcnow() + timedelta(hours=24)
 
+    from flask import current_app
+    app_env = (current_app.config.get('APP_ENV') or 'local').strip().lower()
+    is_dev_test = app_env != 'production' and (
+        clean_email.endswith(('@test.local', '@example.com', '@stickymind.dev'))
+        or clean_email.startswith(('test-', 'dev-'))
+    )
+
     user = User(
         email=clean_email,
         full_name=data.get('fullName', ''),
-        email_verified=False,
+        email_verified=True if is_dev_test else False,
         legacy_unverified=False,
         legacy_deadline=None
     )
-    user.verification_token = token
-    user.verification_token_expires_at = expires_at
+    user.verification_token = None if is_dev_test else token
+    user.verification_token_expires_at = None if is_dev_test else expires_at
     user.set_password(data['password'])
     
     db.session.add(user)
@@ -318,6 +329,14 @@ def register():
     db.session.flush()
     OnboardingService.create_for_new_user(user.id)
     db.session.commit()
+
+    if is_dev_test:
+        attach_pending_invitations(user)
+        return jsonify({
+            'message': 'Account created and auto-verified for dev testing. Please sign in to continue.',
+            'user': user.to_dict(),
+            'emailVerified': True
+        }), 201
 
     # Dispatch verification email via EmailService
     try:

@@ -1,3 +1,4 @@
+import { isDevSuiteEnabled } from "@/utils/envUtils";
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -394,7 +395,7 @@ export function AppSidebar({
                 <span>Getting started</span>
               </DropdownMenuItem>
 
-              {import.meta.env.DEV && (
+              {isDevSuiteEnabled() && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem

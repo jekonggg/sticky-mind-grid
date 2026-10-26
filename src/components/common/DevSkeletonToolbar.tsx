@@ -13,6 +13,8 @@ import {
   ChevronDown,
 } from "@untitledui/icons";
 
+import { isDevSuiteEnabled } from "@/utils/envUtils";
+
 export function DevSkeletonToolbar() {
   const { settings, updateLocalSetting } = useSettings();
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -28,7 +30,9 @@ export function DevSkeletonToolbar() {
       const next = !prev;
       try {
         localStorage.setItem("smg_dev_toolbar_collapsed", String(next));
-      } catch {}
+      } catch {
+        // ignore storage write errors
+      }
       return next;
     });
   };
@@ -42,7 +46,7 @@ export function DevSkeletonToolbar() {
     resetDevSettings,
   } = useDevMode();
 
-  if (!import.meta.env.DEV) {
+  if (!isDevSuiteEnabled()) {
     return null;
   }
 

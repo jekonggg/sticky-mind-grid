@@ -183,8 +183,7 @@ export function useBoards() {
                 staleTime: 1000,
               })
             : boardApi.getBoards();
-          let trackedPromise: Promise<Board[]>;
-          trackedPromise = promise.finally(() => {
+          const trackedPromise: Promise<Board[]> = promise.finally(() => {
             if (inFlightBoardsPromise === trackedPromise) {
               inFlightBoardsPromise = null;
             }

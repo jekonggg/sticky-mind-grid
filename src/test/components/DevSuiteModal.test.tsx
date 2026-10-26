@@ -174,4 +174,54 @@ describe("DevSuiteModal & Predefined Seed Takeover", () => {
     expect(stored.taskModalHideLabelIcons).toBe(false);
     expect(stored.taskModalLabelCase).toBe("uppercase");
   }, 15000);
+
+  it("opens Onboarding tab in DevSuiteModal and triggers onboarding reset", async () => {
+    const { onboardingApi } = await import("@/services/onboardingApi");
+    const resetSpy = vi.spyOn(onboardingApi, "resetState").mockResolvedValue({
+      enabled: true,
+      status: "not_started",
+      starterBoardId: null,
+      steps: [],
+      progress: 0,
+      coachMarks: [],
+      whatsNewSeenVersion: 0,
+      tourBannerDismissed: false,
+      startedAt: null,
+      completedAt: null,
+      skippedAt: null,
+      replayStartedAt: null,
+      createdAt: null,
+      updatedAt: null,
+      template: null,
+    });
+
+    renderWithProviders(<DevSkeletonToolbar />, { user: mockUser });
+
+    const openBtn = screen.getByRole("button", { name: /open developer suite/i });
+    fireEvent.click(openBtn);
+
+    const onboardingTab = await screen.findByTestId("tab-trigger-onboarding");
+    fireEvent.mouseDown(onboardingTab, { button: 0 });
+    fireEvent.click(onboardingTab);
+
+    expect(await screen.findByTestId("btn-reset-not-started")).toBeInTheDocument();
+    expect(screen.getByTestId("btn-reset-in-progress")).toBeInTheDocument();
+    expect(screen.getByTestId("btn-reset-coach-marks")).toBeInTheDocument();
+    expect(screen.getByTestId("btn-reset-completed")).toBeInTheDocument();
+
+    const resetNotStartedBtn = screen.getByTestId("btn-reset-not-started");
+    fireEvent.click(resetNotStartedBtn);
+
+    await waitFor(() => {
+      expect(resetSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: "not_started",
+          cleanStarterBoard: true,
+          cleanAllBoards: false,
+          resetCoachMarks: true,
+          resetWhatsNew: true,
+        })
+      );
+    });
+  });
 });

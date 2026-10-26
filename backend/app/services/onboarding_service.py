@@ -187,6 +187,9 @@ class OnboardingService:
 
     @staticmethod
     def has_active_boards(user_id):
+        row = OnboardingService.get_row(user_id)
+        if row and '__dev_bypass__' in (row.seen_coach_marks or []):
+            return False
         return (
             db.session.query(BoardMember.board_id)
             .join(Board, Board.id == BoardMember.board_id)
@@ -306,6 +309,9 @@ class OnboardingService:
             row.status = 'not_applicable'
             db.session.commit()
             raise OnboardingStateError('Onboarding is not available for this account')
+
+        if '__dev_bypass__' in (row.seen_coach_marks or []):
+            row.coach_marks_seen = [m for m in (row.coach_marks_seen or []) if m != '__dev_bypass__']
 
         template_config = STARTER_TEMPLATES_CONFIG[template]
         board_id = _starter_board_id(user_id)
@@ -453,3 +459,66 @@ class OnboardingService:
             _record_event(row.user_id, 'step_completed', step='task_completed', template=row.template)
         _complete_if_ready(row)
         db.session.flush()
+
+    @staticmethod
+    def reset_for_user(
+        user_id,
+        target_status='not_started',
+        clean_starter_board=True,
+        clean_all_boards=False,
+        reset_coach_marks=True,
+        reset_whats_new=True,
+    ):
+        if target_status not in ('not_started', 'in_progress', 'completed', 'skipped'):
+            raise ValueError(f"Invalid target status: {target_status}")
+
+        row = OnboardingService.ensure_row(user_id, status=target_status)
+        now = _now()
+
+        # 1. Clean previous starter board if requested
+        if clean_starter_board:
+            starter_board_id = row.starter_board_id or _starter_board_id(user_id)
+            if starter_board_id:
+                starter_board = db.session.get(Board, starter_board_id)
+                if starter_board:
+                    db.session.delete(starter_board)
+
+        # 2. Optionally soft-delete all other owned boards
+        if clean_all_boards:
+            owned_boards = Board.query.filter_by(owner_id=str(user_id), is_deleted=False).all()
+            for b in owned_boards:
+                b.is_deleted = True
+                b.deleted_at = now
+
+        # 3. Reset row state fields
+        row.status = target_status
+        row.template = None
+        row.starter_board_id = None
+        row.step_board_created_at = None
+        row.step_task_created_at = None
+        row.step_task_completed_at = None
+        row.started_at = None
+        row.completed_at = None
+        row.skipped_at = None
+        row.replay_started_at = None
+
+        seen = list(row.seen_coach_marks) if row.coach_marks_seen else []
+        if reset_coach_marks:
+            seen = [m for m in seen if m not in COACH_MARK_IDS]
+
+        if target_status == 'not_started' and not clean_all_boards:
+            if '__dev_bypass__' not in seen:
+                seen.append('__dev_bypass__')
+        else:
+            seen = [m for m in seen if m != '__dev_bypass__']
+
+        row.coach_marks_seen = seen
+
+        if reset_whats_new:
+            row.whats_new_seen_version = 0
+            row.tour_banner_dismissed_at = None
+
+        _record_event(row.user_id, 'reset', step=target_status)
+        db.session.commit()
+        return row
+

@@ -1,3 +1,6 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { onboardingApi } from "@/services/onboardingApi";
 import React, { useState } from "react";
 import {
   Dialog,
@@ -83,6 +86,40 @@ export function DevSuiteModal() {
   );
 
   const [activeTab, setActiveTab] = useState("network");
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [isResettingOnboarding, setIsResettingOnboarding] = useState(false);
+  const [cleanStarterBoard, setCleanStarterBoard] = useState(true);
+  const [cleanAllBoards, setCleanAllBoards] = useState(false);
+
+  const handleResetOnboarding = async (
+    targetStatus: "not_started" | "in_progress" | "completed" | "skipped",
+    resetMarks = true,
+    resetTour = true
+  ) => {
+    setIsResettingOnboarding(true);
+    try {
+      await onboardingApi.resetState({
+        status: targetStatus,
+        cleanStarterBoard,
+        cleanAllBoards,
+        resetCoachMarks: resetMarks,
+        resetWhatsNew: resetTour,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+      await queryClient.invalidateQueries({ queryKey: ["boards"] });
+      toast.success(`Onboarding reset to '${targetStatus}'!`);
+      if (targetStatus === "not_started") {
+        setIsDevModalOpen(false);
+        navigate("/");
+      }
+    } catch (err: any) {
+      toast.error(`Failed to reset onboarding: ${err.message || "Unknown error"}`);
+    } finally {
+      setIsResettingOnboarding(false);
+    }
+  };
+
   const [isSeeding, setIsSeeding] = useState(false);
 
   // Helper to extract active board ID from URL if currently viewing a board
@@ -245,6 +282,10 @@ export function DevSuiteModal() {
               <TabsTrigger value="sandbox" className="flex-none text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0 rounded-lg">
                 <Layers className="h-3.5 w-3.5 shrink-0" />
                 <span>Helpers & Stress</span>
+              </TabsTrigger>
+              <TabsTrigger value="onboarding" data-testid="tab-trigger-onboarding" className="flex-none text-xs font-bold gap-1.5 py-1.5 px-3 whitespace-nowrap shrink-0 rounded-lg">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                <span>Onboarding</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1656,6 +1697,174 @@ export function DevSuiteModal() {
                 </CardContent>
               </Card>
             </TabsContent>
+            {/* Tab 7: Onboarding Dev Suite */}
+            <TabsContent value="onboarding" className="p-4 sm:p-5 space-y-4 m-0 overflow-y-auto custom-scrollbar flex-1">
+              <Card className="border-amber-500/40 bg-amber-500/5">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <Sparkles className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-foreground">
+                        Instant Onboarding Testing & Reset
+                      </h4>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                        Test first-run onboarding questions, checklist drawers, and coach marks directly on your existing account. No need to create new accounts or consume email quotas!
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Reset Cleanup Options */}
+              <Card className="border-border/60 bg-muted/20">
+                <CardContent className="p-4 space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Reset Options
+                  </h4>
+
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-bold text-foreground">
+                        Clean Previous Starter Board
+                      </span>
+                      <p className="text-[11px] text-muted-foreground">
+                        Permanently deletes the previously generated starter board so a new template can be chosen cleanly.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={cleanStarterBoard}
+                      onCheckedChange={setCleanStarterBoard}
+                      data-testid="switch-clean-starter-board"
+                    />
+                  </div>
+
+                  <div className="border-t border-border/40 pt-3 flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-bold text-foreground">
+                        Archive Other Owned Boards to Trash
+                      </span>
+                      <p className="text-[11px] text-muted-foreground">
+                        Moves your other owned boards to Trash to simulate a 100% zero-board new user state (boards can be restored from Trash anytime).
+                      </p>
+                    </div>
+                    <Switch
+                      checked={cleanAllBoards}
+                      onCheckedChange={setCleanAllBoards}
+                      data-testid="switch-clean-all-boards"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* State Transitions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* 1. Fresh Not Started */}
+                <Card className="border-border/60 bg-background/80 hover:border-primary/40 transition-colors">
+                  <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-foreground">Fresh New User</span>
+                        <Badge variant="outline" className="text-[9px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30">not_started</Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-snug">
+                        Resets your account to initial sign-up state and displays the template picker on Boards Overview.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleResetOnboarding("not_started")}
+                      disabled={isResettingOnboarding}
+                      data-testid="btn-reset-not-started"
+                      className="w-full text-xs font-bold gap-1.5"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      <span>Reset to "not_started"</span>
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* 2. In Progress */}
+                <Card className="border-border/60 bg-background/80 hover:border-primary/40 transition-colors">
+                  <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-foreground">Active Checklist</span>
+                        <Badge variant="outline" className="text-[9px] font-mono text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/30">in_progress</Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-snug">
+                        Sets onboarding to in-progress to test the Getting Started checklist drawer and progress percentage.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleResetOnboarding("in_progress")}
+                      disabled={isResettingOnboarding}
+                      data-testid="btn-reset-in-progress"
+                      className="w-full text-xs font-bold gap-1.5 border-border/80"
+                    >
+                      <Zap className="h-3.5 w-3.5 text-blue-500" />
+                      <span>Set to "in_progress"</span>
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* 3. Reset Coach Marks */}
+                <Card className="border-border/60 bg-background/80 hover:border-primary/40 transition-colors">
+                  <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-foreground">Reset Tooltip Highlights</span>
+                        <Badge variant="outline" className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/30">Coach Marks</Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-snug">
+                        Clears seen flags for board columns, task creation, and done column highlights.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleResetOnboarding("completed", true, true)}
+                      disabled={isResettingOnboarding}
+                      data-testid="btn-reset-coach-marks"
+                      className="w-full text-xs font-bold gap-1.5 border-border/80"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+                      <span>Reset Coach Marks & Tour</span>
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* 4. Complete Onboarding */}
+                <Card className="border-border/60 bg-background/80 hover:border-primary/40 transition-colors">
+                  <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-foreground">Completed State</span>
+                        <Badge variant="outline" className="text-[9px] font-mono text-muted-foreground bg-muted border-border/60">completed</Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-snug">
+                        Marks onboarding as 100% completed with all checklist items latched.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleResetOnboarding("completed", false, false)}
+                      disabled={isResettingOnboarding}
+                      data-testid="btn-reset-completed"
+                      className="w-full text-xs font-bold gap-1.5 border-border/80"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Set to "completed"</span>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
           </div>
         </Tabs>
       </DialogContent>

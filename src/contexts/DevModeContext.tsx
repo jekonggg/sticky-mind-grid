@@ -1,3 +1,4 @@
+import { isDevSuiteEnabled } from "@/utils/envUtils";
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { QueryClientContext } from "@tanstack/react-query";
 import { DevSettings, SseLogEntry } from "@/types/devMode";
@@ -48,7 +49,7 @@ export const prodSettings: DevSettings = {
 
 // Global synchronous getter for API services & non-React files
 export function getDevSettings(): DevSettings {
-  if (typeof window === "undefined" || !import.meta.env.DEV) {
+  if (typeof window === "undefined" || !isDevSuiteEnabled()) {
     return prodSettings;
   }
   try {
@@ -144,7 +145,7 @@ export const DevModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Handle dynamic font family application to root & body
   useEffect(() => {
     if (typeof document !== "undefined") {
-      const activeFont = devSettings.fontFamily || (!import.meta.env.DEV ? "sora" : "helvetica");
+      const activeFont = devSettings.fontFamily || (!isDevSuiteEnabled() ? "sora" : "helvetica");
       const fontStack = FONT_STACK_MAP[activeFont] || FONT_STACK_MAP.sora;
       document.documentElement.style.setProperty("--app-font", fontStack);
       document.body.style.fontFamily = fontStack;

@@ -1,3 +1,4 @@
+import { isDevSuiteEnabled } from "@/utils/envUtils";
 import { useState, useEffect } from "react";
 import { userApi, SystemHealth } from "@/services/userApi";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -321,7 +322,7 @@ export function AboutTab() {
       )}
 
       {/* Developer Mode Suite (Hidden in Production) */}
-      {import.meta.env.DEV && (
+      {isDevSuiteEnabled() && (
         <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3.5">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">

@@ -96,3 +96,33 @@ def start_replay():
         return jsonify({'error': 'Onboarding is disabled'}), 403
     row = OnboardingService.start_replay(user_id)
     return jsonify({'onboarding': row.to_dict(enabled=True)}), 200
+
+@bp.route('/reset', methods=['POST'])
+@jwt_required()
+def reset_onboarding():
+    from flask import current_app
+    app_env = (current_app.config.get('APP_ENV') or 'local').strip().lower()
+    if app_env == 'production':
+        return jsonify({'error': 'Onboarding reset is not permitted in production'}), 403
+
+    user_id = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    status = data.get('status') or 'not_started'
+    clean_starter_board = bool(data.get('cleanStarterBoard', True))
+    clean_all_boards = bool(data.get('cleanAllBoards', False))
+    reset_coach_marks = bool(data.get('resetCoachMarks', True))
+    reset_whats_new = bool(data.get('resetWhatsNew', True))
+
+    try:
+        row = OnboardingService.reset_for_user(
+            user_id=user_id,
+            target_status=status,
+            clean_starter_board=clean_starter_board,
+            clean_all_boards=clean_all_boards,
+            reset_coach_marks=reset_coach_marks,
+            reset_whats_new=reset_whats_new,
+        )
+        return jsonify({'onboarding': row.to_dict(enabled=OnboardingService.is_enabled())}), 200
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+

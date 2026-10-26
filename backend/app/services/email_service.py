@@ -162,6 +162,20 @@ class EmailService:
         if prefix and not subject.startswith(prefix):
             subject = f"{prefix} {subject}"
         print(f"\n======== [CONSOLE EMAIL DISPATCH] ========\nTo: {to_email}\nSubject: {subject}\n\n{text_body}\n==========================================\n", flush=True)
+
+        app_env = (
+            (current_app.config.get("APP_ENV") if has_app_context() else None)
+            or os.environ.get("APP_ENV", "local")
+        ).strip().lower()
+        clean_to = (to_email or "").strip().lower()
+        is_test_recipient = (
+            clean_to.endswith(('@test.local', '@example.com', '@stickymind.dev'))
+            or clean_to.startswith(('test-', 'dev-'))
+        )
+        if app_env != 'production' and is_test_recipient:
+            logger.info(f"[EmailService] Test recipient '{to_email}' suppressed from external email provider in {app_env} environment.")
+            return True
+
         return cls.get_provider().send_email(to_email, subject, text_body, html_body, **kwargs)
 
     @classmethod
