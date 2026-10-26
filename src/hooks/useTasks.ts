@@ -5,6 +5,9 @@ import { useActivity } from "./useActivity";
 import { AuthContext } from "@/contexts/AuthContext";
 import { isBoardRealtimeConnected } from "./useBoardRealtime";
 import { QueryClientContext } from "@tanstack/react-query";
+import { isDoneColumn } from "@/utils/taskUtils";
+import { OnboardingState } from "@/types/onboarding";
+import { optimisticallyCompleteOnboardingSteps } from "@/utils/onboardingProgress";
 
 const DEFAULT_COLUMNS: Column[] = [
   { id: "todo", title: "To Do" },
@@ -238,6 +241,22 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     };
 
     markTasksMutated();
+    const onboardingKey = ["onboarding", user?.id];
+    const onboarding = user?.id
+      ? queryClient?.getQueryData<OnboardingState>(onboardingKey)
+      : undefined;
+    if (
+      onboarding?.enabled &&
+      onboarding.status === "in_progress" &&
+      onboarding.starterBoardId === boardId
+    ) {
+      const completedSteps: OnboardingState["steps"][number]["key"][] = ["task_created"];
+      if (isDoneColumn(targetStatus, columns)) completedSteps.push("task_completed");
+      queryClient?.setQueryData<OnboardingState>(
+        onboardingKey,
+        optimisticallyCompleteOnboardingSteps(onboarding, completedSteps)
+      );
+    }
     setTasks((prev) => [...prev, optimisticTask]);
 
     try {
@@ -249,9 +268,10 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     } catch (err) {
       setTasks((prev) => prev.filter((t) => t.id !== tempId));
       fetchTasks();
+      notifyOnboarding();
       throw err;
     }
-  }, [addActivity, boardId, fetchTasks, notifyOnboarding, setTasks, tasks.length, user]);
+  }, [addActivity, boardId, columns, fetchTasks, notifyOnboarding, queryClient, setTasks, tasks.length, user]);
 
   const updateTask = useCallback(async (id: string, data: UpdateTaskData) => {
     const task = tasks.find((t) => t.id === id);
@@ -287,6 +307,27 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     if (!boardId || items.length === 0) return;
     markTasksMutated();
 
+    const movedIntoDone = items.some(
+      (item) =>
+        item.status &&
+        item.fromStatus !== item.status &&
+        isDoneColumn(item.status, columns)
+    );
+    if (movedIntoDone && user?.id) {
+      const onboardingKey = ["onboarding", user.id];
+      const onboarding = queryClient?.getQueryData<OnboardingState>(onboardingKey);
+      if (
+        onboarding?.enabled &&
+        onboarding.status === "in_progress" &&
+        onboarding.starterBoardId === boardId
+      ) {
+        queryClient?.setQueryData<OnboardingState>(
+          onboardingKey,
+          optimisticallyCompleteOnboardingSteps(onboarding, ["task_completed"])
+        );
+      }
+    }
+
     // Optimistic local reorder
     setTasks((prev) => {
       const itemMap = new Map(items.map((i) => [i.id, i]));
@@ -317,8 +358,9 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
       }
     } catch {
       fetchTasks();
+      notifyOnboarding();
     }
-  }, [boardId, fetchTasks, setTasks]);
+  }, [boardId, columns, fetchTasks, notifyOnboarding, queryClient, setTasks, user?.id]);
 
   const moveTask = useCallback(async (id: string, status: TaskStatus) => {
     const task = tasks.find((t) => t.id === id);

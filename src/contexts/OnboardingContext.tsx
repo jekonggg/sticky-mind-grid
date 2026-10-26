@@ -17,6 +17,7 @@ import {
   OnboardingState,
   StarterTemplate,
 } from "@/types/onboarding";
+import { optimisticallyCompleteOnboardingSteps } from "@/utils/onboardingProgress";
 
 export const WHATS_NEW_VERSION = 1;
 
@@ -137,6 +138,25 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   const startMutation = useMutation({
     mutationFn: (template: StarterTemplate) => onboardingApi.start(template),
+    onMutate: (template) => {
+      const previous = queryClient.getQueryData<OnboardingState>(queryKey);
+      if (!previous?.enabled || previous.status !== "not_started") return;
+
+      const now = new Date().toISOString();
+      const startingState: OnboardingState = {
+        ...previous,
+        status: "in_progress",
+        template,
+        startedAt: previous.startedAt || now,
+      };
+      queryClient.setQueryData(
+        queryKey,
+        optimisticallyCompleteOnboardingSteps(startingState, ["board_created"], now)
+      );
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
     onSuccess: (data) => {
       if (typeof window !== "undefined") {
         localStorage.removeItem("smg_onboarding_pending");
