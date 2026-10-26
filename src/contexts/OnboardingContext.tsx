@@ -138,7 +138,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   const startMutation = useMutation({
     mutationFn: (template: StarterTemplate) => onboardingApi.start(template),
-    onMutate: (template) => {
+    onMutate: async (template) => {
+      await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<OnboardingState>(queryKey);
       if (!previous?.enabled || previous.status !== "not_started") return;
 

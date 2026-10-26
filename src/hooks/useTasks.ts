@@ -242,6 +242,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
 
     markTasksMutated();
     const onboardingKey = ["onboarding", user?.id];
+    if (user?.id) await queryClient?.cancelQueries({ queryKey: onboardingKey });
     const onboarding = user?.id
       ? queryClient?.getQueryData<OnboardingState>(onboardingKey)
       : undefined;
@@ -315,6 +316,7 @@ export function useTasks(boardId: string, initialColumns: Column[] = []) {
     );
     if (movedIntoDone && user?.id) {
       const onboardingKey = ["onboarding", user.id];
+      await queryClient?.cancelQueries({ queryKey: onboardingKey });
       const onboarding = queryClient?.getQueryData<OnboardingState>(onboardingKey);
       if (
         onboarding?.enabled &&

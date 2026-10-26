@@ -68,6 +68,7 @@ export function isBoardOwnedByUser(board: Board, userId?: string): boolean {
 // Module-level in-memory cache for boards (persists across route navigations)
 let cachedBoards: Board[] | null = null;
 let cachedTrashedBoards: Board[] = [];
+const optimisticBoards = new Map<string, Board>();
 let cachedUserId: string | undefined = undefined;
 let lastBoardsFetchTime = 0;
 let inFlightBoardsPromise: Promise<Board[]> | null = null;
@@ -78,6 +79,7 @@ export const BOARDS_CACHE_TTL_MS = 60_000;
 export function clearBoardsCache() {
   cachedBoards = null;
   cachedTrashedBoards = [];
+  optimisticBoards.clear();
   cachedUserId = undefined;
   lastBoardsFetchTime = 0;
   inFlightBoardsPromise = null;
@@ -101,6 +103,7 @@ export function useBoards() {
     }
     cachedBoards = null;
     cachedTrashedBoards = [];
+    optimisticBoards.clear();
     cachedUserId = user?.id;
     lastBoardsFetchTime = 0;
     inFlightBoardsPromise = null;
@@ -180,16 +183,30 @@ export function useBoards() {
                 staleTime: 1000,
               })
             : boardApi.getBoards();
-          inFlightBoardsPromise = promise.finally(() => {
-            if (inFlightBoardsPromise === promise) {
+          let trackedPromise: Promise<Board[]>;
+          trackedPromise = promise.finally(() => {
+            if (inFlightBoardsPromise === trackedPromise) {
               inFlightBoardsPromise = null;
             }
           });
+          inFlightBoardsPromise = trackedPromise;
         }
         const data = await inFlightBoardsPromise;
-        const validData = Array.isArray(data)
+        const serverData = Array.isArray(data)
           ? data.filter((b) => !b.isDeleted && !cachedTrashedBoards.some((t) => t.id === b.id))
           : [];
+        const serverIds = new Set(serverData.map((b) => b.id));
+        for (const id of optimisticBoards.keys()) {
+          if (!id.startsWith("temp-board-") && serverIds.has(id)) {
+            optimisticBoards.delete(id);
+          }
+        }
+        const validData = [
+          ...serverData,
+          ...Array.from(optimisticBoards.values()).filter(
+            (board) => !serverIds.has(board.id)
+          ),
+        ];
         setBoards(validData);
         cachedBoards = validData;
         cachedUserId = user?.id;
@@ -312,7 +329,9 @@ export function useBoards() {
 
       // Reset in-flight background promise so it does not overwrite optimistic creation
       inFlightBoardsPromise = null;
+      void queryClient?.cancelQueries({ queryKey: ["boards"] });
       lastBoardsFetchTime = Date.now();
+      optimisticBoards.set(tempId, optimisticBoard);
 
       // Optimistic update immediately
       setBoards((prev) => {
@@ -324,8 +343,12 @@ export function useBoards() {
 
       try {
         const board = await boardApi.createBoard(data);
+        optimisticBoards.delete(tempId);
+        optimisticBoards.set(board.id, board);
         setBoards((prev) => {
-          const next = prev.map((b) => (b.id === tempId ? board : b));
+          const next = prev.some((b) => b.id === tempId)
+            ? prev.map((b) => (b.id === tempId ? board : b))
+            : [...prev.filter((b) => b.id !== board.id), board];
           cachedBoards = next;
           queryClient?.setQueryData(["boards"], next);
           return next;
@@ -334,6 +357,7 @@ export function useBoards() {
         toast.success(`Board "${board.name}" created`);
         return board;
       } catch (err) {
+        optimisticBoards.delete(tempId);
         setBoards((prev) => prev.filter((b) => b.id !== tempId));
         toast.error("Failed to create board");
         throw err;
@@ -346,6 +370,7 @@ export function useBoards() {
     async (id: string, data: UpdateBoardData) => {
       try {
         const board = await boardApi.updateBoard(id, data);
+        if (optimisticBoards.has(id)) optimisticBoards.set(id, board);
         setBoards((prev) => {
           const next = prev.map((b) => (b.id === id ? board : b));
           cachedBoards = next;
@@ -411,6 +436,7 @@ export function useBoards() {
       // Cancel in-flight queries and unpin immediately
       inFlightBoardsPromise = null;
       void queryClient?.cancelQueries({ queryKey: ["boards"] });
+      optimisticBoards.delete(id);
       unpinBoardId(id, user?.id);
 
       const trashedEntry: Board = {
@@ -457,6 +483,7 @@ export function useBoards() {
       // Cancel in-flight queries and unpin immediately
       inFlightBoardsPromise = null;
       void queryClient?.cancelQueries({ queryKey: ["boards"] });
+      optimisticBoards.delete(id);
       unpinBoardId(id, user?.id);
 
       setTrashedBoards((prev) => {
