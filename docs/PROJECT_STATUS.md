@@ -1,6 +1,6 @@
 # Project Status
 
-*Last updated: 2026-08-25*
+*Last updated: 2026-10-27*
 
 ## Application Overview
 
@@ -15,6 +15,11 @@ Full architecture documentation is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 ---
 
 ## Implemented Features
+
+### Public Landing Page
+- **Responsive marketing page** at `/` for visitors, inspired by the Magic UI SaaS reference with original Sticky Mind Grid copy, branding, and product illustrations. Includes sample board/list/calendar views, real feature showcases, onboarding steps, mobile navigation, FAQs, and registration/sign-in links.
+- **Preserved authenticated home** — signed-in users still see their boards at `/`; private routes retain their existing guards. Landing styles do not change saved appearance settings. Supports keyboard navigation, reduced motion, and browser zoom.
+- Design rationale and verification details: [`LANDING_PAGE_DESIGN.md`](./LANDING_PAGE_DESIGN.md).
 
 ### Authentication & Account Identity
 - **Registration & Verification Pending Journey** — Creating an account seamlessly navigates users to a dedicated Verification Pending screen (`/verify-email?pending=true`) that auto-polls verification status in real-time, transitions to a success state with "Continue to Sign In" upon verification, and offers resend cooldown capabilities without dumping users unverified into login error banners.

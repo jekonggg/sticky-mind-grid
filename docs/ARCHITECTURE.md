@@ -45,7 +45,8 @@ Sticky Mind Grid is a full-stack task management application modeled after Trell
 | `/login` | `Login.tsx` | No |
 | `/register` | `Register.tsx` | No |
 | `/verify-email` | `VerifyEmail.tsx` | No |
-| `/` | `BoardsOverview.tsx` | Yes (ProtectedRoute + AppLayout) |
+| `/` | `LandingPage.tsx` for guests; `BoardsOverview.tsx` for signed-in users | Public entry via `HomeRouteLayout`; authenticated users retain AppLayout and their home URL |
+| `/boards` | `BoardsOverview.tsx` | Yes (ProtectedRoute + AppLayout) |
 | `/dashboard` | `DashboardPage.tsx` | Yes (ProtectedRoute + AppLayout) |
 | `/tasks` | `TasksPage.tsx` | Yes (ProtectedRoute + AppLayout) |
 | `/calendar` | `CalendarPage.tsx` | Yes (ProtectedRoute + AppLayout) |
@@ -57,6 +58,7 @@ Sticky Mind Grid is a full-stack task management application modeled after Trell
 | `*` | `NotFound.tsx` | No |
 
 - `ProtectedRoute` (`src/components/auth/ProtectedRoute.tsx`) wraps authenticated routes. Redirects to `/login` if no user in AuthContext.
+- The public landing page has locally scoped styles, static illustrative project data, accessible sample-view tabs and FAQs, and links to existing auth routes. It creates no board/task API requests. See [landing design notes](./LANDING_PAGE_DESIGN.md).
 
 ### Provider Hierarchy
 
