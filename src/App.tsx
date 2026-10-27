@@ -14,6 +14,7 @@ import { OnboardingProvider } from "./contexts/OnboardingContext";
 import { OnboardingTourDialog } from "./components/onboarding/OnboardingTourDialog";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AppLayout } from "./components/layout/AppLayout";
+import { HomeRouteLayout } from "./components/landing/HomeRouteLayout";
 import { AuthPageSkeleton } from "./components/skeletons";
 import { DevSkeletonToolbar } from "./components/common/DevSkeletonToolbar";
 import { EnvironmentBanner } from "./components/common/EnvironmentBanner";
@@ -78,6 +79,9 @@ const App = () => (
                 <Sonner />
                 <EnvironmentBanner />
                 <Routes>
+                  <Route path="/" element={<HomeRouteLayout />}>
+                    <Route index element={<BoardsOverview />} />
+                  </Route>
                   <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
                   <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
                   <Route path="/auth/callback" element={<PublicRoute><OAuthCallback /></PublicRoute>} />
@@ -87,7 +91,6 @@ const App = () => (
 
                   <Route element={<ProtectedRoute />}>
                     <Route element={<AppLayout />}>
-                      <Route path="/" element={<BoardsOverview />} />
                       <Route path="/boards" element={<BoardsOverview />} />
                       <Route path="/dashboard" element={<DashboardPage />} />
                       <Route path="/tasks" element={<TasksPage />} />

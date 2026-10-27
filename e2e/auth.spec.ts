@@ -102,9 +102,10 @@ test.describe("Authentication", () => {
   });
 
   test.describe("Protected routes", () => {
-    test("redirects / to login when not authenticated", async ({ page }) => {
+    test("shows the public landing page at / when not authenticated", async ({ page }) => {
       await page.goto("/");
-      await expect(page).toHaveURL("/login");
+      await expect(page).toHaveURL("/");
+      await expect(page.getByRole("heading", { name: "Big ideas. Beautifully organized." })).toBeVisible();
     });
 
     test("redirects /boards/:id to login when not authenticated", async ({ page }) => {
